@@ -69,9 +69,6 @@ a:hover{color:#1A36C4}
             </div>
             <button type="submit" disabled="{{ busy }}" style="height:56px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#1A36C4"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ loginBtn }}</button>
           </form>
-          <div style="display:flex;align-items:center;gap:14px;margin:28px 0;color:#6B6F76;font-size:14px"><div style="flex:1;height:1px;background:#E4E1DA"></div>ou<div style="flex:1;height:1px;background:#E4E1DA"></div></div>
-          <button type="button" onClick="{{ demo }}" style="width:100%;min-height:56px;border:1.5px dashed #9AA9EE;border-radius:14px;background:#EEF1FF;color:#1A36C4;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 16px" style-hover="background:#E3E8FF"><span class="material-symbols-rounded" style="font-size:22px">play_circle</span>Explorer la démo</button>
-          <p style="margin:10px 0 0;text-align:center;color:#5E636B;font-size:14px">Commerce fictif BASH — Smash &amp; Bao, aucune donnée réelle.</p>
           <p style="margin:32px 0 0;text-align:center;font-size:15px;color:#3E424A">Pas encore de compte ? <button type="button" onClick="{{ toSignup }}" style="border:0;background:none;padding:8px 2px;color:#2448F0;font-weight:700;font-size:15px" style-hover="text-decoration:underline">Créer mon compte</button></p>
         </sc-if>
 
@@ -466,7 +463,6 @@ a:hover{color:#1A36C4}
           <div style="flex:1;min-width:0;padding:0 8px">
             <sc-if value="{{ mBar.hasTitle }}" hint-placeholder-val="{{ false }}"><h1 style="margin:0;font-weight:800;font-size:20px;letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ mBar.title }}</h1></sc-if>
           </div>
-          <sc-if value="{{ mBar.demo }}" hint-placeholder-val="{{ false }}"><span style="margin-right:8px;padding:4px 10px;border-radius:999px;background:#FFF6DE;border:1px dashed #C9B37A;color:#6B4E00;font-size:12px;font-weight:700">Démo</span></sc-if>
           <sc-if value="{{ mBar.addClient }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openAddClient }}" aria-label="Ajouter un client" style="width:44px;height:44px;flex:none;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;color:#2448F0" style-active="background:#E8EDFF"><span class="material-symbols-rounded" style="font-size:26px">person_add</span></button></sc-if>
           <sc-if value="{{ mBar.create }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ newNotif }}" style="height:44px;flex:none;padding:0 16px 0 12px;border:0;border-radius:999px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px" style-active="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:22px">add</span>Créer</button></sc-if>
         </div>
@@ -698,22 +694,7 @@ a:hover{color:#1A36C4}
           </sc-if>
           <button type="button" onClick="{{ openManual }}" style="min-height:54px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#F8F7F4"><span class="material-symbols-rounded" style="font-size:22px">keyboard</span>Saisir le numéro de carte</button>
         </div>
-        <sc-if value="{{ showDemoHints }}" hint-placeholder-val="{{ true }}">
-        <aside aria-labelledby="demo-h" style="border:1.5px dashed #C9B37A;border-radius:24px;background:#FFFBF0;padding:22px;display:flex;flex-direction:column;gap:14px">
-          <span style="align-self:flex-start;padding:4px 10px;border-radius:999px;background:#FFE9B0;color:#5C4200;font-size:12px;font-weight:800;letter-spacing:0.06em">DÉMONSTRATION</span>
-          <h2 id="demo-h" style="margin:0;font-weight:700;font-size:19px">Simuler un scan</h2>
-          <p style="margin:0;color:#4A4E55;font-size:14px;line-height:1.5">Aucune caméra n’est utilisée dans ce prototype. Choisissez la carte que le client présente.</p>
-          <button type="button" onClick="{{ primarySim.run }}" disabled="{{ scanV.scanning }}" style="min-height:54px;padding:10px 16px;border:0;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:10px;text-align:center" style-hover="background:#33373E"><span class="material-symbols-rounded" style="font-size:22px">qr_code_scanner</span>{{ primarySim.label }}</button>
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <sc-for list="{{ demoOpts }}" as="dm" hint-placeholder-count="5">
-              <button type="button" onClick="{{ dm.run }}" disabled="{{ scanV.scanning }}" style="display:flex;align-items:center;gap:12px;min-height:52px;padding:8px 12px;border:1px solid #EADFC2;border-radius:12px;background:#FFFFFF;text-align:left" style-hover="border-color:#C9B37A">
-                <span class="material-symbols-rounded" style="font-size:20px;color:#6B4E00">{{ dm.icon }}</span>
-                <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">{{ dm.label }}</div><div style="font-size:13px;color:#5E636B">{{ dm.sub }}</div></div>
-              </button>
-            </sc-for>
-          </div>
-        </aside>
-        </sc-if>
+
       </div>
       </sc-if>
     </div>
@@ -723,8 +704,7 @@ a:hover{color:#1A36C4}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;height:60px;padding:0 12px;flex:none">
         <button type="button" onClick="{{ closeScanner }}" aria-label="Fermer le scanner" style="width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,0.12);color:#FFFFFF;display:grid;place-items:center" style-active="background:rgba(255,255,255,0.22)"><span class="material-symbols-rounded" style="font-size:24px">close</span></button>
         <h1 style="margin:0;font-weight:700;font-size:17px">Scanner une carte</h1>
-        <sc-if value="{{ showDemoHints }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ openScanDemo }}" style="min-height:44px;padding:0 14px;border-radius:999px;border:1px dashed rgba(255,214,107,0.7);background:rgba(255,214,107,0.12);color:#FFD66B;font-weight:700;font-size:14px">Démo</button></sc-if>
-        <sc-if value="{{ noDemoHints }}" hint-placeholder-val="{{ false }}"><div style="width:44px"></div></sc-if>
+        <div style="width:44px"></div>
       </div>
       <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:16px 24px;text-align:center">
         <sc-if value="{{ scanV.perm }}" hint-placeholder-val="{{ true }}">
@@ -1176,7 +1156,6 @@ a:hover{color:#1A36C4}
     </sc-if>
 <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
     <div style="max-width:640px;margin:0 auto;padding:14px 16px 16px;display:flex;flex-direction:column;gap:14px">
-      <div role="note" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px dashed #C9B37A;border-radius:14px;background:#FFFBF0;color:#5C4200;font-size:14px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:20px">science</span><div><strong>Démonstration.</strong> Historique fictif, aucune notification réelle n’est envoyée.</div></div>
       <sc-if value="{{ nNoneAtAll }}" hint-placeholder-val="{{ false }}">
         <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:36px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px">
           <div style="width:56px;height:56px;border-radius:16px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:30px">notifications</span></div>
@@ -1578,7 +1557,6 @@ a:hover{color:#1A36C4}
         <dt style="color:#5E636B">Horaire</dt><dd style="margin:0;font-weight:600">{{ nRecap.when }}</dd>
       </dl>
       <sc-if value="{{ nQuota.show }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:#FFF3DC;color:#5C4200;font-size:14px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:20px">warning</span>{{ nQuota.text }}</div></sc-if>
-      <label style="display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px dashed #C9B37A;border-radius:12px;background:#FFFBF0;color:#5C4200;font-size:14px;font-weight:600;cursor:pointer"><input type="checkbox" checked="{{ nSimFail }}" onChange="{{ toggleSimFail }}" style="width:20px;height:20px;accent-color:#6B4E00;margin:0">Démo : simuler une erreur d’envoi</label>
       <p style="margin:0;font-size:13px;color:#5E636B">La réception dépend des réglages de notification du client.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button type="button" onClick="{{ closeModal }}" disabled="{{ busy }}" style="flex:1;min-width:120px;height:54px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px">Modifier</button>
@@ -1637,7 +1615,7 @@ a:hover{color:#1A36C4}
         <div>
           <label for="mn" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Numéro de carte</label>
           <input id="mn" inputMode="numeric" autoComplete="off" placeholder="DPA 4821 0935" value="{{ f.manualNo }}" onChange="{{ F.manualNo }}" aria-invalid="{{ inv.manualNo }}" aria-describedby="mn-h" style="width:100%;height:56px;padding:0 16px;border:1.5px solid {{ eb.manualNo }};border-radius:12px;font-family:'IBM Plex Mono',monospace;font-size:18px;letter-spacing:0.04em;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
-          <div id="mn-h" style="margin-top:8px;font-size:14px;color:#5E636B;line-height:1.45">Le numéro figure sous le QR code. Les 4 derniers chiffres suffisent.<sc-if value="{{ isDemo }}" hint-placeholder-val="{{ true }}"> Démo : 0935 (Léa), 1177 (Karim).</sc-if></div>
+          <div id="mn-h" style="margin-top:8px;font-size:14px;color:#5E636B;line-height:1.45">Le numéro figure sous le QR code. Les 4 derniers chiffres suffisent.</div>
           <sc-if value="{{ err.manualNo }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:6px;color:#B42318;font-size:14px;font-weight:500">{{ err.manualNo }}</div></sc-if>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -1656,7 +1634,7 @@ a:hover{color:#1A36C4}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;home&quot;,&quot;scanner&quot;,&quot;clients&quot;,&quot;card&quot;,&quot;invite&quot;],&quot;default&quot;:&quot;login&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;showDemoHints&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;login&quot;,&quot;home&quot;,&quot;scanner&quot;,&quot;clients&quot;,&quot;card&quot;,&quot;invite&quot;],&quot;default&quot;:&quot;login&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
 let TODAY='2026-09-30', YEST='2026-09-29';
 function ymdOf(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function addDays(ymd,n){ const [y,m,d]=ymd.split('-').map(Number); return ymdOf(new Date(y,m-1,d+n)); }
@@ -2310,11 +2288,11 @@ class Component extends DCLogic {
     const toastM=scr==='scanner'?'calc(220px + env(safe-area-inset-bottom))':(scr==='client'?'calc(160px + env(safe-area-inset-bottom))':'calc(96px + env(safe-area-inset-bottom))');
     return {
       s:S, isDesk, isMob, m, P, f:s.f, F, err, eb, inv, go, spin, scanLine, sheetAnim, busy:s.busy, notBusy:!s.busy,
-      showDemoHints:!!s.demo&&(this.props.showDemoHints??true),
+      showDemoHints:false,
       loginBtn:s.busy?'Connexion…':'Se connecter', signupBtn:s.busy?'Création du compte…':'Créer mon compte', forgotBtn:s.busy?'Envoi…':'Envoyer le lien',
       pwdType:s.showPwd?'text':'password', pwdIcon:s.showPwd?'visibility_off':'visibility', pwdAria:s.showPwd?'Masquer le mot de passe':'Afficher le mot de passe',
       togglePwd:()=>this.setState(x=>({showPwd:!x.showPwd})), remember:s.remember, toggleRemember:e=>this.setState({remember:e.target.checked}),
-      login:this.login, signup:this.signup, forgot:this.forgot, demo:()=>this.enterDemo(),
+      login:this.login, signup:this.signup, forgot:this.forgot,
       toLogin:go('login'), toSignup:go('signup'), toForgot:go('forgot'), resend:this.resendReset, resendSignup:this.resendSignup, submitReset:this.submitReset, resetBtn:s.busy?'Enregistrement…':'Enregistrer le mot de passe',
       isDemo:!!s.demo, isLive:!s.demo, authFooter:'DPA CARDS v0.1 · aucune connexion Apple ou Google',
       linkNote:s.demo?'Lien et QR code de démonstration.':'Inscription publique pas encore disponible : ce lien et ce QR code ne sont pas actifs.',
@@ -2361,7 +2339,7 @@ class Component extends DCLogic {
       prevOrder:isDesk?'2':'0', mainPadB:isDesk?'48px':(mShowNav?(scr==='client'?'calc(170px + env(safe-area-inset-bottom))':'calc(96px + env(safe-area-inset-bottom))'):'0px'), toNotifs:go('notifs'), ...nv,
       mShowBar, mShowNav, mBar:mb, mStats, mActivities:activities.map((a,i)=>({...a,bt:bt(i)})), mFilters:filters.map(f=>({...f,label:shortF[f.k]})), mList:list.map((v,i)=>({...v,bt:bt(i)})),
       mListCount:list.length+' client'+(list.length>1?'s':''), mSelActs, mResults, mNoResults:mResults.length===0, mq:s.mq, setMq:e=>this.setState({mq:e.target.value}),
-      mDemoOpts:demoOpts.map(wrapRun), mPrimarySim:wrapRun(primarySim), noDemoHints:!(s.demo&&(this.props.showDemoHints??true)),
+      mDemoOpts:demoOpts.map(wrapRun), mPrimarySim:wrapRun(primarySim), noDemoHints:true,
       closeScanner:()=>{ if(s.busy) return; const p=s.prevScreen; this.go(p&&p!=='scanner'?p:'home'); }, openSearch:()=>this.setState({modal:'mSearch',mq:''}), openScanDemo:()=>this.setState({modal:'scanDemo'}),
       openAddClient:()=>this.setState({modal:'addClient'}), addToJoin:()=>{ this.setState({modal:null}); this.go('join'); },
       mNRows:nv.nRows.map((r,i)=>({...r,bt:bt(i)}))
