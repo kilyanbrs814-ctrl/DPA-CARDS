@@ -1,0 +1,217 @@
+# DPA Cards — projet local
+
+Import local du projet Claude Design **DPA Cards**
+(`7fa48349-c620-424d-b2fb-d9a614015ecf`, fichier `DPA Cards.dc.html`).
+
+## Démarrer
+
+```
+npm.cmd run dev
+```
+
+Puis ouvrir le lien affiché dans le terminal (`http://localhost:5173/`).
+Les dépendances sont déjà installées.
+
+```
+npm.cmd run build     # build de production -> dist/
+npm.cmd run preview   # sert dist/
+```
+
+## Comment c'est construit
+
+Le projet Claude Design n'est pas du HTML classique : c'est un document `<x-dc>`
+(template avec `sc-if` / `sc-for` / `{{ }}`) accompagné d'un script de logique
+`<script type="text/x-dc" data-dc-script>`, compilé en React à l'exécution par
+le runtime `dc-runtime` (`support.js`).
+
+Pour garantir un rendu identique à la maquette, le template et le script de
+logique sont **reproduits à l'octet près** ; rien n'a été réécrit ni reporté
+dans un autre framework.
+
+| Fichier | Rôle |
+|---|---|
+| `index.html` | Point d'entrée à la racine `/`. Contient le bloc `<x-dc>` et le script de logique, copiés tels quels depuis `DPA Cards.dc.html`. |
+| `public/LoyaltyCard.dc.html` | Composant carte de fidélité, importé par le template. |
+| `public/support.js` | Le runtime `dc-runtime` du projet, inchangé. |
+| `public/assets/dpa-cards-logo.png` | Le logo. |
+| `public/vendor/react*.js` | React / ReactDOM 18.3.1 UMD, servis localement. |
+| `design-source/` | Les fichiers source importés, conservés pour référence. |
+| `vite.config.js` | Vite sert la page et recopie `public/` ; aucun bundling du template. |
+
+Deux écarts volontaires par rapport au fichier source, aucun visuel :
+
+1. React est chargé depuis `public/vendor/` au lieu d'unpkg.com. `support.js`
+   ne télécharge React que si `window.React` est absent ; en le définissant
+   d'abord, l'application démarre sans appel réseau. La version est identique
+   (18.3.1), celle que le runtime aurait récupérée.
+2. `src="assets/..."` est devenu `src="/assets/..."` (4 occurrences) pour que
+   le chemin résolve depuis la racine du serveur.
+
+Les parties de `support.js` propres à l'environnement de prévisualisation
+(`postMessage` vers la fenêtre parente, passerelles de l'éditeur
+`__dcAnnotatedTemplate` / `__dcSetProps`) se désactivent d'elles-mêmes hors
+iframe (`if (window.parent === window) return;`). Elles ont donc été laissées
+telles quelles plutôt que retirées : supprimer du code du runtime aurait été un
+risque de régression sans bénéfice.
+
+Les polices et icônes (Hanken Grotesk, IBM Plex Mono, Material Symbols Rounded)
+restent chargées depuis Google Fonts, exactement comme dans la maquette. Ce ne
+sont pas des liens liés à une session Claude Design, mais le **premier
+affichage demande une connexion internet** ; sans réseau, la mise en page tient
+mais les icônes Material n'apparaissent pas.
+
+## Ressources
+
+Toutes les ressources sont locales. Rien ne dépend d'une session Claude Design.
+
+### Logo
+
+Le fichier fourni (1536x1024) plaçait le mot-logo dans une large zone
+transparente. Comme la maquette l'affiche en `height:44px`, cette marge l'aurait
+rendu nettement plus petit et décentré. Il a donc été recadré sur son contenu,
+avec 8 px de marge pour conserver le halo violet : **1331x618**, soit
+pratiquement les dimensions de l'asset d'origine (1330x615). Les proportions du
+logo sont inchangées ; il se rend en 95x44 px, comme prévu.
+
+Il apparaît sur l'écran de connexion, dans les écrans publics et dans la barre
+supérieure mobile (`height:34px`).
+
+### Carte de fidélité BASH
+
+Ce n'est pas une image. C'est un composant séparé, `LoyaltyCard.dc.html`, que le
+template appelle six fois via `<dc-import name="LoyaltyCard">`. Le runtime va le
+chercher en `./LoyaltyCard.dc.html` ; tant que le fichier manquait, il
+journalisait `[dc-runtime] sibling fetch for "LoyaltyCard" failed` et laissait un
+emplacement vide. Le composant a été récupéré entier depuis le projet Claude
+Design et placé dans `public/`.
+
+Son apparence vient de ses données (`P0` dans le script de logique) : fond
+`#F6A9C9`, accent `#A9DDF7`, rayon 16 px, ombre
+`0 12px 32px rgba(20,22,28,0.14)`, programme « Club BASH », unité « PASSAGES »,
+récompense « 1 burger offert ».
+
+Emplacements, tels que définis par la maquette :
+
+| Écran | Desktop | Mobile |
+|---|---|---|
+| Accueil, encart « Ma carte » | oui | non |
+| Fiche client | oui | oui |
+| Inscription publique (`join`) | oui | oui |
+| Onboarding | oui | oui |
+| Brouillon Wallet | oui | oui |
+
+La carte n'apparaît pas sur l'accueil mobile : dans la maquette, ce bloc est
+dans une branche `<sc-if value="{{ isDesk }}">`. Sur mobile, elle s'affiche sur
+la fiche client.
+
+## Supabase (mode réel)
+
+Projet `fiuffxchvjcghcvfaout`. Le formulaire de connexion, l'inscription, le
+mot de passe oublié, l'onboarding, les clients, les passages, les récompenses,
+les corrections, la carte et les réglages du commerce utilisent Supabase.
+
+| Fichier | Rôle |
+|---|---|
+| `.env.local` | URL du projet et clé **publishable** (jamais de clé secrète ni `service_role`). Modèle : `.env.example`. |
+| `src/backend.js` | Client Supabase, bundlé par Vite, transmis au script de logique via `window.dpaReady`. |
+| `supabase/migrations/20261002204418_loyalty_core.sql` | Schéma appliqué : tables, RLS, droits, fonctions. |
+
+Le script de logique de `index.html` garde le code de la maquette : chaque
+action passe par Supabase quand un commerçant est connecté (`state.live`), et
+par le code d'origine en mode démonstration (`state.demo`).
+
+Principes de la base :
+
+- `merchants`, `merchant_members` (rôles), `programs`, `customers`, `cards`,
+  `card_events` (historique en ajout seul). RLS sur toutes les tables, aucun
+  droit pour `anon`, droits colonne par colonne pour `authenticated`.
+- Un commerçant n'accède qu'à son commerce. Les clés étrangères composites
+  empêchent d'associer un client, une carte ou un programme de commerces
+  différents. Les rôles ne viennent jamais des métadonnées utilisateur.
+- Les soldes ne sont jamais écrits par le navigateur : un déclencheur calcule
+  le solde, la séquence, l'auteur et la date de chaque événement, verrouille la
+  carte, refuse les soldes négatifs et une deuxième correction du même passage.
+- `add_visit`, `redeem_reward`, `correct_event`, `enroll_customer` et
+  `create_merchant` sont idempotentes : le site envoie un identifiant de
+  requête conservé jusqu'à la réponse, un double clic ou une nouvelle tentative
+  réseau ne compte qu'une fois.
+- Toutes les fonctions sont `SECURITY INVOKER` : elles s'exécutent avec les
+  droits et les règles RLS de l'utilisateur connecté.
+
+« Inscrire sur ce téléphone » inscrit le client **depuis la session du
+commerçant**. L'inscription publique par QR code ou lien n'existe pas encore :
+le lien et le QR code affichés sont indiqués comme inactifs.
+
+## Mode démonstration
+
+Le bouton « Explorer la démo » ouvre le commerce fictif BASH, sans aucun appel
+à Supabase. La maquette y annonce elle-même ses limites (« Historique fictif :
+aucune notification réelle n'est envoyée depuis ce prototype », « Boutons de
+démonstration : aucune carte n'est installée »). Rien n'y est persisté.
+
+Le scan simulé (choix de la carte présentée, faux viseur) n'existe qu'en mode
+démonstration : connecté, aucune fausse lecture ne peut créditer un passage. On
+retrouve la carte par son numéro (PC), par la recherche (mobile) ou depuis la
+fiche client.
+
+Pas encore intégrés : lecture réelle par caméra, notifications, Apple Wallet,
+import de logo, lien et QR code d'inscription publique.
+
+## Google Wallet
+
+Émetteur `3388000000023141157`, compte de service
+`dpa-cards-wallet@dpa-cards.iam.gserviceaccount.com`.
+
+| Élément | Rôle |
+|---|---|
+| `supabase/functions/wallet/` | Edge Function `wallet` (déployée sans `verify_jwt`, chaque route s'authentifie). |
+| `supabase/migrations/20261003071635_wallet_google_sync.sql` | `wallet_classes`, `wallet_passes`, file de synchronisation, déclencheur, tâche `pg_cron`. |
+| Secrets Edge Functions | `GOOGLE_WALLET_SA_B64` (clé JSON en base64), `GOOGLE_WALLET_ISSUER_ID`. Jamais dans le dépôt ni dans `VITE_*`. |
+
+- `POST /wallet/save-link` : session du commerçant obligatoire. Seul l'identifiant de
+  carte est envoyé ; la carte est lue avec la session (RLS) puis l'appartenance au
+  commerce est revérifiée. Crée ou réutilise la classe du programme
+  (`<émetteur>.dpa-prog-<programme>`) et l'objet de la carte
+  (`<émetteur>.dpa-card-<carte>`), puis signe le lien « Ajouter à Google Wallet ».
+- `POST /wallet/sync` : appelé par `pg_net` après chaque événement de fidélité et
+  par `pg_cron` chaque minute, protégé par un secret généré dans Vault. Pousse
+  toujours le dernier solde du registre, sous un bail par carte ; `synced_seq` ne
+  recule jamais ; en cas d'échec Google, nouvel essai avec délai croissant.
+- `GET /wallet/logo.png` : logo public HTTPS utilisé par les classes.
+
+La classe `bash_test_v1` créée dans la console reste en `draft` et n'est pas utilisée.
+
+## Création de la carte (onboarding, étape 3)
+
+Le programme est créé à la fin de l'étape 2 avec un visuel neutre (`design_status = 'draft'`).
+L'étape 3 propose deux choix :
+
+- **Personnaliser ma carte** : nom du commerce et du programme, logo (obligatoire,
+  recadré en PNG 660 × 660, affiché en cercle par Google), couverture facultative
+  (JPEG 1032 × 812, format « hero » de Google Wallet) et couleur de fond (seule
+  couleur prise en charge par les cartes de fidélité Google Wallet). Le brouillon est
+  enregistré au fil de la saisie. « Valider ma carte » appelle
+  `POST /wallet/finalize-design` : le serveur relit les fichiers (format, poids,
+  dimensions), verrouille le design puis crée la classe Google du programme.
+- **Confier le design à DPA Cards** : logo, références, couleurs, description et
+  contact, enregistrés dans `design_requests` (statut `submitted`), fichiers dans le
+  bucket privé `design-requests`. Le programme passe en `pending_dpa` : aucune classe
+  Google ni lien d'ajout tant que le design n'est pas livré.
+
+Après validation, un déclencheur refuse toute modification du visuel par un
+commerçant (nom du programme, couleurs, logo, couverture), quel que soit l'appareil.
+Les images publiques sont dans le bucket `program-assets` (PNG/JPEG, 2 Mo maximum),
+écriture réservée au propriétaire du commerce et seulement en brouillon.
+
+### Retrouver les demandes sur mesure
+
+Il n'existe pas encore d'espace administrateur. Dans le dashboard Supabase :
+Table Editor → `design_requests` (filtrer `status = submitted`), fichiers dans
+Storage → `design-requests` → `<merchant_id>/<request_id>/`. Pour livrer un design :
+déposer le logo et la couverture dans `program-assets/<merchant_id>/<program_id>/`,
+renseigner `logo_path`, `hero_path`, `bg`, `name`, passer le programme en
+`validated` et la demande en `delivered` (service role ou SQL) ; la classe Google
+est créée au premier ajout d'une carte client.
+
+Mettre à jour la clé : `supabase secrets set --env-file <fichier hors projet>` puis
+supprimer le fichier. Redéployer : `supabase functions deploy wallet --no-verify-jwt --use-api`.

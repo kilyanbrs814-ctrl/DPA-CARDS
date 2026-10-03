@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env*.local
+supabase/.temp/
+supabase/.branches/
+supabase/functions/.env
+*.service-account.json
