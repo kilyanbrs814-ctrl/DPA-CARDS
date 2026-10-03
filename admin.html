@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/support.js"></script>
+<script>window.dpaAdminReady=new Promise(function(r){window.__dpaAdminResolve=r;});</script>
+<script type="module" src="/src/admin-backend.js"></script>
+</head>
+<body>
+<div id="admin-auth-root" style="min-height:100vh;background:#F6F5F1;color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:420px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:28px;box-shadow:0 12px 36px rgba(20,22,28,.08)">
+    <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:42px;width:auto;display:block;margin-bottom:26px">
+    <div id="admin-auth-loading">
+      <h1 style="margin:0 0 8px;font-size:28px;line-height:1.1">Administration</h1>
+      <p style="margin:0;color:#5E636B">Vérification de votre accès…</p>
+    </div>
+    <form id="admin-auth-form" style="display:none;flex-direction:column;gap:16px">
+      <div>
+        <h1 style="margin:0 0 8px;font-size:28px;line-height:1.1">Accès administrateur</h1>
+        <p style="margin:0;color:#5E636B;line-height:1.5">Recevez un lien sécurisé sur votre adresse administrateur.</p>
+      </div>
+      <div>
+        <label for="admin-email" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Adresse e-mail</label>
+        <input id="admin-email" type="email" autocomplete="email" placeholder="vous@exemple.fr" required style="width:100%;height:54px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-size:16px;outline:none">
+      </div>
+      <button id="admin-submit" type="submit" style="height:54px;border:0;border-radius:12px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px">Recevoir le lien de connexion</button>
+      <div id="admin-auth-message" role="status" style="min-height:20px;font-size:14px;color:#5E636B"></div>
+      <a href="/" style="color:#2448F0;text-decoration:none;font-weight:600;font-size:14px">← Retour à l’espace commerçant</a>
+    </form>
+    <div id="admin-denied" style="display:none">
+      <h1 style="margin:0 0 8px;font-size:28px;line-height:1.1">Accès refusé</h1>
+      <p style="margin:0 0 18px;color:#5E636B;line-height:1.5">Ce compte n’est pas autorisé à accéder à l’administration DPA Cards.</p>
+      <button id="admin-signout" type="button" style="height:50px;width:100%;border:0;border-radius:12px;background:#1C1F24;color:#FFFFFF;font-weight:700">Se déconnecter</button>
+    </div>
+  </div>
+</div>
+<div id="admin-app" style="display:none">
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#F6F5F1;color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+input,select,button{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid #2448F0;outline-offset:2px}
+a{color:#2448F0}
+a:hover{color:#1A36C4}
+.material-symbols-rounded{font-variation-settings:'wght' 400,'opsz' 24;user-select:none}
+@keyframes dpaIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@keyframes dpaUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div style="min-height:100vh;background:#F6F5F1;color:#1C1F24">
+  <header style="position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:10px clamp(16px,4vw,40px);background:#1C1F24;color:#FFFFFF">
+    <div style="display:flex;align-items:center;gap:14px;min-width:0">
+      <div style="background:#FFFFFF;border-radius:10px;padding:5px 8px;line-height:0"><img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:30px;width:auto;display:block"></div>
+      <div style="font-weight:700;font-size:16px;letter-spacing:0.02em">Administration</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      
+      <a href="/" style="min-height:40px;padding:0 12px;border:1px solid rgba(255,255,255,0.3);border-radius:10px;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px"><span class="material-symbols-rounded" style="font-size:18px">storefront</span>Espace commerçant</a>
+    </div>
+  </header>
+
+  <main style="max-width:1280px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:22px">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div>
+        <h1 style="margin:0;font-weight:800;font-size:clamp(28px,5vw,38px);letter-spacing:-0.03em;line-height:1.05">Commerçants</h1>
+        <div style="margin-top:6px;color:#5E636B;font-size:15px">Les commerces inscrits et les cartes de fidélité ajoutées par leurs clients.</div>
+      </div>
+      <button type="button" onClick="{{ exportCsv }}" style="min-height:46px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px" style-hover="background:#F8F7F4"><span class="material-symbols-rounded" style="font-size:20px">download</span>Exporter</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
+      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+        <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px">
+          <span class="material-symbols-rounded" style="font-size:22px;color:{{ k.color }}">{{ k.icon }}</span>
+          <div style="font-weight:800;font-size:30px;letter-spacing:-0.02em;line-height:1;font-variant-numeric:tabular-nums">{{ k.value }}</div>
+          <div style="font-size:14px;color:#4A4E55;line-height:1.3">{{ k.label }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <section aria-label="Répartition des cartes" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:15px">
+        <div style="font-weight:700">Cartes ajoutées aux Wallets</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;color:#3E424A">
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#1C1F24"></span>Apple Wallet · {{ tot.apple }} ({{ tot.applePct }})</span>
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#2448F0"></span>Google Wallet · {{ tot.google }} ({{ tot.googlePct }})</span>
+        </div>
+      </div>
+      <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:#ECEAE4"><div style="width:{{ tot.applePct }};background:#1C1F24"></div><div style="width:{{ tot.googlePct }};background:#2448F0"></div></div>
+      
+    </section>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div role="search" style="position:relative;flex:1;min-width:240px">
+          <label for="aq" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Rechercher un commerçant</label>
+          <span class="material-symbols-rounded" style="position:absolute;left:16px;top:15px;font-size:22px;color:#5E636B">search</span>
+          <input id="aq" type="search" placeholder="Commerce, responsable ou ville" value="{{ q }}" onChange="{{ setQ }}" style="width:100%;height:54px;padding:0 16px 0 50px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
+        </div>
+        <div style="position:relative">
+          <label for="as" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Trier</label>
+          <select id="as" value="{{ sort }}" onChange="{{ setSort }}" style="height:54px;padding:0 40px 0 16px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-size:15px;font-weight:600;appearance:none;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
+            <option value="cards">Plus de cartes</option>
+            <option value="recent">Inscription récente</option>
+            <option value="name">Nom (A → Z)</option>
+          </select>
+          <span class="material-symbols-rounded" style="position:absolute;right:12px;top:16px;font-size:22px;color:#5E636B;pointer-events:none">expand_more</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div role="group" aria-label="Statut" style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ statusFilters }}" as="fl" hint-placeholder-count="4">
+            <button type="button" onClick="{{ fl.pick }}" aria-pressed="{{ fl.pressed }}" style="min-height:44px;padding:0 14px;border-radius:999px;border:1.5px solid {{ fl.border }};background:{{ fl.bg }};color:{{ fl.fg }};font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px">{{ fl.label }}<span style="opacity:0.75;font-variant-numeric:tabular-nums">{{ fl.count }}</span></button>
+          </sc-for>
+        </div>
+        <div style="width:1px;background:#E4E1DA;margin:4px 4px"></div>
+        <div role="group" aria-label="Wallet" style="display:flex;gap:8px;flex-wrap:wrap">
+          <sc-for list="{{ walletFilters }}" as="fl" hint-placeholder-count="3">
+            <button type="button" onClick="{{ fl.pick }}" aria-pressed="{{ fl.pressed }}" style="min-height:44px;padding:0 14px;border-radius:999px;border:1.5px solid {{ fl.border }};background:{{ fl.bg }};color:{{ fl.fg }};font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px"><span class="material-symbols-rounded" style="font-size:18px">{{ fl.icon }}</span>{{ fl.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+
+    <section aria-label="Liste des commerçants" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;overflow:hidden">
+      <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
+        <div aria-hidden="true" style="display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1.3fr) 90px 90px 90px 130px 150px 32px;gap:12px;padding:12px 20px;background:#F8F7F4;border-bottom:1px solid #E4E1DA;font-size:12px;font-weight:700;letter-spacing:0.06em;color:#5E636B;text-transform:uppercase">
+          <div>Commerce</div><div>Responsable</div><div style="text-align:right">Clients</div><div style="text-align:right">Apple</div><div style="text-align:right">Google</div><div>Statut</div><div>Dernière activité</div><div></div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:40px 20px;text-align:center"><span class="material-symbols-rounded" style="font-size:36px;color:#9A9EA6">storefront</span><div style="margin-top:10px;font-weight:700;font-size:17px">Aucun commerçant trouvé</div><div style="margin-top:6px;color:#5E636B;font-size:15px">Modifiez la recherche ou les filtres.</div></div>
+      </sc-if>
+      <ul style="list-style:none;margin:0;padding:0">
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+          <li style="border-bottom:1px solid #EFEDE8">
+            <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
+              <button type="button" onClick="{{ r.open }}" style="width:100%;display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1.3fr) 90px 90px 90px 130px 150px 32px;gap:12px;align-items:center;padding:14px 20px;border:0;background:transparent;text-align:left" style-hover="background:#F8F7F4">
+                <div style="display:flex;align-items:center;gap:12px;min-width:0">
+                  <div style="width:40px;height:40px;border-radius:10px;background:{{ r.bg }};color:{{ r.logoFg }};display:grid;place-items:center;font-weight:800;font-size:10px;flex:none;border:1px solid rgba(0,0,0,0.06)">{{ r.logo }}</div>
+                  <div style="min-width:0"><div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div><div style="font-size:13px;color:#5E636B">{{ r.activity }} · {{ r.city }}</div></div>
+                </div>
+                <div style="font-size:14px;color:#3E424A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.owner }}</div>
+                <div style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">{{ r.clients }}</div>
+                <div style="text-align:right;font-variant-numeric:tabular-nums">{{ r.apple }}</div>
+                <div style="text-align:right;font-variant-numeric:tabular-nums">{{ r.google }}</div>
+                <div><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:{{ r.stBg }};color:{{ r.stFg }};font-size:13px;font-weight:700;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:{{ r.stFg }}"></span>{{ r.status }}</span></div>
+                <div style="font-size:14px;color:#4A4E55">{{ r.last }}</div>
+                <span class="material-symbols-rounded" style="color:#9A9EA6">chevron_right</span>
+              </button>
+            </sc-if>
+            <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
+              <button type="button" onClick="{{ r.open }}" style="width:100%;display:flex;flex-direction:column;gap:12px;padding:16px;border:0;background:transparent;text-align:left" style-hover="background:#F8F7F4">
+                <div style="display:flex;align-items:center;gap:12px;width:100%">
+                  <div style="width:44px;height:44px;border-radius:12px;background:{{ r.bg }};color:{{ r.logoFg }};display:grid;place-items:center;font-weight:800;font-size:10px;flex:none;border:1px solid rgba(0,0,0,0.06)">{{ r.logo }}</div>
+                  <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px">{{ r.name }}</div><div style="font-size:14px;color:#5E636B">{{ r.owner }} · {{ r.city }}</div></div>
+                  <span style="padding:4px 10px;border-radius:999px;background:{{ r.stBg }};color:{{ r.stFg }};font-size:12px;font-weight:700;white-space:nowrap">{{ r.status }}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%">
+                  <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Clients</div><div style="font-weight:700;font-size:16px">{{ r.clients }}</div></div>
+                  <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Apple</div><div style="font-weight:700;font-size:16px">{{ r.apple }}</div></div>
+                  <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Google</div><div style="font-weight:700;font-size:16px">{{ r.google }}</div></div>
+                </div>
+              </button>
+            </sc-if>
+          </li>
+        </sc-for>
+      </ul>
+    </section>
+  </main>
+
+  <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ close }}" style="position:fixed;inset:0;z-index:40;background:rgba(20,22,28,0.45);display:flex;justify-content:flex-end">
+      <aside role="dialog" aria-modal="true" aria-labelledby="mt" onClick="{{ stop }}" style="width:100%;max-width:480px;height:100%;overflow:auto;background:#F6F5F1;box-shadow:-12px 0 40px rgba(20,22,28,0.2);animation:dpaIn .2s ease-out;display:flex;flex-direction:column">
+        <div style="position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:#F6F5F1;border-bottom:1px solid #E4E1DA">
+          <div style="font-weight:700;font-size:15px;color:#5E636B">Fiche commerçant</div>
+          <button type="button" onClick="{{ close }}" aria-label="Fermer" style="width:44px;height:44px;border:0;border-radius:12px;background:#ECEAE4;display:grid;place-items:center"><span class="material-symbols-rounded">close</span></button>
+        </div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="width:60px;height:60px;border-radius:16px;background:{{ sel.bg }};color:{{ sel.logoFg }};display:grid;place-items:center;font-weight:800;font-size:13px;flex:none;border:1px solid rgba(0,0,0,0.06)">{{ sel.logo }}</div>
+            <div style="min-width:0"><h2 id="mt" style="margin:0;font-weight:800;font-size:24px;letter-spacing:-0.02em;line-height:1.1">{{ sel.name }}</h2><div style="margin-top:4px;font-size:15px;color:#4A4E55">{{ sel.activity }} · {{ sel.city }}</div></div>
+          </div>
+          <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:{{ sel.stBg }};color:{{ sel.stFg }};font-size:13px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:{{ sel.stFg }}"></span>{{ sel.status }}</span>
+
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Clients</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.clients }}</div></div>
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Apple Wallet</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.apple }}</div></div>
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Google Wallet</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.google }}</div></div>
+          </div>
+          <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:#ECEAE4"><div style="width:{{ sel.applePct }};background:#1C1F24"></div><div style="width:{{ sel.googlePct }};background:#2448F0"></div></div>
+
+          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px">
+            <h3 style="margin:0;font-weight:700;font-size:16px">Programme</h3>
+            <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:{{ sel.bg }};color:{{ sel.logoFg }}">
+              <div style="width:36px;height:36px;border-radius:9px;background:{{ sel.accent }};display:grid;place-items:center;font-weight:800;font-size:9px;color:#1E1418;flex:none">{{ sel.logo }}</div>
+              <div style="min-width:0"><div style="font-weight:800;font-size:16px">{{ sel.program }}</div><div style="font-size:14px">{{ sel.rule }}</div></div>
+            </div>
+            <div style="font-size:13px;color:#5E636B">Aperçu indicatif des couleurs de la carte.</div>
+          </section>
+
+          <dl style="margin:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:16px;padding:4px 16px;display:grid;grid-template-columns:auto 1fr;column-gap:16px;font-size:15px">
+            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Responsable</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.owner }}</dd>
+            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">E-mail</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8;overflow-wrap:anywhere">{{ sel.email }}</dd>
+            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Inscription</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.joined }}</dd>
+            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Passages ce mois-ci</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.visits }}</dd>
+            <dt style="padding:11px 0;color:#5E636B">Dernière activité</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right">{{ sel.last }}</dd>
+          </dl>
+
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-if value="{{ sel.isBash }}" hint-placeholder-val="{{ false }}"><a href="/" style="min-height:52px;border-radius:14px;background:#2448F0;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">open_in_new</span>Ouvrir l’espace commerçant</a></sc-if>
+            <button type="button" onClick="{{ contact }}" style="min-height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">mail</span>Contacter le commerçant</button>
+            <button type="button" onClick="{{ askToggle }}" style="min-height:52px;border:1.5px solid {{ sel.toggleBorder }};border-radius:14px;background:#FFFFFF;color:{{ sel.toggleFg }};font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">{{ sel.toggleIcon }}</span>{{ sel.toggleLabel }}</button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ confirming }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ cancelToggle }}" style="position:fixed;inset:0;z-index:50;background:rgba(20,22,28,0.5);display:flex;align-items:center;justify-content:center;padding:16px">
+      <div role="alertdialog" aria-modal="true" aria-labelledby="ct" onClick="{{ stop }}" style="width:100%;max-width:420px;background:#FFFFFF;border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:14px;animation:dpaUp .2s ease-out">
+        <h2 id="ct" style="margin:0;font-weight:800;font-size:21px">{{ confirmTitle }}</h2>
+        <p style="margin:0;color:#3E424A;font-size:15px;line-height:1.5">{{ confirmText }}</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button type="button" onClick="{{ cancelToggle }}" style="flex:1;min-width:120px;height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600">Annuler</button>
+          <button type="button" onClick="{{ doToggle }}" style="flex:1;min-width:140px;height:52px;border:0;border-radius:14px;background:{{ confirmBg }};color:#FFFFFF;font-weight:700">Confirmer</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
+    <div role="status" aria-live="polite" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:10px;padding:14px 18px;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-weight:600;font-size:15px;box-shadow:0 12px 30px rgba(20,22,28,0.3);animation:dpaUp .2s ease-out"><span class="material-symbols-rounded" style="font-size:22px;color:#9DB0FF">info</span>{{ toast }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const MONTHS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const fmt=d=>{ if(d==='2026-09-30') return "Aujourd'hui"; if(d==='2026-09-29') return 'Hier'; const [y,m,dd]=d.split('-'); return `${+dd} ${MONTHS[m-1]} ${y}`; };
+const M=(id,name,logo,activity,city,owner,email,joined,clients,apple,visits,last,status,bg,accent,program,rule)=>({id,name,logo,activity,city,owner,email,joined,clients,apple,google:clients-apple,visits,last,status,bg,accent,program,rule});
+const DATA=[];
+const ST={active:{label:'Actif',bg:'#E4F3EB',fg:'#1F6B45'},setup:{label:'En configuration',bg:'#FFF3DC',fg:'#6B4E00'},suspended:{label:'Suspendu',bg:'#FCEBEA',fg:'#A11D14'}};
+function lum(hex){ const h=hex.replace('#',''); const v=[0,2,4].map(i=>{const c=parseInt(h.substr(i,2),16)/255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}); return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]; }
+const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
+const nf=n=>n.toLocaleString('fr-FR');
+
+class Component extends DCLogic {
+  state={w:typeof window!=='undefined'?window.innerWidth:1200,data:DATA,q:'',status:'all',wallet:'all',sort:'cards',sel:null,confirming:false,toast:null};
+  componentDidMount(){ this._r=()=>this.setState({w:window.innerWidth}); window.addEventListener('resize',this._r);
+    this._k=e=>{ if(e.key==='Escape') this.setState(s=>s.confirming?{confirming:false}:{sel:null}); }; window.addEventListener('keydown',this._k); }
+  componentWillUnmount(){ window.removeEventListener('resize',this._r); window.removeEventListener('keydown',this._k); }
+  toast(msg){ clearTimeout(this._t); this.setState({toast:msg}); this._t=setTimeout(()=>this.setState({toast:null}),3000); }
+  view(m){ const st=ST[m.status];
+    return {...m,clients:nf(m.clients),apple:nf(m.apple),google:nf(m.google),visits:nf(m.visits),joined:fmt(m.joined),last:fmt(m.last),status:st.label,stBg:st.bg,stFg:st.fg,
+      logoFg:lum(m.bg)<0.4?'#FFFFFF':'#1E1418',applePct:pct(m.apple,m.clients),googlePct:pct(m.google,m.clients),isBash:m.id==='m1',
+      toggleLabel:m.status==='suspended'?'Réactiver le compte':'Suspendre le compte',toggleIcon:m.status==='suspended'?'play_circle':'block',
+      toggleFg:m.status==='suspended'?'#1F6B45':'#B42318',toggleBorder:m.status==='suspended'?'#A8D5BD':'#E3B3AE',open:()=>this.setState({sel:m.id})}; }
+  renderVals(){
+    const s=this.state, isDesk=s.w>=1024, D=s.data;
+    const apple=D.reduce((a,m)=>a+m.apple,0), google=D.reduce((a,m)=>a+m.google,0), cards=apple+google;
+    const kpis=[
+      {label:'Commerçants inscrits',value:nf(D.length),icon:'storefront',color:'#2448F0'},
+      {label:'Cartes de fidélité émises',value:nf(cards),icon:'style',color:'#2448F0'},
+      {label:'Cartes Apple Wallet',value:nf(apple),icon:'wallet',color:'#1C1F24'},
+      {label:'Cartes Google Wallet',value:nf(google),icon:'account_balance_wallet',color:'#2448F0'}];
+    const q=s.q.trim().toLowerCase();
+    let list=D.filter(m=>(s.status==='all'||m.status===s.status)&&(s.wallet==='all'||(s.wallet==='apple'?m.apple>0:m.google>0))&&(!q||(m.name+' '+m.owner+' '+m.city).toLowerCase().includes(q)));
+    list=[...list].sort((a,b)=>s.sort==='name'?a.name.localeCompare(b.name,'fr'):s.sort==='recent'?b.joined.localeCompare(a.joined):b.clients-a.clients);
+    const cnt=k=>k==='all'?D.length:D.filter(m=>m.status===k).length;
+    const chip=(on)=>({bg:on?'#1C1F24':'#FFFFFF',fg:on?'#FFFFFF':'#1C1F24',border:on?'#1C1F24':'#D4D1C9',pressed:on});
+    const statusFilters=[['all','Tous'],['active','Actifs'],['setup','En configuration'],['suspended','Suspendus']].map(([k,label])=>({label,count:cnt(k),...chip(s.status===k),pick:()=>this.setState({status:k})}));
+    const walletFilters=[['all','Tous les Wallets','apps'],['apple','Apple Wallet','wallet'],['google','Google Wallet','account_balance_wallet']].map(([k,label,icon])=>({label,icon,...chip(s.wallet===k),pick:()=>this.setState({wallet:k})}));
+    const selM=D.find(m=>m.id===s.sel), sel=selM?this.view(selM):null;
+    const susp=selM&&selM.status==='suspended';
+    return {isDesk,isMob:!isDesk,kpis,tot:{apple:nf(apple),google:nf(google),applePct:pct(apple,cards),googlePct:pct(google,cards)},
+      q:s.q,setQ:e=>this.setState({q:e.target.value}),sort:s.sort,setSort:e=>this.setState({sort:e.target.value}),
+      statusFilters,walletFilters,rows:list.map(m=>this.view(m)),empty:list.length===0,
+      sel,hasSel:!!sel,close:()=>this.setState({sel:null}),stop:e=>e.stopPropagation(),
+      contact:()=>this.toast('Aucun commerçant sélectionné.'),exportCsv:()=>this.toast('Aucune donnée à exporter.'),
+      askToggle:()=>this.setState({confirming:true}),cancelToggle:()=>this.setState({confirming:false}),confirming:s.confirming&&!!selM,
+      confirmTitle:susp?'Réactiver ce compte ?':'Suspendre ce compte ?',
+      confirmText:susp?`${selM?selM.name:''} pourra de nouveau scanner des cartes et créditer des passages.`:`${selM?selM.name:''} ne pourra plus scanner de cartes. Les cartes de ses clients restent enregistrées.`,
+      confirmBg:susp?'#1F7A4F':'#B42318',
+      doToggle:()=>{ const id=s.sel, ns=susp?'active':'suspended'; this.setState(x=>({confirming:false,data:x.data.map(m=>m.id===id?{...m,status:ns}:m)})); this.toast(ns==='active'?'Compte réactivé':'Compte suspendu'); },
+      toast:s.toast};
+  }
+}
+</script>
+</div>
+</body>
+</html>
