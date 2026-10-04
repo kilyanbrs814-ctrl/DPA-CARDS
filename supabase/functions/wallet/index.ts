@@ -7,6 +7,7 @@
 //   GET  /wallet/logo.png   public program logo used by Google Wallet classes
 //   POST /wallet/public-program  no session → public fields of the program behind /join/<slug>
 //   POST /wallet/join       no session → public sign-up on /join/<slug>, then the card's save link
+//   POST /wallet/notify     merchant session → Google Wallet message (addMessage) to the merchant's cards
 //
 // verify_jwt is off: the platform check does not understand every key type, so
 // each route authorises itself. The browser only sends a card id; merchant,
@@ -407,6 +408,130 @@ async function publicJoin(req: Request): Promise<Response> {
   });
 }
 
+// ---------------------------------------------------------------- notifications
+// The browser sends a title, a text and an audience (or card ids it picked). The merchant
+// comes from the session, cards are checked against it, and Google object ids are only
+// ever read from wallet_passes — never taken from the request.
+
+const AUDIENCES = ['all', 'reward', 'near', 'inactive', 'selected'];
+const KINDS = ['points', 'reward', 'message'];
+// Printable text only: control characters (except line breaks in the body) are dropped.
+const cleanText = (v: unknown, max: number, multiline: boolean) =>
+  String(v ?? '').normalize('NFC').replace(multiline ? /[\u0000-\u0009\u000B-\u001F\u007F]/g : /[\u0000-\u001F\u007F]/g, '').trim().slice(0, max);
+
+type Delivery = { card_id: string; status: 'sent' | 'failed' | 'quota_exceeded' | 'no_wallet'; error: string | null };
+
+// Google answer to addMessage → delivery status. More than 3 TEXT_AND_NOTIFY messages on one
+// saved pass within 24 h yields a QuotaExceededException (HTTP 429 / RESOURCE_EXHAUSTED).
+function classifyAddMessage(status: number, data: any) {
+  if (status === 200) return { status: 'sent', error: null };
+  const detail = JSON.stringify(data ?? '');
+  if (status === 429 || /quota|RESOURCE_EXHAUSTED/i.test(detail)) return { status: 'quota_exceeded', error: 'google_quota_exceeded' };
+  return { status: 'failed', error: ('google_' + status + (data?.error?.status ? '_' + data.error.status : '')).slice(0, 300) };
+}
+
+async function addMessage(objectId: string, message: Record<string, unknown>): Promise<Pick<Delivery, 'status' | 'error'>> {
+  try {
+    const r = await google('POST', `/loyaltyObject/${encodeURIComponent(objectId)}/addMessage`, { message });
+    return classifyAddMessage(r.status, r.data) as Pick<Delivery, 'status' | 'error'>;
+  } catch (e) {
+    return { status: 'failed', error: String((e as Error).message || 'google_unavailable').slice(0, 300) };
+  }
+}
+
+async function notify(req: Request): Promise<Response> {
+  const { user } = await authUser(req);
+  const { data: member } = await admin.from('merchant_members').select('merchant_id').eq('user_id', user.id).maybeSingle();
+  if (!member) throw new HttpError(403, 'forbidden');
+  const merchantId: string = member.merchant_id;
+
+  const body = await req.json().catch(() => ({}));
+  const title = cleanText(body?.title, 60, false);
+  const text = cleanText(body?.body, 200, true);
+  if (!title) throw new HttpError(422, 'empty_title');
+  if (!text) throw new HttpError(422, 'empty_body');
+  const audience = String(body?.audience ?? '');
+  if (!AUDIENCES.includes(audience)) throw new HttpError(422, 'invalid_audience');
+  const kind = KINDS.includes(String(body?.kind)) ? String(body.kind) : 'message';
+  const withNotification = body?.notify !== false;
+  const draftId = body?.draft_id ? String(body.draft_id) : null;
+  if (draftId && !UUID_RE.test(draftId)) throw new HttpError(400, 'invalid_request');
+
+  let cardIds: string[] = [];
+  if (audience === 'selected') {
+    if (!Array.isArray(body?.card_ids)) throw new HttpError(422, 'no_recipients');
+    cardIds = [...new Set(body.card_ids.map((x: unknown) => String(x).toLowerCase()))] as string[];
+    if (!cardIds.length) throw new HttpError(422, 'no_recipients');
+    if (cardIds.length > 2000 || cardIds.some(id => !UUID_RE.test(id))) throw new HttpError(400, 'invalid_card');
+    // Every picked card must belong to the caller's merchant; one foreign card refuses the whole send.
+    let owned = 0;
+    for (let i = 0; i < cardIds.length; i += 200) {
+      const { count, error } = await admin.from('cards').select('id', { count: 'exact', head: true })
+        .eq('merchant_id', merchantId).in('id', cardIds.slice(i, i + 200));
+      if (error) throw new Error('db_cards');
+      owned += count ?? 0;
+    }
+    if (owned !== cardIds.length) throw new HttpError(403, 'forbidden_card');
+  }
+
+  // The campaign row first, so the history shows it even if the function dies mid-way.
+  const row = { title, body: text, kind, audience, card_ids: cardIds, notify: withNotification, platform: 'google', status: 'sending', error: null };
+  let notificationId: string;
+  if (draftId) {
+    const { data, error } = await admin.from('notifications').update(row)
+      .eq('id', draftId).eq('merchant_id', merchantId).eq('status', 'draft').select('id').maybeSingle();
+    if (error) throw new Error('db_notifications');
+    if (!data) throw new HttpError(404, 'notification_not_found');
+    notificationId = data.id;
+  } else {
+    const { data, error } = await admin.from('notifications').insert({ ...row, merchant_id: merchantId, created_by: user.id }).select('id').single();
+    if (error) throw new Error('db_notifications');
+    notificationId = data.id;
+  }
+
+  const finish = async (patch: Record<string, unknown>) => {
+    await admin.from('notifications').update({ ...patch, sent_at: new Date().toISOString() }).eq('id', notificationId);
+  };
+  try {
+    const { data: targets, error: te } = await admin.rpc('notification_targets', { p_merchant: merchantId, p_audience: audience, p_card_ids: cardIds });
+    if (te) throw new Error('db_targets');
+    const list = (targets ?? []) as { card_id: string; google_object_id: string | null }[];
+
+    const message = { header: title, body: text, id: notificationId, messageType: withNotification ? 'TEXT_AND_NOTIFY' : 'TEXT' };
+    const deliveries: Delivery[] = list.filter(t => !t.google_object_id).map(t => ({ card_id: t.card_id, status: 'no_wallet', error: null }));
+    const queue = list.filter(t => t.google_object_id);
+    if (queue.length) sa(); // 503 wallet_not_configured before any attempt
+    // A few calls in parallel; one card failing never stops the others.
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(6, queue.length) }, async () => {
+      while (next < queue.length) {
+        const t = queue[next++];
+        deliveries.push({ card_id: t.card_id, ...(await addMessage(t.google_object_id!, message)) });
+      }
+    }));
+
+    for (let i = 0; i < deliveries.length; i += 500) {
+      const { error } = await admin.from('notification_deliveries').insert(deliveries.slice(i, i + 500).map(d => ({
+        notification_id: notificationId, card_id: d.card_id, merchant_id: merchantId, platform: 'google', status: d.status, error: d.error,
+      })));
+      if (error) console.error('wallet error', 'notify deliveries', error.message);
+    }
+    const n = (s: Delivery['status']) => deliveries.filter(d => d.status === s).length;
+    const result = { targeted: list.length, sent: n('sent'), failed: n('failed'), quotaExceeded: n('quota_exceeded'), noWallet: n('no_wallet') };
+    const status = result.sent === 0 ? 'failed' : (result.failed + result.quotaExceeded > 0 ? 'partial' : 'sent');
+    const error = status === 'sent' ? null
+      : !list.length ? 'no_recipients'
+      : !queue.length ? 'no_wallet'
+      : (deliveries.find(d => d.status === 'failed')?.error ?? (result.quotaExceeded ? 'google_quota_exceeded' : null));
+    await finish({ status, targeted: result.targeted, sent_count: result.sent, failed_count: result.failed,
+      quota_count: result.quotaExceeded, no_wallet_count: result.noWallet, error });
+    return json(req, 200, { notification_id: notificationId, status, ...result });
+  } catch (e) {
+    await finish({ status: 'failed', error: e instanceof HttpError ? e.code : 'wallet_unavailable' });
+    throw e;
+  }
+}
+
 async function sync(req: Request): Promise<Response> {
   const secret = req.headers.get('x-wallet-worker') ?? '';
   const { data: ok } = await admin.rpc('wallet_check_worker', { p_secret: secret });
@@ -427,6 +552,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/save-link')) return await saveLink(req);
     if (req.method === 'POST' && path.endsWith('/public-program')) return await publicProgram(req);
     if (req.method === 'POST' && path.endsWith('/join')) return await publicJoin(req);
+    if (req.method === 'POST' && path.endsWith('/notify')) return await notify(req);
     if (req.method === 'POST' && path.endsWith('/finalize-design')) return await finalizeDesign(req);
     if (req.method === 'POST' && path.endsWith('/sync')) return await sync(req);
     return json(req, 404, { error: 'not_found' });

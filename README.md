@@ -207,6 +207,25 @@ import de logo.
 
 La classe `bash_test_v1` créée dans la console reste en `draft` et n'est pas utilisée.
 
+## Notifications Google Wallet
+
+Onglet Notifications, mode connecté : envoi immédiat, Google Wallet uniquement (Apple Wallet et
+la programmation viendront plus tard ; « Programmer » est marqué « bientôt disponible »).
+
+- `POST /wallet/notify` (Edge Function `wallet`, session commerçant obligatoire). Payload :
+  `{ title, body, audience: "all"|"reward"|"near"|"inactive"|"selected", card_ids?, notify?, kind?, draft_id? }`.
+  Le commerce vient de la session ; chaque `card_id` est vérifié (une carte étrangère refuse tout
+  l’envoi) ; les `google_object_id` sont lus dans `wallet_passes`, jamais reçus du navigateur.
+- Google : `loyaltyObject/{id}/addMessage` avec `messageType: "TEXT_AND_NOTIFY"` (ou `"TEXT"` si
+  « Prévenir le client » est décoché), identifiant de message = identifiant de la campagne.
+  Réponse : `{ status, targeted, sent, failed, quotaExceeded, noWallet }`.
+- Tables `notifications` (campagne, statut `draft|sending|sent|partial|failed`, compteurs) et
+  `notification_deliveries` (une ligne par carte : `sent|failed|quota_exceeded|no_wallet`).
+  Migration `20261004111252_notifications`. Le commerçant lit ses lignes et gère ses brouillons
+  (RLS) ; tout le reste est écrit par l’Edge Function.
+- Limite Google : 3 messages avec notification par pass sur 24 h. Un dépassement est compté en
+  `quota_exceeded` sans faire échouer la campagne (`partial`).
+
 ## Scanner (mode connecté)
 
 Le QR d'une carte contient `DPA1:<qr_token>` (UUID opaque de `cards.qr_token`, aucune

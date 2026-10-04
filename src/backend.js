@@ -100,6 +100,11 @@ const DB_ERRORS = {
   rate_limited: 'Trop d’inscriptions en ce moment. Réessayez dans quelques minutes.',
   invalid_first: 'Indiquez votre prénom (80 caractères maximum).',
   invalid_email: "Cette adresse e-mail n'est pas valide.",
+  empty_title: 'Indiquez un titre.',
+  empty_body: 'Rédigez le texte du message.',
+  no_recipients: 'Aucun client ne correspond à ces critères.',
+  forbidden_card: 'Un des clients sélectionnés n’appartient pas à votre commerce.',
+  notification_not_found: 'Ce brouillon n’existe plus. Rechargez la page.',
 };
 
 function errorMessage(e) {
@@ -214,21 +219,49 @@ async function loadAll(user) {
     .eq('merchant_id', merchant.id).eq('is_active', true).maybeSingle();
   if (pe) throw pe;
 
-  const [customers, cards, events] = await Promise.all([
+  const [customers, cards, events, passes, notifications] = await Promise.all([
     fetchAll('customers', 'id, first_name, last_name', 'created_at'),
     fetchAll('cards', 'id, customer_id, program_id, card_number, qr_token, created_at', 'created_at'),
     fetchAll('card_events', 'id, card_id, seq, type, delta, balance_after, corrects_event_id, motif, note, reward_label, created_at', 'created_at'),
+    fetchAll('wallet_passes', 'card_id, created_at', 'created_at'),
+    loadNotifications(),
   ]);
+  const google = new Set(passes.map(p => p.card_id));
   const byCust = new Map(customers.map(c => [c.id, c]));
   const byCard = new Map();
   for (const e of events) { if (!byCard.has(e.card_id)) byCard.set(e.card_id, []); byCard.get(e.card_id).push(e); }
   const clients = cards
     .filter(k => prog && k.program_id === prog.id && byCust.has(k.customer_id))
-    .map(k => toClient(k, byCust.get(k.customer_id), byCard.get(k.id) || []));
+    .map(k => ({ ...toClient(k, byCust.get(k.customer_id), byCard.get(k.id) || []), wallet: google.has(k.id) ? 'google' : null }));
   const { data: req } = await sb.from('design_requests').select('*').eq('merchant_id', merchant.id)
     .order('created_at', { ascending: false }).limit(1).maybeSingle();
-  return { merchant, program: prog ? toProgram(prog) : null, clients, role: mem.role, designRequest: toRequest(req) };
+  return { merchant, program: prog ? toProgram(prog) : null, clients, role: mem.role, designRequest: toRequest(req), notifications };
 }
+
+// ---------------------------------------------------------------- notifications (Google Wallet)
+
+const SEGMENTS = ['reward', 'near', 'inactive'];
+// Row of public.notifications → the shape the Notifications screen already uses.
+function toNotif(r) {
+  const at = r.sent_at || r.created_at;
+  return {
+    id: r.id, status: r.status, type: r.kind, title: r.title, body: r.body,
+    audience: SEGMENTS.includes(r.audience) ? 'segment' : r.audience, segment: SEGMENTS.includes(r.audience) ? r.audience : 'reward',
+    ids: r.card_ids || [], platform: 'google', gNotify: r.notify, date: ymd(at), time: hm(at), error: r.error || null,
+    apple: 0, google: r.sent_count, gIds: [],
+    live: { targeted: r.targeted, sent: r.sent_count, failed: r.failed_count, quota: r.quota_count, noWallet: r.no_wallet_count },
+  };
+}
+async function loadNotifications() {
+  const { data, error } = await sb.from('notifications').select('*').order('created_at', { ascending: false }).limit(200);
+  if (error) throw error;
+  return (data || []).map(toNotif);
+}
+const notifRow = nf => ({
+  title: nf.title.trim(), body: (nf.body || '').trim(), kind: nf.type,
+  audience: nf.audience === 'segment' ? nf.segment : nf.audience,
+  card_ids: nf.audience === 'selected' ? nf.ids : [], notify: nf.gNotify !== false,
+});
 
 async function rpc(fn, args) {
   const { data, error } = await sb.rpc(fn, args);
@@ -404,6 +437,30 @@ const api = {
   },
   // PNG of the shop's sign-up QR code, for printing.
   qrPng: text => QRCode.toDataURL(text, { margin: 2, width: 1024, errorCorrectionLevel: 'M' }),
+  // ---- notifications: drafts are written with the merchant's session (RLS, drafts only);
+  // sending goes through the Edge Function, which resolves the cards and Google objects itself.
+  loadNotifications,
+  async saveNotifDraft(merchantId, nf) {
+    const row = notifRow(nf);
+    const q = nf.id ? sb.from('notifications').update(row).eq('id', nf.id).eq('status', 'draft')
+      : sb.from('notifications').insert({ ...row, merchant_id: merchantId });
+    const { data, error } = await q.select().single();
+    if (error) throw error;
+    return toNotif(data);
+  },
+  async deleteNotification(id) {
+    const { error } = await sb.from('notifications').delete().eq('id', id);
+    if (error) throw error;
+  },
+  async sendNotification(nf, draftId) {
+    const { data, error } = await sb.functions.invoke('wallet/notify', { body: { ...notifRow(nf), draft_id: draftId || undefined } });
+    if (error) {
+      let code = '';
+      try { code = (await error.context.json()).error || ''; } catch (e) {}
+      throw Object.assign(new Error(code || error.message || 'wallet_unavailable'), { code });
+    }
+    return data;
+  },
   async saveMerchant(id, patch) {
     const { data, error } = await sb.from('merchants').update(patch).eq('id', id).select().single();
     if (error) throw error;

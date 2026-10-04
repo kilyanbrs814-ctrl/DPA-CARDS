@@ -1203,7 +1203,7 @@ a:hover{color:#1A36C4}
         </div>
         <button type="button" onClick="{{ newNotif }}" style="min-height:52px;padding:0 20px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px" style-hover="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:22px">add</span>Créer une notification</button>
       </div>
-      <div role="note" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px dashed #C9B37A;border-radius:14px;background:#FFFBF0;color:#5C4200;font-size:14px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:20px">science</span><div><strong>Données de démonstration.</strong> Historique fictif : aucune notification réelle n’est envoyée depuis ce prototype.</div></div>
+      <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ true }}"><div role="note" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px dashed #C9B37A;border-radius:14px;background:#FFFBF0;color:#5C4200;font-size:14px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:20px">science</span><div><strong>Données de démonstration.</strong> Historique fictif : aucune notification réelle n’est envoyée depuis ce prototype.</div></div></sc-if>
       <sc-if value="{{ nNoneAtAll }}" hint-placeholder-val="{{ false }}">
         <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:44px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px">
           <div style="width:56px;height:56px;border-radius:16px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:30px">notifications</span></div>
@@ -1761,10 +1761,22 @@ const MOTIFS=['Erreur de saisie','Passage en double','Mauvais client','Autre'];
 const WALLET={c1:'apple',c2:'google',c3:'apple',c4:'google',c5:'apple',c6:'apple',c7:'google',c8:'apple',c9:'google',c10:'apple'};
 function clockNow(){ return String(Math.floor(CLOCK/60)).padStart(2,'0')+':'+String(CLOCK%60).padStart(2,'0'); }
 function lastVisitDate(c){ const v=c.history.find(h=>h.type==='visit'&&!h.corrected); return v?v.date:null; }
-function nTargets(n,clients,goal){ return clients.filter(c=>c.wallet&&(n.platform==='both'||c.wallet===n.platform)).filter(c=>{
+// Clients matching an audience, wallet or not (live mode counts the ones without Google Wallet).
+function nAudMatch(n,clients,goal){ return clients.filter(c=>{
   if(n.audience==='selected') return (n.ids||[]).includes(c.id);
   if(n.audience==='segment'){ if(n.segment==='reward') return c.balance>=goal; if(n.segment==='near') return c.balance<goal&&goal-c.balance<=2; const d=lastVisitDate(c); return !d||d<addDays(TODAY,-14); }
   return true; }); }
+function nTargets(n,clients,goal){ return nAudMatch(n,clients.filter(c=>c.wallet&&(n.platform==='both'||c.wallet===n.platform)),goal); }
+// Live Google Wallet results: "12 notifications envoyées, 1 carte a atteint la limite Google, 1 erreur, 3 sans Google Wallet."
+function nPl(k,one,many){ return k+' '+(k>1?many:one); }
+function nSummary(L){ const q=L.quota!=null?L.quota:(L.quotaExceeded||0), p=[nPl(L.sent||0,'notification envoyée','notifications envoyées')];
+  if(q) p.push(q>1?q+' cartes ont atteint la limite Google':'1 carte a atteint la limite Google');
+  if(L.failed) p.push(nPl(L.failed,'erreur','erreurs'));
+  if(L.noWallet) p.push(L.noWallet+' sans Google Wallet');
+  return p.join(', ')+'.'; }
+function nErrText(code){ if(!code) return '';
+  const M={no_wallet:'Aucun des clients ciblés n’a ajouté sa carte à Google Wallet.',no_recipients:'Aucun client ne correspondait aux critères.',google_quota_exceeded:'Google limite à 3 messages avec notification par carte sur 24 heures.',wallet_not_configured:'Google Wallet n’est pas configuré sur le serveur.',wallet_unavailable:'Google Wallet n’a pas répondu.'};
+  if(M[code]) return M[code]; if(/^google_404/.test(code)) return 'Carte introuvable chez Google.'; if(/^google_/.test(code)) return 'Google Wallet a refusé l’envoi ('+code.slice(7)+').'; return 'Une erreur est survenue.'; }
 function inWin(n){ const c=clockNow(); return (n.date===TODAY&&n.time<=c)||(n.date===YEST&&n.time>c); }
 function count24(id,notifs){ return notifs.filter(n=>n.status==='sent'&&inWin(n)&&(n.gIds||[]).includes(id)).length; }
 function nCountLabel(a,g){ const t=a+g; return t+' carte'+(t>1?'s':''); }
@@ -1938,7 +1950,7 @@ class Component extends DCLogic {
     this.setState({busy:true,err:{}});
     try{
       const d=await api.loadAll(user);
-      const base={busy:false,live:true,demo:false,err:{},modal:null,toast:null,notifs:[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
+      const base={busy:false,live:true,demo:false,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
         f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
       if(!d.merchant||!d.program){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
@@ -2219,33 +2231,50 @@ class Component extends DCLogic {
 
   nh(k){ return this._h['n'+k] ||= e=>{ const v=e.target.value; this.setState(s=>({nf:{...s.nf,[k]:v},err:{...s.err,['n'+k]:null,nwhen:null}})); }; }
   setNf(p){ this.setState(s=>({nf:{...s.nf,...p},err:{}})); }
-  blankN(){ return {id:null,audience:'all',segment:'reward',ids:[],platform:'both',type:'message',title:'',body:'',gNotify:true,timing:'now',date:addDays(TODAY,1),time:'11:00',simFail:false}; }
+  blankN(){ return {id:null,audience:'all',segment:'reward',ids:[],platform:this.state.live?'google':'both',type:'message',title:'',body:'',gNotify:true,timing:'now',date:addDays(TODAY,1),time:'11:00',simFail:false}; }
   openComposer(n){ const b=this.blankN(); const nf=n?{...b,...n,ids:[...(n.ids||[])],simFail:false,timing:n.status==='scheduled'?'schedule':'now',date:n.status==='scheduled'?n.date:b.date,time:n.status==='scheduled'?n.time:b.time}:b;
     this.setState({nf,nTab:'apple',modal:null,nResult:null,err:{},screen:'notifNew'}); this.scrollTop(); }
   nUpsert(status,extra){ const s=this.state, nf=s.nf; const rec=mkN({...nf,...extra,status},s.clients,+s.program.goal,status==='sent'?s.notifs:null);
     rec.id=nf.id||('n'+(UID++)); delete rec.timing; delete rec.simFail;
     this.setState(x=>({notifs:x.notifs.some(o=>o.id===rec.id)?x.notifs.map(o=>o.id===rec.id?rec:o):[rec,...x.notifs],nf:{...x.nf,id:rec.id}})); return rec; }
-  nValidate(full){ const s=this.state, nf=s.nf, t=nTargets(nf,s.clients,+s.program.goal), err={};
+  nValidate(full){ const s=this.state, nf=s.nf, live=s.live, t=live?nAudMatch(nf,s.clients,+s.program.goal):nTargets(nf,s.clients,+s.program.goal), err={};
     if(!nf.title.trim()) err.ntitle=full?'Indiquez un titre.':'Donnez un titre au brouillon.';
     if(full){ if(!nf.body.trim()) err.nbody='Rédigez le texte du message.';
       if(nf.audience==='selected'&&!nf.ids.length) err.nAud='Sélectionnez au moins un client.';
-      else if(!t.length) err.nAud='Aucune carte ne correspond à ces critères. Modifiez les destinataires ou le Wallet.';
+      else if(!t.length) err.nAud=live?'Aucun client ne correspond à ces critères.':'Aucune carte ne correspond à ces critères. Modifiez les destinataires ou le Wallet.';
+      else if(live&&!t.some(c=>c.wallet==='google')) err.nAud='Aucun des clients ciblés n’a ajouté sa carte à Google Wallet.';
+      if(live&&nf.timing==='schedule') err.nwhen='La programmation n’est pas encore disponible : choisissez « Envoyer maintenant ».';
       if(nf.timing==='schedule'){ if(!nf.date||!nf.time) err.nwhen='Choisissez une date et une heure.'; else if(nf.date<TODAY||(nf.date===TODAY&&nf.time<=clockNow())) err.nwhen='Choisissez une date et une heure à venir.'; } }
     this.setState({err}); return !Object.keys(err).length; }
-  nSaveDraft=()=>{ if(this.state.busy||!this.nValidate(false)) return; this.setState({busy:true});
+  nSaveDraft=()=>{ if(this.state.busy||!this.nValidate(false)) return; if(this.state.live) return this.nSaveDraftLive(); this.setState({busy:true});
     setTimeout(()=>{ this.nUpsert('draft',{date:TODAY,time:clockNow(),error:null}); this.setState({busy:false,screen:'notifs',nfilter:'all'}); this.showToast('Brouillon enregistré'); this.scrollTop(); },600); };
   nReview=()=>{ if(this.nValidate(true)) this.setState({modal:'nRecap'}); };
-  nSimulate=()=>{ if(this.state.busy) return; this.setState({busy:true});
+  nSimulate=()=>{ if(this.state.busy) return; if(this.state.live) return this.nSendLive(); this.setState({busy:true});
     setTimeout(()=>{ const nf=this.state.nf; let r, res;
       if(nf.simFail){ r=this.nUpsert('failed',{date:TODAY,time:nowTime(),error:'Le service Wallet n’a pas répondu. Aucune carte n’a été modifiée (simulation).'}); res={ok:false}; }
       else if(nf.timing==='schedule'){ r=this.nUpsert('scheduled',{error:null}); res={ok:true,scheduled:true}; }
       else { r=this.nUpsert('sent',{date:TODAY,time:nowTime(),error:null}); res={ok:true,scheduled:false}; }
       this.setState({busy:false,modal:'nResult',nResult:{...res,id:r.id}}); },1400); };
   nDone(){ this.setState({modal:null,nResult:null,screen:'notifs',nfilter:'all'}); this.scrollTop(); }
+  // ---- Live (Google Wallet only, immediate send). Drafts go to Supabase with the merchant's
+  // session; sending goes through the wallet Edge Function, which picks the cards itself.
+  async nSaveDraftLive(){ this.setState({busy:true});
+    try{ const n=await this.api.saveNotifDraft(this.state.merchant.id,this.state.nf);
+      this.setState(x=>({busy:false,notifs:[n,...x.notifs.filter(o=>o.id!==n.id)],screen:'notifs',nfilter:'all'})); this.showToast('Brouillon enregistré'); this.scrollTop(); }
+    catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
+  async nSendLive(){ const s=this.state, nf=s.nf, cur=nf.id&&s.notifs.find(o=>o.id===nf.id), draftId=cur&&cur.status==='draft'?nf.id:null;
+    this.setState({busy:true});
+    const reload=async()=>{ try{ return await this.api.loadNotifications(); }catch(e){ return this.state.notifs; } };
+    try{ const r=await this.api.sendNotification(nf,draftId); const list=await reload();
+      this.setState({busy:false,notifs:list,modal:'nResult',nResult:{ok:r.sent>0,live:r,id:r.notification_id}}); }
+    catch(e){ const list=await reload(); this.setState({busy:false,notifs:list,modal:'nResult',nResult:{ok:false,live:null,error:this.api.errorMessage(e)}}); } }
+  nDeleteLive(id){ const n=this.state.notifs.find(o=>o.id===id), wasDraft=n&&n.status==='draft'; this.setState({busy:true});
+    this.api.deleteNotification(id).then(()=>{ this.setState(x=>({busy:false,notifs:x.notifs.filter(o=>o.id!==id),modal:null,nsel:null})); this.showToast(wasDraft?'Brouillon supprimé':'Notification supprimée'); })
+      .catch(e=>{ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); }); }
   nVals(s,isDesk,m,P,goal){
     const notifs=s.notifs||[], nf=s.nf||this.blankN(), clients=s.clients;
-    const ST={draft:['Brouillon','#EFEDE8','#3E424A'],scheduled:['Programmée','#E8EDFF','#1A36C4'],sent:['Envoyée','#E4F3EB','#1F6B45'],failed:['Échec','#FCEBEA','#A11D14']};
-    const WHEN={draft:'Créé',scheduled:'Prévue',sent:'Envoyée',failed:'Tentative'};
+    const ST={draft:['Brouillon','#EFEDE8','#3E424A'],scheduled:['Programmée','#E8EDFF','#1A36C4'],sent:['Envoyée','#E4F3EB','#1F6B45'],failed:['Échec','#FCEBEA','#A11D14'],partial:['Partiel','#FFF3DC','#8A5A00'],sending:['Envoi en cours','#E8EDFF','#1A36C4']};
+    const WHEN={draft:'Créé',scheduled:'Prévue',sent:'Envoyée',failed:'Tentative',partial:'Envoyée',sending:'Envoi'};
     const PLAT={apple:['Apple Wallet','wallet'],google:['Google Wallet','account_balance_wallet'],both:['Apple et Google Wallet','devices']};
     const TYPE={points:'Mise à jour des points',reward:'Récompense disponible',message:'Message lié à la carte'};
     const chip=on=>({bg:on?'#1C1F24':'#FFFFFF',fg:on?'#FFFFFF':'#1C1F24',border:on?'#1C1F24':'#D4D1C9',pressed:on});
@@ -2293,7 +2322,7 @@ class Component extends DCLogic {
       :{ok:true,fail:false,icon:'task_alt',iconBg:'#E4F3EB',iconFg:'#1F7A4F',title:'Simulation terminée — aucune notification réelle envoyée',text:`Le message est ajouté à l’historique à titre de démonstration. Cartes concernées : ${rn?nCountLabel(rn.apple,rn.google):''}.`})
       :{ok:false,fail:true,icon:'error',iconBg:'#FCEBEA',iconFg:'#B42318',title:'Échec de l’envoi',text:rn?rn.error:''};
     const pfg=lum(P.bg)<0.4?'#FFFFFF':'#1E1418', pafg=lum(P.accent)<0.4?'#FFFFFF':'#1E1418';
-    return {
+    const out={
       nFilters, nRows:rows, nHasAny:notifs.length>0, nNoneAtAll:notifs.length===0, nFilterEmpty:notifs.length>0&&rows.length===0, nHasRows:rows.length>0,
       newNotif:()=>this.openComposer(null), nf, NF:{title:this.nh('title'),body:this.nh('body'),date:this.nh('date'),time:this.nh('time')},
       nAud:aud, nIsSeg:nf.audience==='segment', nIsSel:nf.audience==='selected', nSegs:segs, nPickList:pickList, nPickEmpty:pickList.length===0, nPlats:plats, nTypes:types, nTpl:tpl,
@@ -2313,6 +2342,44 @@ class Component extends DCLogic {
       nBackToDetail:()=>this.setState({modal:'nDetail'}),
       closeModal:()=>{ if(s.busy) return; if(s.modal==='nResult'&&rr&&rr.ok) return this.nDone(); this.setState({modal:null,err:{}}); }
     };
+    if(!s.live) return out;
+    // ---- live: Google Wallet only, immediate send, real counts from the server
+    const L0={targeted:0,sent:0,failed:0,quota:0,noWallet:0};
+    const plural=(k,w)=>k+' '+w+(k>1?'s':'');
+    const lt=nAudMatch(nf,clients,goal), lg=lt.filter(c=>c.wallet==='google').length, lsplit=`${lg} avec Google Wallet · ${lt.length-lg} sans Google Wallet`;
+    const lview=n=>{ const st=ST[n.status]||ST.failed, L=n.live||L0, pending=n.status==='draft'||n.status==='sending', bad=n.status==='partial'||n.status==='failed';
+      const k=pending?nAudMatch(n,clients,goal).length:L.targeted;
+      return {id:n.id,title:n.title||'Sans titre',body:n.body,hasBody:!!n.body,noBody:!n.body,stLabel:st[0],stBg:st[1],stFg:st[2],whenLabel:`${WHEN[n.status]||'Le'} : ${fmtDate(n.date)}, ${n.time}`,
+        recLabel:pending?`${nAudLabel(n)} · ${plural(k,'client')}`:`${nAudLabel(n)} · ${L.sent} / ${plural(L.targeted,'client')} ${L.sent>1?'touchés':'touché'}`,
+        platLabel:'Google Wallet',platIcon:'account_balance_wallet',typeLabel:TYPE[n.type]||TYPE.message,hasGoogle:true,
+        gNotifyLabel:n.gNotify?'Avec notification':'Sans notification, message ajouté à la carte',
+        hasError:bad,error:bad?(nSummary(L)+(n.error?' '+nErrText(n.error):'')):'',open:()=>this.setState({modal:'nDetail',nsel:n.id})}; };
+    const lrows=sorted.filter(n=>s.nfilter==='all'||n.status===s.nfilter).map(lview);
+    const lFilters=[['all','Toutes'],['draft','Brouillons'],['sent','Envoyées'],['partial','Partielles'],['failed','Échecs']].map(([k,label])=>({label,count:cnt(k),...chip(s.nfilter===k),pick:()=>this.setState({nfilter:k})}));
+    const laud=aud.map((a,i)=>i===0?{...a,label:'Tous les clients',sub:plural(clients.length,'client')}:a);
+    const lsegs=[['reward','Récompense disponible'],['near','Proches d’une récompense'],['inactive','Inactifs depuis 14 jours']].map(([k,label])=>({label,count:nAudMatch({...nf,audience:'segment',segment:k},clients,goal).length,...chip(nf.segment===k),pick:()=>this.setNf({segment:k})}));
+    const lpick=clients.map(c=>({id:'pk-'+c.id,name:(c.first+' '+c.last).trim(),meta:`${c.wallet==='google'?'Google Wallet':'Sans Google Wallet'} · ${c.balance} / ${goal}`,checked:nf.ids.includes(c.id),
+      toggle:()=>this.setState(x=>({nf:{...x.nf,ids:x.nf.ids.includes(c.id)?x.nf.ids.filter(i=>i!==c.id):[...x.nf.ids,c.id]},err:{...x.err,nAud:null}}))}));
+    const ltiming=[{label:'Envoyer maintenant',icon:'send',...chip(nf.timing!=='schedule'),pick:()=>this.setNf({timing:'now'})},
+      {label:'Programmer · bientôt disponible',icon:'schedule',...chip(false),pick:()=>this.showToast('La programmation sera disponible prochainement : seul l’envoi immédiat est possible.','info')}];
+    const ldet=dn?lview(dn):null;
+    let lacts=[]; if(dn){ const dup=()=>this.openComposer({...dn,id:null,status:'draft',title:(dn.title+' (copie)').slice(0,60)}), del=B('Supprimer','delete',()=>this.setState({modal:'nDelete'}),'d');
+      if(dn.status==='draft') lacts=[B('Modifier','edit',()=>this.openComposer(dn),'p'),B('Dupliquer','content_copy',dup),del];
+      else if(dn.status==='failed'||dn.status==='partial') lacts=[B('Modifier et réessayer','refresh',()=>this.openComposer({...dn,id:null,status:'draft'}),'p'),B('Dupliquer','content_copy',dup),del];
+      else if(dn.status==='sent') lacts=[B('Dupliquer','content_copy',dup,'p'),del]; }
+    const LR=rr&&rr.live;
+    const lres=!rr?out.nRes:LR&&LR.sent>0?(LR.failed+LR.quotaExceeded>0
+        ?{ok:true,fail:false,icon:'warning',iconBg:'#FFF3DC',iconFg:'#8A5A00',title:'Envoi partiel',text:nSummary(LR)}
+        :{ok:true,fail:false,icon:'task_alt',iconBg:'#E4F3EB',iconFg:'#1F7A4F',title:'Notification envoyée',text:nSummary(LR)})
+      :LR?{ok:false,fail:true,icon:'error',iconBg:'#FCEBEA',iconFg:'#B42318',title:'Aucune notification envoyée',text:nSummary(LR)+(LR.noWallet===LR.targeted?' '+nErrText('no_wallet'):(LR.quotaExceeded&&!LR.failed?' '+nErrText('google_quota_exceeded'):''))}
+      :{ok:false,fail:true,icon:'error',iconBg:'#FCEBEA',iconFg:'#B42318',title:'Échec de l’envoi',text:rr.error||nErrText('wallet_unavailable')};
+    return {...out, nFilters:lFilters, nRows:lrows, nHasRows:lrows.length>0, nFilterEmpty:notifs.length>0&&lrows.length===0,
+      nAud:laud, nSegs:lsegs, nPickList:lpick, nPickEmpty:lpick.length===0, nPlats:[{label:'Google Wallet',...chip(true),pick:()=>{}}],
+      nCount:{total:lt.length,label:lt.length>1?'clients ciblés':'client ciblé',split:lsplit}, nQuota:{show:false,text:''},
+      nShowApple:false, nShowGoogle:true, nHasTabs:false, nPrevApple:false, nPrevGoogle:true, nTiming:ltiming, nIsSchedule:false, nReviewLabel:'Vérifier et envoyer',
+      nRecap:{...out.nRecap,rec:`${nAudLabel(nf)} · ${plural(lt.length,'client')}`,split:lsplit,plat:'Google Wallet',when:'Maintenant',hasG:true},
+      nSimLabel:s.busy?'Envoi en cours…':'Envoyer maintenant', nDet:ldet, nActs:lacts, nRes:lres,
+      nMod:{...out.nMod,detail:s.modal==='nDetail'&&!!ldet}, nConfirmDelete:()=>this.nDeleteLive(s.nsel) };
   }
   cardProps(p,business,member,value,cardNo,qr,showQr){
     const dark=lum(p.bg)<0.4, adark=lum(p.accent)<0.4;
