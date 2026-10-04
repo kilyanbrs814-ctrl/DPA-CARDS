@@ -2,8 +2,8 @@
 //
 //  - scanDevice(): 'desktop' (till / PC: USB QR reader + keyboard, never the camera)
 //    or 'mobile' (phone / tablet: camera, keyboard as fallback).
-//  - makeCamera(React): live camera view that decodes QR codes (BarcodeDetector when
-//    the browser has it, jsQR otherwise) and reports each code once.
+//  - requestCamera() / makeCameraView(React): real back camera in a <video>, QR codes read
+//    with BarcodeDetector when the browser has it, jsQR otherwise (iOS Safari).
 //  - decodeKeys(): rebuilds what a USB reader typed from physical key codes, so a
 //    reader configured as a US keyboard still works on an AZERTY PC.
 //  - qrPath(): real QR code geometry for the card shown on screen.
@@ -90,91 +90,111 @@ export function qrPath(text) {
 
 // ---------------------------------------------------------------- camera
 
-// Error kinds reported to the page: 'unavailable' (no camera API / not HTTPS / old browser),
-// 'denied' (permission refused), 'notfound' (no camera on the device), 'busy' (camera could not
-// be opened, e.g. used by another app), 'error' (stream stopped or anything else).
-function cameraErrorKind(e) {
+// ---------------------------------------------------------------- camera (phone only)
+
+// Opens the back camera. getUserMedia is the very first call, so this can run straight
+// from a click handler and keep the user gesture iOS Safari expects.
+export function requestCamera() {
+  const md = navigator.mediaDevices;
+  if (!md || !md.getUserMedia) {
+    const e = new Error('navigator.mediaDevices.getUserMedia is not available'); e.name = 'NoMediaDevices';
+    return Promise.reject(e);
+  }
+  return md.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+    .catch(e => {
+      // Some devices reject the facing hint: retry with any camera.
+      if (e && e.name === 'OverconstrainedError') return md.getUserMedia({ video: true, audio: false });
+      throw e;
+    });
+}
+
+// 'denied' | 'notfound' | 'busy' | 'nomedia' | 'error'
+export function cameraErrorKind(e) {
   const name = e && e.name;
+  if (name === 'NoMediaDevices') return 'nomedia';
   if (name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError') return 'denied';
   if (name === 'NotFoundError' || name === 'DevicesNotFoundError' || name === 'OverconstrainedError') return 'notfound';
-  if (name === 'NotReadableError' || name === 'TrackStartError' || name === 'AbortError') return 'busy';
+  if (name === 'NotReadableError' || name === 'TrackStartError') return 'busy';
   return 'error';
 }
 
-// Live camera reading QR codes. The parent mounts it only while the scanner is waiting for a
-// card (and the page is visible); unmounting stops every MediaStreamTrack.
-//  onStatus('requesting' | 'live'), onError(kind), onCode(text) → true to stop, false to keep reading.
-export function makeCamera(React) {
+// Shows a MediaStream in a real <video> and reads QR codes from its frames:
+// BarcodeDetector("qr_code") when the browser has it (Chrome Android), jsQR otherwise
+// (iOS Safari). The stream belongs to the page, which stops its tracks.
+//  onCode(text) → true to stop reading, false to keep reading
+//  onDecodeError() → QR reading impossible on this browser (the video stays on)
+//  onEnded() → the camera track stopped by itself
+export function makeCameraView(React) {
   const { useEffect, useRef } = React;
   const h = React.createElement;
-  return function Camera({ onCode, onError, onStatus }) {
+  return function CameraView({ stream, onCode, onDecodeError, onEnded }) {
     const video = useRef(null);
-    const cb = useRef({ onCode, onError, onStatus });
-    cb.current = { onCode, onError, onStatus };
+    const cb = useRef({ onCode, onDecodeError, onEnded });
+    cb.current = { onCode, onDecodeError, onEnded };
     useEffect(() => {
-      let stream = null, stopped = false, timer = null, done = false, detector = null, jsQR = null;
+      if (!stream) return undefined;
+      const v = video.current;
+      // iOS Safari: inline playback needs muted + playsinline; autoplay starts it.
+      v.muted = true; v.setAttribute('muted', ''); v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.setAttribute('autoplay', '');
+      v.srcObject = stream;
+      const played = v.play(); if (played && played.catch) played.catch(e => console.error('[DPA scanner] video.play()', e));
+      const tracks = stream.getVideoTracks();
+      tracks.forEach(t => { t.onended = () => { if (!stopped) cb.current.onEnded && cb.current.onEnded(); }; });
+
+      let stopped = false, done = false, timer = null, detector = null, jsQR = null, detectorErrors = 0;
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      const stopAll = () => { if (stream) stream.getTracks().forEach(t => { t.onended = null; t.stop(); }); stream = null; };
-      const fail = kind => { if (stopped || done) return; done = true; clearTimeout(timer); stopAll(); if (cb.current.onError) cb.current.onError(kind); };
+      const loadJsQR = async () => {
+        try { jsQR = (await import('jsqr')).default; }
+        catch (e) { console.error('[DPA scanner] jsQR could not be loaded', e); jsQR = null; }
+      };
       const tick = async () => {
         if (stopped || done) return;
-        const v = video.current;
-        if (v && v.readyState >= 2 && v.videoWidth) {
-          let text = null;
-          try {
-            if (detector) {
+        let text = null;
+        if (v.readyState >= 2 && v.videoWidth) {
+          if (detector) {
+            try {
               const codes = await detector.detect(v);
               if (codes.length) text = codes[0].rawValue;
-            } else {
+              detectorErrors = 0;
+            } catch (e) {
+              detectorErrors++;
+              console.error('[DPA scanner] BarcodeDetector.detect', e);
+              if (detectorErrors >= 3) { detector = null; await loadJsQR(); if (!jsQR) { cb.current.onDecodeError && cb.current.onDecodeError(); return; } }
+            }
+          } else if (jsQR) {
+            try {
               const w = Math.min(640, v.videoWidth), hh = Math.round(v.videoHeight * (w / v.videoWidth));
               canvas.width = w; canvas.height = hh;
               ctx.drawImage(v, 0, 0, w, hh);
               const r = jsQR(ctx.getImageData(0, 0, w, hh).data, w, hh, { inversionAttempts: 'dontInvert' });
               if (r && r.data) text = r.data;
-            }
-          } catch (e) { /* frame not ready: try the next one */ }
-          // The page decides: accepting locks the reader (no second read of the same QR).
+            } catch (e) { console.error('[DPA scanner] jsQR decode', e); }
+          }
+          // Accepting a code locks the reader: the same QR is not read twice.
           if (text && !stopped && !done && cb.current.onCode(text) !== false) { done = true; return; }
         }
         timer = setTimeout(tick, 120);
       };
       (async () => {
-        if (!canUseCamera()) return fail('unavailable');
-        // Native detector only if it really reads QR codes; otherwise jsQR (e.g. iOS Safari).
         try {
           if ('BarcodeDetector' in window) {
             const formats = window.BarcodeDetector.getSupportedFormats ? await window.BarcodeDetector.getSupportedFormats() : ['qr_code'];
             if (formats.includes('qr_code')) detector = new window.BarcodeDetector({ formats: ['qr_code'] });
           }
-        } catch (e) { detector = null; }
-        if (!detector) jsQR = (await import('jsqr')).default;
+        } catch (e) { console.error('[DPA scanner] BarcodeDetector unavailable', e); detector = null; }
+        if (!detector) await loadJsQR();
         if (stopped) return;
-        if (cb.current.onStatus) cb.current.onStatus('requesting');
-        try {
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } });
-          } catch (e) {
-            // Some devices reject the size/facing hints: retry with any camera before giving up.
-            if (e && (e.name === 'OverconstrainedError' || e.name === 'NotReadableError')) stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
-            else throw e;
-          }
-          if (stopped) return stopAll();
-          stream.getVideoTracks().forEach(t => { t.onended = () => fail('error'); });
-          const v = video.current;
-          // iOS Safari plays inline video only when it is muted and marked playsinline.
-          v.setAttribute('playsinline', ''); v.setAttribute('webkit-playsinline', ''); v.muted = true;
-          v.srcObject = stream;
-          await v.play().catch(() => {});
-          if (stopped) return stopAll();
-          if (cb.current.onStatus) cb.current.onStatus('live');
-          tick();
-        } catch (e) {
-          fail(cameraErrorKind(e));
-        }
+        if (!detector && !jsQR) { cb.current.onDecodeError && cb.current.onDecodeError(); return; }
+        tick();
       })();
-      return () => { stopped = true; clearTimeout(timer); stopAll(); const v = video.current; if (v) v.srcObject = null; };
-    }, []);
+      return () => {
+        stopped = true; clearTimeout(timer);
+        tracks.forEach(t => { t.onended = null; });
+        try { v.pause(); } catch (e) {}
+        v.srcObject = null;
+      };
+    }, [stream]);
     return h('video', { ref: video, muted: true, playsInline: true, autoPlay: true, 'aria-hidden': true,
       style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' } });
   };

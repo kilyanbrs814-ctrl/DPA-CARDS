@@ -8,7 +8,7 @@
 import { createClient } from '@supabase/supabase-js';
 import QRCode from 'qrcode';
 import { makeCropper } from './cropper.js';
-import { scanDevice, canUseCamera, cameraPermission, decodeKeys, parseCode, qrPath, makeCamera } from './scanner.js';
+import { scanDevice, canUseCamera, cameraPermission, decodeKeys, parseCode, qrPath, requestCamera, cameraErrorKind, makeCameraView } from './scanner.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -330,7 +330,7 @@ const api = {
     return toRequest(r);
   },
   // ---- scanner: QR (USB reader or camera) and keyboard share one server lookup.
-  scanner: { device: scanDevice(), canUseCamera, cameraPermission, decodeKeys, parseCode, qrPath, Camera: makeCamera(window.React) },
+  scanner: { device: scanDevice(), canUseCamera, cameraPermission, decodeKeys, parseCode, qrPath, requestCamera, cameraErrorKind, CameraView: makeCameraView(window.React) },
   // RLS + explicit merchant filter on the server: another business's card is simply not found.
   async lookupCard(code) {
     const data = await rpc('lookup_card', { p_code: code });
