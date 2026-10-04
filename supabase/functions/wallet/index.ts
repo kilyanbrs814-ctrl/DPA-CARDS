@@ -10,6 +10,8 @@
 //   POST /wallet/notify     merchant session → Google Wallet message (addMessage) to the merchant's cards
 //   POST /wallet/delete-customer  owner session → deletes one customer of the caller's merchant
 //   POST /wallet/delete-account   owner session + "SUPPRIMER" → deletes the whole merchant and the login
+//   POST /wallet/admin-overview   admin session → platform KPIs and the merchant list
+//   POST /wallet/admin-merchant   admin session → one merchant's details
 //
 // verify_jwt is off: the platform check does not understand every key type, so
 // each route authorises itself. The browser only sends a card id; merchant,
@@ -650,6 +652,51 @@ async function deleteAccount(req: Request): Promise<Response> {
   return json(req, 200, { deleted: true, files, wallet });
 }
 
+// ---------------------------------------------------------------- admin dashboard (read-only)
+// Access: a session whose confirmed e-mail is listed in admin_users, checked here on every call.
+
+async function requireAdmin(req: Request) {
+  const { user } = await authUser(req);
+  const email = (user.email ?? '').trim().toLowerCase();
+  if (!email || !user.email_confirmed_at) throw new HttpError(403, 'not_admin');
+  const { data, error } = await admin.from('admin_users').select('email').eq('email', email).maybeSingle();
+  if (error) throw new Error('db_admin_users');
+  if (!data) throw new HttpError(403, 'not_admin');
+  return user;
+}
+
+// Owner e-mails come from Auth (not readable through the database API).
+async function ownerEmails(ids: string[]): Promise<Record<string, string>> {
+  const out: Record<string, string> = {};
+  await Promise.all([...new Set(ids.filter(Boolean))].map(async id => {
+    const { data } = await admin.auth.admin.getUserById(id);
+    if (data?.user?.email) out[id] = data.user.email;
+  }));
+  return out;
+}
+
+async function adminOverview(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const { data, error } = await admin.rpc('admin_overview');
+  if (error) throw new Error('db_admin_overview');
+  const emails = await ownerEmails((data.merchants as any[]).map(m => m.owner_id));
+  const merchants = (data.merchants as any[]).map(({ owner_id, ...m }) => ({ ...m, owner_email: emails[owner_id] ?? null }));
+  return json(req, 200, { kpis: data.kpis, merchants });
+}
+
+async function adminMerchant(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const id = String(body?.merchant_id ?? '');
+  if (!UUID_RE.test(id)) throw new HttpError(400, 'invalid_request');
+  const { data, error } = await admin.rpc('admin_merchant_detail', { p_merchant: id });
+  if (error) throw new Error('db_admin_merchant');
+  if (!data) throw new HttpError(404, 'merchant_not_found');
+  const { owner_id, ...merchant } = data.merchant;
+  const emails = await ownerEmails([owner_id]);
+  return json(req, 200, { ...data, merchant: { ...merchant, owner_email: emails[owner_id] ?? null } });
+}
+
 async function sync(req: Request): Promise<Response> {
   const secret = req.headers.get('x-wallet-worker') ?? '';
   const { data: ok } = await admin.rpc('wallet_check_worker', { p_secret: secret });
@@ -673,6 +720,8 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/notify')) return await notify(req);
     if (req.method === 'POST' && path.endsWith('/delete-customer')) return await deleteCustomer(req);
     if (req.method === 'POST' && path.endsWith('/delete-account')) return await deleteAccount(req);
+    if (req.method === 'POST' && path.endsWith('/admin-overview')) return await adminOverview(req);
+    if (req.method === 'POST' && path.endsWith('/admin-merchant')) return await adminMerchant(req);
     if (req.method === 'POST' && path.endsWith('/finalize-design')) return await finalizeDesign(req);
     if (req.method === 'POST' && path.endsWith('/sync')) return await sync(req);
     return json(req, 404, { error: 'not_found' });

@@ -62,7 +62,7 @@ a:hover{color:#1A36C4}
       <div style="font-weight:700;font-size:16px;letter-spacing:0.02em">Administration</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
-      
+      <button type="button" onClick="{{ reload }}" disabled="{{ loading }}" style="min-height:40px;padding:0 12px;border:1px solid rgba(255,255,255,0.3);border-radius:10px;background:transparent;color:#FFFFFF;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px"><span class="material-symbols-rounded" style="font-size:18px">refresh</span>Actualiser</button>
       <a href="/" style="min-height:40px;padding:0 12px;border:1px solid rgba(255,255,255,0.3);border-radius:10px;color:#FFFFFF;text-decoration:none;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px"><span class="material-symbols-rounded" style="font-size:18px">storefront</span>Espace commerçant</a>
     </div>
   </header>
@@ -71,13 +71,17 @@ a:hover{color:#1A36C4}
     <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div>
         <h1 style="margin:0;font-weight:800;font-size:clamp(28px,5vw,38px);letter-spacing:-0.03em;line-height:1.05">Commerçants</h1>
-        <div style="margin-top:6px;color:#5E636B;font-size:15px">Les commerces inscrits et les cartes de fidélité ajoutées par leurs clients.</div>
+        <div style="margin-top:6px;color:#5E636B;font-size:15px">Les commerces inscrits, leurs clients et leurs cartes de fidélité.</div>
       </div>
       <button type="button" onClick="{{ exportCsv }}" style="min-height:46px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px" style-hover="background:#F8F7F4"><span class="material-symbols-rounded" style="font-size:20px">download</span>Exporter</button>
     </div>
 
+    <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+      <div role="alert" style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:14px;background:#FCEBEA;color:#7A1A13;font-size:15px;font-weight:600"><span class="material-symbols-rounded" style="font-size:22px">error</span>{{ error }}</div>
+    </sc-if>
+
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
-      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="6">
         <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px">
           <span class="material-symbols-rounded" style="font-size:22px;color:{{ k.color }}">{{ k.icon }}</span>
           <div style="font-weight:800;font-size:30px;letter-spacing:-0.02em;line-height:1;font-variant-numeric:tabular-nums">{{ k.value }}</div>
@@ -86,16 +90,15 @@ a:hover{color:#1A36C4}
       </sc-for>
     </div>
 
-    <section aria-label="Répartition des cartes" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+    <section aria-label="Cartes dans Google Wallet" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
       <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:15px">
-        <div style="font-weight:700">Cartes ajoutées aux Wallets</div>
+        <div style="font-weight:700">Cartes ajoutées à Google Wallet</div>
         <div style="display:flex;gap:16px;flex-wrap:wrap;color:#3E424A">
-          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#1C1F24"></span>Apple Wallet · {{ tot.apple }} ({{ tot.applePct }})</span>
           <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#2448F0"></span>Google Wallet · {{ tot.google }} ({{ tot.googlePct }})</span>
+          <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#C9C6BE"></span>Sans Wallet · {{ tot.none }} ({{ tot.nonePct }})</span>
         </div>
       </div>
-      <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:#ECEAE4"><div style="width:{{ tot.applePct }};background:#1C1F24"></div><div style="width:{{ tot.googlePct }};background:#2448F0"></div></div>
-      
+      <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:#ECEAE4"><div style="width:{{ tot.googlePct }};background:#2448F0"></div><div style="width:{{ tot.nonePct }};background:#C9C6BE"></div></div>
     </section>
 
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -103,57 +106,56 @@ a:hover{color:#1A36C4}
         <div role="search" style="position:relative;flex:1;min-width:240px">
           <label for="aq" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Rechercher un commerçant</label>
           <span class="material-symbols-rounded" style="position:absolute;left:16px;top:15px;font-size:22px;color:#5E636B">search</span>
-          <input id="aq" type="search" placeholder="Commerce, responsable ou ville" value="{{ q }}" onChange="{{ setQ }}" style="width:100%;height:54px;padding:0 16px 0 50px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
+          <input id="aq" type="search" placeholder="Commerce, responsable ou e-mail" value="{{ q }}" onChange="{{ setQ }}" style="width:100%;height:54px;padding:0 16px 0 50px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
         </div>
         <div style="position:relative">
           <label for="as" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Trier</label>
           <select id="as" value="{{ sort }}" onChange="{{ setSort }}" style="height:54px;padding:0 40px 0 16px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-size:15px;font-weight:600;appearance:none;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
-            <option value="cards">Plus de cartes</option>
             <option value="recent">Inscription récente</option>
+            <option value="cards">Plus de cartes</option>
             <option value="name">Nom (A → Z)</option>
           </select>
           <span class="material-symbols-rounded" style="position:absolute;right:12px;top:16px;font-size:22px;color:#5E636B;pointer-events:none">expand_more</span>
         </div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div role="group" aria-label="Statut" style="display:flex;gap:8px;flex-wrap:wrap">
-          <sc-for list="{{ statusFilters }}" as="fl" hint-placeholder-count="4">
-            <button type="button" onClick="{{ fl.pick }}" aria-pressed="{{ fl.pressed }}" style="min-height:44px;padding:0 14px;border-radius:999px;border:1.5px solid {{ fl.border }};background:{{ fl.bg }};color:{{ fl.fg }};font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px">{{ fl.label }}<span style="opacity:0.75;font-variant-numeric:tabular-nums">{{ fl.count }}</span></button>
-          </sc-for>
-        </div>
-        <div style="width:1px;background:#E4E1DA;margin:4px 4px"></div>
-        <div role="group" aria-label="Wallet" style="display:flex;gap:8px;flex-wrap:wrap">
-          <sc-for list="{{ walletFilters }}" as="fl" hint-placeholder-count="3">
-            <button type="button" onClick="{{ fl.pick }}" aria-pressed="{{ fl.pressed }}" style="min-height:44px;padding:0 14px;border-radius:999px;border:1.5px solid {{ fl.border }};background:{{ fl.bg }};color:{{ fl.fg }};font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px"><span class="material-symbols-rounded" style="font-size:18px">{{ fl.icon }}</span>{{ fl.label }}</button>
-          </sc-for>
-        </div>
+      <div role="group" aria-label="Statut" style="display:flex;gap:8px;flex-wrap:wrap">
+        <sc-for list="{{ statusFilters }}" as="fl" hint-placeholder-count="3">
+          <button type="button" onClick="{{ fl.pick }}" aria-pressed="{{ fl.pressed }}" style="min-height:44px;padding:0 14px;border-radius:999px;border:1.5px solid {{ fl.border }};background:{{ fl.bg }};color:{{ fl.fg }};font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px">{{ fl.label }}<span style="opacity:0.75;font-variant-numeric:tabular-nums">{{ fl.count }}</span></button>
+        </sc-for>
       </div>
     </div>
 
     <section aria-label="Liste des commerçants" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;overflow:hidden">
       <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
-        <div aria-hidden="true" style="display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1.3fr) 90px 90px 90px 130px 150px 32px;gap:12px;padding:12px 20px;background:#F8F7F4;border-bottom:1px solid #E4E1DA;font-size:12px;font-weight:700;letter-spacing:0.06em;color:#5E636B;text-transform:uppercase">
-          <div>Commerce</div><div>Responsable</div><div style="text-align:right">Clients</div><div style="text-align:right">Apple</div><div style="text-align:right">Google</div><div>Statut</div><div>Dernière activité</div><div></div>
+        <div aria-hidden="true" style="display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.6fr) minmax(0,1.3fr) 80px 80px 90px 140px 110px 24px;gap:12px;padding:12px 20px;background:#F8F7F4;border-bottom:1px solid #E4E1DA;font-size:12px;font-weight:700;letter-spacing:0.06em;color:#5E636B;text-transform:uppercase">
+          <div>Commerce</div><div>Propriétaire</div><div>Programme</div><div style="text-align:right">Clients</div><div style="text-align:right">Cartes</div><div style="text-align:right">Passages</div><div>Statut</div><div>Créé le</div><div></div>
         </div>
       </sc-if>
-      <sc-if value="{{ empty }}" hint-placeholder-val="{{ false }}">
-        <div style="padding:40px 20px;text-align:center"><span class="material-symbols-rounded" style="font-size:36px;color:#9A9EA6">storefront</span><div style="margin-top:10px;font-weight:700;font-size:17px">Aucun commerçant trouvé</div><div style="margin-top:6px;color:#5E636B;font-size:15px">Modifiez la recherche ou les filtres.</div></div>
+      <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="padding:40px 20px;text-align:center;color:#5E636B;font-size:15px">Chargement des données…</div>
+      </sc-if>
+      <sc-if value="{{ emptyAll }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:40px 20px;text-align:center"><span class="material-symbols-rounded" style="font-size:36px;color:#9A9EA6">storefront</span><div style="margin-top:10px;font-weight:700;font-size:17px">Aucun commerce inscrit pour le moment</div><div style="margin-top:6px;color:#5E636B;font-size:15px">Les commerces apparaîtront ici dès leur inscription.</div></div>
+      </sc-if>
+      <sc-if value="{{ emptyFiltered }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:40px 20px;text-align:center"><span class="material-symbols-rounded" style="font-size:36px;color:#9A9EA6">search_off</span><div style="margin-top:10px;font-weight:700;font-size:17px">Aucun commerçant trouvé</div><div style="margin-top:6px;color:#5E636B;font-size:15px">Modifiez la recherche ou les filtres.</div></div>
       </sc-if>
       <ul style="list-style:none;margin:0;padding:0">
-        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="0">
           <li style="border-bottom:1px solid #EFEDE8">
             <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
-              <button type="button" onClick="{{ r.open }}" style="width:100%;display:grid;grid-template-columns:minmax(0,2.2fr) minmax(0,1.3fr) 90px 90px 90px 130px 150px 32px;gap:12px;align-items:center;padding:14px 20px;border:0;background:transparent;text-align:left" style-hover="background:#F8F7F4">
+              <button type="button" onClick="{{ r.open }}" style="width:100%;display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.6fr) minmax(0,1.3fr) 80px 80px 90px 140px 110px 24px;gap:12px;align-items:center;padding:14px 20px;border:0;background:transparent;text-align:left" style-hover="background:#F8F7F4">
                 <div style="display:flex;align-items:center;gap:12px;min-width:0">
                   <div style="width:40px;height:40px;border-radius:10px;background:{{ r.bg }};color:{{ r.logoFg }};display:grid;place-items:center;font-weight:800;font-size:10px;flex:none;border:1px solid rgba(0,0,0,0.06)">{{ r.logo }}</div>
-                  <div style="min-width:0"><div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div><div style="font-size:13px;color:#5E636B">{{ r.activity }} · {{ r.city }}</div></div>
+                  <div style="min-width:0"><div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div><div style="font-size:13px;color:#5E636B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.activity }}</div></div>
                 </div>
-                <div style="font-size:14px;color:#3E424A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.owner }}</div>
+                <div style="min-width:0"><div style="font-size:14px;color:#1C1F24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.owner }}</div><div style="font-size:13px;color:#5E636B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.email }}</div></div>
+                <div style="font-size:14px;color:#3E424A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.program }}</div>
                 <div style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">{{ r.clients }}</div>
-                <div style="text-align:right;font-variant-numeric:tabular-nums">{{ r.apple }}</div>
-                <div style="text-align:right;font-variant-numeric:tabular-nums">{{ r.google }}</div>
+                <div style="text-align:right;font-variant-numeric:tabular-nums">{{ r.cards }}</div>
+                <div style="text-align:right;font-variant-numeric:tabular-nums">{{ r.visits }}</div>
                 <div><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:{{ r.stBg }};color:{{ r.stFg }};font-size:13px;font-weight:700;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:{{ r.stFg }}"></span>{{ r.status }}</span></div>
-                <div style="font-size:14px;color:#4A4E55">{{ r.last }}</div>
+                <div style="font-size:14px;color:#4A4E55">{{ r.joined }}</div>
                 <span class="material-symbols-rounded" style="color:#9A9EA6">chevron_right</span>
               </button>
             </sc-if>
@@ -161,13 +163,13 @@ a:hover{color:#1A36C4}
               <button type="button" onClick="{{ r.open }}" style="width:100%;display:flex;flex-direction:column;gap:12px;padding:16px;border:0;background:transparent;text-align:left" style-hover="background:#F8F7F4">
                 <div style="display:flex;align-items:center;gap:12px;width:100%">
                   <div style="width:44px;height:44px;border-radius:12px;background:{{ r.bg }};color:{{ r.logoFg }};display:grid;place-items:center;font-weight:800;font-size:10px;flex:none;border:1px solid rgba(0,0,0,0.06)">{{ r.logo }}</div>
-                  <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px">{{ r.name }}</div><div style="font-size:14px;color:#5E636B">{{ r.owner }} · {{ r.city }}</div></div>
+                  <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px">{{ r.name }}</div><div style="font-size:14px;color:#5E636B;overflow-wrap:anywhere">{{ r.owner }} · {{ r.email }}</div></div>
                   <span style="padding:4px 10px;border-radius:999px;background:{{ r.stBg }};color:{{ r.stFg }};font-size:12px;font-weight:700;white-space:nowrap">{{ r.status }}</span>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%">
                   <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Clients</div><div style="font-weight:700;font-size:16px">{{ r.clients }}</div></div>
-                  <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Apple</div><div style="font-weight:700;font-size:16px">{{ r.apple }}</div></div>
-                  <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Google</div><div style="font-weight:700;font-size:16px">{{ r.google }}</div></div>
+                  <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Cartes</div><div style="font-weight:700;font-size:16px">{{ r.cards }}</div></div>
+                  <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Passages</div><div style="font-weight:700;font-size:16px">{{ r.visits }}</div></div>
                 </div>
               </button>
             </sc-if>
@@ -179,7 +181,7 @@ a:hover{color:#1A36C4}
 
   <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
     <div onClick="{{ close }}" style="position:fixed;inset:0;z-index:40;background:rgba(20,22,28,0.45);display:flex;justify-content:flex-end">
-      <aside role="dialog" aria-modal="true" aria-labelledby="mt" onClick="{{ stop }}" style="width:100%;max-width:480px;height:100%;overflow:auto;background:#F6F5F1;box-shadow:-12px 0 40px rgba(20,22,28,0.2);animation:dpaIn .2s ease-out;display:flex;flex-direction:column">
+      <aside role="dialog" aria-modal="true" aria-labelledby="mt" onClick="{{ stop }}" style="width:100%;max-width:520px;height:100%;overflow:auto;background:#F6F5F1;box-shadow:-12px 0 40px rgba(20,22,28,0.2);animation:dpaIn .2s ease-out;display:flex;flex-direction:column">
         <div style="position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:#F6F5F1;border-bottom:1px solid #E4E1DA">
           <div style="font-weight:700;font-size:15px;color:#5E636B">Fiche commerçant</div>
           <button type="button" onClick="{{ close }}" aria-label="Fermer" style="width:44px;height:44px;border:0;border-radius:12px;background:#ECEAE4;display:grid;place-items:center"><span class="material-symbols-rounded">close</span></button>
@@ -187,54 +189,66 @@ a:hover{color:#1A36C4}
         <div style="padding:20px;display:flex;flex-direction:column;gap:18px">
           <div style="display:flex;align-items:center;gap:14px">
             <div style="width:60px;height:60px;border-radius:16px;background:{{ sel.bg }};color:{{ sel.logoFg }};display:grid;place-items:center;font-weight:800;font-size:13px;flex:none;border:1px solid rgba(0,0,0,0.06)">{{ sel.logo }}</div>
-            <div style="min-width:0"><h2 id="mt" style="margin:0;font-weight:800;font-size:24px;letter-spacing:-0.02em;line-height:1.1">{{ sel.name }}</h2><div style="margin-top:4px;font-size:15px;color:#4A4E55">{{ sel.activity }} · {{ sel.city }}</div></div>
+            <div style="min-width:0"><h2 id="mt" style="margin:0;font-weight:800;font-size:24px;letter-spacing:-0.02em;line-height:1.1;overflow-wrap:anywhere">{{ sel.name }}</h2><div style="margin-top:4px;font-size:15px;color:#4A4E55">{{ sel.activity }}</div></div>
           </div>
           <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:{{ sel.stBg }};color:{{ sel.stFg }};font-size:13px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:{{ sel.stFg }}"></span>{{ sel.status }}</span>
 
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
             <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Clients</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.clients }}</div></div>
-            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Apple Wallet</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.apple }}</div></div>
-            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Google Wallet</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.google }}</div></div>
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Cartes</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.cards }}</div></div>
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Google Wallet</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.passes }}</div></div>
           </div>
-          <div style="display:flex;height:10px;border-radius:5px;overflow:hidden;background:#ECEAE4"><div style="width:{{ sel.applePct }};background:#1C1F24"></div><div style="width:{{ sel.googlePct }};background:#2448F0"></div></div>
 
           <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px">
             <h3 style="margin:0;font-weight:700;font-size:16px">Programme</h3>
-            <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:{{ sel.bg }};color:{{ sel.logoFg }}">
-              <div style="width:36px;height:36px;border-radius:9px;background:{{ sel.accent }};display:grid;place-items:center;font-weight:800;font-size:9px;color:#1E1418;flex:none">{{ sel.logo }}</div>
-              <div style="min-width:0"><div style="font-weight:800;font-size:16px">{{ sel.program }}</div><div style="font-size:14px">{{ sel.rule }}</div></div>
-            </div>
-            <div style="font-size:13px;color:#5E636B">Aperçu indicatif des couleurs de la carte.</div>
+            <sc-if value="{{ sel.hasProgram }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:{{ sel.bg }};color:{{ sel.logoFg }}">
+                <div style="width:36px;height:36px;border-radius:9px;background:{{ sel.accent }};display:grid;place-items:center;font-weight:800;font-size:9px;color:#1E1418;flex:none">{{ sel.logo }}</div>
+                <div style="min-width:0"><div style="font-weight:800;font-size:16px">{{ sel.program }}</div><div style="font-size:14px">{{ sel.rule }}</div></div>
+              </div>
+              <div style="font-size:13px;color:#5E636B">Design : {{ sel.design }}</div>
+            </sc-if>
+            <sc-if value="{{ sel.noProgram }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;color:#5E636B">Aucun programme actif.</div></sc-if>
           </section>
 
           <dl style="margin:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:16px;padding:4px 16px;display:grid;grid-template-columns:auto 1fr;column-gap:16px;font-size:15px">
-            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Responsable</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.owner }}</dd>
+            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Propriétaire</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.owner }}</dd>
             <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">E-mail</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8;overflow-wrap:anywhere">{{ sel.email }}</dd>
-            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Inscription</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.joined }}</dd>
-            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Passages ce mois-ci</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.visits }}</dd>
+            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Créé le</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.joined }}</dd>
+            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Passages enregistrés</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.visits }}</dd>
+            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Récompenses utilisées</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.rewards }}</dd>
             <dt style="padding:11px 0;color:#5E636B">Dernière activité</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right">{{ sel.last }}</dd>
           </dl>
 
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <sc-if value="{{ sel.isBash }}" hint-placeholder-val="{{ false }}"><a href="/" style="min-height:52px;border-radius:14px;background:#2448F0;color:#FFFFFF;text-decoration:none;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">open_in_new</span>Ouvrir l’espace commerçant</a></sc-if>
-            <button type="button" onClick="{{ contact }}" style="min-height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">mail</span>Contacter le commerçant</button>
-            <button type="button" onClick="{{ askToggle }}" style="min-height:52px;border:1.5px solid {{ sel.toggleBorder }};border-radius:14px;background:#FFFFFF;color:{{ sel.toggleFg }};font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">{{ sel.toggleIcon }}</span>{{ sel.toggleLabel }}</button>
-          </div>
+          <sc-if value="{{ detailLoading }}" hint-placeholder-val="{{ false }}"><div role="status" style="color:#5E636B;font-size:15px">Chargement du détail…</div></sc-if>
+          <sc-if value="{{ detailReady }}" hint-placeholder-val="{{ true }}">
+            <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px">
+              <h3 style="margin:0 0 4px;font-weight:700;font-size:16px">Clients et cartes</h3>
+              <sc-if value="{{ noClients }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;color:#5E636B">Aucun client pour le moment.</div></sc-if>
+              <sc-for list="{{ selClients }}" as="c" hint-placeholder-count="0">
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #EFEDE8">
+                  <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px;overflow-wrap:anywhere">{{ c.name }}</div><div style="font-size:13px;color:#5E636B;font-family:'IBM Plex Mono',monospace">{{ c.card }} · {{ c.joined }}</div></div>
+                  <sc-if value="{{ c.wallet }}" hint-placeholder-val="{{ false }}"><span class="material-symbols-rounded" title="Google Wallet" style="font-size:18px;color:#2448F0">account_balance_wallet</span></sc-if>
+                  <div style="font-weight:700;font-variant-numeric:tabular-nums">{{ c.balance }}</div>
+                </div>
+              </sc-for>
+            </section>
+            <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px">
+              <h3 style="margin:0 0 4px;font-weight:700;font-size:16px">Activité récente</h3>
+              <sc-if value="{{ noActivity }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;color:#5E636B">Aucune activité pour le moment.</div></sc-if>
+              <sc-for list="{{ selActivity }}" as="a" hint-placeholder-count="0">
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #EFEDE8">
+                  <span class="material-symbols-rounded" style="font-size:20px;color:{{ a.color }}">{{ a.icon }}</span>
+                  <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">{{ a.label }} · {{ a.name }}</div><div style="font-size:13px;color:#5E636B">{{ a.when }}</div></div>
+                  <div style="font-weight:700;font-variant-numeric:tabular-nums;color:{{ a.color }}">{{ a.delta }}</div>
+                </div>
+              </sc-for>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{ sel.hasEmail }}" hint-placeholder-val="{{ true }}"><a href="{{ sel.mailto }}" style="min-height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;color:#1C1F24;text-decoration:none;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">mail</span>Contacter le commerçant</a></sc-if>
         </div>
       </aside>
-    </div>
-  </sc-if>
-
-  <sc-if value="{{ confirming }}" hint-placeholder-val="{{ false }}">
-    <div onClick="{{ cancelToggle }}" style="position:fixed;inset:0;z-index:50;background:rgba(20,22,28,0.5);display:flex;align-items:center;justify-content:center;padding:16px">
-      <div role="alertdialog" aria-modal="true" aria-labelledby="ct" onClick="{{ stop }}" style="width:100%;max-width:420px;background:#FFFFFF;border-radius:20px;padding:24px;display:flex;flex-direction:column;gap:14px;animation:dpaUp .2s ease-out">
-        <h2 id="ct" style="margin:0;font-weight:800;font-size:21px">{{ confirmTitle }}</h2>
-        <p style="margin:0;color:#3E424A;font-size:15px;line-height:1.5">{{ confirmText }}</p>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">
-          <button type="button" onClick="{{ cancelToggle }}" style="flex:1;min-width:120px;height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600">Annuler</button>
-          <button type="button" onClick="{{ doToggle }}" style="flex:1;min-width:140px;height:52px;border:0;border-radius:14px;background:{{ confirmBg }};color:#FFFFFF;font-weight:700">Confirmer</button>
-        </div>
-      </div>
     </div>
   </sc-if>
 
@@ -245,56 +259,83 @@ a:hover{color:#1A36C4}
 </x-dc>
 <script type="text/x-dc" data-dc-script>
 const MONTHS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
-const fmt=d=>{ if(d==='2026-09-30') return "Aujourd'hui"; if(d==='2026-09-29') return 'Hier'; const [y,m,dd]=d.split('-'); return `${+dd} ${MONTHS[m-1]} ${y}`; };
-const M=(id,name,logo,activity,city,owner,email,joined,clients,apple,visits,last,status,bg,accent,program,rule)=>({id,name,logo,activity,city,owner,email,joined,clients,apple,google:clients-apple,visits,last,status,bg,accent,program,rule});
-const DATA=[];
-const ST={active:{label:'Actif',bg:'#E4F3EB',fg:'#1F6B45'},setup:{label:'En configuration',bg:'#FFF3DC',fg:'#6B4E00'},suspended:{label:'Suspendu',bg:'#FCEBEA',fg:'#A11D14'}};
-function lum(hex){ const h=hex.replace('#',''); const v=[0,2,4].map(i=>{const c=parseInt(h.substr(i,2),16)/255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}); return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]; }
+// Real data only: everything comes from the wallet Edge Function (admin-overview / admin-merchant).
+const fmt=iso=>{ if(!iso) return '—'; const d=new Date(iso), t=new Date(); const same=(a,b)=>a.toDateString()===b.toDateString();
+  if(same(d,t)) return "Aujourd'hui"; const y=new Date(t); y.setDate(t.getDate()-1); if(same(d,y)) return 'Hier';
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
+const fmtTime=iso=>{ if(!iso) return ''; const d=new Date(iso); return fmt(iso)+', '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+const ST={active:{label:'Actif',bg:'#E4F3EB',fg:'#1F6B45'},setup:{label:'En configuration',bg:'#FFF3DC',fg:'#6B4E00'}};
+const DESIGN={validated:'validé',draft:'brouillon',pending_dpa:'en cours de création par DPA Cards'};
+function lum(hex){ const h=(hex||'#FFFFFF').replace('#',''); const v=[0,2,4].map(i=>{const c=parseInt(h.substr(i,2),16)/255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}); return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]; }
 const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
-const nf=n=>n.toLocaleString('fr-FR');
+const nf=n=>(+n||0).toLocaleString('fr-FR');
+const unitOf=p=>p&&p.mode==='points'?'points':'passages';
+const statusOf=m=>m.program&&m.program.design_status==='validated'?'active':'setup';
+const ERR={not_admin:'Accès refusé : ce compte n’est pas administrateur.',not_authenticated:'Session expirée. Reconnectez-vous.'};
 
 class Component extends DCLogic {
-  state={w:typeof window!=='undefined'?window.innerWidth:1200,data:DATA,q:'',status:'all',wallet:'all',sort:'cards',sel:null,confirming:false,toast:null};
+  state={w:typeof window!=='undefined'?window.innerWidth:1200,loading:true,error:null,kpis:null,data:[],q:'',status:'all',sort:'recent',sel:null,detail:null,detailLoading:false,toast:null};
   componentDidMount(){ this._r=()=>this.setState({w:window.innerWidth}); window.addEventListener('resize',this._r);
-    this._k=e=>{ if(e.key==='Escape') this.setState(s=>s.confirming?{confirming:false}:{sel:null}); }; window.addEventListener('keydown',this._k); }
+    this._k=e=>{ if(e.key==='Escape') this.setState({sel:null,detail:null}); }; window.addEventListener('keydown',this._k);
+    (window.dpaAdminReady||Promise.resolve(null)).then(api=>{ this.api=api; if(api&&api.onAccess) api.onAccess(()=>this.load()); else this.setState({loading:false,error:'Service indisponible.'}); }); }
   componentWillUnmount(){ window.removeEventListener('resize',this._r); window.removeEventListener('keydown',this._k); }
   toast(msg){ clearTimeout(this._t); this.setState({toast:msg}); this._t=setTimeout(()=>this.setState({toast:null}),3000); }
-  view(m){ const st=ST[m.status];
-    return {...m,clients:nf(m.clients),apple:nf(m.apple),google:nf(m.google),visits:nf(m.visits),joined:fmt(m.joined),last:fmt(m.last),status:st.label,stBg:st.bg,stFg:st.fg,
-      logoFg:lum(m.bg)<0.4?'#FFFFFF':'#1E1418',applePct:pct(m.apple,m.clients),googlePct:pct(m.google,m.clients),isBash:m.id==='m1',
-      toggleLabel:m.status==='suspended'?'Réactiver le compte':'Suspendre le compte',toggleIcon:m.status==='suspended'?'play_circle':'block',
-      toggleFg:m.status==='suspended'?'#1F6B45':'#B42318',toggleBorder:m.status==='suspended'?'#A8D5BD':'#E3B3AE',open:()=>this.setState({sel:m.id})}; }
+  errText(e){ const c=e&&(e.code||e.message)||''; return ERR[c]||'Impossible de charger les données. Réessayez.'; }
+  // Auth events can confirm access several times in a row: one request at a time.
+  async load(){ if(!this.api||this._busy) return; this._busy=true; this.setState({loading:true,error:null});
+    try{ const r=await this.api.overview(); this.setState({loading:false,kpis:r.kpis,data:r.merchants||[]}); }
+    catch(e){ this.setState({loading:false,error:this.errText(e)}); }
+    finally{ this._busy=false; } }
+  async open(id){ this.setState({sel:id,detail:null,detailLoading:true});
+    try{ const d=await this.api.merchant(id); if(this.state.sel===id) this.setState({detail:d,detailLoading:false}); }
+    catch(e){ if(this.state.sel===id) this.setState({detailLoading:false}); this.toast(this.errText(e)); } }
+  view(m){ const st=ST[statusOf(m)], p=m.program, bg=p?p.bg:'#ECEAE4';
+    return {id:m.id,name:m.business_name,activity:m.activity||'Activité non renseignée',owner:m.owner_name||'—',email:m.owner_email||'—',
+      program:p?p.name:'Aucun programme',clients:nf(m.customers),cards:nf(m.cards),visits:nf(m.visits),joined:fmt(m.created_at),
+      status:st.label,stBg:st.bg,stFg:st.fg,bg,accent:p?p.accent:'#FFFFFF',logo:(p&&p.logo)||(m.business_name||'?').slice(0,3).toUpperCase(),logoFg:lum(bg)<0.4?'#FFFFFF':'#1E1418',
+      open:()=>this.open(m.id)}; }
+  exportCsv(){ const D=this.state.data; if(!D.length) return this.toast('Aucun commerce à exporter.');
+    const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+    const head=['Commerce','Créé le','Propriétaire','E-mail','Programme','Statut','Clients','Cartes','Passages','Événements','Cartes Google Wallet'];
+    const lines=D.map(m=>[m.business_name,(m.created_at||'').slice(0,10),m.owner_name,m.owner_email,m.program?m.program.name:'',ST[statusOf(m)].label,m.customers,m.cards,m.visits,m.events,m.wallet_passes].map(esc).join(';'));
+    const url=URL.createObjectURL(new Blob(['﻿'+[head.map(esc).join(';'),...lines].join('\r\n')],{type:'text/csv;charset=utf-8'}));
+    const a=document.createElement('a'); a.href=url; a.download='dpa-cards-commercants.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),5000); }
   renderVals(){
-    const s=this.state, isDesk=s.w>=1024, D=s.data;
-    const apple=D.reduce((a,m)=>a+m.apple,0), google=D.reduce((a,m)=>a+m.google,0), cards=apple+google;
+    const s=this.state, isDesk=s.w>=1024, D=s.data, K=s.kpis||{};
     const kpis=[
-      {label:'Commerçants inscrits',value:nf(D.length),icon:'storefront',color:'#2448F0'},
-      {label:'Cartes de fidélité émises',value:nf(cards),icon:'style',color:'#2448F0'},
-      {label:'Cartes Apple Wallet',value:nf(apple),icon:'wallet',color:'#1C1F24'},
-      {label:'Cartes Google Wallet',value:nf(google),icon:'account_balance_wallet',color:'#2448F0'}];
+      {label:'Commerces inscrits',value:nf(K.merchants),icon:'storefront',color:'#2448F0'},
+      {label:'Clients',value:nf(K.customers),icon:'group',color:'#2448F0'},
+      {label:'Cartes de fidélité',value:nf(K.cards),icon:'style',color:'#2448F0'},
+      {label:'Programmes',value:nf(K.programs),icon:'loyalty',color:'#1C1F24'},
+      {label:'Notifications envoyées',value:nf(K.notifications_sent),icon:'notifications',color:'#1C1F24'},
+      {label:'Cartes Google Wallet',value:nf(K.wallet_passes),icon:'account_balance_wallet',color:'#2448F0'}];
+    const cards=+K.cards||0, google=+K.wallet_passes||0, none=Math.max(0,cards-google);
     const q=s.q.trim().toLowerCase();
-    let list=D.filter(m=>(s.status==='all'||m.status===s.status)&&(s.wallet==='all'||(s.wallet==='apple'?m.apple>0:m.google>0))&&(!q||(m.name+' '+m.owner+' '+m.city).toLowerCase().includes(q)));
-    list=[...list].sort((a,b)=>s.sort==='name'?a.name.localeCompare(b.name,'fr'):s.sort==='recent'?b.joined.localeCompare(a.joined):b.clients-a.clients);
-    const cnt=k=>k==='all'?D.length:D.filter(m=>m.status===k).length;
+    let list=D.filter(m=>(s.status==='all'||statusOf(m)===s.status)&&(!q||[m.business_name,m.owner_name,m.owner_email].join(' ').toLowerCase().includes(q)));
+    list=[...list].sort((a,b)=>s.sort==='name'?a.business_name.localeCompare(b.business_name,'fr'):s.sort==='cards'?b.cards-a.cards:String(b.created_at).localeCompare(String(a.created_at)));
+    const cnt=k=>k==='all'?D.length:D.filter(m=>statusOf(m)===k).length;
     const chip=(on)=>({bg:on?'#1C1F24':'#FFFFFF',fg:on?'#FFFFFF':'#1C1F24',border:on?'#1C1F24':'#D4D1C9',pressed:on});
-    const statusFilters=[['all','Tous'],['active','Actifs'],['setup','En configuration'],['suspended','Suspendus']].map(([k,label])=>({label,count:cnt(k),...chip(s.status===k),pick:()=>this.setState({status:k})}));
-    const walletFilters=[['all','Tous les Wallets','apps'],['apple','Apple Wallet','wallet'],['google','Google Wallet','account_balance_wallet']].map(([k,label,icon])=>({label,icon,...chip(s.wallet===k),pick:()=>this.setState({wallet:k})}));
-    const selM=D.find(m=>m.id===s.sel), sel=selM?this.view(selM):null;
-    const susp=selM&&selM.status==='suspended';
-    return {isDesk,isMob:!isDesk,kpis,tot:{apple:nf(apple),google:nf(google),applePct:pct(apple,cards),googlePct:pct(google,cards)},
+    const statusFilters=[['all','Tous'],['active','Actifs'],['setup','En configuration']].map(([k,label])=>({label,count:cnt(k),...chip(s.status===k),pick:()=>this.setState({status:k})}));
+    const selM=D.find(m=>m.id===s.sel), det=s.detail;
+    let sel=null;
+    if(selM){ const v=this.view(selM), p=(det&&det.program)||selM.program, c=(det&&det.counts)||{};
+      sel={...v,passes:nf(det?c.wallet_passes:selM.wallet_passes),visits:nf(det?c.visits:selM.visits),rewards:det?nf(c.rewards):'…',last:fmt(selM.last_activity),
+        hasProgram:!!p,noProgram:!p,program:p?p.name:'',rule:p?`${p.goal} ${unitOf(p)} = ${p.reward}`:'',design:p?(DESIGN[p.design_status]||p.design_status):'',
+        hasEmail:!!selM.owner_email,mailto:selM.owner_email?'mailto:'+selM.owner_email:''}; }
+    const ACT={join:['person_add','Inscription','#5E636B'],visit:['add_circle','Passage','#2448F0'],reward:['redeem','Récompense','#1F7A4F'],correction:['undo','Correction','#B42318']};
+    const selClients=det?det.clients.map(c=>({name:(c.first_name+' '+(c.last_name||'')).trim(),card:c.card_number,joined:fmt(c.created_at),wallet:!!c.wallet,balance:nf(c.balance)})):[];
+    const selActivity=det?det.activity.map(a=>{ const t=ACT[a.type]||ACT.visit; return {icon:t[0],label:t[1],color:t[2],name:a.first_name,when:fmtTime(a.created_at),delta:a.delta>0?'+'+a.delta:(a.delta<0?'−'+Math.abs(a.delta):'')}; }):[];
+    return {isDesk,isMob:!isDesk,kpis,tot:{google:nf(google),none:nf(none),googlePct:pct(google,cards),nonePct:pct(none,cards)},
+      loading:s.loading,hasError:!!s.error,error:s.error||'',reload:()=>this.load(),
       q:s.q,setQ:e=>this.setState({q:e.target.value}),sort:s.sort,setSort:e=>this.setState({sort:e.target.value}),
-      statusFilters,walletFilters,rows:list.map(m=>this.view(m)),empty:list.length===0,
-      sel,hasSel:!!sel,close:()=>this.setState({sel:null}),stop:e=>e.stopPropagation(),
-      contact:()=>this.toast('Aucun commerçant sélectionné.'),exportCsv:()=>this.toast('Aucune donnée à exporter.'),
-      askToggle:()=>this.setState({confirming:true}),cancelToggle:()=>this.setState({confirming:false}),confirming:s.confirming&&!!selM,
-      confirmTitle:susp?'Réactiver ce compte ?':'Suspendre ce compte ?',
-      confirmText:susp?`${selM?selM.name:''} pourra de nouveau scanner des cartes et créditer des passages.`:`${selM?selM.name:''} ne pourra plus scanner de cartes. Les cartes de ses clients restent enregistrées.`,
-      confirmBg:susp?'#1F7A4F':'#B42318',
-      doToggle:()=>{ const id=s.sel, ns=susp?'active':'suspended'; this.setState(x=>({confirming:false,data:x.data.map(m=>m.id===id?{...m,status:ns}:m)})); this.toast(ns==='active'?'Compte réactivé':'Compte suspendu'); },
-      toast:s.toast};
+      statusFilters,rows:s.loading?[]:list.map(m=>this.view(m)),emptyAll:!s.loading&&!s.error&&D.length===0,emptyFiltered:!s.loading&&D.length>0&&list.length===0,
+      sel,hasSel:!!sel,close:()=>this.setState({sel:null,detail:null}),stop:e=>e.stopPropagation(),
+      detailLoading:s.detailLoading,detailReady:!!det,selClients,selActivity,noClients:!!det&&!selClients.length,noActivity:!!det&&!selActivity.length,
+      exportCsv:()=>this.exportCsv(),toast:s.toast};
   }
 }
 </script>
+
 </div>
 </body>
 </html>

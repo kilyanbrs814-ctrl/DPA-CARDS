@@ -42,9 +42,23 @@ function showDenied() {
   root.style.display = 'flex';
 }
 
+// The dashboard loads its data once access is confirmed (and again after a new sign-in).
+const accessListeners = [];
 function showApp() {
   root.style.display = 'none';
   app.style.display = 'block';
+  accessListeners.forEach(cb => { try { cb(); } catch (e) {} });
+}
+
+// Admin data: only through the wallet Edge Function, which re-checks admin_users on the server.
+async function adminCall(route, body = {}) {
+  const { data, error } = await sb.functions.invoke('wallet/' + route, { body });
+  if (error) {
+    let code = '';
+    try { code = (await error.context.json()).error || ''; } catch (e) {}
+    throw Object.assign(new Error(code || 'admin_unavailable'), { code });
+  }
+  return data;
 }
 
 async function isAuthorized(user) {
@@ -111,4 +125,9 @@ sb.auth.onAuthStateChange(() => {
 });
 
 refreshAccess();
-window.__dpaAdminResolve({ supabase: sb });
+window.__dpaAdminResolve({
+  supabase: sb,
+  onAccess(cb) { accessListeners.push(cb); if (app.style.display === 'block') cb(); },
+  overview: () => adminCall('admin-overview'),
+  merchant: id => adminCall('admin-merchant', { merchant_id: id }),
+});

@@ -207,6 +207,15 @@ import de logo.
 
 La classe `bash_test_v1` créée dans la console reste en `draft` et n'est pas utilisée.
 
+## Administration (`/admin.html`)
+
+Connexion par lien magique, réservée aux e-mails de `admin_users`. Les données viennent uniquement de
+l’Edge Function `wallet` : `POST /admin-overview` (KPI + liste des commerces) et `POST /admin-merchant`
+`{ merchant_id }` (fiche : propriétaire, programme, clients, cartes, activité récente). Chaque appel vérifie
+côté serveur la session, l’e-mail confirmé et sa présence dans `admin_users` ; les agrégats viennent des
+fonctions SQL `admin_overview` / `admin_merchant_detail` (migration `20261004190429_admin_dashboard`),
+exécutables par `service_role` uniquement. Lecture seule ; « Exporter » produit un CSV de la liste.
+
 ## Pages légales et données personnelles
 
 - Pages publiques `/mentions-legales` et `/confidentialite` (`mentions-legales.html`, `confidentialite.html`),
