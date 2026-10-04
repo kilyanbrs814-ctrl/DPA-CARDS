@@ -100,7 +100,8 @@ export function requestCamera() {
     const e = new Error('navigator.mediaDevices.getUserMedia is not available'); e.name = 'NoMediaDevices';
     return Promise.reject(e);
   }
-  return md.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+  // Without a size hint most phones deliver 640×480: too few pixels for a small QR shown on a screen.
+  return md.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false })
     .catch(e => {
       // Some devices reject the facing hint: retry with any camera.
       if (e && e.name === 'OverconstrainedError') return md.getUserMedia({ video: true, audio: false });
@@ -139,50 +140,88 @@ export function makeCameraView(React) {
       v.srcObject = stream;
       const played = v.play(); if (played && played.catch) played.catch(e => console.error('[DPA scanner] video.play()', e));
       const tracks = stream.getVideoTracks();
-      tracks.forEach(t => { t.onended = () => { if (!stopped) cb.current.onEnded && cb.current.onEnded(); }; });
+      tracks.forEach(t => {
+        t.onended = () => { if (!stopped) cb.current.onEnded && cb.current.onEnded(); };
+        // Continuous autofocus where supported; ignored elsewhere.
+        try { const caps = t.getCapabilities ? t.getCapabilities() : {}; if (caps.focusMode && caps.focusMode.includes('continuous')) t.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {}); } catch (e) {}
+        try { const st = t.getSettings ? t.getSettings() : {}; console.log('[DPA scanner] camera ready', { width: st.width, height: st.height, frameRate: st.frameRate, facingMode: st.facingMode }); } catch (e) {}
+      });
 
-      let stopped = false, done = false, timer = null, detector = null, jsQR = null, detectorErrors = 0;
+      // Engines: BarcodeDetector when the browser has it, jsQR otherwise. Some Android builds expose
+      // BarcodeDetector but never return anything, so jsQR also runs once it has stayed silent for
+      // FALLBACK_MS. jsQR alternates a downscaled full frame with a full-resolution centre crop
+      // (the area inside the on-screen frame), so a small QR shown on another screen stays readable.
+      const FALLBACK_MS = 2500;
+      let stopped = false, done = false, timer = null, detector = null, jsQR = null, jsQRLoading = null, detectorErrors = 0;
+      let frames = 0, detectRuns = 0, jsqrRuns = 0, startedAt = 0, crop = false, waitLogged = false;
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      const loadJsQR = async () => {
-        try { jsQR = (await import('jsqr')).default; }
-        catch (e) { console.error('[DPA scanner] jsQR could not be loaded', e); jsQR = null; }
+      const loadJsQR = () => jsQRLoading || (jsQRLoading = import('jsqr')
+        .then(m => { jsQR = m.default; console.log('[DPA scanner] engine: jsQR loaded'); })
+        .catch(e => { console.error('[DPA scanner] jsQR could not be loaded', e); jsQR = null; }));
+      const runJsQR = () => {
+        const vw = v.videoWidth, vh = v.videoHeight;
+        let sx = 0, sy = 0, sw = vw, sh = vh, w, hh;
+        if (crop) { const side = Math.round(Math.min(vw, vh) * 0.7); sx = Math.round((vw - side) / 2); sy = Math.round((vh - side) / 2); sw = sh = side; w = hh = Math.min(side, 960); }
+        else { w = Math.min(960, vw); hh = Math.round(vh * (w / vw)); }
+        if (canvas.width !== w) canvas.width = w;
+        if (canvas.height !== hh) canvas.height = hh;
+        ctx.drawImage(v, sx, sy, sw, sh, 0, 0, w, hh);
+        jsqrRuns++;
+        if (jsqrRuns === 1 || jsqrRuns % 25 === 0) console.log('[DPA scanner] jsQR running', { run: jsqrRuns, canvas: w + 'x' + hh, region: crop ? 'centre crop' : 'full frame' });
+        const r = jsQR(ctx.getImageData(0, 0, w, hh).data, w, hh, { inversionAttempts: 'attemptBoth' });
+        crop = !crop;
+        return r && r.data ? r.data : null;
       };
       const tick = async () => {
         if (stopped || done) return;
-        let text = null;
-        if (v.readyState >= 2 && v.videoWidth) {
+        let text = null, engine = null;
+        if (v.readyState >= 2 && v.videoWidth > 0) {
+          if (frames++ === 0) { startedAt = performance.now(); console.log('[DPA scanner] first video frame', { videoWidth: v.videoWidth, videoHeight: v.videoHeight, readyState: v.readyState }); }
           if (detector) {
             try {
+              detectRuns++;
               const codes = await detector.detect(v);
-              if (codes.length) text = codes[0].rawValue;
+              if (detectRuns === 1 || detectRuns % 25 === 0) console.log('[DPA scanner] BarcodeDetector.detect running', { run: detectRuns, results: codes.length });
+              if (codes.length) { text = codes[0].rawValue; engine = 'BarcodeDetector'; }
               detectorErrors = 0;
             } catch (e) {
               detectorErrors++;
-              console.error('[DPA scanner] BarcodeDetector.detect', e);
-              if (detectorErrors >= 3) { detector = null; await loadJsQR(); if (!jsQR) { cb.current.onDecodeError && cb.current.onDecodeError(); return; } }
+              console.error('[DPA scanner] BarcodeDetector.detect error', e);
+              if (detectorErrors >= 3) { console.warn('[DPA scanner] BarcodeDetector keeps failing: jsQR only'); detector = null; }
             }
-          } else if (jsQR) {
-            try {
-              const w = Math.min(640, v.videoWidth), hh = Math.round(v.videoHeight * (w / v.videoWidth));
-              canvas.width = w; canvas.height = hh;
-              ctx.drawImage(v, 0, 0, w, hh);
-              const r = jsQR(ctx.getImageData(0, 0, w, hh).data, w, hh, { inversionAttempts: 'dontInvert' });
-              if (r && r.data) text = r.data;
-            } catch (e) { console.error('[DPA scanner] jsQR decode', e); }
+            // Silent or failing detector: bring jsQR in.
+            if (!text && !jsQR && (!detector || performance.now() - startedAt > FALLBACK_MS)) {
+              console.warn('[DPA scanner] no QR from BarcodeDetector after ' + Math.round(performance.now() - startedAt) + ' ms: adding jsQR fallback');
+              await loadJsQR();
+              if (!jsQR && !detector) { cb.current.onDecodeError && cb.current.onDecodeError(); return; }
+            }
           }
-          // Accepting a code locks the reader: the same QR is not read twice.
-          if (text && !stopped && !done && cb.current.onCode(text) !== false) { done = true; return; }
+          if (!text && jsQR && !stopped) {
+            try { const d = runJsQR(); if (d) { text = d; engine = 'jsQR'; } }
+            catch (e) { console.error('[DPA scanner] jsQR decode error', e); }
+          }
+          if (text && !stopped && !done) {
+            console.log('[DPA scanner] QR found', { engine, raw: text, parsed: parseCode(text) });
+            // Accepting a code locks the reader: the same QR is not read twice.
+            const accepted = cb.current.onCode(text);
+            console.log('[DPA scanner] onCode returned', accepted);
+            if (accepted !== false) { done = true; return; }
+          }
+        } else if (!frames && !waitLogged) {
+          waitLogged = true; console.log('[DPA scanner] waiting for video frames', { readyState: v.readyState, videoWidth: v.videoWidth });
         }
-        timer = setTimeout(tick, 120);
+        timer = setTimeout(tick, 100);
       };
       (async () => {
         try {
           if ('BarcodeDetector' in window) {
             const formats = window.BarcodeDetector.getSupportedFormats ? await window.BarcodeDetector.getSupportedFormats() : ['qr_code'];
+            console.log('[DPA scanner] BarcodeDetector formats', formats);
             if (formats.includes('qr_code')) detector = new window.BarcodeDetector({ formats: ['qr_code'] });
           }
         } catch (e) { console.error('[DPA scanner] BarcodeDetector unavailable', e); detector = null; }
+        console.log('[DPA scanner] engine:', detector ? 'BarcodeDetector (+ jsQR after ' + FALLBACK_MS + ' ms without result)' : 'jsQR');
         if (!detector) await loadJsQR();
         if (stopped) return;
         if (!detector && !jsQR) { cb.current.onDecodeError && cb.current.onDecodeError(); return; }

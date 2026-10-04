@@ -1836,10 +1836,12 @@ class Component extends DCLogic {
   async lookupScan(raw,source){ const api=this.api; if(!api) return;
     const cands=(Array.isArray(raw)?raw:[raw]).filter(Boolean), parsed=cands.map(c=>api.scanner.parseCode(c));
     const p=parsed.find(x=>x.kind==='qr')||parsed.find(x=>x.kind==='number'||x.kind==='suffix')||parsed.find(x=>x.kind==='incomplete')||{kind:'invalid'};
+    if(source==='camera') console.log('[DPA scanner] lookupScan', {raw:cands,parsed:p});
     if(p.kind==='invalid'||p.kind==='incomplete') return this.scanFail(p.kind,source);
     clearTimeout(this._autoReady); this._scanSeq=(this._scanSeq||0)+1; const seq=this._scanSeq;
     this.setState(x=>({scan:{...x.scan,st:source==='camera'?'scanning':x.scan.st},pos:{loading:true,err:null,merr:null,src:source},err:{...x.err,manualNo:null}}));
     try{ const ids=this.state.demo?this.demoLookup(p):await api.lookupCard(p.code); if(seq!==this._scanSeq) return;
+      if(source==='camera') console.log('[DPA scanner] lookup_card result', {cards:ids.length});
       if(!ids.length) return this.scanFail('unknown',source);
       if(ids.length>1) return this.scanFail('multiple',source);
       let c=this.state.clients.find(x=>x.id===ids[0]);
@@ -1857,8 +1859,9 @@ class Component extends DCLogic {
     if(source==='camera') return this.setState(x=>({pos:{loading:false,err:null,merr:null},scan:{st:'unknown',id:null,added:false,used:false,msg:''}}));
     if(source==='keyboard') return this.setState(x=>({pos:{loading:false,err:null,merr:M[kind]},scan:x.scan.st==='found'?x.scan:{st:'ready',id:null,added:false,used:false,msg:''}}));
     this.setState(x=>({f:{...x.f,readerNo:''},pos:{loading:false,err:M[kind],merr:null},scan:{st:'ready',id:null,added:false,used:false,msg:''}})); }
-  onCamCode=text=>{ if(this.state.scan.st!=='ready'||this._camLock) return false;
-    const cd=this._camCooldown; if(cd&&cd.code===text&&performance.now()<cd.until) return false;
+  onCamCode=text=>{ console.log('[DPA scanner] onCamCode', {raw:text,scanState:this.state.scan.st,locked:!!this._camLock});
+    if(this.state.scan.st!=='ready'||this._camLock){ console.log('[DPA scanner] onCamCode ignored: scanner busy'); return false; }
+    const cd=this._camCooldown; if(cd&&cd.code===text&&performance.now()<cd.until){ console.log('[DPA scanner] onCamCode ignored: same card, cooldown'); return false; }
     this._camLock=true; this._lastCamCode=text; this.lookupScan(text,'camera').finally(()=>{ this._camLock=false; }); return true; };
   // The same card is ignored for 3 s counted from the moment the camera is really live again.
   // Real camera. Called directly from the click on "Autoriser la caméra" / "Réessayer":
