@@ -5,6 +5,8 @@
 //                                 creates the program's Wallet class from it
 //   POST /wallet/sync       x-wallet-worker secret (pg_net / pg_cron) → push pending balances
 //   GET  /wallet/logo.png   public program logo used by Google Wallet classes
+//   POST /wallet/public-program  no session → public fields of the program behind /join/<slug>
+//   POST /wallet/join       no session → public sign-up on /join/<slug>, then the card's save link
 //
 // verify_jwt is off: the platform check does not understand every key type, so
 // each route authorises itself. The browser only sends a card id; merchant,
@@ -18,7 +20,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ISSUER_ID = Deno.env.get('GOOGLE_WALLET_ISSUER_ID') ?? '';
 const WALLET_API = 'https://walletobjects.googleapis.com/walletobjects/v1';
 const LOGO_URL = `${SUPABASE_URL}/functions/v1/wallet/logo.png`;
-const ALLOWED_ORIGINS = (Deno.env.get('WALLET_ALLOWED_ORIGINS') ?? 'http://localhost:5173,http://localhost:5174')
+const ALLOWED_ORIGINS = (Deno.env.get('WALLET_ALLOWED_ORIGINS') ?? 'https://dpa-cards.vercel.app,http://localhost:5173,http://localhost:5174')
   .split(',').map(s => s.trim()).filter(Boolean);
 
 function envKey(jsonVar: string, legacyVar: string): string {
@@ -303,23 +305,11 @@ async function finalizeDesign(req: Request): Promise<Response> {
   }
 }
 
-async function saveLink(req: Request): Promise<Response> {
-  const { user, userClient } = await authUser(req);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const CARD_SELECT = 'id, merchant_id, card_number, qr_token, customers(first_name, last_name), programs(id, merchant_id, name, mode, goal, reward, bg, logo_path, hero_path, design_status), merchants(business_name)';
 
-  const body = await req.json().catch(() => ({}));
-  const cardId = String(body?.card_id ?? '');
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cardId)) throw new HttpError(400, 'invalid_card');
-
-  // Read through the caller's own session: RLS only returns cards of their merchant.
-  const { data: card } = await userClient.from('cards')
-    .select('id, merchant_id, card_number, qr_token, customers(first_name, last_name), programs(id, merchant_id, name, mode, goal, reward, bg, logo_path, hero_path, design_status), merchants(business_name)')
-    .eq('id', cardId).maybeSingle();
-  if (!card) throw new HttpError(404, 'card_not_found');
-  // Explicit membership check on top of RLS.
-  const { data: member } = await admin.from('merchant_members').select('role')
-    .eq('merchant_id', card.merchant_id).eq('user_id', user.id).maybeSingle();
-  if (!member) throw new HttpError(403, 'forbidden');
-
+// Class + object for one card already authorised by the caller, then the signed save link.
+async function signedSaveUrl(req: Request, card: any): Promise<string> {
   const classId = await ensureClass(card.programs, (card.merchants as any).business_name);
   const objectId = await ensureObject(card, classId);
   await runSync(5).catch(() => undefined); // the queue retries anyway
@@ -330,8 +320,91 @@ async function saveLink(req: Request): Promise<Response> {
     origins: origin && ALLOWED_ORIGINS.includes(origin) ? [origin] : [],
     payload: { loyaltyObjects: [{ id: objectId }] },
   });
+  return `https://pay.google.com/gp/v/save/${jwt}`;
+}
+
+async function saveLink(req: Request): Promise<Response> {
+  const { user, userClient } = await authUser(req);
+
+  const body = await req.json().catch(() => ({}));
+  const cardId = String(body?.card_id ?? '');
+  if (!UUID_RE.test(cardId)) throw new HttpError(400, 'invalid_card');
+
+  // Read through the caller's own session: RLS only returns cards of their merchant.
+  const { data: card } = await userClient.from('cards').select(CARD_SELECT).eq('id', cardId).maybeSingle();
+  if (!card) throw new HttpError(404, 'card_not_found');
+  // Explicit membership check on top of RLS.
+  const { data: member } = await admin.from('merchant_members').select('role')
+    .eq('merchant_id', card.merchant_id).eq('user_id', user.id).maybeSingle();
+  if (!member) throw new HttpError(403, 'forbidden');
+
+  const url = await signedSaveUrl(req, card);
   const { data: pass } = await admin.from('wallet_passes').select('pending, synced_balance, last_error').eq('card_id', cardId).single();
-  return json(req, 200, { url: `https://pay.google.com/gp/v/save/${jwt}`, sync: pass });
+  return json(req, 200, { url, sync: pass });
+}
+
+// ---------------------------------------------------------------- public sign-up (/join/<slug>)
+// No session. The slug is the only thing the browser names; merchant and program are
+// resolved here, and only fields already shown on the public page are returned.
+
+const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+async function publicProgramBySlug(raw: unknown) {
+  const slug = String(raw ?? '').trim().toLowerCase();
+  if (!slug || slug.length > 40 || !SLUG_RE.test(slug)) throw new HttpError(404, 'program_not_found');
+  const { data: m, error } = await admin.from('merchants').select('id, business_name').eq('slug', slug).maybeSingle();
+  if (error) throw new Error('db_merchants');
+  if (!m) throw new HttpError(404, 'program_not_found');
+  const { data: p, error: pe } = await admin.from('programs')
+    .select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, logo_path, hero_path, design_status')
+    .eq('merchant_id', m.id).eq('is_active', true).maybeSingle();
+  if (pe) throw new Error('db_programs');
+  if (!p) throw new HttpError(404, 'program_not_found');
+  return { slug, business: m.business_name, program: p };
+}
+
+async function publicProgram(req: Request): Promise<Response> {
+  const body = await req.json().catch(() => ({}));
+  return json(req, 200, await publicProgramBySlug(body?.slug));
+}
+
+async function publicJoin(req: Request): Promise<Response> {
+  const body = await req.json().catch(() => ({}));
+  const { slug } = await publicProgramBySlug(body?.slug);
+  const requestId = String(body?.request_id ?? '');
+  const first = String(body?.first ?? '').trim();
+  const email = String(body?.email ?? '').trim();
+  if (!UUID_RE.test(requestId)) throw new HttpError(400, 'invalid_request');
+  if (body?.consent !== true) throw new HttpError(422, 'consent_required');
+  if (!first || first.length > 80) throw new HttpError(422, 'invalid_first');
+  if (email && (email.length > 254 || !EMAIL_RE.test(email))) throw new HttpError(422, 'invalid_email');
+
+  const { data, error } = await admin.rpc('public_enroll', {
+    p_slug: slug, p_request_id: requestId, p_first: first, p_email: email || null, p_consent: true,
+  });
+  if (error) {
+    const m = String(error.message ?? '');
+    if (m.includes('program_not_found')) throw new HttpError(404, 'program_not_found');
+    if (m.includes('rate_limited')) throw new HttpError(429, 'rate_limited');
+    if (error.code === '23514') throw new HttpError(422, 'invalid_first');
+    throw new Error('db_public_enroll');
+  }
+
+  // The card exists from here on. Google Wallet is best effort: the page can ask again
+  // with the same request id, which returns the same card.
+  let wallet: { url?: string; error?: string };
+  try {
+    const { data: card } = await admin.from('cards').select(CARD_SELECT).eq('id', data.card.id).single();
+    wallet = { url: await signedSaveUrl(req, card) };
+  } catch (e) {
+    if (!(e instanceof HttpError)) console.error('wallet error', 'join', (e as Error).message);
+    wallet = { error: e instanceof HttpError ? e.code : 'wallet_unavailable' };
+  }
+  return json(req, 200, {
+    first: data.customer.first_name, card_number: data.card.card_number, qr_value: `DPA1:${data.card.qr_token}`,
+    joined: data.card.created_at, wallet,
+  });
 }
 
 async function sync(req: Request): Promise<Response> {
@@ -352,6 +425,8 @@ Deno.serve(async (req) => {
       });
     }
     if (req.method === 'POST' && path.endsWith('/save-link')) return await saveLink(req);
+    if (req.method === 'POST' && path.endsWith('/public-program')) return await publicProgram(req);
+    if (req.method === 'POST' && path.endsWith('/join')) return await publicJoin(req);
     if (req.method === 'POST' && path.endsWith('/finalize-design')) return await finalizeDesign(req);
     if (req.method === 'POST' && path.endsWith('/sync')) return await sync(req);
     return json(req, 404, { error: 'not_found' });

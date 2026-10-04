@@ -96,6 +96,10 @@ const DB_ERRORS = {
   'exceeded the maximum allowed size': 'Fichier trop volumineux.',
   'mime type': 'Format de fichier non accepté.',
   wallet_unavailable: 'Google Wallet ne répond pas pour le moment. Réessayez dans quelques instants.',
+  program_not_found: 'Programme de fidélité introuvable.',
+  rate_limited: 'Trop d’inscriptions en ce moment. Réessayez dans quelques minutes.',
+  invalid_first: 'Indiquez votre prénom (80 caractères maximum).',
+  invalid_email: "Cette adresse e-mail n'est pas valide.",
 };
 
 function errorMessage(e) {
@@ -377,6 +381,29 @@ const api = {
     const qr = await QRCode.toDataURL(data.url, { margin: 1, width: 232, errorCorrectionLevel: 'L' });
     return { url: data.url, qr, sync: data.sync };
   },
+  // ---- public sign-up page /join/<slug> (no session). Only the slug is sent; the
+  // Edge Function resolves merchant and program and returns public fields only.
+  async publicProgram(slug) {
+    const { data, error } = await sb.functions.invoke('wallet/public-program', { body: { slug } });
+    if (error) {
+      if (error.context && error.context.status === 404) return null;
+      throw Object.assign(new Error(error.message || 'wallet_unavailable'), { name: error.name });
+    }
+    return { slug: data.slug, business: data.business, program: toProgram({ ...data.program, id: null, merchant_id: null }) };
+  },
+  async publicJoin(slug, requestId, first, email) {
+    const { data, error } = await sb.functions.invoke('wallet/join', {
+      body: { slug, request_id: requestId, first, email: email || '', consent: true },
+    });
+    if (error) {
+      let code = '';
+      try { code = (await error.context.json()).error || ''; } catch (e) {}
+      throw Object.assign(new Error(code || error.message || 'wallet_unavailable'), { code, name: code ? 'Error' : error.name });
+    }
+    return { first: data.first, cardNumber: data.card_number, qrValue: data.qr_value, wallet: data.wallet || {} };
+  },
+  // PNG of the shop's sign-up QR code, for printing.
+  qrPng: text => QRCode.toDataURL(text, { margin: 2, width: 1024, errorCorrectionLevel: 'M' }),
   async saveMerchant(id, patch) {
     const { data, error } = await sb.from('merchants').update(patch).eq('id', id).select().single();
     if (error) throw error;

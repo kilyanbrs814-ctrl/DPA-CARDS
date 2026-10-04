@@ -9,7 +9,10 @@
      CDN fetch, so the app runs without a network round-trip. -->
 <script src="/vendor/react.production.min.js"></script>
 <script src="/vendor/react-dom.production.min.js"></script>
-<script>window.dpaReady=new Promise(function(r){window.__dpaResolve=r;});</script>
+<script>window.dpaReady=new Promise(function(r){window.__dpaResolve=r;});
+// Public sign-up page /join/<slug>: dc-runtime fetches sibling components relative to the
+// page ("./LoyaltyCard.dc.html"), which would resolve under /join/. Point it at the root copy.
+if(/^\/join\//.test(location.pathname)) window.__resources={'./LoyaltyCard.dc.html':'/LoyaltyCard.dc.html'};</script>
 <script src="/support.js"></script>
 <!-- Supabase client (bundled by Vite), hands its API to the logic script via window.dpaReady. -->
 <script type="module" src="/src/backend.js"></script>
@@ -387,10 +390,12 @@ a:hover{color:#1A36C4}
 </sc-if>
 <sc-if value="{{ s.pub }}" hint-placeholder-val="{{ false }}">
 <div style="min-height:100vh;background:#EFEDE8;display:flex;flex-direction:column">
+  <sc-if value="{{ notPublic }}" hint-placeholder-val="{{ true }}">
   <div role="note" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px clamp(16px,3vw,32px);background:#1C1F24;color:#FFFFFF;font-size:14px">
     <div style="display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:18px;color:#FFD66B">visibility</span>{{ joinBanner }}</div>
     <button type="button" onClick="{{ toInvite }}" style="min-height:40px;padding:0 14px;border:1px solid rgba(255,255,255,0.3);border-radius:10px;background:transparent;color:#FFFFFF;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px"><span class="material-symbols-rounded" style="font-size:18px">arrow_back</span>Retour à DPA CARDS</button>
   </div>
+  </sc-if>
   <div style="flex:1;width:100%;max-width:440px;margin:0 auto;padding:24px 16px 48px">
     <div style="background:#FFFFFF;border-radius:24px;overflow:hidden;box-shadow:0 1px 3px rgba(20,22,28,0.06)">
       <div style="background:{{ P.bg }};padding:28px 24px 24px;color:#1E1418">
@@ -428,6 +433,22 @@ a:hover{color:#1A36C4}
         </div>
       </sc-if>
     </div>
+    <div style="margin-top:20px;text-align:center;font-size:13px;color:#5E636B">Programme géré avec DPA CARDS</div>
+  </div>
+</div>
+</sc-if>
+<sc-if value="{{ s.pubState }}" hint-placeholder-val="{{ false }}">
+<div style="min-height:100vh;background:#EFEDE8;display:flex;flex-direction:column">
+  <div style="flex:1;width:100%;max-width:440px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;justify-content:center">
+    <sc-if value="{{ s.joinLoading }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;align-items:center;justify-content:center;gap:10px;color:#3E424A;font-size:16px;min-height:120px">{{ spin }}Chargement du programme…</div></sc-if>
+    <sc-if value="{{ s.joinMissing }}" hint-placeholder-val="{{ false }}">
+      <div style="background:#FFFFFF;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;box-shadow:0 1px 3px rgba(20,22,28,0.06)">
+        <div style="width:56px;height:56px;border-radius:14px;background:#EFEDE8;color:#1C1F24;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:28px">{{ pubMiss.icon }}</span></div>
+        <h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em;line-height:1.15">{{ pubMiss.title }}</h1>
+        <p style="margin:0;font-size:16px;line-height:1.5;color:#3E424A">{{ pubMiss.text }}</p>
+        <sc-if value="{{ pubMiss.retry }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ pubRetry }}" style="margin-top:6px;height:52px;padding:0 22px;border:0;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">refresh</span>Réessayer</button></sc-if>
+      </div>
+    </sc-if>
     <div style="margin-top:20px;text-align:center;font-size:13px;color:#5E636B">Programme géré avec DPA CARDS</div>
   </div>
 </div>
@@ -1147,7 +1168,7 @@ a:hover{color:#1A36C4}
           <div style="padding:14px;border:1px solid #E4E1DA;border-radius:18px;line-height:0">{{ qrBiz }}</div>
           <div><div style="font-weight:700;font-size:17px">{{ P.name }}</div><div style="margin-top:4px;font-size:14px;color:#5E636B">{{ ruleText }}</div></div>
           <div style="width:100%;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 14px;border:1.5px solid #D4D1C9;border-radius:14px;background:#F8F7F4">
-            <span style="flex:1;min-width:0;text-align:left;font-family:'IBM Plex Mono',monospace;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ link }}</span>
+            <a href="{{ pubUrl }}" target="_blank" rel="noopener" style="flex:1;min-width:0;text-align:left;font-family:'IBM Plex Mono',monospace;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:inherit;text-decoration:none">{{ link }}</a>
             <button type="button" onClick="{{ copyLink }}" style="height:44px;padding:0 14px;border:0;border-radius:10px;background:#1C1F24;color:#FFFFFF;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;flex:none"><span class="material-symbols-rounded" style="font-size:18px">content_copy</span>Copier le lien</button>
           </div>
           <div style="width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
@@ -1702,7 +1723,13 @@ function fmtLong(d){ const [y,m,dd]=d.split('-'); return `${+dd} ${MONTHS[m-1]} 
 let CLOCK=12*60+40;
 function nowTime(){ CLOCK=Math.min(CLOCK+1,23*60+59); return String(Math.floor(CLOCK/60)).padStart(2,'0')+':'+String(CLOCK%60).padStart(2,'0'); }
 function initials(t){ return (t||'').replace(/[^A-Za-zÀ-ÿ ]/g,' ').trim().split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase()||'?'; }
-function slugify(t){ return (t||'commerce').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,24)||'commerce'; }
+// Public slug of /join/<slug>: lowercase letters and digits only (BASH \u2192 bash, Napolit'Hein \u2192 napolithein).
+function slugify(t){ return (t||'commerce').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'').slice(0,24)||'commerce'; }
+// /join/<slug> opens the public sign-up page, without any merchant session.
+const JOIN_SLUG=(()=>{ try{ const r=/^\/join\/([^\/]+)\/?$/.exec(window.location.pathname); return r?decodeURIComponent(r[1]).toLowerCase():null; }catch(e){ return null; } })();
+// Printed QR codes must point at the production site; local dev keeps its own origin for testing.
+const PUBLIC_SITE=/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)?window.location.origin:'https://dpa-cards.vercel.app';
+function joinUrl(slug){ return PUBLIC_SITE+'/join/'+slug; }
 function lum(hex){ const h=hex.replace('#',''); const v=[0,2,4].map(i=>{const c=parseInt(h.substr(i,2),16)/255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}); return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]; }
 function mk(id,first,last,card,joined,joinTime,visits,rewards){
   const hist=[];
@@ -1781,7 +1808,8 @@ class Component extends DCLogic {
       selId:null, notifs:demoNotifs(demoClients()), nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
       modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple',
       ob:{step:1,biz:'',activity:'Restaurant',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
-      section:'profile', loadingHome:false, prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true };
+      section:'profile', loadingHome:false, prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true,
+      ...(JOIN_SLUG?{screen:'joinLoading',pubSlug:JOIN_SLUG,pubErr:null,pubWallet:null,clients:[],notifs:[],consent:false,merchant:{...M0,business:'',slug:JOIN_SLUG}}:{}) };
   }
   componentDidMount(){
     this._r=()=>this.setState(s=>({w:window.innerWidth,...(window.innerWidth<1024&&s.screen==='card'?{screen:'home'}:{})})); window.addEventListener('resize',this._r);
@@ -1789,6 +1817,7 @@ class Component extends DCLogic {
     this._wedge=e=>this.onWedgeKey(e); window.addEventListener('keydown',this._wedge,true);
     this._vis=()=>this.setState({pageVisible:document.visibilityState!=='hidden'}); document.addEventListener('visibilitychange',this._vis);
     this._wf=()=>this.setState({winFocus:document.hasFocus()}); window.addEventListener('focus',this._wf); window.addEventListener('blur',this._wf);
+    if(this.state.pubSlug) return this.bootPublic();
     const st=this.props.startScreen; if(st&&st!=='login'){ this.enterDemo(); if(st!=='home') setTimeout(()=>this.go(st),10); }
     else this.bootLive();
   }
@@ -2106,6 +2135,7 @@ class Component extends DCLogic {
     this.setState({modal:null,screen:'scanner',f:{...this.state.f,manualNo:''},scan:c?{st:'found',id:c.id,added:false,used:false,msg:''}:{st:'unknown',id:null,added:false,used:false,msg:''}}); this.scrollTop(); };
   submitJoin=e=>{ e&&e.preventDefault(); const f=this.state.f; if(this.state.busy) return;
     if(!this.validate([['joinFirst',f.joinFirst.trim(),'Indiquez votre prénom.'],['joinEmail',!f.joinEmail||EMAIL.test(f.joinEmail),"Cette adresse e-mail n'est pas valide."],['consent',this.state.consent,'Veuillez accepter les conditions du programme.']])) return;
+    if(this.state.pubSlug) return this.joinPublic(f);
     if(this.state.live) return this.joinLive(f);
     this.setState({busy:true});
     setTimeout(()=>{ const id='c'+Date.now(); const card='DPA 4821 '+String(2400+Math.floor(Math.random()*500));
@@ -2152,6 +2182,36 @@ class Component extends DCLogic {
     this.setState({modal:'gwallet',gw:{loading:true,cardId}});
     try{ const r=await this.api.walletLink(cardId); if(this.state.modal==='gwallet') this.setState({gw:{cardId,url:r.url,qr:r.qr,sync:r.sync}}); }
     catch(e){ if(this.state.modal==='gwallet') this.setState({gw:{cardId,error:this.api.errorMessage(e)}}); } }
+  // ---- Public sign-up page /join/<slug>: no merchant session. Everything goes through the
+  // `wallet` Edge Function, which resolves the slug; the browser never names a merchant or program.
+  async bootPublic(){ this.setState({screen:'joinLoading',pubErr:null});
+    const api=await this.ready(); if(!api) return this.setState({screen:'joinMissing',pubErr:'network'});
+    try{ const r=await api.publicProgram(this.state.pubSlug);
+      if(!r) return this.setState({screen:'joinMissing',pubErr:null});
+      useCalendar(true); try{ document.title=r.program.name+' · '+r.business; }catch(e){}
+      this.setState(s=>({screen:'join',merchant:{...s.merchant,business:r.business,slug:r.slug},program:r.program,draft:{...r.program},clients:[],joinedId:null,consent:false,err:{},f:{...s.f,joinFirst:'',joinEmail:''}})); }
+    catch(e){ this.setState({screen:'joinMissing',pubErr:'network'}); } }
+  // Same request id for the whole visit: a retry (lost response, Wallet retry) returns the same card.
+  pubReqId(){ return this._pubReq||(this._pubReq=this.api.uuid()); }
+  async joinPublic(f){ this.setState({busy:true});
+    try{ const r=await this.api.publicJoin(this.state.pubSlug,this.pubReqId(),f.joinFirst.trim(),f.joinEmail.trim());
+      const c={id:'pub-card',customerId:null,first:r.first,last:'',card:r.cardNumber,joined:TODAY,balance:0,history:[],wallet:null,qrValue:r.qrValue};
+      this.setState({busy:false,clients:[c],joinedId:c.id,pubWallet:r.wallet,screen:'joinDone'}); this.scrollTop(); }
+    catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
+  openPublicWallet(){ const s=this.state, w=s.pubWallet||{}; if(s.busy) return;
+    const open=url=>{ const win=window.open(url,'_blank'); if(win) win.opener=null; else window.location.assign(url); };
+    if(w.url) return open(w.url);
+    if(w.error==='design_pending'||w.error==='wallet_not_configured') return this.showToast('L’ajout à Google Wallet sera bientôt disponible pour ce programme. Votre carte est bien créée : présentez son QR code en caisse.','info');
+    this.setState({busy:true});
+    this.api.publicJoin(s.pubSlug,this.pubReqId(),s.f.joinFirst.trim(),s.f.joinEmail.trim())
+      .then(r=>{ this.setState({busy:false,pubWallet:r.wallet}); if(r.wallet.url) open(r.wallet.url); else this.showToast(this.api.errorMessage(new Error(r.wallet.error||'wallet_unavailable')),'error'); })
+      .catch(e=>{ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); }); }
+  async downloadJoinQr(){ const m=this.state.merchant;
+    try{ const href=await this.api.qrPng(joinUrl(m.slug)); const a=document.createElement('a'); a.href=href; a.download='qr-inscription-'+m.slug+'.png'; document.body.appendChild(a); a.click(); a.remove(); }
+    catch(e){ this.showToast('Le QR code n’a pas pu être généré. Réessayez.','error'); } }
+  copyJoinLink(){ const url=joinUrl(this.state.merchant.slug);
+    const ok=()=>this.showToast('Lien copié'), ko=()=>this.showToast('Copie impossible sur ce navigateur. Lien : '+url,'info');
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok,ko); else ko(); }catch(e){ ko(); } }
   async logoutLive(){ this.setState({busy:true}); try{ await this.api.signOut(); }catch(e){} this.resetToLogin(); }
 
   nh(k){ return this._h['n'+k] ||= e=>{ const v=e.target.value; this.setState(s=>({nf:{...s.nf,[k]:v},err:{...s.err,['n'+k]:null,nwhen:null}})); }; }
@@ -2258,24 +2318,25 @@ class Component extends DCLogic {
       logo:p.logoUrl?React.createElement('img',{src:p.logoUrl,alt:'',style:{width:'100%',height:'100%',objectFit:'cover',borderRadius:'inherit',display:'block'}}):(p.logo||'LOGO'),business,program:p.name||'Mon programme',
       value,unit:this.unitOf(p).toUpperCase(),reward:p.reward||'Récompense',member,cardNo,qr,showQr};
   }
-  realQr(text,size){ this._qrc=this._qrc||new Map(); const k=text+'|'+size; if(this._qrc.has(k)) return this._qrc.get(k);
+  realQr(text,size,label){ this._qrc=this._qrc||new Map(); const k=text+'|'+size; if(this._qrc.has(k)) return this._qrc.get(k);
     const {n,d}=this.api.scanner.qrPath(text);
-    const el=React.createElement('svg',{viewBox:`-2 -2 ${n+4} ${n+4}`,width:size,height:size,role:'img','aria-label':'QR code de la carte',style:{display:'block',background:'#FFFFFF'}},React.createElement('path',{d,fill:'#15171B'}));
+    const el=React.createElement('svg',{viewBox:`-2 -2 ${n+4} ${n+4}`,width:size,height:size,role:'img','aria-label':label||'QR code de la carte',style:{display:'block',background:'#FFFFFF'}},React.createElement('path',{d,fill:'#15171B'}));
     this._qrc.set(k,el); return el; }
-  cardQr(c,size){ return this.state.live&&c&&c.qrValue&&this.api?this.realQr(c.qrValue,size):qrSvg(c?c.card:'',size); }
+  cardQr(c,size){ return (this.state.live||this.state.pubSlug)&&c&&c.qrValue&&this.api?this.realQr(c.qrValue,size):qrSvg(c?c.card:'',size); }
   lastVisit(c){ const v=c.history.find(h=>h.type==='visit'); return v?`${fmtDate(v.date)}, ${v.time}`:'Aucun passage'; }
 
   renderVals(){
     const s=this.state, W=s.w, isDesk=W>=1024, isMob=!isDesk, scr=s.screen;
-    const names=['login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','notifs','notifNew'];
+    const names=['login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','joinLoading','joinMissing','notifs','notifNew'];
     const S={}; names.forEach(k=>S[k]=scr===k);
-    S.auth=S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.app=!S.auth&&!S.onb&&!S.pub;
+    S.auth=S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState;
     const m=s.merchant, P=s.program, goal=+P.goal, unit=this.unitOf(P), step=this.stepOf(P);
     const F={}, err=s.err, eb={}, inv={};
     Object.keys(s.f).forEach(k=>F[k]=this.fh(k));
     ['loginEmail','loginPwd','suBiz','suFirst','suLast','suEmail','suPwd','fpEmail','manualNo','joinFirst','joinEmail','pwdCur','pwdNew','pwdConf','obbiz','obreward','sdfirst','sdemail','sdbusiness','obprog','obhex','drdesc','drname','drcontact','drcolors'].forEach(k=>{ eb[k]=err[k]?'#B42318':'#D4D1C9'; inv[k]=!!err[k]; });
     const go=k=>()=>this.go(k);
-    const link=`dpa.cards/r/${m.slug}`;
+    // Live: the permanent public URL. QR code, « Copier le lien » and « Voir la page » all use this exact string.
+    const pubUrl=joinUrl(m.slug), link=pubUrl;
     const spin=React.createElement('span',{'aria-hidden':true,style:{width:18,height:18,border:'2.5px solid currentColor',borderRightColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'dpaSpin .8s linear infinite',flex:'none'}});
     const scanLine=React.createElement('div',{'aria-hidden':true,style:{position:'absolute',left:'12%',right:'12%',height:2,borderRadius:2,background:'#7C95FF',boxShadow:'0 0 18px 4px rgba(124,149,255,0.55)',animation:'dpaScan 2s ease-in-out infinite alternate'}});
     const sheetAnim=React.createElement('span',{style:{display:'none'}});
@@ -2451,7 +2512,10 @@ class Component extends DCLogic {
       login:this.login, signup:this.signup, forgot:this.forgot,
       toLogin:go('login'), toSignup:go('signup'), toForgot:go('forgot'), resend:this.resendReset, resendSignup:this.resendSignup, submitReset:this.submitReset, resetBtn:s.busy?'Enregistrement…':'Enregistrer le mot de passe',
       isDemo:!!s.demo, isLive:!s.demo, authFooter:'DPA CARDS v0.1 · aucune connexion Apple ou Google',
-      linkNote:s.demo?'Lien et QR code de démonstration.':'Inscription publique pas encore disponible : ce lien et ce QR code ne sont pas actifs.',
+      linkNote:s.demo?'Lien et QR code de démonstration.':'Lien permanent : vous pouvez imprimer ce QR code ou partager ce lien.',
+      notPublic:!s.pubSlug, pubRetry:()=>this.bootPublic(),
+      pubMiss:s.pubErr==='network'?{icon:'wifi_off',title:'Page momentanément indisponible',text:'Vérifiez votre connexion internet puis réessayez.',retry:true}
+        :{icon:'search_off',title:'Programme de fidélité introuvable',text:'Ce lien d’inscription n’existe pas ou n’est plus actif. Vérifiez le QR code ou demandez le lien au commerce.',retry:false},
       joinBanner:s.demo?'Aperçu de la page publique · démonstration, aucune donnée n’est collectée':'Inscription sur cet appareil · le client est enregistré dans votre espace',
       logoutNote:s.demo?'Vous devrez vous reconnecter pour scanner des cartes. Les données de démonstration seront réinitialisées.':'Vous devrez vous reconnecter pour scanner des cartes. Vos données restent enregistrées.',
       authCard,
@@ -2462,10 +2526,10 @@ class Component extends DCLogic {
       drPickLogo:this.drPick(false), drPickRefs:this.drPick(true), drRemoveLogo:()=>this.setState({drLogo:null}), obMode:mkMode('ob'), obGoalDown:stepGoal('ob',-1), obGoalUp:stepGoal('ob',1), obUnit:o.mode==='points'?'points':'passages',
       obBg:mkSw(BGS,'bg','ob'), obAccent:mkSw(ACCENTS,'accent','ob'), obPat:mkPat('ob'), obLogoPreview:obP.logo,
       obDoneGo:()=>{ this.setState({screen:'home',loadingHome:true}); setTimeout(()=>this.setState({loadingHome:false}),600); },
-      qrBiz:qrSvg('biz-'+m.slug,200), qrBizSm:qrSvg('biz-'+m.slug,168), link,
-      copyLink:()=>{ if(s.live) return this.showToast('L’inscription publique n’est pas encore disponible : aucun lien à partager.','info'); try{ navigator.clipboard&&navigator.clipboard.writeText('https://'+link).catch(()=>{}); }catch(e){} this.showToast('Lien copié'); },
-      downloadQr:()=>this.showToast(s.live?'Le QR code d’inscription publique n’est pas encore disponible.':'Démo : le téléchargement du QR code n’est pas activé.','info'),
-      mobNav, deskNav, toScanner:go('scanner'), toMore:go('more'), toInvite:go('invite'), toCard:go('card'), toClients:go('clients'), toJoin:go('join'), toHome:go('home'),
+      qrBiz:this.api?this.realQr(pubUrl,200,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,200), qrBizSm:this.api?this.realQr(pubUrl,168,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,168), link, pubUrl,
+      copyLink:()=>this.copyJoinLink(),
+      downloadQr:()=>s.live?this.downloadJoinQr():this.showToast('Démo : le téléchargement du QR code n’est pas activé.','info'),
+      mobNav, deskNav, toScanner:go('scanner'), toMore:go('more'), toInvite:go('invite'), toCard:go('card'), toClients:go('clients'), toJoin:()=>{ const w=window.open(pubUrl,'_blank'); if(w) w.opener=null; else window.location.assign(pubUrl); }, toHome:go('home'),
       mInitials:initials(m.first+' '+m.last), todayLabel:s.live?todayLong():'Mercredi 30 septembre',
       loadingHome:s.loadingHome, notLoadingHome:!s.loadingHome, stats, activities, hasActivities:activities.length>0, noActivities:activities.length===0,
       homeCard, ruleText:`${goal} ${unit} = ${P.reward}`,
@@ -2490,8 +2554,8 @@ class Component extends DCLogic {
           qr:g.qr?React.createElement('img',{src:g.qr,width:232,height:232,alt:'QR code du lien d’ajout à Google Wallet',style:{display:'block'}}):null,
           syncText:!sy?'':(sy.last_error?'Mise à jour du solde Google en attente : nouvel essai automatique.':(sy.pending?'Solde Google en cours de mise à jour.':`Solde Google Wallet à jour : ${sy.synced_balance}.`)),
           copy:()=>{ try{ navigator.clipboard&&navigator.clipboard.writeText(g.url).catch(()=>{}); }catch(e){} this.showToast('Lien copié'); }}; })(),
-      walletNote:s.live?'Apple Wallet n’est pas encore disponible.':'Boutons de démonstration : aucune carte n’est installée.',
-      joined, joinCard, hasJoined:!!joined, openWallet:k=>()=>this.setState({modal:'wallet',target:k}), openApple:()=>this.setState({modal:'wallet',target:'apple'}), openGoogle:()=>{ if(s.live&&s.joinedId) return this.openGWallet(s.joinedId); this.setState({modal:'wallet',target:'google'}); },
+      walletNote:s.live||s.pubSlug?'Apple Wallet n’est pas encore disponible.':'Boutons de démonstration : aucune carte n’est installée.',
+      joined, joinCard, hasJoined:!!joined, openWallet:k=>()=>this.setState({modal:'wallet',target:k}), openApple:()=>{ if(s.pubSlug) return this.showToast('Apple Wallet n’est pas encore disponible.','info'); this.setState({modal:'wallet',target:'apple'}); }, openGoogle:()=>{ if(s.pubSlug) return this.openPublicWallet(); if(s.live&&s.joinedId) return this.openGWallet(s.joinedId); this.setState({modal:'wallet',target:'google'}); },
       mod, closeModal, stop:e=>e.stopPropagation(), rwC, confirmReward:this.confirmReward, rewardBtn:s.busy?'Validation…':'Confirmer', corrE:corrE?{...corrE,when:`${fmtDate(corrE.date)}, ${corrE.time}`}:null, corrName:corrC?corrC.first+' '+corrC.last:'', motifs, confirmCorr:this.confirmCorr, corrBtn:s.busy?'Correction…':'Confirmer la correction', walletName,
       modalAlign:isDesk?'center':'flex-end', modalRadius:isDesk?'20px':'22px 22px 0 0', toast:s.toast, toastBottom:isDesk?'28px':toastM, toastIcon:s.toast&&s.toast.kind==='info'?'info':(s.toast&&s.toast.kind==='error'?'error':'check_circle'), toastIconColor:s.toast&&s.toast.kind==='info'?'#9DB0FF':(s.toast&&s.toast.kind==='error'?'#FF9B8F':'#7FE0AE'),
       prevOrder:isDesk?'2':'0', mainPadB:isDesk?'48px':(mShowNav?(scr==='client'?'calc(170px + env(safe-area-inset-bottom))':'calc(96px + env(safe-area-inset-bottom))'):'0px'), toNotifs:go('notifs'), ...nv,
