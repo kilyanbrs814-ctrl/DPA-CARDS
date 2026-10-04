@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js';
 import QRCode from 'qrcode';
 import { makeCropper } from './cropper.js';
+import { scanDevice, canUseCamera, cameraPermission, decodeKeys, parseCode, qrPath, requestCamera, cameraErrorKind, makeCameraView } from './scanner.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -83,6 +84,7 @@ const DB_ERRORS = {
   design_pending: 'Le design de votre carte est en cours de création par DPA Cards. L’ajout à Google Wallet sera disponible une fois le design validé.',
   design_locked: 'Le design de la carte est validé. Pour le modifier, contactez DPA Cards.',
   design_changed: 'Le design a été modifié pendant la validation. Vérifiez l’aperçu puis validez à nouveau.',
+  invalid_code: 'Numéro de carte invalide.',
   design_status_forbidden: 'Cette action n’est pas autorisée pour ce design.',
   missing_logo: 'Ajoutez le logo de votre commerce : il est obligatoire pour Google Wallet.',
   invalid_logo: 'Le logo doit être une image PNG carrée d’au moins 660 px. Importez-le à nouveau.',
@@ -174,6 +176,7 @@ function toClient(card, cust, evs) {
   return {
     id: card.id, customerId: cust.id, first: cust.first_name, last: cust.last_name, card: card.card_number,
     joined: ymd(card.created_at), balance: sorted.length ? sorted[0].balance_after : 0, history, wallet: null,
+    qrValue: card.qr_token ? 'DPA1:' + card.qr_token : null,
   };
 }
 
@@ -209,7 +212,7 @@ async function loadAll(user) {
 
   const [customers, cards, events] = await Promise.all([
     fetchAll('customers', 'id, first_name, last_name', 'created_at'),
-    fetchAll('cards', 'id, customer_id, program_id, card_number, created_at', 'created_at'),
+    fetchAll('cards', 'id, customer_id, program_id, card_number, qr_token, created_at', 'created_at'),
     fetchAll('card_events', 'id, card_id, seq, type, delta, balance_after, corrects_event_id, motif, note, reward_label, created_at', 'created_at'),
   ]);
   const byCust = new Map(customers.map(c => [c.id, c]));
@@ -325,6 +328,24 @@ const api = {
       p_description: description, p_contact_name: contactName, p_contact_email: contactEmail || null, p_contact_phone: contactPhone || null,
     });
     return toRequest(r);
+  },
+  // ---- scanner: QR (USB reader or camera) and keyboard share one server lookup.
+  scanner: { device: scanDevice(), canUseCamera, cameraPermission, decodeKeys, parseCode, qrPath, requestCamera, cameraErrorKind, CameraView: makeCameraView(window.React) },
+  // RLS + explicit merchant filter on the server: another business's card is simply not found.
+  async lookupCard(code) {
+    const data = await rpc('lookup_card', { p_code: code });
+    return (data || []).map(r => r.card_id);
+  },
+  // One card with its customer and history (a card enrolled on another device since the last load).
+  async loadClient(cardId) {
+    const { data: k, error } = await sb.from('cards')
+      .select('id, customer_id, program_id, card_number, qr_token, created_at, customers(id, first_name, last_name)').eq('id', cardId).maybeSingle();
+    if (error) throw error;
+    if (!k) return null;
+    const { data: evs, error: e2 } = await sb.from('card_events')
+      .select('id, card_id, seq, type, delta, balance_after, corrects_event_id, motif, note, reward_label, created_at').eq('card_id', cardId);
+    if (e2) throw e2;
+    return toClient(k, k.customers, evs || []);
   },
   async enroll(requestId, first, email) {
     const r = await rpc('enroll_customer', {

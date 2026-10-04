@@ -181,6 +181,37 @@ import de logo, lien et QR code d'inscription publique.
 
 La classe `bash_test_v1` créée dans la console reste en `draft` et n'est pas utilisée.
 
+## Scanner (mode connecté)
+
+Le QR d'une carte contient `DPA1:<qr_token>` (UUID opaque de `cards.qr_token`, aucune
+donnée personnelle) : c'est le même sur Google Wallet et sur la carte affichée par le
+site. Douchette, caméra et clavier passent tous par `lookup_card` (RPC Supabase,
+`SECURITY INVOKER` + filtre explicite sur le commerce connecté) : une carte d'un
+autre commerce n'est jamais trouvée.
+
+- **PC / caisse** (système de bureau, même tactile, démo comprise) : jamais de caméra,
+  ni demande d'autorisation. Trois méthodes sur le même écran :
+  1. *Scanner avec le lecteur QR* : champ `#pos-reader` focalisé automatiquement, vidé
+     après chaque lecture ; la page capte aussi les frappes rapides + Entrée quand le
+     focus est ailleurs, et un Entrée de douchette n'active jamais un bouton. Lecteur
+     réglé en QWERTY sur un poste AZERTY : pris en charge (touches physiques).
+  2. *Saisir le numéro de carte* : numéro complet ou 4 derniers chiffres, erreurs
+     affichées sous le champ.
+  3. *Rechercher un client* : prénom, nom ou numéro, parmi les clients du commerce.
+  Après un passage ou une récompense, retour automatique à « Lecteur prêt » s'il ne
+  reste rien à faire. En démo sur PC, « Simuler un scan » reste disponible.
+- **Téléphone / tablette** : la caméra arrière (`facingMode: environment`) est demandée
+  à l'ouverture du scanner, jamais au chargement du site. Lecture par BarcodeDetector
+  s'il gère `qr_code`, sinon jsQR chargé à la demande (iPhone Safari). Premier QR lu =
+  scanner verrouillé et caméra coupée ; au retour, le même QR est ignoré 3 s après la
+  reprise du flux. États : autorisation en attente, refusée (Réessayer), indisponible
+  (HTTPS / navigateur), aucun appareil photo, ouverture impossible, flux interrompu.
+  Les pistes vidéo sont arrêtées quand un client s'ouvre, en quittant le scanner, à la
+  déconnexion, à l'ouverture de la saisie manuelle et quand la page passe en arrière-plan.
+  Saisie du numéro et recherche client en secours. La caméra exige HTTPS (ou `localhost`).
+- Forcer un mode sur un appareil : ouvrir l'application avec `?scanner=pos` ou
+  `?scanner=camera` (mémorisé sur l'appareil).
+
 ## Création de la carte (onboarding, étape 3)
 
 Le programme est créé à la fin de l'étape 2 avec un visuel neutre (`design_status = 'draft'`).

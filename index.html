@@ -642,6 +642,38 @@ a:hover{color:#1A36C4}
 
       <sc-if value="{{ scanV.notFound }}" hint-placeholder-val="{{ true }}">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px;align-items:start">
+        <sc-if value="{{ scanPos }}" hint-placeholder-val="{{ false }}">
+<section aria-label="Scanner une carte au comptoir" onClick="{{ pos.wake }}" style="width:100%;background:#FFFFFF;color:#1C1F24;border:1px solid #E4E1DA;border-radius:24px;padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:22px;text-align:left">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:16px;align-items:flex-start">
+              <div style="width:56px;height:56px;border-radius:16px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:30px">barcode_reader</span></div>
+              <div style="flex:1;min-width:0"><h2 id="pos-h" style="margin:0;font-weight:800;font-size:22px;line-height:1.2">Scanner avec le lecteur QR</h2><p style="margin:6px 0 0;color:#4A4E55;font-size:15px;line-height:1.5">Scannez le QR code avec votre lecteur : la carte est recherchée automatiquement.</p></div>
+            </div>
+            <form onSubmit="{{ pos.readerSubmit }}" noValidate="{{ true }}">
+              <label for="pos-reader" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Saisie du lecteur QR</label>
+              <input id="pos-reader" autoComplete="off" autoCapitalize="off" spellCheck="false" value="{{ f.readerNo }}" onChange="{{ F.readerNo }}" placeholder="En attente du scan…" style="width:100%;height:54px;padding:0 16px;border:1.5px solid {{ pos.readerBorder }};border-radius:12px;background:#FFFFFF;font-size:16px;outline:none;font-family:'IBM Plex Mono',monospace" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
+            </form>
+            <div role="status" aria-live="polite" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:{{ pos.bg }};color:{{ pos.fg }};font-weight:600;font-size:15px">{{ pos.icon }}<span>{{ pos.label }}</span></div>
+            <sc-if value="{{ pos.hasErr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:#FCEBEA;color:#7A1A13;font-size:15px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:22px">error</span><span>{{ pos.err }}</span></div></sc-if>
+          </div>
+          <div style="height:1px;background:#E4E1DA"></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <label for="pos-no" style="font-weight:700;font-size:16px">Saisir le numéro de carte</label>
+            <form onSubmit="{{ pos.submit }}" noValidate="{{ true }}" style="display:flex;gap:10px;flex-wrap:wrap">
+              <input id="pos-no" inputMode="numeric" autoComplete="off" placeholder="DPA 4821 0935 ou 4 derniers chiffres" value="{{ f.manualNo }}" onChange="{{ F.manualNo }}" aria-invalid="{{ pos.hasMerr }}" style="flex:1;min-width:min(100%,220px);height:54px;padding:0 16px;border:1.5px solid {{ pos.manualBorder }};border-radius:12px;background:#FFFFFF;font-size:16px;outline:none;font-family:'IBM Plex Mono',monospace" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
+              <button type="submit" disabled="{{ pos.loading }}" style="height:54px;padding:0 22px;border:0;border-radius:12px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;flex:none" style-hover="background:#1A36C4"><sc-if value="{{ pos.manualLoading }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if><sc-if value="{{ pos.manualIdle }}" hint-placeholder-val="{{ true }}"><span class="material-symbols-rounded" style="font-size:20px">search</span></sc-if>{{ pos.manualBtn }}</button>
+            </form>
+            <sc-if value="{{ pos.hasMerr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:#FCEBEA;color:#7A1A13;font-size:15px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:22px">error</span><span>{{ pos.merr }}</span></div></sc-if>
+            <div style="font-size:13px;color:#5E636B;line-height:1.45">Le numéro figure sous le QR code de la carte. Les 4 derniers chiffres suffisent s’ils sont propres à un seul client.</div>
+          </div>
+          <div style="height:1px;background:#E4E1DA"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div style="min-width:0"><div style="font-weight:700;font-size:16px">Retrouver un client</div><div style="margin-top:2px;font-size:14px;color:#5E636B">Par prénom, nom ou numéro de carte.</div></div>
+            <button type="button" onClick="{{ openSearch }}" style="min-height:48px;padding:0 18px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px" style-hover="background:#F6F5F1"><span class="material-symbols-rounded" style="font-size:20px">person_search</span>Rechercher un client</button>
+          </div>
+        </section>
+</sc-if>
+        <sc-if value="{{ scanCam }}" hint-placeholder-val="{{ true }}">
         <div style="display:flex;flex-direction:column;gap:14px">
           <sc-if value="{{ scanV.perm }}" hint-placeholder-val="{{ true }}">
             <div style="aspect-ratio:1;max-height:440px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:28px">
@@ -657,14 +689,15 @@ a:hover{color:#1A36C4}
           <sc-if value="{{ scanV.denied }}" hint-placeholder-val="{{ false }}">
             <div role="alert" style="aspect-ratio:1;max-height:440px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:28px">
               <div style="width:64px;height:64px;border-radius:18px;background:#FCEBEA;color:#B42318;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:32px">no_photography</span></div>
-              <h2 style="margin:0;font-weight:700;font-size:21px">Caméra indisponible</h2>
-              <p style="margin:0;max-width:320px;color:#4A4E55;font-size:15px;line-height:1.5">L’accès a été refusé ou aucune caméra n’est détectée. Autorisez-la dans les réglages du navigateur, ou saisissez le numéro de carte.</p>
+              <h2 style="margin:0;font-weight:700;font-size:21px">{{ scanV.camTitle }}</h2>
+              <p style="margin:0;max-width:320px;color:#4A4E55;font-size:15px;line-height:1.5">{{ scanV.camText }}</p>
               <button type="button" onClick="{{ retryCam }}" style="height:50px;padding:0 22px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">refresh</span>Réessayer</button>
             </div>
           </sc-if>
           <sc-if value="{{ scanV.view }}" hint-placeholder-val="{{ false }}">
-            <div style="position:relative;aspect-ratio:1;max-height:440px;border-radius:24px;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%, #2A2E36 0%, #121418 100%)" aria-label="Zone de scan (caméra simulée)">
-              <div style="position:absolute;top:14px;left:14px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,0.14);color:#FFFFFF;font-size:12px;font-weight:600">Caméra simulée</div>
+            <div style="position:relative;aspect-ratio:1;max-height:440px;border-radius:24px;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%, #2A2E36 0%, #121418 100%)" aria-label="{{ camAria }}">
+              {{ camEl }}
+              
               <div style="position:absolute;inset:18%">
                 <div style="position:absolute;top:0;left:0;width:44px;height:44px;border-top:4px solid #FFFFFF;border-left:4px solid #FFFFFF;border-top-left-radius:16px"></div>
                 <div style="position:absolute;top:0;right:0;width:44px;height:44px;border-top:4px solid #FFFFFF;border-right:4px solid #FFFFFF;border-top-right-radius:16px"></div>
@@ -672,6 +705,7 @@ a:hover{color:#1A36C4}
                 <div style="position:absolute;bottom:0;right:0;width:44px;height:44px;border-bottom:4px solid #FFFFFF;border-right:4px solid #FFFFFF;border-bottom-right-radius:16px"></div>
               </div>
               <sc-if value="{{ scanV.ready }}" hint-placeholder-val="{{ true }}">{{ scanLine }}</sc-if>
+              <sc-if value="{{ camWaiting }}" hint-placeholder-val="{{ false }}"><div role="status" style="position:absolute;inset:8px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;text-align:center;background:rgba(14,16,19,0.6);color:#FFFFFF;font-weight:700;font-size:16px;line-height:1.4">{{ spin }}Autorisez l’accès à la caméra pour scanner</div></sc-if>
               <sc-if value="{{ scanV.scanning }}" hint-placeholder-val="{{ false }}">
                 <div role="status" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(18,20,24,0.55);color:#FFFFFF;font-weight:700;font-size:17px">{{ spin }}Lecture de la carte…</div>
               </sc-if>
@@ -694,7 +728,7 @@ a:hover{color:#1A36C4}
           </sc-if>
           <button type="button" onClick="{{ openManual }}" style="min-height:54px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#F8F7F4"><span class="material-symbols-rounded" style="font-size:22px">keyboard</span>Saisir le numéro de carte</button>
         </div>
-
+        </sc-if>
       </div>
       </sc-if>
     </div>
@@ -707,7 +741,38 @@ a:hover{color:#1A36C4}
         <div style="width:44px"></div>
       </div>
       <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:16px 24px;text-align:center">
-        <sc-if value="{{ scanV.perm }}" hint-placeholder-val="{{ true }}">
+        <sc-if value="{{ scanPos }}" hint-placeholder-val="{{ false }}">
+<section aria-label="Scanner une carte au comptoir" onClick="{{ pos.wake }}" style="width:100%;background:#FFFFFF;color:#1C1F24;border:1px solid #E4E1DA;border-radius:24px;padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:22px;text-align:left">
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:16px;align-items:flex-start">
+              <div style="width:56px;height:56px;border-radius:16px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:30px">barcode_reader</span></div>
+              <div style="flex:1;min-width:0"><h2 id="pos-h" style="margin:0;font-weight:800;font-size:22px;line-height:1.2">Scanner avec le lecteur QR</h2><p style="margin:6px 0 0;color:#4A4E55;font-size:15px;line-height:1.5">Scannez le QR code avec votre lecteur : la carte est recherchée automatiquement.</p></div>
+            </div>
+            <form onSubmit="{{ pos.readerSubmit }}" noValidate="{{ true }}">
+              <label for="pos-reader" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Saisie du lecteur QR</label>
+              <input id="pos-reader" autoComplete="off" autoCapitalize="off" spellCheck="false" value="{{ f.readerNo }}" onChange="{{ F.readerNo }}" placeholder="En attente du scan…" style="width:100%;height:54px;padding:0 16px;border:1.5px solid {{ pos.readerBorder }};border-radius:12px;background:#FFFFFF;font-size:16px;outline:none;font-family:'IBM Plex Mono',monospace" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
+            </form>
+            <div role="status" aria-live="polite" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;background:{{ pos.bg }};color:{{ pos.fg }};font-weight:600;font-size:15px">{{ pos.icon }}<span>{{ pos.label }}</span></div>
+            <sc-if value="{{ pos.hasErr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:#FCEBEA;color:#7A1A13;font-size:15px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:22px">error</span><span>{{ pos.err }}</span></div></sc-if>
+          </div>
+          <div style="height:1px;background:#E4E1DA"></div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <label for="pos-no" style="font-weight:700;font-size:16px">Saisir le numéro de carte</label>
+            <form onSubmit="{{ pos.submit }}" noValidate="{{ true }}" style="display:flex;gap:10px;flex-wrap:wrap">
+              <input id="pos-no" inputMode="numeric" autoComplete="off" placeholder="DPA 4821 0935 ou 4 derniers chiffres" value="{{ f.manualNo }}" onChange="{{ F.manualNo }}" aria-invalid="{{ pos.hasMerr }}" style="flex:1;min-width:min(100%,220px);height:54px;padding:0 16px;border:1.5px solid {{ pos.manualBorder }};border-radius:12px;background:#FFFFFF;font-size:16px;outline:none;font-family:'IBM Plex Mono',monospace" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
+              <button type="submit" disabled="{{ pos.loading }}" style="height:54px;padding:0 22px;border:0;border-radius:12px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px;flex:none" style-hover="background:#1A36C4"><sc-if value="{{ pos.manualLoading }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if><sc-if value="{{ pos.manualIdle }}" hint-placeholder-val="{{ true }}"><span class="material-symbols-rounded" style="font-size:20px">search</span></sc-if>{{ pos.manualBtn }}</button>
+            </form>
+            <sc-if value="{{ pos.hasMerr }}" hint-placeholder-val="{{ false }}"><div role="alert" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:#FCEBEA;color:#7A1A13;font-size:15px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:22px">error</span><span>{{ pos.merr }}</span></div></sc-if>
+            <div style="font-size:13px;color:#5E636B;line-height:1.45">Le numéro figure sous le QR code de la carte. Les 4 derniers chiffres suffisent s’ils sont propres à un seul client.</div>
+          </div>
+          <div style="height:1px;background:#E4E1DA"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div style="min-width:0"><div style="font-weight:700;font-size:16px">Retrouver un client</div><div style="margin-top:2px;font-size:14px;color:#5E636B">Par prénom, nom ou numéro de carte.</div></div>
+            <button type="button" onClick="{{ openSearch }}" style="min-height:48px;padding:0 18px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px" style-hover="background:#F6F5F1"><span class="material-symbols-rounded" style="font-size:20px">person_search</span>Rechercher un client</button>
+          </div>
+        </section>
+</sc-if>
+        <sc-if value="{{ scanCamPerm }}" hint-placeholder-val="{{ true }}">
           <div style="width:68px;height:68px;border-radius:20px;background:rgba(124,149,255,0.18);color:#B3C1FF;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:34px">photo_camera</span></div>
           <h2 style="margin:0;font-weight:800;font-size:23px;line-height:1.2">Autoriser l’accès à la caméra</h2>
           <p style="margin:0;max-width:320px;color:#C9CCD3;font-size:16px;line-height:1.5">La caméra sert uniquement à lire le QR code de la carte client.</p>
@@ -716,25 +781,26 @@ a:hover{color:#1A36C4}
             <button type="button" onClick="{{ denyCam }}" style="min-height:52px;border:1.5px solid rgba(255,255,255,0.3);border-radius:16px;background:transparent;color:#FFFFFF;font-weight:600;font-size:16px">Pas maintenant</button>
           </div>
         </sc-if>
-        <sc-if value="{{ scanV.denied }}" hint-placeholder-val="{{ false }}">
+        <sc-if value="{{ scanVc.denied }}" hint-placeholder-val="{{ false }}">
           <div role="alert" style="display:flex;flex-direction:column;align-items:center;gap:16px">
             <div style="width:68px;height:68px;border-radius:20px;background:rgba(255,120,105,0.16);color:#FFA79C;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:34px">no_photography</span></div>
-            <h2 style="margin:0;font-weight:800;font-size:23px">Caméra indisponible</h2>
-            <p style="margin:0;max-width:330px;color:#C9CCD3;font-size:16px;line-height:1.5">L’accès a été refusé ou aucune caméra n’est détectée. Autorisez-la dans les réglages du navigateur, ou recherchez le client.</p>
+            <h2 style="margin:0;font-weight:800;font-size:23px">{{ scanV.camTitle }}</h2>
+            <p style="margin:0;max-width:330px;color:#C9CCD3;font-size:16px;line-height:1.5">{{ scanV.camTextMob }}</p>
             <button type="button" onClick="{{ retryCam }}" style="min-height:52px;padding:0 22px;border:1.5px solid rgba(255,255,255,0.3);border-radius:16px;background:transparent;color:#FFFFFF;font-weight:600;font-size:16px;display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">refresh</span>Réessayer</button>
           </div>
         </sc-if>
-        <sc-if value="{{ scanV.view }}" hint-placeholder-val="{{ false }}">
-          <div aria-label="Zone de scan (caméra simulée)" style="position:relative;width:min(72vw,300px);aspect-ratio:1">
+        <sc-if value="{{ scanVc.view }}" hint-placeholder-val="{{ false }}">
+          <div aria-label="{{ camAria }}" style="position:relative;width:min(72vw,300px);aspect-ratio:1;border-radius:22px;overflow:hidden">{{ camEl }}
             <div style="position:absolute;top:0;left:0;width:44px;height:44px;border-top:4px solid #FFFFFF;border-left:4px solid #FFFFFF;border-top-left-radius:18px"></div>
             <div style="position:absolute;top:0;right:0;width:44px;height:44px;border-top:4px solid #FFFFFF;border-right:4px solid #FFFFFF;border-top-right-radius:18px"></div>
             <div style="position:absolute;bottom:0;left:0;width:44px;height:44px;border-bottom:4px solid #FFFFFF;border-left:4px solid #FFFFFF;border-bottom-left-radius:18px"></div>
             <div style="position:absolute;bottom:0;right:0;width:44px;height:44px;border-bottom:4px solid #FFFFFF;border-right:4px solid #FFFFFF;border-bottom-right-radius:18px"></div>
             <sc-if value="{{ scanV.ready }}" hint-placeholder-val="{{ true }}">{{ scanLine }}</sc-if>
+            <sc-if value="{{ camWaiting }}" hint-placeholder-val="{{ false }}"><div role="status" style="position:absolute;inset:8px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;text-align:center;background:rgba(14,16,19,0.6);color:#FFFFFF;font-weight:700;font-size:16px;line-height:1.4">{{ spin }}Autorisez l’accès à la caméra pour scanner</div></sc-if>
             <sc-if value="{{ scanV.scanning }}" hint-placeholder-val="{{ false }}"><div role="status" style="position:absolute;inset:8px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(14,16,19,0.6);color:#FFFFFF;font-weight:700;font-size:17px">{{ spin }}Lecture de la carte…</div></sc-if>
           </div>
           <div style="font-weight:600;font-size:17px;line-height:1.4;max-width:300px">Placez le QR code du client dans le cadre</div>
-          <span style="padding:5px 10px;border-radius:999px;background:rgba(255,255,255,0.12);color:#D6D8DD;font-size:12px;font-weight:600">Caméra simulée</span>
+          
         </sc-if>
       </div>
       <div style="flex:none;width:100%;max-width:520px;margin:0 auto;padding:8px 16px 16px;display:flex;flex-direction:column;gap:10px">
@@ -752,8 +818,10 @@ a:hover{color:#1A36C4}
             <button type="button" onClick="{{ resetScan }}" style="min-height:44px;padding:0 14px;border:1.5px solid #E0C88A;border-radius:12px;background:#FFFFFF;color:#5C4200;font-weight:700;font-size:14px;flex:none">Réessayer</button>
           </div>
         </sc-if>
+        <sc-if value="{{ scanCamLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openManual }}" style="min-height:52px;border:1.5px solid rgba(255,255,255,0.35);border-radius:16px;background:transparent;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px"><span class="material-symbols-rounded" style="font-size:22px">keyboard</span>Saisir le numéro de carte</button></sc-if>
+        <sc-if value="{{ scanCam }}" hint-placeholder-val="{{ true }}">
         <button type="button" onClick="{{ openSearch }}" style="min-height:56px;border:0;border-radius:16px;background:#FFFFFF;color:#1C1F24;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-active="background:#E4E1DA"><span class="material-symbols-rounded" style="font-size:22px">search</span>Rechercher un client</button>
-        <div style="text-align:center;font-size:13px;color:#A9ADB5">Par nom ou numéro de carte</div>
+        <div style="text-align:center;font-size:13px;color:#A9ADB5">Par nom ou numéro de carte</div></sc-if>
       </div>
     </div>
     <sc-if value="{{ scanV.found }}" hint-placeholder-val="{{ false }}">
@@ -1478,20 +1546,6 @@ a:hover{color:#1A36C4}
       </ul>
       <button type="button" onClick="{{ closeModal }}" style="min-height:50px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px">Annuler</button>
     </sc-if>
-    <sc-if value="{{ mod.scanDemo }}" hint-placeholder-val="{{ false }}">
-      <span style="align-self:flex-start;padding:4px 10px;border-radius:999px;background:#FFE9B0;color:#5C4200;font-size:12px;font-weight:800;letter-spacing:0.06em">DÉMONSTRATION</span>
-      <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Simuler un scan</h2>
-      <p style="margin:0;color:#4A4E55;font-size:15px;line-height:1.5">Aucune caméra n’est utilisée. Choisissez la carte que le client présente.</p>
-      <button type="button" onClick="{{ mPrimarySim.run }}" style="min-height:56px;padding:10px 16px;border:0;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:10px;text-align:center"><span class="material-symbols-rounded" style="font-size:22px">qr_code_scanner</span>{{ mPrimarySim.label }}</button>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <sc-for list="{{ mDemoOpts }}" as="dm" hint-placeholder-count="5">
-          <button type="button" onClick="{{ dm.run }}" style="display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 12px;border:1px solid #EADFC2;border-radius:12px;background:#FFFBF0;text-align:left">
-            <span class="material-symbols-rounded" style="font-size:20px;color:#6B4E00">{{ dm.icon }}</span>
-            <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">{{ dm.label }}</div><div style="font-size:13px;color:#5E636B">{{ dm.sub }}</div></div>
-          </button>
-        </sc-for>
-      </div>
-    </sc-if>
     <sc-if value="{{ mod.reward }}" hint-placeholder-val="{{ false }}">
       <div style="width:52px;height:52px;border-radius:14px;background:#E4F3EB;color:#1F7A4F;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:28px">redeem</span></div>
       <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Utiliser la récompense ?</h2>
@@ -1721,29 +1775,123 @@ class Component extends DCLogic {
   _h = {};
   initState(){
     return { screen:'login', w: typeof window!=='undefined'?window.innerWidth:1200,
-      f:{loginEmail:'',loginPwd:'',suBiz:'',suFirst:'',suLast:'',suEmail:'',suPwd:'',fpEmail:'',manualNo:'',joinFirst:'Nora',joinEmail:'',pwdCur:'',pwdNew:'',pwdConf:'',corrNote:''},
+      f:{readerNo:'',loginEmail:'',loginPwd:'',suBiz:'',suFirst:'',suLast:'',suEmail:'',suPwd:'',fpEmail:'',manualNo:'',joinFirst:'Nora',joinEmail:'',pwdCur:'',pwdNew:'',pwdConf:'',corrNote:''},
       err:{}, showPwd:false, remember:true, busy:false,
       merchant:{...M0}, sd:{...M0}, program:{...P0}, draft:{...P0}, clients:demoClients(),
       selId:null, notifs:demoNotifs(demoClients()), nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
       modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple',
       ob:{step:1,biz:'',activity:'Restaurant',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
-      section:'profile', loadingHome:false, prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false };
+      section:'profile', loadingHome:false, prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true };
   }
   componentDidMount(){
     this._r=()=>this.setState(s=>({w:window.innerWidth,...(window.innerWidth<1024&&s.screen==='card'?{screen:'home'}:{})})); window.addEventListener('resize',this._r);
     this._k=e=>{ if(e.key==='Escape'&&this.state.modal&&!this.state.busy) this.setState({modal:null}); }; window.addEventListener('keydown',this._k);
+    this._wedge=e=>this.onWedgeKey(e); window.addEventListener('keydown',this._wedge,true);
+    this._vis=()=>this.setState({pageVisible:document.visibilityState!=='hidden'}); document.addEventListener('visibilitychange',this._vis);
+    this._wf=()=>this.setState({winFocus:document.hasFocus()}); window.addEventListener('focus',this._wf); window.addEventListener('blur',this._wf);
     const st=this.props.startScreen; if(st&&st!=='login'){ this.enterDemo(); if(st!=='home') setTimeout(()=>this.go(st),10); }
     else this.bootLive();
   }
-  componentWillUnmount(){ window.removeEventListener('resize',this._r); window.removeEventListener('keydown',this._k); if(this._authSub) this._authSub.unsubscribe(); }
+  componentWillUnmount(){ const cs=this.state.camStream; if(cs) cs.getTracks().forEach(tr=>tr.stop()); this._camReq=(this._camReq||0)+1; window.removeEventListener('resize',this._r); window.removeEventListener('keydown',this._k); window.removeEventListener('keydown',this._wedge,true); window.removeEventListener('focus',this._wf); document.removeEventListener('visibilitychange',this._vis); window.removeEventListener('blur',this._wf); clearTimeout(this._autoReady); if(this._authSub) this._authSub.unsubscribe(); }
 
   // ---- Supabase (live mode). The demo above never calls any of this.
+  scanDeviceKind(){ if(this.api) return this.api.scanner.device; const ua=navigator.userAgent||''; return /Android|iPhone|iPod|iPad|Mobile/i.test(ua)?'mobile':'desktop'; }
+  // 'pos' = desktop / till (reader + keyboard + search, never the camera), 'camera' = live phone,
+  // 'demo' = demo on a phone (simulated camera, unchanged).
+  scanMode(){ return this.scanDeviceKind()==='mobile'?'camera':'pos'; }
+  initialScanState(s){ const m=this.scanMode();
+    if(m==='pos') return 'ready';
+    if(m==='camera') return this._camAuthorized?'ready':'permission';
+    return s.cam==='ok'?'ready':(s.cam==='denied'?'denied':'permission'); }
+  // One lookup for the USB reader, the camera and the keyboard: QR → card id → client.
+  async lookupScan(raw,source){ const api=this.api; if(!api) return;
+    const cands=(Array.isArray(raw)?raw:[raw]).filter(Boolean), parsed=cands.map(c=>api.scanner.parseCode(c));
+    const p=parsed.find(x=>x.kind==='qr')||parsed.find(x=>x.kind==='number'||x.kind==='suffix')||parsed.find(x=>x.kind==='incomplete')||{kind:'invalid'};
+    if(p.kind==='invalid'||p.kind==='incomplete') return this.scanFail(p.kind,source);
+    clearTimeout(this._autoReady); this._scanSeq=(this._scanSeq||0)+1; const seq=this._scanSeq;
+    this.setState(x=>({scan:{...x.scan,st:source==='camera'?'scanning':x.scan.st},pos:{loading:true,err:null,merr:null,src:source},err:{...x.err,manualNo:null}}));
+    try{ const ids=this.state.demo?this.demoLookup(p):await api.lookupCard(p.code); if(seq!==this._scanSeq) return;
+      if(!ids.length) return this.scanFail('unknown',source);
+      if(ids.length>1) return this.scanFail('multiple',source);
+      let c=this.state.clients.find(x=>x.id===ids[0]);
+      if(!c){ c=await api.loadClient(ids[0]); if(!c) return this.scanFail('unknown',source); this.setState(x=>({clients:[c,...x.clients.filter(y=>y.id!==c.id)]})); }
+      this.setState(x=>({screen:'scanner',modal:x.modal==='manual'?null:x.modal,f:{...x.f,manualNo:'',readerNo:''},pos:{loading:false,err:null,merr:null},scan:{st:'found',id:c.id,added:false,used:false,msg:''}})); }
+    catch(e){ if(seq!==this._scanSeq) return; const msg=api.errorMessage(e);
+      if(source==='manual') this.setState(x=>({pos:{loading:false,err:null,merr:null},err:{...x.err,manualNo:msg}}));
+      else if(source==='keyboard') this.setState(x=>({pos:{loading:false,err:null,merr:msg}}));
+      else this.setState(x=>({pos:{loading:false,err:msg,merr:null},scan:{...x.scan,st:source==='camera'?'ready':(x.scan.st==='found'?'found':'ready')}})); } }
+  demoLookup(p){ if(p.kind==='qr') return []; const cl=this.state.clients, d=p.code;
+    return cl.filter(c=>{ const n=c.card.replace(/\D/g,''); return p.kind==='number'?n===d:n.endsWith(d); }).map(c=>c.id); }
+  scanFail(kind,source){ const M={invalid:'Ce code n’est pas une carte DPA Cards.',incomplete:'Numéro incomplet : saisissez au moins les 4 derniers chiffres de la carte.',
+      unknown:'Carte inconnue : aucune carte de votre commerce ne correspond.',multiple:'Plusieurs cartes se terminent par ces chiffres. Saisissez le numéro complet.'};
+    if(source==='manual') return this.setState(x=>({pos:{loading:false,err:null,merr:null},err:{...x.err,manualNo:M[kind]}}));
+    if(source==='camera') return this.setState(x=>({pos:{loading:false,err:null,merr:null},scan:{st:'unknown',id:null,added:false,used:false,msg:''}}));
+    if(source==='keyboard') return this.setState(x=>({pos:{loading:false,err:null,merr:M[kind]},scan:x.scan.st==='found'?x.scan:{st:'ready',id:null,added:false,used:false,msg:''}}));
+    this.setState(x=>({f:{...x.f,readerNo:''},pos:{loading:false,err:M[kind],merr:null},scan:{st:'ready',id:null,added:false,used:false,msg:''}})); }
+  onCamCode=text=>{ if(this.state.scan.st!=='ready'||this._camLock) return false;
+    const cd=this._camCooldown; if(cd&&cd.code===text&&performance.now()<cd.until) return false;
+    this._camLock=true; this._lastCamCode=text; this.lookupScan(text,'camera').finally(()=>{ this._camLock=false; }); return true; };
+  // The same card is ignored for 3 s counted from the moment the camera is really live again.
+  // Real camera. Called directly from the click on "Autoriser la caméra" / "Réessayer":
+  // getUserMedia runs first, before any state change, so iOS keeps the user gesture.
+  startCamera=()=>{ const api=this.api; if(!api||this._camPending) return;
+    const req=this._camReq=(this._camReq||0)+1; this._camPending=true;
+    let p; try{ p=api.scanner.requestCamera(); }catch(e){ p=Promise.reject(e); }
+    this.setState(x=>({cam:'ok',camErr:null,camErrName:null,scan:x.scan.st==='found'?x.scan:{st:'ready',id:null,added:false,used:false,msg:''}}));
+    p.then(stream=>{ this._camPending=false;
+        if(req!==this._camReq||!this.camWanted(this.state)){ stream.getTracks().forEach(tr=>tr.stop()); return; }
+        this._camAuthorized=true; const cd=this._camCooldown; if(cd&&cd.until===Infinity) cd.until=performance.now()+3000;
+        this.setState({camStream:stream}); })
+     .catch(e=>{ this._camPending=false; if(req!==this._camReq) return;
+        console.error('[DPA scanner] getUserMedia failed:', e&&e.name, e&&e.message, e);
+        this.setState({cam:'denied',camErr:api.scanner.cameraErrorKind(e),camErrName:(e&&e.name)||'',camStream:null,scan:{st:'denied',id:null,added:false,used:false,msg:''}}); }); };
+  stopCamera(){ this._camReq=(this._camReq||0)+1; this._camPending=false; const st=this.state.camStream;
+    if(st) st.getTracks().forEach(tr=>tr.stop());
+    if(st) this.setState({camStream:null}); }
+  camWanted(s){ return this.scanMode()==='camera'&&s.screen==='scanner'&&s.scan.st==='ready'&&s.cam==='ok'&&!s.modal&&s.pageVisible!==false; }
+  // Stop on: client opened, scanner left or closed, dialog opened, page hidden, logout. Resume when back.
+  syncCamera(){ const s=this.state, want=this.camWanted(s);
+    if(!want&&(s.camStream||this._camPending)) return this.stopCamera();
+    if(want&&!s.camStream&&!this._camPending&&this._camAuthorized) this.startCamera(); }
+  onCamEnded=()=>{ console.error('[DPA scanner] camera track ended'); this.setState({cam:'denied',camErr:'error',camErrName:'ended',scan:{st:'denied',id:null,added:false,used:false,msg:''}}); };
+  onCamDecodeError=()=>{ if(this._decodeWarned) return; this._decodeWarned=true; this.showToast('Lecture automatique des QR codes indisponible sur ce navigateur : utilisez « Saisir le numéro de carte ».','info'); };
+  // USB QR reader = a keyboard typing very fast then Enter. Listen on the whole page so
+  // no click into a field is needed; Enter after a burst never reaches a focused button.
+  onWedgeKey(e){ const s=this.state; if(!(s.live||s.demo)||s.screen!=='scanner'||this.scanMode()!=='pos'||s.modal) return;
+    if(e.ctrlKey||e.altKey||e.metaKey) return;
+    const tg=e.target, inField=!!tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA'||tg.isContentEditable);
+    const now=performance.now(), b=this._wb||(this._wb={keys:[],last:0});
+    if(now-b.last>800) b.keys=[]; b.last=now;
+    if(e.key==='Enter'){ const keys=b.keys; b.keys=[]; if(inField){ this._fieldBurst=keys; return; } if(!keys.length) return;
+      e.preventDefault(); e.stopPropagation(); if(s.busy) return this.showToast('Validation en cours : scannez à nouveau dans un instant.','info');
+      this.lookupScan(this.api.scanner.decodeKeys(keys),'reader'); return; }
+    if((e.key&&e.key.length===1)||/^(Digit|Key|Numpad|Minus|Semicolon|Period|Space|Equal|Slash|Quote|Comma)/.test(e.code||'')){ b.keys.push({key:e.key,code:e.code,shift:e.shiftKey}); if(!inField) e.preventDefault(); } }
+  submitPos=e=>{ e&&e.preventDefault(); const v=this.state.f.manualNo; const extra=this._fieldBurst?this.api.scanner.decodeKeys(this._fieldBurst):[]; this._fieldBurst=null;
+    if(!v.trim()&&!extra.length) return this.setState({pos:{loading:false,err:null,merr:'Saisissez le numéro de carte.'}});
+    this.lookupScan([v,...extra],'keyboard'); };
+  // Reader field: Enter from the reader submits it; it is emptied right away for the next card.
+  submitReader=e=>{ e&&e.preventDefault(); const v=this.state.f.readerNo; const extra=this._fieldBurst?this.api.scanner.decodeKeys(this._fieldBurst):[]; this._fieldBurst=null;
+    this.setState(x=>({f:{...x.f,readerNo:''}}));
+    if(!v.trim()&&!extra.length) return;
+    this.lookupScan([v,...extra],'reader'); };
+  // Keep the reader field focused on the till panel, without stealing focus from another field.
+  focusReader(){ const s=this.state; if(s.screen!=='scanner'||this.scanMode()!=='pos'||s.modal||s.scan.st==='found') return;
+    const el=document.getElementById('pos-reader'), a=document.activeElement;
+    if(!el||a===el) return; if(a&&a!==document.body&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT')) return;
+    try{ el.focus({preventScroll:true}); }catch(e){} }
+  componentDidUpdate(){ clearTimeout(this._fr); this._fr=setTimeout(()=>this.focusReader(),0); this.syncCamera(); }
+  // After a passage or a reward, get back to "ready" on its own when nothing is left to do.
+  scheduleReady(id){ if(this.scanMode()==='demo'||this.state.demo) return; clearTimeout(this._autoReady);
+    this._autoReady=setTimeout(()=>{ const s=this.state; if(s.screen!=='scanner'||s.busy||s.modal||s.scan.st!=='found'||s.scan.id!==id) return;
+      const c=s.clients.find(x=>x.id===id); if(!c) return; const done=s.scan.used||(s.scan.added&&c.balance<+s.program.goal);
+      if(done) this.resetScan(); },3500); }
   ready(){ if(!this._ready) this._ready=Promise.race([window.dpaReady||Promise.resolve(null),new Promise(r=>setTimeout(()=>r(null),10000))]).then(a=>{ this.api=a&&a.configured?a:null; return this.api; }); return this._ready; }
   noBackend(field){ this.setState({busy:false,err:{[field]:'Service de connexion indisponible : configuration Supabase manquante ou réseau injoignable.'}}); }
   async bootLive(){
     const api=await this.ready(); if(!api) return;
     try{ this.setState({remember:api.remember()}); }catch(e){}
     if(api.linkError) this.showToast(api.linkError.code==='otp_expired'?'Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau.':'Le lien n’a pas pu être validé. Demandez-en un nouveau.','error');
+    if(api.scanner.device==='mobile') api.scanner.cameraPermission().then(p=>{ if(p==='granted') this._camAuthorized=true; });
     this._authSub=api.onAuth((ev,session)=>setTimeout(()=>this.onAuthEvent(ev,session),0));
   }
   onAuthEvent(ev,session){
@@ -1790,7 +1938,8 @@ class Component extends DCLogic {
     // The card/programme editor is desktop-only: on mobile it is never opened.
     if(screen==='card'&&window.innerWidth<1024) screen='home';
     const s=this.state, n={screen,err:{},...extra};
-    if(screen==='scanner'&&!extra.keepScan) n.scan={st:s.cam==='ok'?'ready':(s.cam==='denied'?'denied':'permission'),id:null,added:false,used:false,msg:''};
+    if(screen==='scanner'&&!extra.keepScan){ const ist=this.initialScanState(s); n.scan={st:ist,id:null,added:false,used:false,msg:''}; n.pos={loading:false,err:null};
+      if(this.scanMode()==='camera'){ n.cam=this._camAuthorized?'ok':null; n.camErr=null; n.camErrName=null; this._camCooldown=null; } }
     if(screen==='scanner'&&s.screen!=='scanner') n.prevScreen=s.screen;
     if(screen==='card') n.draft={...s.program};
     if(screen==='settings') n.sd={...s.merchant};
@@ -1925,6 +2074,7 @@ class Component extends DCLogic {
       this.setState(s=>{ const goal=+s.program.goal; const clients=s.clients.map(c=>c.id!==id?c:this.api.applyEvent(c,ev));
         const c=clients.find(x=>x.id===id); const msg=(ev.delta===1?'Passage ajouté':'Points ajoutés')+` : ${c.balance} / ${goal}`;
         return {clients,busy:false,scan:ctx==='scan'?{...s.scan,added:true,msg}:s.scan,toast:{msg,kind:'ok'},flash:ctx==='client'?{id}:s.flash}; }); this.armToast();
+      if(ctx==='scan') this.scheduleReady(id);
       if(ctx==='client'){ clearTimeout(this._ft); this._ft=setTimeout(()=>this.setState({flash:null}),1800); } }
     catch(e){ this.settleReq(key,e); this.liveFail(e); } }
   confirmReward=()=>{ if(this.state.busy) return; const id=this.state.target; if(this.state.live) return this.redeemLive(id); this.setState({busy:true});
@@ -1936,7 +2086,7 @@ class Component extends DCLogic {
     try{ const ev=await this.api.redeem(id,this.reqId(key)); this.settleReq(key);
       this.setState(s=>{ const goal=+s.program.goal; const clients=s.clients.map(c=>c.id!==id?c:this.api.applyEvent(c,ev));
         const c=clients.find(x=>x.id===id); const msg=`Récompense utilisée. Nouveau solde : ${c.balance} / ${goal}`;
-        return {clients,busy:false,modal:null,scan:s.scan.id===id?{...s.scan,used:true,msg}:s.scan,toast:{msg,kind:'ok'}}; }); this.armToast(); }
+        return {clients,busy:false,modal:null,scan:s.scan.id===id?{...s.scan,used:true,msg}:s.scan,toast:{msg,kind:'ok'}}; }); this.armToast(); this.scheduleReady(id); }
     catch(e){ this.settleReq(key,e); this.liveFail(e,{modal:null}); } }
   async corrLive(corr,note){ const key='corr:'+corr.entry; this.setState({busy:true});
     try{ const ev=await this.api.correct(corr.entry,corr.motif,note,this.reqId(key)); this.settleReq(key);
@@ -1949,15 +2099,8 @@ class Component extends DCLogic {
     setTimeout(()=>{ this.setState(s=>{ const clients=s.clients.map(c=>{ if(c.id!==corr.client) return c; const e=c.history.find(h=>h.id===corr.entry); if(!e) return c;
         return {...c,balance:Math.max(0,c.balance-e.delta),history:[{id:'h'+(UID++),type:'correction',date:TODAY,time:nowTime(),delta:-e.delta,label:'Correction · '+corr.motif,note:f.corrNote.trim()},...c.history.map(h=>h.id===e.id?{...h,corrected:true}:h)]}; });
       return {clients,busy:false,modal:null,toast:{msg:'Opération corrigée. Trace ajoutée à l’historique.',kind:'ok'}}; }); this.armToast(); },800); };
-  simulate(kind){ if(this.state.scan.st==='scanning') return;
-    // A simulated read must never record a real visit: simulation exists in demo mode only.
-    if(!this.state.demo) return;
-    if(kind==='deny'){ this.setState({cam:'denied',scan:{st:'denied',id:null,added:false,used:false,msg:''}}); return; }
-    this.setState({scan:{st:'scanning',id:null,added:false,used:false,msg:''}});
-    setTimeout(()=>{ if(kind==='unknown'||kind==='other') return this.setState({scan:{st:kind,id:null,added:false,used:false,msg:''}});
-      const c=this.state.clients.find(x=>x.id===kind); this.setState({scan:c?{st:'found',id:c.id,added:false,used:false,msg:''}:{st:'unknown',id:null,added:false,used:false,msg:''}}); this.scrollTop(); },1300); }
-  resetScan=()=>this.setState(s=>({scan:{st:s.cam==='denied'?'denied':'ready',id:null,added:false,used:false,msg:''}}));
-  submitManual=e=>{ e&&e.preventDefault(); const d=this.state.f.manualNo.replace(/\D/g,'');
+  resetScan=()=>{ clearTimeout(this._autoReady); if(this.scanMode()==='camera'&&this._lastCamCode) this._camCooldown={code:this._lastCamCode,until:Infinity}; this.setState(s=>({pos:{loading:false,err:null},scan:{st:(s.cam==='denied'||s.cam==='unavail')&&this.scanMode()!=='pos'?'denied':'ready',id:null,added:false,used:false,msg:''}})); };
+  submitManual=e=>{ e&&e.preventDefault(); if(this.state.live) return this.lookupScan(this.state.f.manualNo,'manual'); const d=this.state.f.manualNo.replace(/\D/g,'');
     if(d.length<4){ this.setState({err:{manualNo:'Saisissez au moins les 4 derniers chiffres de la carte.'}}); return; }
     const c=this.state.clients.find(x=>x.card.replace(/\D/g,'').endsWith(d));
     this.setState({modal:null,screen:'scanner',f:{...this.state.f,manualNo:''},scan:c?{st:'found',id:c.id,added:false,used:false,msg:''}:{st:'unknown',id:null,added:false,used:false,msg:''}}); this.scrollTop(); };
@@ -2115,6 +2258,11 @@ class Component extends DCLogic {
       logo:p.logoUrl?React.createElement('img',{src:p.logoUrl,alt:'',style:{width:'100%',height:'100%',objectFit:'cover',borderRadius:'inherit',display:'block'}}):(p.logo||'LOGO'),business,program:p.name||'Mon programme',
       value,unit:this.unitOf(p).toUpperCase(),reward:p.reward||'Récompense',member,cardNo,qr,showQr};
   }
+  realQr(text,size){ this._qrc=this._qrc||new Map(); const k=text+'|'+size; if(this._qrc.has(k)) return this._qrc.get(k);
+    const {n,d}=this.api.scanner.qrPath(text);
+    const el=React.createElement('svg',{viewBox:`-2 -2 ${n+4} ${n+4}`,width:size,height:size,role:'img','aria-label':'QR code de la carte',style:{display:'block',background:'#FFFFFF'}},React.createElement('path',{d,fill:'#15171B'}));
+    this._qrc.set(k,el); return el; }
+  cardQr(c,size){ return this.state.live&&c&&c.qrValue&&this.api?this.realQr(c.qrValue,size):qrSvg(c?c.card:'',size); }
   lastVisit(c){ const v=c.history.find(h=>h.type==='visit'); return v?`${fmtDate(v.date)}, ${v.time}`:'Aucun passage'; }
 
   renderVals(){
@@ -2181,16 +2329,24 @@ class Component extends DCLogic {
       selActs.forEach(a=>{ a.opacity=a.disabled?0.65:1; }); }
 
     const live=s.live, [c1,c2,c3]=live?[clients[0],clients[1],clients[2]]:['c1','c2','c3'].map(k=>clients.find(c=>c.id===k));
-    const liveSub=c=>`${c.balance} / ${goal}`+(c.balance>=goal?' · récompense disponible':'');
-    const demoOpts=[];
-    if(c2) demoOpts.push({label:`${c2.first} ${c2.last}`.trim(),sub:live?liveSub(c2):`${c2.balance} / ${goal} · récompense proche`,icon:'person',run:()=>this.simulate(c2.id)});
-    if(c3) demoOpts.push({label:`${c3.first} ${c3.last}`.trim(),sub:live?liveSub(c3):`${c3.balance} / ${goal} · récompense disponible`,icon:'person',run:()=>this.simulate(c3.id)});
-    demoOpts.push({label:'Carte non reconnue',sub:'QR code illisible ou inconnu',icon:'help',run:()=>this.simulate('unknown')});
-    demoOpts.push({label:"Carte d'un autre commerce",sub:'Programme différent',icon:'storefront',run:()=>this.simulate('other')});
-    demoOpts.push({label:'Caméra refusée',sub:"L'accès est bloqué",icon:'no_photography',run:()=>this.simulate('deny')});
-    const primarySim=c1?{label:`Simuler un scan · ${`${c1.first} ${c1.last}`.trim()} (${c1.balance} / ${goal})`,run:()=>this.simulate(c1.id)}:{label:'Simuler un scan',run:()=>this.simulate(clients[0]?clients[0].id:'unknown')};
+    const smode=this.scanMode(), scanPos=smode==='pos', scanCam=smode!=='pos', camLive=smode==='camera';
+    const ce=s.camErr;
+    const camOn=camLive&&scr==='scanner'&&s.scan.st==='ready'&&s.cam==='ok'&&!s.modal&&s.pageVisible!==false&&!!this.api;
+    const camEl=camOn?React.createElement(this.api.scanner.CameraView,{stream:s.camStream,onCode:this.onCamCode,onDecodeError:this.onCamDecodeError,onEnded:this.onCamEnded}):null;
+    const pl=s.pos||{}, posReady=!pl.loading&&s.winFocus!==false;
+    const posV={loading:!!pl.loading,hasErr:!!pl.err,err:pl.err||'',submit:this.submitPos,readerSubmit:this.submitReader,hasMerr:!!pl.merr,merr:pl.merr||'',
+      manualLoading:!!pl.loading&&pl.src==='keyboard',manualIdle:!(pl.loading&&pl.src==='keyboard'),manualBtn:pl.loading&&pl.src==='keyboard'?'Recherche…':'Rechercher',
+      readerBorder:pl.err?'#B42318':'#D4D1C9',manualBorder:pl.merr?'#B42318':'#D4D1C9',
+      label:pl.loading?'Recherche de la carte…':(s.busy?'Validation en cours…':(posReady?'Lecteur prêt : en attente d’un scan':'Cliquez dans cette page pour réactiver le lecteur')),
+      bg:pl.loading?'#E8EDFF':(posReady?'#E4F3EB':'#FFF6DE'),fg:pl.loading?'#1A36C4':(posReady?'#17583A':'#6B4E00'),
+      icon:pl.loading?spin:React.createElement('span',{'aria-hidden':true,style:{width:10,height:10,borderRadius:'50%',background:'currentColor',flex:'none',display:'inline-block'}}),
+      wake:e=>{ if(!document.hasFocus()) window.focus(); this.setState({winFocus:true}); const tg=e&&e.target; if(!tg||!/^(INPUT|BUTTON|TEXTAREA|A|LABEL)$/.test(tg.tagName)) this.focusReader(); }};
     const st=s.scan.st;
-    const scanV={perm:st==='permission',denied:st==='denied',view:['ready','scanning','unknown','other'].includes(st),scanning:st==='scanning',ready:st==='ready',unknown:st==='unknown',other:st==='other',found:st==='found'&&!!sc,notFound:!(st==='found'&&sc),added:s.scan.added&&!s.scan.used,used:s.scan.used,msg:s.scan.msg,canSim:st!=='scanning'};
+    const CAMT={denied:'Caméra refusée',notfound:'Aucune caméra',busy:'Caméra déjà utilisée',nomedia:'Caméra non disponible',error:'Erreur caméra'}, CAMX={denied:'L’accès à la caméra a été refusé. Autorisez-la dans les réglages du navigateur puis touchez Réessayer, ou saisissez le numéro de carte.',notfound:'Aucune caméra n’a été trouvée. Saisissez le numéro de carte.',busy:'La caméra est déjà utilisée par une autre application. Fermez-la puis touchez Réessayer, ou saisissez le numéro de carte.',nomedia:'Votre navigateur ne permet pas l’accès à la caméra.'+(window.isSecureContext?'':' La page doit être ouverte en HTTPS.')+' Saisissez le numéro de carte.',error:'Impossible d’ouvrir la caméra ('+(s.camErrName||'erreur inconnue')+'). Touchez Réessayer ou saisissez le numéro de carte.'};
+    const scanV={camTitle:CAMT[ce]||'Caméra indisponible',
+      camText:CAMX[ce]?CAMX[ce]:ce==='denied'?'L’accès à la caméra a été refusé. Autorisez-le dans les réglages du navigateur, ou saisissez le numéro de carte.':(ce==='unavailable'?'Aucune caméra utilisable n’a été trouvée sur cet appareil (la page doit aussi être ouverte en HTTPS). Saisissez le numéro de carte.':'L’accès a été refusé ou aucune caméra n’est détectée. Autorisez-la dans les réglages du navigateur, ou saisissez le numéro de carte.'),
+      camTextMob:CAMX[ce]?CAMX[ce]:ce==='denied'?'L’accès à la caméra a été refusé. Autorisez-le dans les réglages du navigateur, ou saisissez le numéro de carte.':(ce==='unavailable'?'Aucune caméra utilisable n’a été trouvée sur cet appareil (la page doit aussi être ouverte en HTTPS). Saisissez le numéro de carte.':'L’accès a été refusé ou aucune caméra n’est détectée. Autorisez-la dans les réglages du navigateur, ou recherchez le client.'),
+      perm:st==='permission',denied:st==='denied',view:['ready','scanning','unknown','other'].includes(st),scanning:st==='scanning',ready:st==='ready',unknown:st==='unknown',other:st==='other',found:st==='found'&&!!sc,notFound:!(st==='found'&&sc),added:s.scan.added&&!s.scan.used,used:s.scan.used,msg:s.scan.msg,canSim:st!=='scanning'};
 
     const d=s.draft, dirty=JSON.stringify({...d,goal:+d.goal})!==JSON.stringify({...P,goal:+P.goal});
     const D={}; ['name','reward','conditions','logo'].forEach(k=>D[k]=this.dh(k));
@@ -2256,14 +2412,14 @@ class Component extends DCLogic {
     const SD={}; ['first','last','email','phone','business','activity','address'].forEach(k=>SD[k]=this.sh(k));
 
     const joined=cv(clients.find(c=>c.id===s.joinedId));
-    const joinCard=joined?this.cardProps(P,m.business,joined.first,`0 / ${goal}`,joined.card,qrSvg(joined.card,112),true):null;
+    const joinCard=joined?this.cardProps(P,m.business,joined.first,`0 / ${goal}`,joined.card,this.cardQr(clients.find(c=>c.id===s.joinedId),112),true):null;
     const homeCard=this.cardProps(P,m.business,sampleC?sampleC.first:'Client',sampleC?`${Math.min(sampleC.balance,goal)} / ${goal}`:`0 / ${goal}`,'',null,false);
-    const selCard=sel?this.cardProps(P,m.business,sel.full,sel.value,sel.card,qrSvg(sel.card,96),true):null;
+    const selCard=sel?this.cardProps(P,m.business,sel.full,sel.value,sel.card,this.cardQr(clients.find(c=>c.id===s.selId),96),true):null;
     const authCard=this.cardProps(P0,M0.business,'Léa M.','4 / 10','DPA 4821 0935',qrSvg('DPA 4821 0935',104),true);
     const rwC=cv(clients.find(c=>c.id===s.target));
     const corrC=clients.find(c=>c.id===s.corr.client), corrE=corrC&&corrC.history.find(h=>h.id===s.corr.entry);
     const motifs=MOTIFS.map(x=>{ const a=s.corr.motif===x; return {label:x,bg:a?'#1C1F24':'#FFFFFF',fg:a?'#FFFFFF':'#1C1F24',border:a?'#1C1F24':'#D4D1C9',pressed:a,pick:()=>this.setState(y=>({corr:{...y.corr,motif:x},err:{}}))}; });
-    const mod={addClient:s.modal==='addClient',search:s.modal==='mSearch',scanDemo:s.modal==='scanDemo',reward:s.modal==='reward'&&!!rwC,correct:s.modal==='correct'&&!!corrE,logout:s.modal==='logout',wallet:s.modal==='wallet',gwallet:s.modal==='gwallet',crop:s.modal==='crop'&&!!s.crop,manual:s.modal==='manual',any:!!s.modal};
+    const mod={addClient:s.modal==='addClient',search:s.modal==='mSearch',reward:s.modal==='reward'&&!!rwC,correct:s.modal==='correct'&&!!corrE,logout:s.modal==='logout',wallet:s.modal==='wallet',gwallet:s.modal==='gwallet',crop:s.modal==='crop'&&!!s.crop,manual:s.modal==='manual',any:!!s.modal};
     const closeModal=()=>{ if(s.modal==='crop') return this.closeCrop(); if(!s.busy) this.setState({modal:null,err:{}}); };
     const walletName=s.target==='google'?'Google Wallet':'Apple Wallet';
 
@@ -2317,8 +2473,10 @@ class Component extends DCLogic {
       noClientsAtAll:clients.length===0, emptyTitle:clients.length===0?'Aucun client pour le moment':'Aucun résultat', emptyText:clients.length===0?'Partagez votre QR code d’inscription pour accueillir vos premiers clients.':'Essayez un autre nom, un numéro de carte ou un autre filtre.',
       clientCount:clients.length,
       sel, hasSel:!!sel, selActs, selCard,
-      sc, scanV, scanActs, demoOpts, primarySim, allowCam:()=>{ if(!s.demo) return this.showToast('La lecture par caméra n’est pas encore disponible. Saisissez le numéro de carte ou passez par la fiche client.','info'); this.setState({cam:'ok',scan:{st:'ready',id:null,added:false,used:false,msg:''}}); }, denyCam:()=>this.setState({cam:'denied',scan:{st:'denied',id:null,added:false,used:false,msg:''}}),
-      retryCam:()=>this.setState({cam:null,scan:{st:'permission',id:null,added:false,used:false,msg:''}}), openManual:()=>this.setState({modal:'manual',err:{}}), submitManual:this.submitManual, resetScan:this.resetScan,
+      scanPos, scanCam, scanCamLive:camLive, scanCamPerm:scanCam&&st==='permission', scanVc:{denied:scanCam&&st==='denied',view:scanCam&&['ready','scanning','unknown','other'].includes(st)},
+      camWaiting:camOn&&!s.camStream, camEl, camAria:'Zone de scan de la caméra', pos:posV,
+      sc, scanV, scanActs, allowCam:()=>{ if(smode!=='camera') return; this.startCamera(); }, denyCam:()=>this.setState({cam:'denied',scan:{st:'denied',id:null,added:false,used:false,msg:''}}),
+      retryCam:()=>camLive?this.startCamera():this.setState({cam:null,scan:{st:'permission',id:null,added:false,used:false,msg:''}}), openManual:()=>this.setState({modal:'manual',err:{}}), submitManual:this.submitManual, resetScan:this.resetScan,
       d, D, dirty, notDirty:!dirty, draftCard, tabs, tabApple:s.tab==='apple', tabGoogle:s.tab==='google', dMode:mkMode('draft'), dGoalDown:stepGoal('draft',-1), dGoalUp:stepGoal('draft',1), dUnit:d.mode==='points'?'points':'passages',
       dBg:mkSw(BGS,'bg','draft'), dAccent:mkSw(ACCENTS,'accent','draft'), dPat:mkPat('draft'), saveCard:this.saveCard, saveLabel:s.busy?'Enregistrement…':'Enregistrer les modifications',
       resetDraft:()=>this.setState(x=>({draft:{...x.program}})), importLogo:()=>this.showToast(s.live?'L’import de logo n’est pas encore disponible. Utilisez les initiales.':'Démo : import d’image simulé, aucun fichier n’est envoyé.','info'),
@@ -2339,8 +2497,8 @@ class Component extends DCLogic {
       prevOrder:isDesk?'2':'0', mainPadB:isDesk?'48px':(mShowNav?(scr==='client'?'calc(170px + env(safe-area-inset-bottom))':'calc(96px + env(safe-area-inset-bottom))'):'0px'), toNotifs:go('notifs'), ...nv,
       mShowBar, mShowNav, mBar:mb, mStats, mActivities:activities.map((a,i)=>({...a,bt:bt(i)})), mFilters:filters.map(f=>({...f,label:shortF[f.k]})), mList:list.map((v,i)=>({...v,bt:bt(i)})),
       mListCount:list.length+' client'+(list.length>1?'s':''), mSelActs, mResults, mNoResults:mResults.length===0, mq:s.mq, setMq:e=>this.setState({mq:e.target.value}),
-      mDemoOpts:demoOpts.map(wrapRun), mPrimarySim:wrapRun(primarySim), noDemoHints:true,
-      closeScanner:()=>{ if(s.busy) return; const p=s.prevScreen; this.go(p&&p!=='scanner'?p:'home'); }, openSearch:()=>this.setState({modal:'mSearch',mq:''}), openScanDemo:()=>this.setState({modal:'scanDemo'}),
+      noDemoHints:true,
+      closeScanner:()=>{ if(s.busy) return; const p=s.prevScreen; this.go(p&&p!=='scanner'?p:'home'); }, openSearch:()=>this.setState({modal:'mSearch',mq:''}),
       openAddClient:()=>this.setState({modal:'addClient'}), addToJoin:()=>{ this.setState({modal:null}); this.go('join'); },
       mNRows:nv.nRows.map((r,i)=>({...r,bt:bt(i)}))
     };
