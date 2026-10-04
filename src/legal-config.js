@@ -10,13 +10,14 @@ export const LEGAL = {
   TRADE_NAME: 'DPA Cards',
   // Brand of the publisher, as used by the company.
   PUBLISHER_BRAND: 'DigitalProjectAgency',
-  LEGAL_NAME: TODO,          // dénomination sociale exacte
-  LEGAL_FORM: TODO,          // forme juridique (EI, SAS, SASU…) et capital le cas échéant
+  LEGAL_NAME: 'Kilyan Bouras', // entrepreneur individuel exerçant sous le nom commercial DigitalProjectAgency
+  LEGAL_FORM: 'Entrepreneur individuel — micro-entreprise',
   LEGAL_ADDRESS: TODO,       // adresse du siège
-  SIRET: TODO,
-  VAT_NUMBER: TODO,          // n° de TVA intracommunautaire, si assujetti
-  PUBLICATION_DIRECTOR: TODO, // responsable de la publication (nom et prénom)
-  CONTACT_EMAIL: TODO,       // adresse de contact publique, aussi utilisée pour les demandes RGPD
+  SIREN: '104 064 621',
+  SIRET: '104 064 621 00014',
+  VAT_NUMBER: 'TVA non applicable, article 293 B du CGI',
+  PUBLICATION_DIRECTOR: 'Kilyan Bouras',
+  CONTACT_EMAIL: 'contact@digitalprojectagency.fr', // contact public, aussi utilisé pour les demandes RGPD
   CONTACT_PHONE: TODO,
 
   SITE_URL: 'https://dpa-cards.vercel.app',
