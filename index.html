@@ -171,7 +171,7 @@ a:hover{color:#1A36C4}
 
       </div>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:#5E636B">{{ authFooter }}<a href="/admin.html" style="display:inline-flex;align-items:center;gap:6px;min-height:40px;font-weight:600;font-size:14px;text-decoration:none"><span class="material-symbols-rounded" style="font-size:18px">admin_panel_settings</span>Accès administrateur</a></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:#5E636B">{{ authFooter }}<span style="display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap"><a href="/mentions-legales" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">Mentions légales</a><a href="/confidentialite" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">Confidentialité</a></span><a href="/admin.html" style="display:inline-flex;align-items:center;gap:6px;min-height:40px;font-weight:600;font-size:14px;text-decoration:none"><span class="material-symbols-rounded" style="font-size:18px">admin_panel_settings</span>Accès administrateur</a></div>
   </div>
   </div>
 </sc-if>
@@ -417,7 +417,7 @@ a:hover{color:#1A36C4}
             <input id="jm" type="email" autoComplete="email" value="{{ f.joinEmail }}" onChange="{{ F.joinEmail }}" aria-invalid="{{ inv.joinEmail }}" style="width:100%;height:54px;padding:0 16px;border:1.5px solid {{ eb.joinEmail }};border-radius:12px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#1C1F24;box-shadow:0 0 0 4px #E4E1DA">
             <sc-if value="{{ err.joinEmail }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:8px;color:#B42318;font-size:14px;font-weight:500">{{ err.joinEmail }}</div></sc-if>
           </div>
-          <label style="display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.45;color:#3E424A;cursor:pointer"><input type="checkbox" checked="{{ consent }}" onChange="{{ toggleConsent }}" style="width:20px;height:20px;accent-color:#1C1F24;margin:1px 0 0;flex:none">J’accepte les conditions du programme de fidélité et le traitement de mon prénom pour gérer ma carte.</label>
+          <label style="display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.45;color:#3E424A;cursor:pointer"><input type="checkbox" checked="{{ consent }}" onChange="{{ toggleConsent }}" style="width:20px;height:20px;accent-color:#1C1F24;margin:1px 0 0;flex:none"><span>J’accepte les conditions du programme et l’utilisation de mon prénom (et de mon e-mail si je le renseigne) par {{ m.business }} pour gérer ma carte de fidélité. DPA Cards fournit l’infrastructure technique de ce programme. <a href="/confidentialite" target="_blank" rel="noopener">Politique de confidentialité</a></span></label>
           <sc-if value="{{ err.consent }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:-8px;color:#B42318;font-size:14px;font-weight:500">{{ err.consent }}</div></sc-if>
           <button type="submit" disabled="{{ busy }}" style="height:56px;border:0;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ joinBtn }}</button>
           <p style="margin:0;font-size:13px;color:#5E636B;line-height:1.45">{{ P.conditions }}</p>
@@ -433,7 +433,7 @@ a:hover{color:#1A36C4}
         </div>
       </sc-if>
     </div>
-    <div style="margin-top:20px;text-align:center;font-size:13px;color:#5E636B">Programme géré avec DPA CARDS</div>
+    <div style="margin-top:20px;text-align:center;font-size:13px;color:#5E636B">Programme géré avec DPA CARDS · <a href="/mentions-legales" target="_blank" rel="noopener">Mentions légales</a> · <a href="/confidentialite" target="_blank" rel="noopener">Confidentialité</a></div>
   </div>
 </div>
 </sc-if>
@@ -449,7 +449,7 @@ a:hover{color:#1A36C4}
         <sc-if value="{{ pubMiss.retry }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ pubRetry }}" style="margin-top:6px;height:52px;padding:0 22px;border:0;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">refresh</span>Réessayer</button></sc-if>
       </div>
     </sc-if>
-    <div style="margin-top:20px;text-align:center;font-size:13px;color:#5E636B">Programme géré avec DPA CARDS</div>
+    <div style="margin-top:20px;text-align:center;font-size:13px;color:#5E636B">Programme géré avec DPA CARDS · <a href="/mentions-legales" target="_blank" rel="noopener">Mentions légales</a> · <a href="/confidentialite" target="_blank" rel="noopener">Confidentialité</a></div>
   </div>
 </div>
 </sc-if>
@@ -1007,7 +1007,7 @@ a:hover{color:#1A36C4}
             <dt style="padding:12px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Passages enregistrés</dt><dd style="margin:0;padding:12px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.visits }}</dd>
             <dt style="padding:12px 0;color:#5E636B">Récompenses utilisées</dt><dd style="margin:0;padding:12px 0;font-weight:600;text-align:right">{{ sel.rewardsUsed }}</dd>
           </dl>
-          <div style="max-width:300px;width:100%;align-self:center"><dc-import name="LoyaltyCard" c="{{ selCard }}" hint-size="100%,420px"></dc-import><div style="margin-top:10px;text-align:center;font-size:13px;color:#5E636B">Carte du client · aperçu indicatif</div><sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openGWallet }}" style="margin:6px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#2448F0;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">account_balance_wallet</span>Ajouter à Google Wallet</button></sc-if></div>
+          <div style="max-width:300px;width:100%;align-self:center"><dc-import name="LoyaltyCard" c="{{ selCard }}" hint-size="100%,420px"></dc-import><div style="margin-top:10px;text-align:center;font-size:13px;color:#5E636B">Carte du client · aperçu indicatif</div><sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openGWallet }}" style="margin:6px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#2448F0;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">account_balance_wallet</span>Ajouter à Google Wallet</button></sc-if><sc-if value="{{ canDelClient }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ askDelClient }}" style="margin:2px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#B42318;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">delete</span>Supprimer le client</button></sc-if></div>
         </div>
         <section aria-labelledby="hist-h" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px">
           <h2 id="hist-h" style="margin:0 0 8px;font-weight:700;font-size:18px">Historique</h2>
@@ -1067,7 +1067,7 @@ a:hover{color:#1A36C4}
         <dt style="padding:12px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Passages enregistrés</dt><dd style="margin:0;padding:12px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.visits }}</dd>
         <dt style="padding:12px 0;color:#5E636B">Récompenses utilisées</dt><dd style="margin:0;padding:12px 0;font-weight:600;text-align:right">{{ sel.rewardsUsed }}</dd>
       </dl>
-      <div style="max-width:280px;width:100%;align-self:center"><dc-import name="LoyaltyCard" c="{{ selCard }}" hint-size="100%,400px"></dc-import><div style="margin-top:10px;text-align:center;font-size:13px;color:#5E636B">Carte du client · aperçu indicatif</div><sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openGWallet }}" style="margin:6px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#2448F0;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">account_balance_wallet</span>Ajouter à Google Wallet</button></sc-if></div>
+      <div style="max-width:280px;width:100%;align-self:center"><dc-import name="LoyaltyCard" c="{{ selCard }}" hint-size="100%,400px"></dc-import><div style="margin-top:10px;text-align:center;font-size:13px;color:#5E636B">Carte du client · aperçu indicatif</div><sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openGWallet }}" style="margin:6px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#2448F0;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">account_balance_wallet</span>Ajouter à Google Wallet</button></sc-if><sc-if value="{{ canDelClient }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ askDelClient }}" style="margin:2px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#B42318;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">delete</span>Supprimer le client</button></sc-if></div>
     </div>
     <div style="position:fixed;left:0;right:0;bottom:calc(72px + env(safe-area-inset-bottom));z-index:25;background:rgba(246,245,241,0.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid #E4E1DA">
       <div style="max-width:640px;margin:0 auto;padding:10px 16px;display:flex;gap:10px">
@@ -1474,7 +1474,7 @@ a:hover{color:#1A36C4}
         </sc-for>
       </ul>
       <button type="button" onClick="{{ logout }}" style="min-height:54px;border:1.5px solid #E3B3AE;border-radius:14px;background:#FFFFFF;color:#B42318;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">logout</span>Se déconnecter</button>
-      <div style="text-align:center;font-size:13px;color:#5E636B">DPA CARDS · prototype v0.1 · aucune offre ni paiement à ce stade</div>
+      <div style="text-align:center;font-size:13px;color:#5E636B">DPA CARDS · prototype v0.1 · aucune offre ni paiement à ce stade<div style="margin-top:6px"><a href="/mentions-legales" target="_blank" rel="noopener">Mentions légales</a> · <a href="/confidentialite" target="_blank" rel="noopener">Confidentialité</a></div></div>
     </div>
     </sc-if>
 
@@ -1507,6 +1507,18 @@ a:hover{color:#1A36C4}
         </sc-if>
         <button type="button" onClick="{{ saveSection }}" disabled="{{ busy }}" style="height:54px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#1A36C4"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ saveSecLabel }}</button>
       </div>
+      </sc-if>
+      <sc-if value="{{ secData }}" hint-placeholder-val="{{ false }}">
+      <section aria-labelledby="dz-data" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px">
+        <h2 id="dz-data" style="margin:0;font-weight:700;font-size:18px">Mes données</h2>
+        <p style="margin:0;color:#4A4E55;font-size:15px;line-height:1.5">Téléchargez un fichier JSON contenant votre commerce, votre programme, vos clients, leurs cartes, leurs soldes et l’historique des opérations.</p>
+        <button type="button" onClick="{{ exportData }}" disabled="{{ busy }}" style="align-self:flex-start;min-height:48px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">download</span>{{ exportLabel }}</button>
+      </section>
+      <section aria-labelledby="dz-del" style="border:1.5px solid #E3B3AE;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px;background:#FFFBFA">
+        <h2 id="dz-del" style="margin:0;font-weight:700;font-size:18px;color:#B42318">Supprimer mon compte</h2>
+        <p style="margin:0;color:#4A4E55;font-size:15px;line-height:1.5">{{ delAccountText }}</p>
+        <sc-if value="{{ isOwner }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ askDelAccount }}" disabled="{{ busy }}" style="align-self:flex-start;min-height:48px;padding:0 16px;border:1.5px solid #B42318;border-radius:12px;background:#FFFFFF;color:#B42318;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">delete_forever</span>Supprimer mon compte</button></sc-if>
+      </section>
       </sc-if>
       <sc-if value="{{ sec.help }}" hint-placeholder-val="{{ false }}">
         <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:6px 20px">
@@ -1589,6 +1601,36 @@ a:hover{color:#1A36C4}
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <button type="button" onClick="{{ closeModal }}" disabled="{{ busy }}" style="flex:1;min-width:120px;height:54px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px">Annuler</button>
         <button type="button" onClick="{{ confirmCorr }}" disabled="{{ busy }}" style="flex:2;min-width:180px;height:54px;border:0;border-radius:14px;background:#B42318;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ corrBtn }}</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ mod.delClient }}" hint-placeholder-val="{{ false }}">
+      <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Supprimer ce client ?</h2>
+      <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">{{ delClientName }} sera supprimé définitivement : sa fiche, sa carte, son solde et tout son historique. Sa carte Google Wallet sera désactivée. Cette action est irréversible.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button type="button" onClick="{{ closeModal }}" disabled="{{ busy }}" style="flex:1;min-width:120px;height:54px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px">Annuler</button>
+        <button type="button" onClick="{{ confirmDelClient }}" disabled="{{ busy }}" aria-busy="{{ busy }}" style="flex:1;min-width:160px;height:54px;border:0;border-radius:14px;background:#B42318;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ delClientBtn }}</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ mod.delAccount }}" hint-placeholder-val="{{ false }}">
+      <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Supprimer définitivement votre compte ?</h2>
+      <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">Cette action est irréversible. Seront supprimés :</p>
+      <ul style="margin:0;padding-left:20px;color:#3E424A;font-size:15px;line-height:1.6">
+        <li>votre commerce et votre programme de fidélité ;</li>
+        <li>tous vos clients et leurs cartes ;</li>
+        <li>l’historique des passages, récompenses et notifications ;</li>
+        <li>vos visuels et demandes de design ;</li>
+        <li>votre lien d’inscription, qui sera désactivé ;</li>
+        <li>votre accès à DPA Cards.</li>
+      </ul>
+      <p style="margin:0;color:#4A4E55;font-size:14px;line-height:1.5">Les cartes Google Wallet de vos clients seront désactivées. Pensez à exporter vos données avant de continuer.</p>
+      <div>
+        <label for="delc" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Pour confirmer, saisissez SUPPRIMER</label>
+        <input id="delc" autoComplete="off" value="{{ f.delConfirm }}" onChange="{{ F.delConfirm }}" aria-invalid="{{ inv.delConfirm }}" style="width:100%;height:52px;padding:0 16px;border:1.5px solid {{ eb.delConfirm }};border-radius:12px;font-size:16px;outline:none" style-focus="border-color:#B42318;box-shadow:0 0 0 4px #FCEBEA">
+        <sc-if value="{{ err.delConfirm }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:8px;color:#B42318;font-size:14px">{{ err.delConfirm }}</div></sc-if>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button type="button" onClick="{{ closeModal }}" disabled="{{ busy }}" style="flex:1;min-width:120px;height:54px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px">Annuler</button>
+        <button type="button" onClick="{{ confirmDelAccount }}" disabled="{{ delAccountDisabled }}" aria-busy="{{ busy }}" style="flex:1;min-width:180px;height:54px;border:0;border-radius:14px;background:#B42318;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px;opacity:{{ delAccountOpacity }}"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ delAccountBtn }}</button>
       </div>
     </sc-if>
     <sc-if value="{{ mod.logout }}" hint-placeholder-val="{{ false }}">
@@ -1814,7 +1856,7 @@ class Component extends DCLogic {
   _h = {};
   initState(){
     return { screen:'login', w: typeof window!=='undefined'?window.innerWidth:1200,
-      f:{readerNo:'',loginEmail:'',loginPwd:'',suBiz:'',suFirst:'',suLast:'',suEmail:'',suPwd:'',fpEmail:'',manualNo:'',joinFirst:'Nora',joinEmail:'',pwdCur:'',pwdNew:'',pwdConf:'',corrNote:''},
+      f:{readerNo:'',loginEmail:'',loginPwd:'',suBiz:'',suFirst:'',suLast:'',suEmail:'',suPwd:'',fpEmail:'',manualNo:'',joinFirst:'Nora',joinEmail:'',pwdCur:'',pwdNew:'',pwdConf:'',corrNote:'',delConfirm:''},
       err:{}, showPwd:false, remember:true, busy:false,
       merchant:{...M0}, sd:{...M0}, program:{...P0}, draft:{...P0}, clients:demoClients(),
       selId:null, notifs:demoNotifs(demoClients()), nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
@@ -1950,7 +1992,7 @@ class Component extends DCLogic {
     this.setState({busy:true,err:{}});
     try{
       const d=await api.loadAll(user);
-      const base={busy:false,live:true,demo:false,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
+      const base={busy:false,live:true,demo:false,role:d.role||'owner',err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
         f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
       if(!d.merchant||!d.program){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
@@ -2227,6 +2269,26 @@ class Component extends DCLogic {
   copyJoinLink(){ const url=joinUrl(this.state.merchant.slug);
     const ok=()=>this.showToast('Lien copié'), ko=()=>this.showToast('Copie impossible sur ce navigateur. Lien : '+url,'info');
     try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok,ko); else ko(); }catch(e){ ko(); } }
+  // ---- personal data: customer deletion, account deletion, export (live only)
+  confirmDelClient=async()=>{ const s=this.state, id=s.selId; if(s.busy||!id) return; this.setState({busy:true});
+    try{ await this.api.deleteCustomer(id);
+      this.setState(x=>({busy:false,modal:null,selId:null,clients:x.clients.filter(c=>c.id!==id),screen:'clients'})); this.showToast('Client supprimé'); this.scrollTop(); }
+    catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } };
+  confirmDelAccount=async()=>{ const s=this.state; if(s.busy) return;
+    if(s.f.delConfirm.trim()!=='SUPPRIMER') return this.setState({err:{delConfirm:'Saisissez SUPPRIMER pour confirmer.'}});
+    this.setState({busy:true});
+    try{ await this.api.deleteAccount('SUPPRIMER'); }
+    catch(e){ this.setState({busy:false}); return this.showToast(this.api.errorMessage(e),'error'); }
+    try{ await this.api.signOut(); }catch(e){}
+    // Back to the login screen with a fresh state: nothing of the deleted account stays on screen.
+    this.resetToLogin({toast:{msg:'Votre compte et les données de votre commerce ont été supprimés.',kind:'ok'}}); this.armToast(); };
+  exportData=async()=>{ if(this.state.busy) return; this.setState({busy:true});
+    try{ const data=await this.api.exportData();
+      const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+      const a=document.createElement('a'); a.href=url; a.download='dpa-cards-export-'+(this.state.merchant.slug||'commerce')+'-'+ymdOf(new Date())+'.json';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),5000);
+      this.setState({busy:false}); this.showToast('Export téléchargé'); }
+    catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } };
   async logoutLive(){ this.setState({busy:true}); try{ await this.api.signOut(); }catch(e){} this.resetToLogin(); }
 
   nh(k){ return this._h['n'+k] ||= e=>{ const v=e.target.value; this.setState(s=>({nf:{...s.nf,[k]:v},err:{...s.err,['n'+k]:null,nwhen:null}})); }; }
@@ -2403,7 +2465,7 @@ class Component extends DCLogic {
     const m=s.merchant, P=s.program, goal=+P.goal, unit=this.unitOf(P), step=this.stepOf(P);
     const F={}, err=s.err, eb={}, inv={};
     Object.keys(s.f).forEach(k=>F[k]=this.fh(k));
-    ['loginEmail','loginPwd','suBiz','suFirst','suLast','suEmail','suPwd','fpEmail','manualNo','joinFirst','joinEmail','pwdCur','pwdNew','pwdConf','obbiz','obreward','sdfirst','sdemail','sdbusiness','obprog','obhex','drdesc','drname','drcontact','drcolors'].forEach(k=>{ eb[k]=err[k]?'#B42318':'#D4D1C9'; inv[k]=!!err[k]; });
+    ['loginEmail','loginPwd','suBiz','suFirst','suLast','suEmail','suPwd','fpEmail','manualNo','joinFirst','joinEmail','pwdCur','pwdNew','pwdConf','obbiz','obreward','sdfirst','sdemail','sdbusiness','obprog','obhex','drdesc','drname','drcontact','drcolors','delConfirm'].forEach(k=>{ eb[k]=err[k]?'#B42318':'#D4D1C9'; inv[k]=!!err[k]; });
     const go=k=>()=>this.go(k);
     // Live: the permanent public URL. QR code, « Copier le lien » and « Voir la page » all use this exact string.
     const pubUrl=joinUrl(m.slug), link=pubUrl;
@@ -2535,7 +2597,7 @@ class Component extends DCLogic {
       {icon:'public',label:"Page d'inscription publique",sub:s.live?'Inscrire un client sur cet appareil':'Aperçu côté client',run:go('join')},
       {icon:'person',label:'Profil du responsable',sub:`${m.first} ${m.last}`,run:openSec('profile')},
       {icon:'storefront',label:'Informations du commerce',sub:m.business,run:openSec('business')},
-      {icon:'lock',label:'Sécurité et mot de passe',sub:'Modifier le mot de passe',run:openSec('security')},
+      {icon:'lock',label:'Sécurité et mot de passe',sub:s.live?'Mot de passe, export des données, suppression du compte':'Modifier le mot de passe',run:openSec('security')},
       {icon:'help',label:'Aide et contact',sub:'Questions fréquentes, support',run:openSec('help')},
       {icon:'restart_alt',label:'Réinitialiser la démo',sub:'Revenir aux données BASH',run:()=>{ this.enterDemo(); this.showToast('Données de démonstration réinitialisées'); }}].filter(x=>!s.live||x.icon!=='restart_alt');
     const secTitle={profile:'Profil du responsable',business:'Informations du commerce',security:'Sécurité et mot de passe',help:'Aide et contact'}[s.section];
@@ -2550,7 +2612,7 @@ class Component extends DCLogic {
     const rwC=cv(clients.find(c=>c.id===s.target));
     const corrC=clients.find(c=>c.id===s.corr.client), corrE=corrC&&corrC.history.find(h=>h.id===s.corr.entry);
     const motifs=MOTIFS.map(x=>{ const a=s.corr.motif===x; return {label:x,bg:a?'#1C1F24':'#FFFFFF',fg:a?'#FFFFFF':'#1C1F24',border:a?'#1C1F24':'#D4D1C9',pressed:a,pick:()=>this.setState(y=>({corr:{...y.corr,motif:x},err:{}}))}; });
-    const mod={addClient:s.modal==='addClient',search:s.modal==='mSearch',reward:s.modal==='reward'&&!!rwC,correct:s.modal==='correct'&&!!corrE,logout:s.modal==='logout',wallet:s.modal==='wallet',gwallet:s.modal==='gwallet',crop:s.modal==='crop'&&!!s.crop,manual:s.modal==='manual',any:!!s.modal};
+    const mod={addClient:s.modal==='addClient',search:s.modal==='mSearch',reward:s.modal==='reward'&&!!rwC,correct:s.modal==='correct'&&!!corrE,logout:s.modal==='logout',wallet:s.modal==='wallet',gwallet:s.modal==='gwallet',delClient:s.modal==='delClient'&&!!sel,delAccount:s.modal==='delAccount',crop:s.modal==='crop'&&!!s.crop,manual:s.modal==='manual',any:!!s.modal};
     const closeModal=()=>{ if(s.modal==='crop') return this.closeCrop(); if(!s.busy) this.setState({modal:null,err:{}}); };
     const walletName=s.target==='google'?'Google Wallet':'Apple Wallet';
 
@@ -2618,6 +2680,12 @@ class Component extends DCLogic {
       sec, secTitle, sd:s.sd, SD, saveSection:this.saveSection, saveSecLabel:s.busy?'Enregistrement…':'Enregistrer', contactSupport:()=>this.showToast(s.live?'Le contact support n’est pas encore disponible depuis l’application.':'Démo : aucun message n’a été envoyé.','info'),
       consent:s.consent, toggleConsent:e=>this.setState({consent:e.target.checked,err:{...s.err,consent:null}}), submitJoin:this.submitJoin, joinBtn:s.busy?'Création de votre carte…':'Obtenir ma carte',
       openGWallet:()=>sel&&this.openGWallet(sel.id),
+      canDelClient:!!s.live&&s.role==='owner', askDelClient:()=>this.setState({modal:'delClient',err:{}}), confirmDelClient:this.confirmDelClient,
+      delClientName:sel?sel.full:'', delClientBtn:s.busy?'Suppression…':'Supprimer le client',
+      secData:!!s.live&&s.section==='security', isOwner:s.role==='owner', exportData:this.exportData, exportLabel:s.busy&&!s.modal?'Préparation…':'Exporter mes données',
+      delAccountText:s.role==='owner'?'La suppression est définitive : votre commerce, votre programme, vos clients, leurs cartes et tout l’historique sont supprimés, et votre lien d’inscription est désactivé.':'Seul le propriétaire du commerce peut supprimer le compte et ses données. Adressez-vous à lui ou écrivez-nous.',
+      askDelAccount:()=>this.setState({modal:'delAccount',err:{},f:{...s.f,delConfirm:''}}), confirmDelAccount:this.confirmDelAccount,
+      delAccountBtn:s.busy?'Suppression en cours…':'Supprimer définitivement', delAccountDisabled:s.busy||s.f.delConfirm.trim()!=='SUPPRIMER', delAccountOpacity:s.busy||s.f.delConfirm.trim()!=='SUPPRIMER'?0.55:1,
       gw:(()=>{ const g=s.gw||{}, sy=g.sync, gc=clients.find(c=>c.id===g.cardId);
         return {loading:!!g.loading,hasError:!!g.error,error:g.error||'',ready:!!g.url,url:g.url||'',
           intro:`Le client scanne ce QR code avec son téléphone Android pour ajouter la carte${gc?' de '+(gc.first+' '+gc.last).trim():''} à Google Wallet.`,

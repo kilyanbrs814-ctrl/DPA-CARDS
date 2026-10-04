@@ -8,6 +8,8 @@
 //   POST /wallet/public-program  no session → public fields of the program behind /join/<slug>
 //   POST /wallet/join       no session → public sign-up on /join/<slug>, then the card's save link
 //   POST /wallet/notify     merchant session → Google Wallet message (addMessage) to the merchant's cards
+//   POST /wallet/delete-customer  owner session → deletes one customer of the caller's merchant
+//   POST /wallet/delete-account   owner session + "SUPPRIMER" → deletes the whole merchant and the login
 //
 // verify_jwt is off: the platform check does not understand every key type, so
 // each route authorises itself. The browser only sends a card id; merchant,
@@ -532,6 +534,122 @@ async function notify(req: Request): Promise<Response> {
   }
 }
 
+// ---------------------------------------------------------------- data deletion
+// The database is the reference: rows are deleted first (the foreign keys cascade from
+// merchants / customers to cards, ledger, wallet passes, notifications and deliveries).
+// Google objects are then switched to INACTIVE on a best-effort basis: a Google outage
+// never blocks or rolls back a deletion, it is only logged (error codes, no ids).
+
+async function deactivateObjects(objectIds: string[], budgetMs = 20000): Promise<{ done: number; failed: number }> {
+  let done = 0, failed = 0, next = 0;
+  const until = Date.now() + budgetMs;
+  if (!objectIds.length) return { done, failed };
+  try { sa(); } catch { console.error('wallet error', 'deactivate', 'wallet_not_configured'); return { done, failed: objectIds.length }; }
+  await Promise.all(Array.from({ length: Math.min(6, objectIds.length) }, async () => {
+    while (next < objectIds.length && Date.now() < until) {
+      const id = objectIds[next++];
+      try {
+        const r = await google('PATCH', `/loyaltyObject/${encodeURIComponent(id)}`, { state: 'INACTIVE' });
+        if (r.status === 200 || r.status === 404) done++; else { failed++; console.error('wallet error', 'deactivate', `google_${r.status}`); }
+      } catch (e) { failed++; console.error('wallet error', 'deactivate', (e as Error).message); }
+    }
+  }));
+  failed += objectIds.length - done - failed; // left over when the time budget ran out
+  return { done, failed };
+}
+
+async function ownerOf(req: Request) {
+  const { user } = await authUser(req);
+  const { data: member } = await admin.from('merchant_members').select('merchant_id, role').eq('user_id', user.id).maybeSingle();
+  return { user, member: member as { merchant_id: string; role: string } | null };
+}
+
+async function deleteCustomer(req: Request): Promise<Response> {
+  const { member } = await ownerOf(req);
+  if (!member) throw new HttpError(403, 'forbidden');
+  if (member.role !== 'owner') throw new HttpError(403, 'owner_only');
+  const body = await req.json().catch(() => ({}));
+  const cardId = String(body?.card_id ?? '');
+  if (!UUID_RE.test(cardId)) throw new HttpError(400, 'invalid_card');
+
+  // The card must belong to the caller's merchant; its customer is derived from it.
+  const { data: card, error } = await admin.from('cards').select('id, customer_id, merchant_id')
+    .eq('id', cardId).eq('merchant_id', member.merchant_id).maybeSingle();
+  if (error) throw new Error('db_cards');
+  if (!card) throw new HttpError(404, 'card_not_found');
+  // All cards of that customer (one per program) and their Google objects.
+  const { data: cards } = await admin.from('cards').select('id').eq('customer_id', card.customer_id).eq('merchant_id', member.merchant_id);
+  const { data: passes } = await admin.from('wallet_passes').select('google_object_id')
+    .eq('merchant_id', member.merchant_id).in('card_id', (cards ?? []).map(c => c.id));
+
+  const { error: de } = await admin.from('customers').delete().eq('id', card.customer_id).eq('merchant_id', member.merchant_id);
+  if (de) throw new Error('db_delete_customer');
+  const wallet = await deactivateObjects((passes ?? []).map(p => p.google_object_id), 8000);
+  return json(req, 200, { deleted: true, wallet });
+}
+
+// Every file under <merchant_id>/ in a bucket (two folder levels: program or request, then file).
+async function listMerchantFiles(bucket: string, merchantId: string): Promise<string[]> {
+  const out: string[] = [];
+  const walk = async (prefix: string, depth: number) => {
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await admin.storage.from(bucket).list(prefix, { limit: 1000, offset });
+      if (error) throw new Error('storage_list');
+      for (const item of data ?? []) {
+        const path = `${prefix}/${item.name}`;
+        if (item.id) out.push(path); else if (depth < 3) await walk(path, depth + 1);
+      }
+      if ((data ?? []).length < 1000) return;
+    }
+  };
+  await walk(merchantId, 1);
+  return out;
+}
+
+async function deleteAccount(req: Request): Promise<Response> {
+  const { user, member } = await ownerOf(req);
+  const body = await req.json().catch(() => ({}));
+  if (String(body?.confirm ?? '') !== 'SUPPRIMER') throw new HttpError(422, 'confirmation_required');
+  if (member && member.role !== 'owner') throw new HttpError(403, 'owner_only');
+
+  let wallet = { done: 0, failed: 0 }, files = 0;
+  if (member) {
+    const merchantId = member.merchant_id;
+    // Collected before the rows disappear.
+    const objectIds: string[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await admin.from('wallet_passes').select('google_object_id').eq('merchant_id', merchantId).range(from, from + 999);
+      if (error) throw new Error('db_wallet_passes');
+      objectIds.push(...(data ?? []).map(p => p.google_object_id));
+      if ((data ?? []).length < 1000) break;
+    }
+    const paths: Record<string, string[]> = {};
+    for (const bucket of ['program-assets', 'design-requests']) {
+      try { paths[bucket] = await listMerchantFiles(bucket, merchantId); }
+      catch (e) { paths[bucket] = []; console.error('wallet error', 'delete-account list', bucket, (e as Error).message); }
+    }
+
+    // One statement: the merchant row and, through ON DELETE CASCADE, everything attached to it.
+    const { error } = await admin.from('merchants').delete().eq('id', merchantId);
+    if (error) throw new Error('db_delete_merchant');
+
+    for (const [bucket, list] of Object.entries(paths)) {
+      for (let i = 0; i < list.length; i += 100) {
+        const { error: se } = await admin.storage.from(bucket).remove(list.slice(i, i + 100));
+        if (se) console.error('wallet error', 'delete-account files', bucket, se.message); else files += Math.min(100, list.length - i);
+      }
+    }
+    wallet = await deactivateObjects(objectIds);
+  }
+
+  // Finally the login itself. Staff members of the deleted merchant keep their own login
+  // (their membership went with the merchant); only the owner's account is removed here.
+  const { error: ue } = await admin.auth.admin.deleteUser(user.id);
+  // A repeated request finds the login already gone: that is the expected end state.
+  if (ue && !/not.?found/i.test(ue.message)) { console.error('wallet error', 'delete-account user', ue.message); throw new HttpError(500, 'account_delete_failed'); }
+  return json(req, 200, { deleted: true, files, wallet });
+}
+
 async function sync(req: Request): Promise<Response> {
   const secret = req.headers.get('x-wallet-worker') ?? '';
   const { data: ok } = await admin.rpc('wallet_check_worker', { p_secret: secret });
@@ -553,6 +671,8 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/public-program')) return await publicProgram(req);
     if (req.method === 'POST' && path.endsWith('/join')) return await publicJoin(req);
     if (req.method === 'POST' && path.endsWith('/notify')) return await notify(req);
+    if (req.method === 'POST' && path.endsWith('/delete-customer')) return await deleteCustomer(req);
+    if (req.method === 'POST' && path.endsWith('/delete-account')) return await deleteAccount(req);
     if (req.method === 'POST' && path.endsWith('/finalize-design')) return await finalizeDesign(req);
     if (req.method === 'POST' && path.endsWith('/sync')) return await sync(req);
     return json(req, 404, { error: 'not_found' });

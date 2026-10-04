@@ -1,14 +1,17 @@
 import { defineConfig } from 'vite';
 
-// /join/<slug> is the public sign-up page, served by index.html. Same single rule as
-// vercel.json, for `vite` and `vite preview`; every other path keeps the MPA behaviour.
+// Same rules as vercel.json, for `vite` and `vite preview`: /join/<slug> is served by index.html,
+// the legal pages by their own HTML file. Every other path keeps the MPA behaviour.
 const joinRoute = {
   name: 'dpa-join-route',
   configureServer(server) { server.middlewares.use(rewriteJoin); },
   configurePreviewServer(server) { server.middlewares.use(rewriteJoin); },
 };
 function rewriteJoin(req, res, next) {
-  if (/^\/join\/[^/?#]+\/?(\?|$)/.test(req.url || '')) req.url = '/index.html';
+  const url = req.url || '';
+  const legal = /^\/(mentions-legales|confidentialite)\/?(\?|$)/.exec(url);
+  if (/^\/join\/[^/?#]+\/?(\?|$)/.test(url)) req.url = '/index.html';
+  else if (legal) req.url = '/' + legal[1] + '.html';
   next();
 }
 
@@ -26,6 +29,8 @@ export default defineConfig({
       input: {
         main: 'index.html',
         admin: 'admin.html',
+        mentions: 'mentions-legales.html',
+        confidentialite: 'confidentialite.html',
       },
     },
   },

@@ -105,6 +105,9 @@ const DB_ERRORS = {
   no_recipients: 'Aucun client ne correspond à ces critères.',
   forbidden_card: 'Un des clients sélectionnés n’appartient pas à votre commerce.',
   notification_not_found: 'Ce brouillon n’existe plus. Rechargez la page.',
+  owner_only: 'Seul le propriétaire du commerce peut effectuer cette action.',
+  confirmation_required: 'Saisissez SUPPRIMER pour confirmer.',
+  account_delete_failed: 'La suppression du compte n’a pas pu être terminée. Réessayez ou contactez DPA Cards.',
 };
 
 function errorMessage(e) {
@@ -262,6 +265,17 @@ const notifRow = nf => ({
   audience: nf.audience === 'segment' ? nf.segment : nf.audience,
   card_ids: nf.audience === 'selected' ? nf.ids : [], notify: nf.gNotify !== false,
 });
+
+// Edge Function call; the server's error code becomes the Error message (mapped by errorMessage).
+async function invokeFn(name, body) {
+  const { data, error } = await sb.functions.invoke(name, { body });
+  if (error) {
+    let code = '';
+    try { code = (await error.context.json()).error || ''; } catch (e) {}
+    throw Object.assign(new Error(code || error.message || 'wallet_unavailable'), { code });
+  }
+  return data;
+}
 
 async function rpc(fn, args) {
   const { data, error } = await sb.rpc(fn, args);
@@ -434,6 +448,41 @@ const api = {
       throw Object.assign(new Error(code || error.message || 'wallet_unavailable'), { code, name: code ? 'Error' : error.name });
     }
     return { first: data.first, cardNumber: data.card_number, qrValue: data.qr_value, wallet: data.wallet || {} };
+  },
+  // ---- personal data. Deletions go through the Edge Function (owner session, merchant and
+  // customer derived on the server); the export reads with the merchant's own session (RLS).
+  async deleteCustomer(cardId) { return invokeFn('wallet/delete-customer', { card_id: cardId }); },
+  async deleteAccount(confirm) { return invokeFn('wallet/delete-account', { confirm }); },
+  async exportData() {
+    const pick = (o, keys) => Object.fromEntries(keys.filter(k => k in o).map(k => [k, o[k]]));
+    const [{ data: merchant, error: me }, { data: programs, error: pe }] = await Promise.all([
+      sb.from('merchants').select('business_name, first_name, last_name, activity, phone, address, slug, created_at').maybeSingle(),
+      sb.from('programs').select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, design_status, is_active, created_at'),
+    ]);
+    if (me) throw me; if (pe) throw pe;
+    const [customers, cards, events, notifications] = await Promise.all([
+      fetchAll('customers', 'id, first_name, last_name, email, consent_at, created_at', 'created_at'),
+      fetchAll('cards', 'id, customer_id, card_number, created_at', 'created_at'),
+      fetchAll('card_events', 'card_id, seq, type, delta, balance_after, motif, note, reward_label, created_at', 'created_at'),
+      fetchAll('notifications', 'title, body, audience, notify, status, targeted, sent_count, failed_count, quota_count, no_wallet_count, created_at, sent_at', 'created_at'),
+    ]);
+    const evByCard = new Map();
+    for (const e of events) { if (!evByCard.has(e.card_id)) evByCard.set(e.card_id, []); evByCard.get(e.card_id).push(e); }
+    const cardsByCust = new Map();
+    for (const k of cards) { if (!cardsByCust.has(k.customer_id)) cardsByCust.set(k.customer_id, []); cardsByCust.get(k.customer_id).push(k); }
+    return {
+      format: 'dpa-cards-export-v1', exported_at: new Date().toISOString(),
+      merchant, programs: programs || [],
+      customers: customers.map(c => ({
+        ...pick(c, ['first_name', 'last_name', 'email', 'consent_at', 'created_at']),
+        cards: (cardsByCust.get(c.id) || []).map(k => {
+          const hist = (evByCard.get(k.id) || []).sort((a, b) => a.seq - b.seq);
+          return { card_number: k.card_number, created_at: k.created_at, balance: hist.length ? hist[hist.length - 1].balance_after : 0,
+            history: hist.map(e => pick(e, ['type', 'delta', 'balance_after', 'motif', 'note', 'reward_label', 'created_at'])) };
+        }),
+      })),
+      notifications,
+    };
   },
   // PNG of the shop's sign-up QR code, for printing.
   qrPng: text => QRCode.toDataURL(text, { margin: 2, width: 1024, errorCorrectionLevel: 'M' }),

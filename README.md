@@ -207,6 +207,20 @@ import de logo.
 
 La classe `bash_test_v1` créée dans la console reste en `draft` et n'est pas utilisée.
 
+## Pages légales et données personnelles
+
+- Pages publiques `/mentions-legales` et `/confidentialite` (`mentions-legales.html`, `confidentialite.html`),
+  réécrites par `vercel.json` et `vite.config.js` (règles ciblées, pas de réécriture globale).
+- Informations légales : **uniquement** dans `src/legal-config.js` ; les valeurs « À RENSEIGNER » restent à fournir.
+- Liens légaux : pied de page connexion / inscription, page Paramètres, page `/join` (consentement + pied de page).
+- Aucun cookie ni traceur : seul le stockage local technique (session, « Se souvenir de moi », mode scanner) ; pas de bannière.
+- `POST /wallet/delete-customer` `{ card_id }` : propriétaire uniquement, carte vérifiée dans son commerce ; supprime le client
+  (cascade : cartes, historique, wallet_passes, deliveries) puis désactive l’objet Google (INACTIVE, sans bloquer).
+- `POST /wallet/delete-account` `{ confirm: "SUPPRIMER" }` : propriétaire uniquement (staff → 403). Supprime le commerce
+  (cascade sur toutes les tables liées), ses fichiers des buckets `program-assets` / `design-requests`, désactive les objets
+  Google, puis supprime le compte Auth du propriétaire. Les comptes staff perdent seulement leur accès.
+- Export : Paramètres → Sécurité → « Exporter mes données » (JSON lu avec la session du commerçant, RLS ; sans identifiants internes).
+
 ## Notifications Google Wallet
 
 Onglet Notifications, mode connecté : envoi immédiat, Google Wallet uniquement (Apple Wallet et
