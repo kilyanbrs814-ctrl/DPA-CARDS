@@ -139,8 +139,34 @@ Principes de la base :
   droits et les règles RLS de l'utilisateur connecté.
 
 « Inscrire sur ce téléphone » inscrit le client **depuis la session du
-commerçant**. L'inscription publique par QR code ou lien n'existe pas encore :
-le lien et le QR code affichés sont indiqués comme inactifs.
+commerçant**. L'inscription publique passe par une vraie URL, voir ci-dessous.
+
+## Inscription publique (`/join/<slug>`)
+
+URL permanente par commerce : `https://dpa-cards.vercel.app/join/<slug>`, où
+`<slug>` est `merchants.slug` (unique, non modifiable par le commerçant). Les
+nouveaux commerces reçoivent le nom en minuscules sans séparateur
+(BASH → `bash`, Napolit'Hein → `napolithein`, 24 caractères max, suffixe
+`-xxxx` en cas de doublon) ; les slugs existants sont conservés.
+
+- « Inviter mes clients » : le QR code, « Copier le lien », « Voir la page
+  d'inscription » et « Télécharger le QR code » utilisent la même chaîne
+  `<origine du site>/join/<slug>`.
+- Routage : `vercel.json` réécrit uniquement `/join/:slug` vers `index.html` (même
+  règle dans `vite.config.js` pour `vite` / `vite preview`). `admin.html` et le
+  reste du site ne sont pas concernés. Sous `/join/`, `window.__resources` pointe le
+  composant carte vers `/LoyaltyCard.dc.html`.
+- Aucune session : la page appelle l'Edge Function `wallet` —
+  `POST /wallet/public-program` (champs publics du programme) et
+  `POST /wallet/join` (inscription puis lien « Ajouter à Google Wallet »). Seul le
+  slug est envoyé ; commerce et programme sont résolus côté serveur.
+- Base : `public_enroll` (migration `20261004085048_public_join`), exécutable par
+  `service_role` uniquement, idempotente par identifiant de requête, limitée à
+  100 inscriptions publiques par commerce et par 10 minutes. Le déclencheur du
+  registre n'accepte une écriture sans session que pour un événement `join` écrit
+  par `service_role`. anon et authenticated n'ont aucun droit nouveau.
+- Slug inconnu : page « Programme de fidélité introuvable ». Design en attente
+  (`pending_dpa`) : la carte est créée, Google Wallet indique « bientôt disponible ».
 
 ## Mode démonstration
 
@@ -155,7 +181,7 @@ retrouve la carte par son numéro (PC), par la recherche (mobile) ou depuis la
 fiche client.
 
 Pas encore intégrés : lecture réelle par caméra, notifications, Apple Wallet,
-import de logo, lien et QR code d'inscription publique.
+import de logo.
 
 ## Google Wallet
 
