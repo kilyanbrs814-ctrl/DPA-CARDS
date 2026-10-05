@@ -12,7 +12,7 @@
 <script>window.dpaReady=new Promise(function(r){window.__dpaResolve=r;});
 // Public sign-up page /join/<slug>: dc-runtime fetches sibling components relative to the
 // page ("./LoyaltyCard.dc.html"), which would resolve under /join/. Point it at the root copy.
-if(/^\/(join|subscription)\//.test(location.pathname)) window.__resources={'./LoyaltyCard.dc.html':'/LoyaltyCard.dc.html'};</script>
+if(/^\/(join|subscription|design)\//.test(location.pathname)) window.__resources={'./LoyaltyCard.dc.html':'/LoyaltyCard.dc.html'};</script>
 <script src="/support.js"></script>
 <!-- Supabase client (bundled by Vite), hands its API to the logic script via window.dpaReady. -->
 <script type="module" src="/src/backend.js"></script>
@@ -235,7 +235,7 @@ a:hover{color:#1A36C4}
         <sc-if value="{{ obStep3 }}" hint-placeholder-val="{{ false }}">
           <div><h1 style="font-weight:800;font-size:clamp(28px,5vw,36px);letter-spacing:-0.03em;margin:0 0 8px">Ma carte</h1><p style="margin:0;color:#5E636B;font-size:16px">Choisissez comment créer la carte de vos clients.</p></div>
           <div role="radiogroup" aria-label="Création de la carte" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
-            <sc-for list="{{ obChoices }}" as="ch" hint-placeholder-count="2"><button type="button" role="radio" aria-checked="{{ ch.on }}" onClick="{{ ch.pick }}" style="text-align:left;padding:16px;border-radius:16px;border:1.5px solid {{ ch.border }};background:{{ ch.bg }};display:flex;flex-direction:column;gap:6px;min-height:112px;color:#1C1F24"><span class="material-symbols-rounded" style="font-size:24px;color:#2448F0">{{ ch.icon }}</span><span style="font-weight:700;font-size:16px">{{ ch.label }}</span><span style="font-size:14px;color:#5E636B;line-height:1.4">{{ ch.sub }}</span></button></sc-for>
+            <sc-for list="{{ obChoices }}" as="ch" hint-placeholder-count="2"><button type="button" role="radio" aria-checked="{{ ch.on }}" onClick="{{ ch.pick }}" style="text-align:left;padding:16px;border-radius:16px;border:1.5px solid {{ ch.border }};background:{{ ch.bg }};display:flex;flex-direction:column;gap:6px;min-height:112px;color:#1C1F24"><span class="material-symbols-rounded" style="font-size:24px;color:#2448F0">{{ ch.icon }}</span><span style="font-weight:700;font-size:16px">{{ ch.label }}</span><sc-if value="{{ ch.price }}" hint-placeholder-val="{{ false }}"><span style="align-self:flex-start;padding:3px 10px;border-radius:8px;background:#E8EDFF;color:#1A36C4;font-size:14px;font-weight:700">{{ ch.price }}</span></sc-if><span style="font-size:14px;color:#5E636B;line-height:1.4">{{ ch.sub }}</span></button></sc-for>
           </div>
           <sc-if value="{{ err.obdesign }}" hint-placeholder-val="{{ false }}"><div role="alert" style="display:flex;gap:6px;align-items:center;margin-top:8px;color:#B42318;font-size:14px;font-weight:500"><span class="material-symbols-rounded" style="font-size:18px">error</span>{{ err.obdesign }}</div></sc-if>
           <sc-if value="{{ obCustom }}" hint-placeholder-val="{{ false }}">
@@ -363,9 +363,9 @@ a:hover{color:#1A36C4}
       <dt style="color:#5E636B">Enregistrée le</dt><dd style="margin:0">{{ dReq.date }}</dd>
       <dt style="color:#5E636B">Contact</dt><dd style="margin:0;overflow-wrap:anywhere">{{ dReq.contact }}</dd>
       <dt style="color:#5E636B">Fichiers joints</dt><dd style="margin:0">{{ dReq.files }}</dd>
-      <dt style="color:#5E636B">Tarif</dt><dd style="margin:0">Sur devis</dd>
+      <dt style="color:#5E636B">Tarif</dt><dd style="margin:0">{{ dReq.price }}</dd>
     </dl>
-    <p style="margin:0;color:#5E636B;font-size:14px;line-height:1.5">L’ajout à Google Wallet sera disponible une fois le design validé. En attendant, vous pouvez inscrire vos clients et enregistrer leurs passages.</p>
+    <p style="margin:0;color:#5E636B;font-size:14px;line-height:1.5">L’ajout à Google Wallet sera disponible une fois le design validé. En attendant, avec un abonnement actif, vous pouvez inscrire vos clients et enregistrer leurs passages.</p>
     <button type="button" onClick="{{ obDoneGo }}" style="height:56px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:17px" style-hover="background:#1A36C4">Accéder au tableau de bord</button>
   </div>
   </sc-if>
@@ -400,6 +400,7 @@ a:hover{color:#1A36C4}
       <span style="padding:5px 12px;border-radius:999px;background:#E8EDFF;color:#1A36C4;font-size:13px;font-weight:700">Dernière étape</span>
       <h1 style="margin:0;font-weight:800;font-size:clamp(30px,6vw,42px);letter-spacing:-0.03em;line-height:1.05">Choisissez votre offre</h1>
       <p style="margin:0;color:#4A4E55;font-size:17px;line-height:1.5">15 jours d’essai gratuit sur votre abonnement.</p>
+      <sc-if value="{{ canSkipBilling }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ toHome }}" style="min-height:40px;padding:0 10px;border:0;background:none;color:#2448F0;font-weight:600;font-size:15px">Accéder à mon espace (fonctions limitées)</button></sc-if>
     </div>
     <sc-if value="{{ bill.hasIssue }}" hint-placeholder-val="{{ false }}">
       <div role="alert" style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;padding:16px 18px;border-radius:16px;background:#FFF3DC;color:#5C4200;font-size:15px;line-height:1.5"><span class="material-symbols-rounded" style="font-size:22px">warning</span><div style="flex:1;min-width:220px">{{ bill.issue }}</div><sc-if value="{{ bill.canPortal }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openPortal }}" disabled="{{ busy }}" style="min-height:44px;padding:0 14px;border:0;border-radius:12px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:14px">Gérer mon abonnement</button></sc-if></div>
@@ -435,6 +436,28 @@ a:hover{color:#1A36C4}
       <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">{{ sv.text }}</p>
       <sc-if value="{{ sv.ok }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ toHome }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px">Accéder au tableau de bord</button></sc-if>
       <sc-if value="{{ sv.retry }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ resumeBilling }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:16px">Reprendre</button></sc-if>
+    </div>
+  </div>
+  </sc-if>
+  <sc-if value="{{ s.designPaid }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;display:grid;place-items:center;padding:24px 16px">
+    <div role="status" style="width:100%;max-width:480px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center">
+      <div style="width:60px;height:60px;border-radius:18px;background:{{ dv.bg }};color:{{ dv.fg }};display:grid;place-items:center"><sc-if value="{{ dv.loading }}" hint-placeholder-val="{{ true }}">{{ spin }}</sc-if><sc-if value="{{ dv.notLoading }}" hint-placeholder-val="{{ false }}"><span class="material-symbols-rounded" style="font-size:32px">{{ dv.icon }}</span></sc-if></div>
+      <h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em;line-height:1.15">{{ dv.title }}</h1>
+      <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">{{ dv.text }}</p>
+      <sc-if value="{{ dv.ok }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ designContinue }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px">Continuer</button></sc-if>
+      <sc-if value="{{ dv.retry }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ resumeDesign }}" disabled="{{ busy }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:16px">Reprendre ma commande</button></sc-if>
+    </div>
+  </div>
+  </sc-if>
+  <sc-if value="{{ s.designCancel }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;display:grid;place-items:center;padding:24px 16px">
+    <div style="width:100%;max-width:480px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center">
+      <div style="width:60px;height:60px;border-radius:18px;background:#FFF3DC;color:#8A5A00;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:32px">credit_card_off</span></div>
+      <h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em;line-height:1.15">Le paiement n’a pas été finalisé.</h1>
+      <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">Aucun montant n’a été débité et votre demande n’a pas été transmise à DPA Cards.</p>
+      <button type="button" onClick="{{ resumeDesign }}" disabled="{{ busy }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>Reprendre ma commande</button>
+      <button type="button" onClick="{{ designContinue }}" style="min-height:44px;padding:0 12px;border:0;background:none;color:#3E424A;font-weight:600;font-size:15px">Plus tard</button>
     </div>
   </div>
   </sc-if>
@@ -552,6 +575,32 @@ a:hover{color:#1A36C4}
       </header>
     </sc-if>
 
+    <sc-if value="{{ lockBanner }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1160px;margin:0 auto;padding:clamp(14px,3vw,24px) clamp(16px,4vw,40px) 0">
+        <div role="status" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 18px;border-radius:18px;background:#EEF1FF;border:1px solid #C9D3FF">
+          <div style="width:44px;height:44px;border-radius:12px;background:#FFFFFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:24px">lock</span></div>
+          <div style="flex:1 1 260px;min-width:0"><div style="font-weight:700;font-size:16px;color:#1A36C4">Votre compte n’est pas encore activé.</div><div style="margin-top:2px;font-size:14px;color:#3E424A;line-height:1.45">Choisissez une offre pour débloquer les inscriptions clients, le scanner, les cartes Wallet et les notifications.</div></div>
+          <button type="button" onClick="{{ toBilling }}" style="min-height:46px;padding:0 18px;border:0;border-radius:12px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:15px;flex:none" style-hover="background:#1A36C4">Choisir mon abonnement</button>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ homeDesign.show }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:1160px;margin:0 auto;padding:clamp(14px,3vw,24px) clamp(16px,4vw,40px) 0">
+        <div role="status" style="display:flex;align-items:flex-start;gap:14px;padding:16px 18px;border-radius:18px;background:{{ homeDesign.bg }};border:1px solid {{ homeDesign.border }}">
+          <div style="width:44px;height:44px;border-radius:12px;background:#FFFFFF;color:{{ homeDesign.fg }};display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:24px">{{ homeDesign.icon }}</span></div>
+          <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px;color:{{ homeDesign.fg }}">{{ homeDesign.title }}</div><div style="margin-top:2px;font-size:14px;color:#3E424A;line-height:1.45">{{ homeDesign.text }}</div><div style="margin-top:6px;font-size:13px;color:#5E636B">{{ homeDesign.meta }}</div></div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ s.locked }}" hint-placeholder-val="{{ false }}">
+      <div style="max-width:640px;margin:0 auto;padding:clamp(24px,6vw,64px) 16px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px">
+        <div style="width:64px;height:64px;border-radius:18px;background:#EEF1FF;color:#2448F0;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:34px">lock</span></div>
+        <h1 style="margin:0;font-weight:800;font-size:clamp(24px,5vw,30px);letter-spacing:-0.02em;line-height:1.15">{{ lockView.title }}</h1>
+        <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5;max-width:460px">{{ lockView.text }}</p>
+        <button type="button" onClick="{{ toBilling }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px" style-hover="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:20px">lock_open</span>Choisir mon abonnement</button>
+        <button type="button" onClick="{{ toHome }}" style="min-height:44px;padding:0 12px;border:0;background:none;color:#3E424A;font-weight:600;font-size:15px">Retour à l’accueil</button>
+      </div>
+    </sc-if>
     <sc-if value="{{ s.home }}" hint-placeholder-val="{{ false }}">
 <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
     <div style="max-width:1160px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:24px">
@@ -1560,7 +1609,7 @@ a:hover{color:#1A36C4}
           <div><label for="b1" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Nom du commerce</label><input id="b1" value="{{ sd.business }}" onChange="{{ SD.business }}" aria-invalid="{{ inv.sdbusiness }}" style="width:100%;height:52px;padding:0 16px;border:1.5px solid {{ eb.sdbusiness }};border-radius:12px;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF"><sc-if value="{{ err.sdbusiness }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:8px;color:#B42318;font-size:14px">{{ err.sdbusiness }}</div></sc-if></div>
           <div><label for="b2" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Activité</label><input id="b2" value="{{ sd.activity }}" onChange="{{ SD.activity }}" style="width:100%;height:52px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF"></div>
           <div><label for="b3" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Adresse</label><input id="b3" value="{{ sd.address }}" onChange="{{ SD.address }}" style="width:100%;height:52px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF"></div>
-          <div style="font-size:14px;color:#5E636B">Lien d’inscription : <span style="font-family:'IBM Plex Mono',monospace">{{ link }}</span></div>
+          <sc-if value="{{ hasLink }}" hint-placeholder-val="{{ true }}"><div style="font-size:14px;color:#5E636B">Lien d’inscription : <span style="font-family:'IBM Plex Mono',monospace">{{ link }}</span></div></sc-if><sc-if value="{{ noLink }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:6px;font-size:14px;color:#5E636B"><span class="material-symbols-rounded" style="font-size:18px">lock</span>Votre lien d’inscription sera disponible dès l’activation de votre abonnement.</div></sc-if>
         </sc-if>
         <sc-if value="{{ sec.security }}" hint-placeholder-val="{{ false }}">
           <div><label for="s1" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Mot de passe actuel</label><input id="s1" type="password" autoComplete="current-password" value="{{ f.pwdCur }}" onChange="{{ F.pwdCur }}" aria-invalid="{{ inv.pwdCur }}" style="width:100%;height:52px;padding:0 16px;border:1.5px solid {{ eb.pwdCur }};border-radius:12px;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF"><sc-if value="{{ err.pwdCur }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:8px;color:#B42318;font-size:14px">{{ err.pwdCur }}</div></sc-if></div>
@@ -1874,7 +1923,16 @@ const PLAN_UI=[
   {key:'commitment',title:'Engagement 12 mois',badge:'Meilleure offre',setup:'14,90 €',monthly:'9,90 €',saving:'Économisez 74,10 € sur la première année',lead:['15 jours gratuits','Engagement 12 mois','Exactement les mêmes fonctionnalités']}];
 const PLAN_FEATURES=['Cartes de fidélité digitales','Google Wallet','Apple Wallet (dès sa disponibilité)','Scanner QR','Gestion des clients','Récompenses','Notifications','Tableau de bord','Support'];
 const SUB_ST={trialing:'Essai gratuit',active:'Actif',past_due:'Paiement en retard',unpaid:'Impayé',canceled:'Résilié',incomplete:'Paiement non finalisé',incomplete_expired:'Expiré',paused:'Suspendu'};
-const APP_SCREENS=['home','clients','client','scanner','card','invite','more','settings','notifs','notifNew'];
+// Without a valid subscription the dashboard stays open in a locked mode: these screens show a lock instead.
+const LOCKED_SCREENS=['invite','scanner','clients','client','notifs','notifNew','join','joinDone'];
+const LOCK_TEXT={invite:['Activez votre abonnement pour inviter vos clients','Votre lien d’inscription et votre QR code seront disponibles dès l’activation de votre abonnement.'],
+  scanner:['Scanner verrouillé','Le scanner sera disponible après activation de votre abonnement.'],
+  clients:['Gestion des clients verrouillée','Activez votre abonnement pour inscrire et gérer vos clients.'],
+  notifs:['Notifications verrouillées','Activez votre abonnement pour envoyer des notifications.'],
+  wallet:['Google Wallet verrouillé','Activez votre abonnement pour utiliser Google Wallet.']};
+LOCK_TEXT.client=LOCK_TEXT.clients; LOCK_TEXT.notifNew=LOCK_TEXT.notifs; LOCK_TEXT.join=LOCK_TEXT.invite; LOCK_TEXT.joinDone=LOCK_TEXT.invite;
+// Return from the custom design payment: /design/success?session_id=… or /design/cancel.
+const DESIGN_RETURN=(()=>{ try{ const r=/^\/design\/(success|cancel)\/?$/.exec(window.location.pathname); return r?r[1]:null; }catch(e){ return null; } })();
 function subOk(sub){ return !!sub&&(sub.status==='trialing'||sub.status==='active'); }
 function fmtFull(iso){ if(!iso) return '—'; const d=new Date(iso); return d.getDate()+' '+['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'][d.getMonth()]+' '+d.getFullYear(); }
 function eur(c){ return c==null?'—':(c/100).toLocaleString('fr-FR',{style:'currency',currency:'EUR'}); }
@@ -2108,10 +2166,11 @@ class Component extends DCLogic {
         const p=d.program, m=d.merchant;
         if(p.designStatus==='draft') this.setState({...base,screen:'ob',merchant:m,sd:{...m},program:p,draft:{...p},clients:d.clients,designReq:d.designRequest,
           ob:{...this.initState().ob,step:3,biz:m.business,activity:m.activity||'Restaurant',mode:p.mode,goal:p.goal,reward:p.reward,prog:p.name,hex:(p.bg||'#FFFFFF').toUpperCase(),drName:(m.first+' '+m.last).trim(),drEmail:m.email}});
-        else { const scr=SUB_RETURN==='success'?'subSuccess':(SUB_RETURN==='cancel'?'subCancel':(subOk(d.subscription)?'home':'billing'));
+        else { const scr=SUB_RETURN==='success'?'subSuccess':(SUB_RETURN==='cancel'?'subCancel':'home');
           this.setState({...base,screen:scr,loadingHome:false,merchant:m,sd:{...m},program:p,draft:{...p},clients:d.clients,designReq:d.designRequest});
           if(SUB_RETURN==='success') setTimeout(()=>this.verifySub(),0); }
       }
+      if(DESIGN_RETURN&&d.merchant){ this.setState({screen:DESIGN_RETURN==='success'?'designPaid':'designCancel',designVerify:{st:'loading'}}); if(DESIGN_RETURN==='success') setTimeout(()=>this.verifyDesign(),0); }
       this.scrollTop();
     }catch(e){ this._liveUid=null; useCalendar(false); this.setState({busy:false,screen:'login',err:{loginPwd:'Impossible de charger votre espace : '+api.errorMessage(e)}}); }
     finally{ this._opening=false; }
@@ -2131,8 +2190,8 @@ class Component extends DCLogic {
   go(screen,extra={}){
     // The card/programme editor is desktop-only: on mobile it is never opened.
     if(screen==='card'&&window.innerWidth<1024) screen='home';
-    // No valid subscription (trialing / active): every dashboard screen leads to the offer page.
-    if(this.state.live&&APP_SCREENS.includes(screen)&&!subOk(this.state.subscription)) screen='billing';
+    // No valid subscription (trialing / active): business screens show a lock (the server refuses the actions anyway).
+    if(this.state.live&&LOCKED_SCREENS.includes(screen)&&!subOk(this.state.subscription)){ extra={...extra,lockKind:screen}; screen='locked'; }
     if(screen==='settings'&&extra.section==='billing') setTimeout(()=>this.loadBillingSummary(),0);
     const s=this.state, n={screen,err:{},...extra};
     if(screen==='scanner'&&!extra.keepScan){ const ist=this.initialScanState(s); n.scan={st:ist,id:null,added:false,used:false,msg:''}; n.pos={loading:false,err:null};
@@ -2253,9 +2312,33 @@ class Component extends DCLogic {
     this.setState({busy:true});
     try{ const req=await this.api.submitDesignRequest(s.merchant.id,this.reqId('design'),{logo:s.drLogo,refs:s.drRefs,colors:o.drColors.trim(),description:o.drDesc.trim(),
         contactName:o.drName.trim(),contactEmail:o.drEmail.trim(),contactPhone:o.drPhone.trim()});
-      this.settleReq('design'); const d=await this.api.loadAll((await this.api.session()).user);
-      this.setState({busy:false,program:d.program,draft:{...d.program},designReq:d.designRequest||req,screen:'designSent'}); this.scrollTop(); }
+      this.settleReq('design');
+      // Not an order yet: it becomes one once Stripe confirms the 29 € payment (server side).
+      if(req.paymentStatus==='paid'){ const d=await this.api.loadAll((await this.api.session()).user); this.setState({busy:false,program:d.program,draft:{...d.program},designReq:d.designRequest||req,screen:'designSent'}); return this.scrollTop(); }
+      const r=await this.api.billing.designCheckout(req.id); window.location.assign(r.url); }
     catch(e){ this.settleReq('design',e); this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
+  clearDesignUrl(){ try{ history.replaceState(null,'','/'); }catch(e){} }
+  // Back from Stripe: the server checks the session with Stripe before the request becomes an order.
+  async verifyDesign(){ const id=new URLSearchParams(window.location.search).get('session_id');
+    if(!id){ this.clearDesignUrl(); return this.setState({designVerify:{st:'error',msg:'Session de paiement introuvable.'}}); }
+    for(let i=0;i<8;i++){
+      try{ const r=await this.api.billing.designVerify(id);
+        if(r.paid){ this.clearDesignUrl(); let d=null; try{ d=await this.api.loadAll((await this.api.session()).user); }catch(x){}
+          return this.setState(x=>({designVerify:{st:'ok'},...(d?{program:d.program,draft:{...d.program},designReq:d.designRequest}:{})})); }
+        if(i>=2){ this.clearDesignUrl(); return this.setState({designVerify:{st:'unpaid'}}); } }
+      catch(e){ if(e.code==='forbidden'||e.code==='invalid_session'||i===7){ this.clearDesignUrl(); return this.setState({designVerify:{st:'error',msg:this.api.errorMessage(e)}}); } }
+      await new Promise(r=>setTimeout(r,2000)); }
+    this.setState({designVerify:{st:'error',msg:'La confirmation prend plus de temps que prévu. Actualisez la page dans un instant.'}}); }
+  resumeDesign=async()=>{ if(this.state.busy) return; this.setState({busy:true});
+    try{ const r=await this.api.billing.designCheckout(null); window.location.assign(r.url); }
+    catch(e){ this.setState({busy:false}); this.clearDesignUrl();
+      if(e.code==='design_already_paid') return this.designContinue();
+      if(e.code==='design_request_not_found'){ this.showToast('Aucune commande en attente : complétez à nouveau votre demande.','info'); return this.setState(x=>({screen:x.program&&x.program.designStatus==='draft'?'ob':'home',ob:{...x.ob,step:3,design:'dpa'}})); }
+      this.showToast(this.api.errorMessage(e),'error'); } };
+  designContinue=()=>{ this.clearDesignUrl(); const s=this.state;
+    if(s.program&&s.program.designStatus==='draft') return this.setState(x=>({screen:'ob',ob:{...x.ob,step:3}}));
+    if(!subOk(s.subscription)) return this.go('billing');
+    this.go('home'); };
   unitOf(p){ return p.mode==='points'?'points':'passages'; }
   stepOf(p){ return p.mode==='points'?10:1; }
   addVisit(id,ctx){
@@ -2356,6 +2439,7 @@ class Component extends DCLogic {
     const api=await this.ready(); if(!api) return this.setState({screen:'joinMissing',pubErr:'network'});
     try{ const r=await api.publicProgram(this.state.pubSlug);
       if(!r) return this.setState({screen:'joinMissing',pubErr:null});
+      if(r.unavailable) return this.setState({screen:'joinMissing',pubErr:'unavailable'});
       useCalendar(true); try{ document.title=r.program.name+' · '+r.business; }catch(e){}
       this.setState(s=>({screen:'join',merchant:{...s.merchant,business:r.business,slug:r.slug},program:r.program,draft:{...r.program},clients:[],joinedId:null,consent:false,err:{},f:{...s.f,joinFirst:'',joinEmail:''}})); }
     catch(e){ this.setState({screen:'joinMissing',pubErr:'network'}); } }
@@ -2654,18 +2738,21 @@ class Component extends DCLogic {
 
   renderVals(){
     const s=this.state, W=s.w, isDesk=W>=1024, isMob=!isDesk, scr=s.screen;
-    const names=['login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','joinLoading','joinMissing','notifs','notifNew','billing','subSuccess','subCancel'];
+    const names=['login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','joinLoading','joinMissing','notifs','notifNew','billing','subSuccess','subCancel','locked','designPaid','designCancel'];
     const S={}; names.forEach(k=>S[k]=scr===k);
-    S.auth=S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.bill=S.billing||S.subSuccess||S.subCancel; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState&&!S.bill;
-    // Belt and braces: whatever the screen, no dashboard without a valid subscription.
-    if(s.live&&S.app&&!subOk(s.subscription)){ S.app=false; S.billing=true; S.bill=true; }
+    S.auth=S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.bill=S.billing||S.subSuccess||S.subCancel||S.designPaid||S.designCancel; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState&&!S.bill;
+    // Belt and braces: a business screen never renders without a valid subscription.
+    const locked=!!s.live&&!subOk(s.subscription);
+    let lockKind=s.screen==='locked'?s.lockKind:null;
+    if(locked) LOCKED_SCREENS.forEach(k=>{ if(S[k]){ S[k]=false; S.locked=true; lockKind=k; } });
     const m=s.merchant, P=s.program, goal=+P.goal, unit=this.unitOf(P), step=this.stepOf(P);
     const F={}, err=s.err, eb={}, inv={};
     Object.keys(s.f).forEach(k=>F[k]=this.fh(k));
     ['loginEmail','loginPwd','suBiz','suFirst','suLast','suEmail','suPwd','fpEmail','manualNo','joinFirst','joinEmail','pwdCur','pwdNew','pwdConf','obbiz','obreward','sdfirst','sdemail','sdbusiness','obprog','obhex','drdesc','drname','drcontact','drcolors','delConfirm'].forEach(k=>{ eb[k]=err[k]?'#B42318':'#D4D1C9'; inv[k]=!!err[k]; });
     const go=k=>()=>this.go(k);
     // Live: the permanent public URL. QR code, « Copier le lien » and « Voir la page » all use this exact string.
-    const pubUrl=joinUrl(m.slug), link=pubUrl;
+    // Locked: no public link and no QR code are generated at all.
+    const pubUrl=locked?'':joinUrl(m.slug), link=pubUrl;
     const spin=React.createElement('span',{'aria-hidden':true,style:{width:18,height:18,border:'2.5px solid currentColor',borderRightColor:'transparent',borderRadius:'50%',display:'inline-block',animation:'dpaSpin .8s linear infinite',flex:'none'}});
     const scanLine=React.createElement('div',{'aria-hidden':true,style:{position:'absolute',left:'12%',right:'12%',height:2,borderRadius:2,background:'#7C95FF',boxShadow:'0 0 18px 4px rgba(124,149,255,0.55)',animation:'dpaScan 2s ease-in-out infinite alternate'}});
     const sheetAnim=React.createElement('span',{style:{display:'none'}});
@@ -2764,13 +2851,13 @@ class Component extends DCLogic {
     const dz={logoThumb:thumb(pr.logoUrl,'add_photo_alternate'),heroThumb:thumb(pr.heroUrl,'panorama'),hasLogo:!!pr.logoUrl&&!ib,hasHero:!!pr.heroUrl&&!ib,
       logoBusy:ib==='logo',heroBusy:ib==='hero',logoIdle:ib!=='logo',heroIdle:ib!=='hero',anyBusy:!!ib,logoAction:pr.logoUrl?'Remplacer':'Importer le logo',heroAction:pr.heroUrl?'Remplacer':'Importer une image',
       pickerValue:hexOk?o.hex.toLowerCase():'#ffffff'};
-    const choice=(k,label,sub,icon)=>{ const on=o.design===k; return {label,sub,icon,on,bg:on?'#EEF1FF':'#FFFFFF',border:on?'#2448F0':'#D4D1C9',pick:()=>this.setState(x=>({ob:{...x.ob,design:k},err:{}}))}; };
-    const obChoices=[choice('custom','Personnaliser ma carte','Nom, logo, image de couverture et couleur de fond.','palette'),choice('dpa','Confier le design à DPA Cards','Transmettez vos éléments : création sur mesure, sur devis.','brush')];
+    const choice=(k,label,sub,icon,price)=>{ const on=o.design===k; return {label,sub,icon,on,price:price||'',bg:on?'#EEF1FF':'#FFFFFF',border:on?'#2448F0':'#D4D1C9',pick:()=>this.setState(x=>({ob:{...x.ob,design:k},err:{}}))}; };
+    const obChoices=[choice('custom','Personnaliser ma carte','Nom, logo, image de couverture et couleur de fond.','palette'),choice('dpa','Confier le design à DPA Cards','Nous créons votre carte à partir de votre logo, vos couleurs et vos références visuelles.','brush','29 € TTC — paiement unique')];
     const fileIcon=f=>f.type==='application/pdf'?'picture_as_pdf':'image';
     const drV={logoAction:s.drLogo?'Remplacer':'Importer',hasLogo:!!s.drLogo,logoName:s.drLogo?s.drLogo.name:'',canAddRef:s.drRefs.length<5,hasRefs:s.drRefs.length>0,
       refs:s.drRefs.map((f,i)=>({name:f.name,icon:fileIcon(f),removeLabel:'Retirer '+f.name,remove:()=>this.setState(x=>({drRefs:x.drRefs.filter((_,j)=>j!==i)}))}))};
-    const rq=s.designReq, RQ={submitted:'Reçue',in_progress:'En cours',delivered:'Livrée',cancelled:'Annulée'};
-    const dReq=rq?{statusLabel:RQ[rq.status]||rq.status,date:fmtLong(ymdOf(new Date(rq.createdAt))),contact:[rq.contactName,rq.contactEmail,rq.contactPhone].filter(Boolean).join(' · '),files:rq.files?String(rq.files):'Aucun'}:{statusLabel:'',date:'',contact:'',files:''};
+    const rq=s.designReq, RQ={pending_payment:'En attente de paiement',submitted:'Reçue',in_progress:'En cours',delivered:'Livrée',cancelled:'Annulée'};
+    const dReq=rq?{price:rq.paymentStatus==='paid'?'29 € TTC (payé)':'29 € TTC',statusLabel:RQ[rq.status]||rq.status,date:fmtLong(ymdOf(new Date(rq.createdAt))),contact:[rq.contactName,rq.contactEmail,rq.contactPhone].filter(Boolean).join(' · '),files:rq.files?String(rq.files):'Aucun'}:{statusLabel:'',date:'',contact:'',files:''};
     const cropEl=s.crop&&this.api?React.createElement(this.api.Cropper,{key:s.crop.src,src:s.crop.src,aspect:s.crop.kind==='logo'?1:1032/812,outW:s.crop.kind==='logo'?660:1032,outH:s.crop.kind==='logo'?660:812,
       mime:s.crop.kind==='logo'?'image/png':'image/jpeg',round:s.crop.kind==='logo',title:s.crop.kind==='logo'?'Recadrer le logo':'Recadrer l’image de couverture',
       hint:s.crop.kind==='logo'?'Google Wallet affiche le logo dans un cercle. Gardez l’essentiel à l’intérieur du cercle pointillé.':'L’image occupe toute la largeur en bas de la carte (format 1032 × 812 px).',
@@ -2818,6 +2905,7 @@ class Component extends DCLogic {
     const bt=i=>i?'1px solid #EFEDE8':'0';
     const mShowBar=isMob&&S.app&&!S.scanner, mShowNav=isMob&&S.app&&!['scanner','notifNew','settings'].includes(scr);
     const mBarMap={home:{logo:true,demo:!!s.demo},clients:{title:'Clients',addClient:true},client:{title:sel?sel.full:'Client',back:go('clients')},notifs:{title:'Notifications',create:true},notifNew:{title:nv.nHeading,back:go('notifs')},more:{title:'Réglages'},settings:{title:secTitle,back:go('more')},invite:{title:'Inviter mes clients',back:go('more')},card:{title:'Ma carte',back:go('home')}};
+    mBarMap.locked={title:'Fonction verrouillée',back:go('home')};
     const mb={logo:false,back:null,title:'',demo:false,addClient:false,create:false,...(mBarMap[scr]||{})}; mb.hasBack=!!mb.back; mb.hasTitle=!!mb.title;
     const mStats=[{label:'Passages aujourd’hui',value:stats[1].value},{label:'Récompenses disponibles',value:stats[2].value},{label:'Clients inscrits',value:stats[0].value}];
     const shortF={all:'Tous',reward:'Récompense',new:'Nouveaux'};
@@ -2844,22 +2932,35 @@ class Component extends DCLogic {
       isDemo:!!s.demo, isLive:!s.demo, authFooter:'DPA CARDS v0.1 · aucune connexion Apple ou Google',
       linkNote:s.demo?'Lien et QR code de démonstration.':'Lien permanent : vous pouvez imprimer ce QR code ou partager ce lien.',
       notPublic:!s.pubSlug, pubRetry:()=>this.bootPublic(),
-      pubMiss:s.pubErr==='network'?{icon:'wifi_off',title:'Page momentanément indisponible',text:'Vérifiez votre connexion internet puis réessayez.',retry:true}
+      pubMiss:s.pubErr==='unavailable'?{icon:'schedule',title:'Inscriptions bientôt ouvertes',text:'Les inscriptions à ce programme de fidélité ne sont pas encore ouvertes. Revenez un peu plus tard.',retry:false}:s.pubErr==='network'?{icon:'wifi_off',title:'Page momentanément indisponible',text:'Vérifiez votre connexion internet puis réessayez.',retry:true}
         :{icon:'search_off',title:'Programme de fidélité introuvable',text:'Ce lien d’inscription n’existe pas ou n’est plus actif. Vérifiez le QR code ou demandez le lien au commerce.',retry:false},
       joinBanner:s.demo?'Aperçu de la page publique · démonstration, aucune donnée n’est collectée':'Inscription sur cet appareil · le client est enregistré dans votre espace',
       logoutNote:s.demo?'Vous devrez vous reconnecter pour scanner des cartes. Les données de démonstration seront réinitialisées.':'Vous devrez vous reconnecter pour scanner des cartes. Vos données restent enregistrées.',
       authCard,
       ob:o, O, obSteps, obActs, obCard, obStep1:o.step===1, obStep2:o.step===2, obStep3:o.step===3, obNotFirst:o.step>1, obNext:this.obNext, obBack:()=>this.setState(x=>({ob:{...x.ob,step:x.ob.step-1},err:{}})),
-      obNextLabel:o.step===3?(o.design==='custom'?(s.busy?'Validation…':'Valider ma carte'):o.design==='dpa'?(s.busy?'Envoi…':'Envoyer ma demande'):'Continuer'):(s.busy?'Enregistrement…':'Continuer'),
+      obNextLabel:o.step===3?(o.design==='custom'?(s.busy?'Validation…':'Valider ma carte'):o.design==='dpa'?(s.busy?'Redirection vers le paiement…':'Commander mon design — 29 €'):'Continuer'):(s.busy?'Enregistrement…':'Continuer'),
       obChoices, obCustom:o.design==='custom', obDpa:o.design==='dpa', wp, dz, dr:drV, dReq, designPending:!!s.live&&pr.designStatus==='pending_dpa'&&!!rq, cropEl,
       obPickLogo:this.obPick('logo'), obPickHero:this.obPick('hero'), obRemoveLogo:()=>this.removeImage('logo'), obRemoveHero:()=>this.removeImage('hero'),
       drPickLogo:this.drPick(false), drPickRefs:this.drPick(true), drRemoveLogo:()=>this.setState({drLogo:null}), obMode:mkMode('ob'), obGoalDown:stepGoal('ob',-1), obGoalUp:stepGoal('ob',1), obUnit:o.mode==='points'?'points':'passages',
       obBg:mkSw(BGS,'bg','ob'), obAccent:mkSw(ACCENTS,'accent','ob'), obPat:mkPat('ob'), obLogoPreview:obP.logo,
-      obDoneGo:()=>{ this.go('home',{loadingHome:true}); setTimeout(()=>this.setState({loadingHome:false}),600); },
-      qrBiz:this.api?this.realQr(pubUrl,200,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,200), qrBizSm:this.api?this.realQr(pubUrl,168,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,168), link, pubUrl,
-      copyLink:()=>this.copyJoinLink(),
-      downloadQr:()=>s.live?this.downloadJoinQr():this.showToast('Démo : le téléchargement du QR code n’est pas activé.','info'),
-      mobNav, deskNav, toScanner:go('scanner'), toMore:go('more'), toInvite:go('invite'), toCard:go('card'), toClients:go('clients'), toJoin:()=>{ const w=window.open(pubUrl,'_blank'); if(w) w.opener=null; else window.location.assign(pubUrl); }, toHome:go('home'),
+      obDoneGo:()=>{ if(s.live&&!subOk(s.subscription)) return this.go('billing'); this.go('home',{loadingHome:true}); setTimeout(()=>this.setState({loadingHome:false}),600); },
+      qrBiz:locked?null:(this.api?this.realQr(pubUrl,200,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,200)), qrBizSm:locked?null:(this.api?this.realQr(pubUrl,168,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,168)), link, pubUrl, hasLink:!!link, noLink:!link,
+      copyLink:()=>locked?this.go('invite'):this.copyJoinLink(),
+      lockBanner:locked&&S.app, toBilling:()=>this.go('billing'), canSkipBilling:locked&&!!s.program&&s.program.designStatus!=='draft',
+      lockView:{title:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[0],text:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[1]},
+      homeDesign:(()=>{ const r=s.designReq; if(!s.live||!S.home||!r||r.paymentStatus!=='paid') return {show:false};
+        const when='Demande du '+fmtFull(r.paidAt||r.createdAt)+' · '+({submitted:'Envoyée',in_progress:'En cours de création',delivered:'Livrée'}[r.status]||r.status);
+        if(r.status==='delivered') return {show:true,icon:'task_alt',bg:'#E4F3EB',border:'#B9E0CB',fg:'#1F6B45',title:'Votre design est prêt.',text:'Votre carte créée par DPA Cards est disponible.',meta:when};
+        if(r.status==='submitted'||r.status==='in_progress') return {show:true,icon:'brush',bg:'#EEF1FF',border:'#C9D3FF',fg:'#1A36C4',title:'Création sur mesure en cours',text:'Votre carte est en cours de création par DPA Cards. Nous vous préviendrons dès qu’elle sera prête.',meta:when};
+        return {show:false}; })(),
+      dv:(()=>{ const v=s.designVerify||{st:'loading'};
+        if(v.st==='ok') return {ok:true,retry:false,loading:false,notLoading:true,icon:'task_alt',bg:'#E4F3EB',fg:'#1F7A4F',title:'Votre demande a bien été envoyée à DPA Cards.',text:'Paiement de 29 € confirmé par Stripe. Nous vous préviendrons dès que votre carte sera prête.'};
+        if(v.st==='unpaid') return {ok:false,retry:true,loading:false,notLoading:true,icon:'credit_card_off',bg:'#FFF3DC',fg:'#8A5A00',title:'Paiement non confirmé',text:'Stripe n’a pas confirmé le paiement : votre demande n’a pas été transmise.'};
+        if(v.st==='error') return {ok:false,retry:true,loading:false,notLoading:true,icon:'error',bg:'#FCEBEA',fg:'#B42318',title:'Vérification impossible',text:v.msg||'Réessayez dans un instant.'};
+        return {ok:false,retry:false,loading:true,notLoading:false,icon:'',bg:'#E8EDFF',fg:'#2448F0',title:'Confirmation du paiement…',text:'Nous vérifions votre paiement auprès de Stripe.'}; })(),
+      resumeDesign:this.resumeDesign, designContinue:this.designContinue,
+      downloadQr:()=>locked?this.go('invite'):(s.live?this.downloadJoinQr():this.showToast('Démo : le téléchargement du QR code n’est pas activé.','info')),
+      mobNav, deskNav, toScanner:go('scanner'), toMore:go('more'), toInvite:go('invite'), toCard:go('card'), toClients:go('clients'), toJoin:()=>{ if(locked) return this.go('invite'); const w=window.open(pubUrl,'_blank'); if(w) w.opener=null; else window.location.assign(pubUrl); }, toHome:go('home'),
       mInitials:initials(m.first+' '+m.last), todayLabel:s.live?todayLong():'Mercredi 30 septembre',
       loadingHome:s.loadingHome, notLoadingHome:!s.loadingHome, stats, activities, hasActivities:activities.length>0, noActivities:activities.length===0,
       homeCard, ruleText:`${goal} ${unit} = ${P.reward}`,
@@ -2900,7 +3001,7 @@ class Component extends DCLogic {
       mListCount:list.length+' client'+(list.length>1?'s':''), mSelActs, mResults, mNoResults:mResults.length===0, mq:s.mq, setMq:e=>this.setState({mq:e.target.value}),
       noDemoHints:true,
       closeScanner:()=>{ if(s.busy) return; const p=s.prevScreen; this.go(p&&p!=='scanner'?p:'home'); }, openSearch:()=>this.setState({modal:'mSearch',mq:''}),
-      openAddClient:()=>this.setState({modal:'addClient'}), addToJoin:()=>{ this.setState({modal:null}); this.go('join'); },
+      openAddClient:()=>locked?this.go('invite'):this.setState({modal:'addClient'}), addToJoin:()=>{ this.setState({modal:null}); this.go('join'); },
       mNRows:nv.nRows.map((r,i)=>({...r,bt:bt(i)}))
     };
   }

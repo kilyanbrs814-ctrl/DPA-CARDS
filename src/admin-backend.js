@@ -130,4 +130,6 @@ window.__dpaAdminResolve({
   onAccess(cb) { accessListeners.push(cb); if (app.style.display === 'block') cb(); },
   overview: () => adminCall('admin-overview'),
   merchant: id => adminCall('admin-merchant', { merchant_id: id }),
+  designs: () => adminCall('admin-designs'),
+  setDesignStatus: (id, status) => adminCall('admin-design-status', { id, status }),
 });

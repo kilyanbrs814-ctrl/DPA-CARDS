@@ -5,6 +5,8 @@
     { "source": "/confidentialite", "destination": "/confidentialite.html" },
     { "source": "/cgv", "destination": "/cgv.html" },
     { "source": "/subscription/success", "destination": "/index.html" },
-    { "source": "/subscription/cancel", "destination": "/index.html" }
+    { "source": "/subscription/cancel", "destination": "/index.html" },
+    { "source": "/design/success", "destination": "/index.html" },
+    { "source": "/design/cancel", "destination": "/index.html" }
   ]
 }

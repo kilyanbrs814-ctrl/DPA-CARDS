@@ -5,7 +5,10 @@
 //   POST /billing/summary   member session → subscription, payment method and invoices (from Stripe)
 //   POST /billing/portal    owner session → Stripe Billing Portal URL
 //   POST /billing/cancel    owner session → cancel at period end, refused while a 12-month commitment runs
-//   POST /billing/webhook   Stripe signature → keeps public.subscriptions in sync with Stripe
+//   POST /billing/design-checkout  owner session → Stripe Checkout for the 29 € custom design (one-time)
+//   POST /billing/design-verify    member session, { session_id } → confirms that payment with Stripe
+//   POST /billing/webhook   Stripe signature → keeps public.subscriptions in sync with Stripe and
+//                           confirms custom design payments (metadata.type = custom_design)
 //
 // Why two steps: Stripe Checkout cannot combine a free trial with a billing cycle anchor.
 // The Subscriptions API can: trial_end + billing_cycle_anchor gives a free trial, then a
@@ -16,6 +19,7 @@
 
 import Stripe from 'npm:stripe@17.7.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { ADMIN_ALERT_EMAIL, sendEmail, simpleMail } from '../_shared/email.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SITE_URL = 'https://dpa-cards.vercel.app';
@@ -36,6 +40,9 @@ const stripe = STRIPE_KEY ? new Stripe(STRIPE_KEY, { apiVersion: '2025-02-24.aca
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
 // The only place where plans are defined. Amounts are read back from Stripe prices.
+// Custom design: one fixed Stripe price (29,00 € TTC, one-time), never an amount from the browser.
+const DESIGN_PRICE = Deno.env.get('STRIPE_PRICE_CUSTOM_DESIGN') ?? '';
+
 const PLANS = {
   no_commitment: { setup: Deno.env.get('STRIPE_PRICE_SETUP_NO_COMMITMENT') ?? '', monthly: Deno.env.get('STRIPE_PRICE_MONTHLY_NO_COMMITMENT') ?? '', commitmentMonths: 0 },
   commitment: { setup: Deno.env.get('STRIPE_PRICE_SETUP_COMMITMENT') ?? '', monthly: Deno.env.get('STRIPE_PRICE_MONTHLY_COMMITMENT') ?? '', commitmentMonths: 12 },
@@ -305,6 +312,130 @@ async function cancel(req: Request): Promise<Response> {
   return json(req, 200, { subscription: await syncSubscription(sub, { cancel_requested_at: new Date().toISOString() }) });
 }
 
+// ---------------------------------------------------------------- custom design (29 € one-time)
+// The request exists as 'pending_payment' (files + brief); it becomes an order ('submitted')
+// only once Stripe confirms the payment. Separate from the subscription in every way.
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function customerFor(s: Stripe, merchantId: string, email?: string | null, name?: string | null) {
+  const row = await rowOf(merchantId);
+  if (row?.stripe_customer_id) return row.stripe_customer_id as string;
+  const found = await s.customers.search({ query: `metadata['merchant_id']:'${merchantId}'`, limit: 1 });
+  if (found.data[0]) return found.data[0].id;
+  return (await s.customers.create({ email: email ?? undefined, name: name ?? undefined, metadata: { merchant_id: merchantId } })).id;
+}
+
+async function designCheckout(req: Request): Promise<Response> {
+  const s = requireStripe();
+  if (!DESIGN_PRICE) throw new HttpError(503, 'billing_not_configured');
+  const { user, merchantId } = await member(req);
+  const body = await req.json().catch(() => ({}));
+  const wanted = body?.design_request_id ? String(body.design_request_id) : null;
+  if (wanted && !UUID.test(wanted)) throw new HttpError(400, 'invalid_request');
+  // The merchant's own request: the one named, or the latest unpaid one ("Reprendre ma commande").
+  let q = admin.from('design_requests').select('*').eq('merchant_id', merchantId);
+  q = wanted ? q.eq('id', wanted) : q.eq('status', 'pending_payment').order('created_at', { ascending: false }).limit(1);
+  const { data: reqRow, error } = await q.maybeSingle();
+  if (error) throw new Error('db_design_requests');
+  if (!reqRow) throw new HttpError(404, 'design_request_not_found');
+  if (reqRow.payment_status === 'paid') throw new HttpError(409, 'design_already_paid');
+  if (reqRow.status !== 'pending_payment') throw new HttpError(409, 'design_request_not_found');
+
+  const { data: merchant } = await admin.from('merchants').select('business_name').eq('id', merchantId).single();
+  const customer = await customerFor(s, merchantId, user.email, merchant?.business_name);
+  const metadata = { type: 'custom_design', merchant_id: merchantId, design_request_id: reqRow.id, user_id: user.id };
+  const origin = siteOrigin(req);
+  const session = await s.checkout.sessions.create({
+    mode: 'payment',
+    customer,
+    payment_method_types: ['card'],
+    line_items: [{ price: DESIGN_PRICE, quantity: 1 }],
+    payment_intent_data: { metadata, description: 'DPA Cards — création de carte sur mesure' },
+    invoice_creation: { enabled: true, invoice_data: { metadata, description: 'Création de carte sur mesure DPA Cards' } },
+    metadata,
+    locale: 'fr',
+    custom_text: { submit: { message: 'Paiement unique pour la création de votre carte par DPA Cards. Il ne démarre pas votre abonnement.' } },
+    success_url: `${origin}/design/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/design/cancel`,
+  });
+  const { error: ue } = await admin.from('design_requests').update({ stripe_checkout_session_id: session.id }).eq('id', reqRow.id).eq('status', 'pending_payment');
+  if (ue) throw new Error('db_design_requests');
+  return json(req, 200, { url: session.url });
+}
+
+// Signed links (7 days) to the brief files, for the alert e-mail.
+async function signedLinks(paths: string[]) {
+  const out: [string, string][] = [];
+  let ref = 0;
+  for (const p of paths) {
+    const { data } = await admin.storage.from('design-requests').createSignedUrl(p, 7 * 86400);
+    if (data?.signedUrl) out.push([/\/logo\.[a-z]+$/i.test(p) ? 'Logo' : `Référence ${++ref}`, data.signedUrl]);
+  }
+  return out;
+}
+
+async function sendDesignAlert(r: any) {
+  const [{ data: m }, { data: p }] = await Promise.all([
+    admin.from('merchants').select('business_name, first_name, last_name, phone, created_by').eq('id', r.merchant_id).single(),
+    admin.from('programs').select('name').eq('id', r.program_id).single(),
+  ]);
+  let ownerEmail: string | null = null;
+  try { ownerEmail = (await admin.auth.admin.getUserById(m!.created_by)).data.user?.email ?? null; } catch { /* optional */ }
+  const files = [r.logo_path, ...(r.reference_paths ?? [])].filter(Boolean);
+  const links = await signedLinks(files);
+  const paid = ((r.amount_cents ?? 0) / 100).toLocaleString('fr-FR', { style: 'currency', currency: (r.currency ?? 'eur').toUpperCase() });
+  const { text, html } = simpleMail('Nouvelle demande de création sur mesure.', [
+    ['Commerce', m?.business_name],
+    ['Responsable', r.contact_name || `${m?.first_name ?? ''} ${m?.last_name ?? ''}`.trim()],
+    ['Email', r.contact_email || ownerEmail],
+    ['Téléphone', r.contact_phone || m?.phone || null],
+    ['Couleurs souhaitées', r.colors],
+    ['Description', r.description],
+    ['Programme', p?.name],
+    ['Date', new Date(r.paid_at ?? r.created_at).toLocaleString('fr-FR', { timeZone: 'Europe/Paris' })],
+    ['Montant payé', paid],
+    ['ID demande', r.id],
+  ], links);
+  return sendEmail({ to: ADMIN_ALERT_EMAIL, subject: `Nouvelle demande de design DPA Cards — ${m?.business_name ?? ''}`, text, html, replyTo: r.contact_email || ownerEmail || undefined });
+}
+
+// Paid according to Stripe → order + one alert e-mail (atomic claim on notified_at).
+async function confirmDesign(session: Stripe.Checkout.Session) {
+  const s = requireStripe();
+  const requestId = session.metadata?.design_request_id, merchantId = session.metadata?.merchant_id;
+  if (session.metadata?.type !== 'custom_design' || !requestId || !merchantId) throw new HttpError(400, 'invalid_session');
+  const { data: reqRow } = await admin.from('design_requests').select('id, merchant_id').eq('id', requestId).maybeSingle();
+  if (!reqRow || reqRow.merchant_id !== merchantId) throw new HttpError(403, 'forbidden');
+  if (session.payment_status !== 'paid') return { paid: false, request: null };
+  const items = await s.checkout.sessions.listLineItems(session.id, { limit: 5 });
+  if (!items.data.some(i => i.price?.id === DESIGN_PRICE) || session.amount_total == null) throw new HttpError(409, 'invalid_session');
+  const pi = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
+  const { data, error } = await admin.rpc('design_mark_paid', { p_request: requestId, p_session: session.id, p_payment_intent: pi, p_amount: session.amount_total, p_currency: session.currency });
+  if (error) throw new Error('db_design_mark_paid');
+  const { data: claimed } = await admin.from('design_requests').update({ notified_at: new Date().toISOString() })
+    .eq('id', requestId).eq('payment_status', 'paid').is('notified_at', null).select().maybeSingle();
+  if (claimed) {
+    const r = await sendDesignAlert(claimed);
+    await admin.from('design_requests').update({ notify_error: r.sent ? null : r.error }).eq('id', requestId);
+    if (!r.sent) console.error('billing error', 'design alert', r.error);
+  }
+  const { data: fresh } = await admin.from('design_requests').select('id, status, payment_status, paid_at, amount_cents, currency').eq('id', requestId).single();
+  return { paid: true, request: fresh ?? data.request };
+}
+
+async function designVerify(req: Request): Promise<Response> {
+  const s = requireStripe();
+  const { merchantId } = await member(req, false);
+  const body = await req.json().catch(() => ({}));
+  const id = String(body?.session_id ?? '');
+  if (!/^cs_(test|live)_[A-Za-z0-9]+$/.test(id)) throw new HttpError(400, 'invalid_session');
+  const session = await s.checkout.sessions.retrieve(id, { expand: ['payment_intent'] });
+  if (session.metadata?.merchant_id !== merchantId || session.metadata?.type !== 'custom_design') throw new HttpError(403, 'forbidden');
+  const r = await confirmDesign(session);
+  return json(req, 200, r);
+}
+
 async function webhook(req: Request): Promise<Response> {
   const s = requireStripe();
   const secret = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '';
@@ -321,7 +452,8 @@ async function webhook(req: Request): Promise<Response> {
     case 'checkout.session.completed':
     case 'checkout.session.async_payment_succeeded': {
       const session = event.data.object as Stripe.Checkout.Session;
-      if (session.mode === 'payment' && session.metadata?.merchant_id) await ensureSubscription(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
+      if (session.metadata?.type === 'custom_design') await confirmDesign(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
+      else if (session.mode === 'payment' && session.metadata?.merchant_id && session.metadata?.plan_type) await ensureSubscription(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
       break;
     }
     case 'customer.subscription.created':
@@ -353,6 +485,8 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/summary')) return await summary(req);
     if (req.method === 'POST' && path.endsWith('/portal')) return await portal(req);
     if (req.method === 'POST' && path.endsWith('/cancel')) return await cancel(req);
+    if (req.method === 'POST' && path.endsWith('/design-checkout')) return await designCheckout(req);
+    if (req.method === 'POST' && path.endsWith('/design-verify')) return await designVerify(req);
     return json(req, 404, { error: 'not_found' });
   } catch (e) {
     if (e instanceof HttpError) return json(req, e.status, { error: e.code, ...e.extra });

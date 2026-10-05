@@ -12,6 +12,8 @@
 //   POST /wallet/delete-account   owner session + "SUPPRIMER" → deletes the whole merchant and the login
 //   POST /wallet/admin-overview   admin session → platform KPIs and the merchant list
 //   POST /wallet/admin-merchant   admin session → one merchant's details
+//   POST /wallet/admin-designs    admin session → paid custom design requests (signed file links)
+//   POST /wallet/admin-design-status  admin session, { id, status } → in_progress / delivered
 //
 // verify_jwt is off: the platform check does not understand every key type, so
 // each route authorises itself. The browser only sends a card id; merchant,
@@ -20,6 +22,7 @@
 
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { LOGO_PNG_BASE64 } from './logo.ts';
+import { sendEmail, simpleMail } from '../_shared/email.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ISSUER_ID = Deno.env.get('GOOGLE_WALLET_ISSUER_ID') ?? '';
@@ -367,6 +370,9 @@ async function publicProgramBySlug(raw: unknown) {
     .eq('merchant_id', m.id).eq('is_active', true).maybeSingle();
   if (pe) throw new Error('db_programs');
   if (!p) throw new HttpError(404, 'program_not_found');
+  // Paid feature: no public sign-up while the shop has no valid subscription.
+  const { data: active } = await admin.rpc('merchant_has_access', { p_merchant: m.id });
+  if (active !== true) throw new HttpError(403, 'program_unavailable');
   return { slug, business: m.business_name, program: p };
 }
 
@@ -715,6 +721,45 @@ async function adminMerchant(req: Request): Promise<Response> {
   return json(req, 200, { ...data, merchant: { ...merchant, owner_email: emails[owner_id] ?? null } });
 }
 
+async function adminDesigns(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const { data, error } = await admin.rpc('admin_design_requests');
+  if (error) throw new Error('db_admin_designs');
+  const rows = data as any[];
+  const emails = await ownerEmails(rows.map(r => r.owner_id));
+  const sign = async (p: string | null) => p ? (await admin.storage.from('design-requests').createSignedUrl(p, 3600)).data?.signedUrl ?? null : null;
+  const out = await Promise.all(rows.map(async ({ owner_id, logo_path, reference_paths, ...r }) => ({
+    ...r, owner_email: emails[owner_id] ?? null,
+    logo_url: await sign(logo_path),
+    reference_urls: (await Promise.all((reference_paths ?? []).map(sign))).filter(Boolean),
+  })));
+  return json(req, 200, { requests: out });
+}
+
+async function adminDesignStatus(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const id = String(body?.id ?? ''), status = String(body?.status ?? '');
+  if (!UUID_RE.test(id) || !['in_progress', 'delivered'].includes(status)) throw new HttpError(400, 'invalid_request');
+  const { data: row, error } = await admin.rpc('design_set_status', { p_request: id, p_status: status });
+  if (error) throw new HttpError(409, /invalid_transition/.test(error.message) ? 'invalid_transition' : 'design_update_failed');
+  let email: { sent: boolean; error?: string } | null = null;
+  if (status === 'delivered') {
+    // The merchant sees "Votre design est prêt." in the dashboard; an e-mail is sent when configured.
+    const { data: m } = await admin.from('merchants').select('business_name, created_by').eq('id', row.merchant_id).single();
+    const to = row.contact_email || (m ? (await admin.auth.admin.getUserById(m.created_by)).data.user?.email : null);
+    if (to) {
+      const { text, html } = simpleMail('Votre carte DPA Cards est prête.', [
+        ['Commerce', m?.business_name],
+        ['Message', 'Votre carte de fidélité créée par DPA Cards est prête. Connectez-vous à votre espace pour la découvrir.'],
+      ], [['Ouvrir DPA Cards', 'https://dpa-cards.vercel.app/']]);
+      email = await sendEmail({ to, subject: 'Votre carte DPA Cards est prête', text, html });
+      if (email.sent) await admin.from('design_requests').update({ merchant_notified_at: new Date().toISOString() }).eq('id', id);
+    }
+  }
+  return json(req, 200, { request: { id: row.id, status: row.status, in_progress_at: row.in_progress_at, delivered_at: row.delivered_at }, email });
+}
+
 async function sync(req: Request): Promise<Response> {
   const secret = req.headers.get('x-wallet-worker') ?? '';
   const { data: ok } = await admin.rpc('wallet_check_worker', { p_secret: secret });
@@ -740,6 +785,8 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/delete-account')) return await deleteAccount(req);
     if (req.method === 'POST' && path.endsWith('/admin-overview')) return await adminOverview(req);
     if (req.method === 'POST' && path.endsWith('/admin-merchant')) return await adminMerchant(req);
+    if (req.method === 'POST' && path.endsWith('/admin-designs')) return await adminDesigns(req);
+    if (req.method === 'POST' && path.endsWith('/admin-design-status')) return await adminDesignStatus(req);
     if (req.method === 'POST' && path.endsWith('/finalize-design')) return await finalizeDesign(req);
     if (req.method === 'POST' && path.endsWith('/sync')) return await sync(req);
     return json(req, 404, { error: 'not_found' });

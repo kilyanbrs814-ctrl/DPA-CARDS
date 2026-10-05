@@ -177,6 +177,34 @@ a:hover{color:#1A36C4}
         </sc-for>
       </ul>
     </section>
+
+    <section aria-labelledby="dz-h" style="display:flex;flex-direction:column;gap:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <h2 id="dz-h" style="margin:0;font-weight:800;font-size:clamp(22px,4vw,28px);letter-spacing:-0.02em">Demandes de design</h2>
+        <span style="padding:5px 12px;border-radius:999px;background:#EEF1FF;color:#1A36C4;font-size:14px;font-weight:700">{{ designCountLabel }}</span>
+      </div>
+      <sc-if value="{{ noDesigns }}" hint-placeholder-val="{{ false }}"><div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:28px 20px;text-align:center;color:#5E636B;font-size:15px">Aucune demande de design payée pour le moment.</div></sc-if>
+      <sc-for list="{{ designs }}" as="dq" hint-placeholder-count="0">
+        <article style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap">
+            <div style="flex:1 1 240px;min-width:0"><div style="font-weight:800;font-size:18px;overflow-wrap:anywhere">{{ dq.business }}</div><div style="font-size:14px;color:#5E636B">Payée le {{ dq.date }} · {{ dq.amount }} · {{ dq.program }}</div></div>
+            <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:{{ dq.stBg }};color:{{ dq.stFg }};font-size:13px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:{{ dq.stFg }}"></span>{{ dq.status }}</span>
+          </div>
+          <dl style="margin:0;display:grid;grid-template-columns:minmax(110px,max-content) minmax(0,1fr);gap:6px 16px;font-size:15px">
+            <sc-for list="{{ dq.rows }}" as="r" hint-placeholder-count="6"><dt style="color:#5E636B">{{ r.k }}</dt><dd style="margin:0;font-weight:600;overflow-wrap:anywhere;white-space:pre-wrap">{{ r.v }}</dd></sc-for>
+          </dl>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <sc-for list="{{ dq.files }}" as="fl" hint-placeholder-count="0"><a href="{{ fl.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:1.5px solid #D4D1C9;border-radius:10px;color:#1C1F24;text-decoration:none;font-weight:600;font-size:14px"><span class="material-symbols-rounded" style="font-size:18px">{{ fl.icon }}</span>{{ fl.label }}</a></sc-for>
+            <sc-if value="{{ dq.noFiles }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px;color:#5E636B">Aucun fichier joint.</span></sc-if>
+          </div>
+          <div style="font-size:13px;color:{{ dq.mailColor }}">{{ dq.mail }}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <sc-if value="{{ dq.canStart }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dq.start }}" disabled="{{ dq.busy }}" style="min-height:46px;padding:0 16px;border:0;border-radius:12px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:15px">Passer en cours</button></sc-if>
+            <sc-if value="{{ dq.canDeliver }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dq.deliver }}" disabled="{{ dq.busy }}" style="min-height:46px;padding:0 16px;border:0;border-radius:12px;background:#1F7A4F;color:#FFFFFF;font-weight:700;font-size:15px">Marquer comme livré</button></sc-if>
+          </div>
+        </article>
+      </sc-for>
+    </section>
   </main>
 
   <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
@@ -286,7 +314,7 @@ const statusOf=m=>['trialing','active'].includes(subKey(m))?'active':'setup';
 const ERR={not_admin:'Accès refusé : ce compte n’est pas administrateur.',not_authenticated:'Session expirée. Reconnectez-vous.'};
 
 class Component extends DCLogic {
-  state={w:typeof window!=='undefined'?window.innerWidth:1200,loading:true,error:null,kpis:null,data:[],q:'',status:'all',sort:'recent',sel:null,detail:null,detailLoading:false,toast:null};
+  state={w:typeof window!=='undefined'?window.innerWidth:1200,loading:true,error:null,kpis:null,data:[],designs:[],designBusy:null,q:'',status:'all',sort:'recent',sel:null,detail:null,detailLoading:false,toast:null};
   componentDidMount(){ this._r=()=>this.setState({w:window.innerWidth}); window.addEventListener('resize',this._r);
     this._k=e=>{ if(e.key==='Escape') this.setState({sel:null,detail:null}); }; window.addEventListener('keydown',this._k);
     (window.dpaAdminReady||Promise.resolve(null)).then(api=>{ this.api=api; if(api&&api.onAccess) api.onAccess(()=>this.load()); else this.setState({loading:false,error:'Service indisponible.'}); }); }
@@ -295,12 +323,18 @@ class Component extends DCLogic {
   errText(e){ const c=e&&(e.code||e.message)||''; return ERR[c]||'Impossible de charger les données. Réessayez.'; }
   // Auth events can confirm access several times in a row: one request at a time.
   async load(){ if(!this.api||this._busy) return; this._busy=true; this.setState({loading:true,error:null});
-    try{ const r=await this.api.overview(); this.setState({loading:false,kpis:r.kpis,data:r.merchants||[]}); }
+    try{ const [r,d]=await Promise.all([this.api.overview(),this.api.designs?this.api.designs():Promise.resolve({requests:[]})]); this.setState({loading:false,kpis:r.kpis,data:r.merchants||[],designs:d.requests||[]}); }
     catch(e){ this.setState({loading:false,error:this.errText(e)}); }
     finally{ this._busy=false; } }
   async open(id){ this.setState({sel:id,detail:null,detailLoading:true});
     try{ const d=await this.api.merchant(id); if(this.state.sel===id) this.setState({detail:d,detailLoading:false}); }
     catch(e){ if(this.state.sel===id) this.setState({detailLoading:false}); this.toast(this.errText(e)); } }
+  // submitted → in_progress → delivered (server checks the transition and the admin session).
+  async setDesign(id,status){ if(this.state.designBusy) return; this.setState({designBusy:id});
+    try{ const r=await this.api.setDesignStatus(id,status);
+      this.toast(status==='delivered'?(r.email&&r.email.sent?'Design livré — le commerçant a été prévenu par e-mail.':'Design livré — le commerçant le voit dans son tableau de bord.'):'Demande passée en cours.');
+      this.setState({designBusy:null}); this._busy=false; await this.load(); }
+    catch(e){ this.setState({designBusy:null}); this.toast(e&&e.code==='invalid_transition'?'Ce changement de statut n’est pas possible.':this.errText(e)); } }
   view(m){ const sk=SUBST[subKey(m)]||SUBST.none, st={label:sk[0],bg:sk[1],fg:sk[2]}, p=m.program, bg=p?p.bg:'#ECEAE4';
     return {id:m.id,name:m.business_name,activity:m.activity||'Activité non renseignée',owner:m.owner_name||'—',email:m.owner_email||'—',
       program:p?p.name:'Aucun programme',clients:nf(m.customers),cards:nf(m.cards),visits:nf(m.visits),joined:fmt(m.created_at),
@@ -323,7 +357,8 @@ class Component extends DCLogic {
       {label:'Programmes',value:nf(K.programs),icon:'loyalty',color:'#1C1F24'},
       {label:'Notifications envoyées',value:nf(K.notifications_sent),icon:'notifications',color:'#1C1F24'},
       {label:'Cartes Google Wallet',value:nf(K.wallet_passes),icon:'account_balance_wallet',color:'#2448F0'},
-      {label:'Abonnements actifs',value:nf(K.subscriptions_valid),icon:'credit_card',color:'#1F7A4F'}];
+      {label:'Abonnements actifs',value:nf(K.subscriptions_valid),icon:'credit_card',color:'#1F7A4F'},
+      {label:'Designs à traiter',value:nf(K.designs_to_process),icon:'brush',color:'#B4530A'}];
     const cards=+K.cards||0, google=+K.wallet_passes||0, none=Math.max(0,cards-google);
     const q=s.q.trim().toLowerCase();
     let list=D.filter(m=>(s.status==='all'||statusOf(m)===s.status)&&(!q||[m.business_name,m.owner_name,m.owner_email].join(' ').toLowerCase().includes(q)));
@@ -351,7 +386,19 @@ class Component extends DCLogic {
       statusFilters,rows:s.loading?[]:list.map(m=>this.view(m)),emptyAll:!s.loading&&!s.error&&D.length===0,emptyFiltered:!s.loading&&D.length>0&&list.length===0,
       sel,hasSel:!!sel,close:()=>this.setState({sel:null,detail:null}),stop:e=>e.stopPropagation(),
       detailLoading:s.detailLoading,detailReady:!!det,selClients,selActivity,noClients:!!det&&!selClients.length,noActivity:!!det&&!selActivity.length,
-      exportCsv:()=>this.exportCsv(),toast:s.toast};
+      exportCsv:()=>this.exportCsv(),toast:s.toast,
+      ...(()=>{ const DST={submitted:['À traiter','#FFF3DC','#8A5A00'],in_progress:['En cours','#E8EDFF','#1A36C4'],delivered:['Livré','#E4F3EB','#1F6B45'],cancelled:['Annulé','#EFEDE8','#3E424A']};
+        const designs=(s.designs||[]).map(r=>{ const st=DST[r.status]||DST.submitted, busy=s.designBusy===r.id;
+          const files=[...(r.logo_url?[{label:'Logo',url:r.logo_url,icon:'image'}]:[]),...(r.reference_urls||[]).map((u,i)=>({label:'Référence '+(i+1),url:u,icon:'collections'}))];
+          return {business:r.business_name,date:fmtTime(r.paid_at||r.created_at),amount:eurC(r.amount_cents),program:r.program_name||'',status:st[0],stBg:st[1],stFg:st[2],
+            rows:[{k:'Responsable',v:r.contact_name||r.owner_name||'—'},{k:'E-mail',v:r.contact_email||r.owner_email||'—'},{k:'Téléphone',v:r.contact_phone||'—'},{k:'Couleurs',v:r.colors||'—'},{k:'Description',v:r.description||'—'}],
+            files,noFiles:!files.length,
+            mail:r.notify_error?('Alerte e-mail non envoyée ('+(r.notify_error==='email_not_configured'?'service e-mail non configuré':r.notify_error)+')'):(r.notified_at?'Alerte e-mail envoyée le '+fmtTime(r.notified_at):'Alerte e-mail en attente'),
+            mailColor:r.notify_error?'#B42318':'#5E636B',
+            canStart:r.status==='submitted',canDeliver:r.status==='in_progress',busy:!!s.designBusy,
+            start:()=>this.setDesign(r.id,'in_progress'),deliver:()=>this.setDesign(r.id,'delivered')}; });
+        const todo=(s.designs||[]).filter(r=>r.status==='submitted'||r.status==='in_progress').length;
+        return {designs,noDesigns:!s.loading&&!designs.length,designCountLabel:todo+' à traiter'}; })()};
   }
 }
 </script>

@@ -120,6 +120,9 @@ const DB_ERRORS = {
   subscription_required: 'Un abonnement actif est nécessaire pour utiliser cette fonction.',
   no_subscription: 'Aucun abonnement en cours.',
   no_merchant: 'Aucun commerce associé à ce compte.',
+  design_request_not_found: 'Aucune demande de design en attente.',
+  design_already_paid: 'Cette demande de design est déjà payée.',
+  program_unavailable: 'Les inscriptions à ce programme ne sont pas encore ouvertes.',
 };
 
 function errorMessage(e) {
@@ -180,6 +183,7 @@ function toProgram(p) {
 }
 function toRequest(r) {
   return r && { id: r.id, status: r.status, createdAt: r.created_at, description: r.description, colors: r.colors,
+    paymentStatus: r.payment_status || 'unpaid', paidAt: r.paid_at || null, deliveredAt: r.delivered_at || null,
     contactName: r.contact_name, contactEmail: r.contact_email, contactPhone: r.contact_phone, files: (r.reference_paths || []).length + (r.logo_path ? 1 : 0) };
 }
 
@@ -449,6 +453,8 @@ const api = {
     const { data, error } = await sb.functions.invoke('wallet/public-program', { body: { slug } });
     if (error) {
       if (error.context && error.context.status === 404) return null;
+      // The shop exists but has no valid subscription: sign-ups are closed for now.
+      if (error.context && error.context.status === 403) return { unavailable: true };
       throw Object.assign(new Error(error.message || 'wallet_unavailable'), { name: error.name });
     }
     return { slug: data.slug, business: data.business, program: toProgram({ ...data.program, id: null, merchant_id: null }) };
@@ -507,6 +513,9 @@ const api = {
     summary: () => invokeFn('billing/summary', {}),
     portal: () => invokeFn('billing/portal', {}),
     cancel: () => invokeFn('billing/cancel', {}),
+    // Custom design (29 € one-time): the server picks the price and the merchant's request.
+    designCheckout: requestId => invokeFn('billing/design-checkout', requestId ? { design_request_id: requestId } : {}),
+    designVerify: sessionId => invokeFn('billing/design-verify', { session_id: sessionId }),
     async refresh(merchantId) {
       const { data, error } = await sb.from('subscriptions').select('*').eq('merchant_id', merchantId).maybeSingle();
       if (error) throw error;

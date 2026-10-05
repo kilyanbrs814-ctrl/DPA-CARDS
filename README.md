@@ -250,6 +250,32 @@ crée ou retrouve produit, prix (`lookup_key` `dpa_setup_no_commitment`, `dpa_mo
 à pousser avec `supabase secrets set --env-file`. Mode test par défaut ; une clé live exige `--live`.
 Migration : `20261005093513_subscriptions`. CGV : `CGV_URL` dans `src/legal-config.js` (vide pour l’instant).
 
+## Mode verrouillé et création de carte payante
+
+**Sans abonnement `trialing`/`active`**, le tableau de bord reste accessible (accueil, profil, commerce, carte,
+paramètres, abonnement) avec un bandeau « Votre compte n’est pas encore activé. ». Inviter mes clients, page
+d’inscription côté commerçant, clients, scanner, notifications affichent un écran verrouillé ; le QR code et le lien
+d’inscription ne sont pas générés. Côté serveur (migration `20261005130000_paid_access_design`) :
+`app_private.require_active` lève `subscription_required` (SQLSTATE `PT402` → HTTP 402) dans le déclencheur du
+registre (passages, récompenses, corrections, inscriptions y compris publiques), `enroll_customer` et `lookup_card` ;
+les politiques d’insertion `customers`, `cards`, `notifications` l’exigent aussi ; l’Edge Function `wallet` répond
+402 (notifications, lien Google Wallet) et ferme la page publique (`403 program_unavailable`). Restent possibles :
+suppression d’un client, suppression du compte, export.
+
+**« Confier le design à DPA Cards » — 29 € TTC, paiement unique** (prix Stripe `STRIPE_PRICE_CUSTOM_DESIGN`,
+lookup_key `dpa_custom_design`). `submit_design_request` crée la demande en `pending_payment` (fichiers + brief),
+`POST /billing/design-checkout` ouvre Stripe Checkout (`metadata.type = custom_design`), puis `/design/success`
+(`POST /billing/design-verify`, vérifié chez Stripe) ou le webhook `checkout.session.completed` appellent
+`design_mark_paid` : la demande passe en `submitted` (payée), le programme en `pending_dpa`, et une alerte e-mail
+part une seule fois vers `contact@digitalprojectagency.fr`. Ce paiement n’active pas l’abonnement (et inversement).
+Admin : compteur « Designs à traiter » (payées `submitted`/`in_progress`), liste « Demandes de design » avec liens
+signés, actions `submitted → in_progress → delivered` (`design_set_status`) ; « livré » valide le programme (déposer
+les visuels sur le programme avant) et le commerçant voit « Votre design est prêt. ».
+
+**E-mails** (`supabase/functions/_shared/email.ts`, API Resend) : à configurer en secrets Edge Functions
+`RESEND_API_KEY`, `EMAIL_FROM` (expéditeur vérifié), facultatif `DESIGN_ALERT_EMAIL`. Tant qu’ils manquent, rien
+n’est envoyé et `design_requests.notify_error = email_not_configured` est visible dans l’admin.
+
 ## Administration (`/admin.html`)
 
 Connexion par lien magique, réservée aux e-mails de `admin_users`. Les données viennent uniquement de
