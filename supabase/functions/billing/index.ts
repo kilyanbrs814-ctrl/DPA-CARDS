@@ -209,6 +209,9 @@ async function checkout(req: Request): Promise<Response> {
   const session = await s.checkout.sessions.create({
     mode: 'payment',
     customer,
+    // Card only: the subscription is later charged off-session on this saved card, which
+    // methods like Klarna or Satispay (enabled by default on the account) do not allow.
+    payment_method_types: ['card'],
     line_items: [{ price: plan.setup, quantity: 1 }],
     payment_intent_data: { setup_future_usage: 'off_session', metadata, description: 'DPA Cards — frais de mise en place' },
     invoice_creation: { enabled: true, invoice_data: { metadata, description: 'Frais de mise en place DPA Cards' } },
