@@ -10,7 +10,7 @@ const joinRoute = {
 };
 function rewriteJoin(req, res, next) {
   const url = req.url || '';
-  const legal = /^\/(mentions-legales|confidentialite)\/?(\?|$)/.exec(url);
+  const legal = /^\/(mentions-legales|confidentialite|cgv)\/?(\?|$)/.exec(url);
   if (/^\/join\/[^/?#]+\/?(\?|$)/.test(url) || /^\/subscription\/(success|cancel)\/?(\?|$)/.test(url)) req.url = '/index.html' + (url.includes('?') ? url.slice(url.indexOf('?')) : '');
   else if (legal) req.url = '/' + legal[1] + '.html';
   next();
@@ -32,6 +32,7 @@ export default defineConfig({
         admin: 'admin.html',
         mentions: 'mentions-legales.html',
         confidentialite: 'confidentialite.html',
+        cgv: 'cgv.html',
       },
     },
   },

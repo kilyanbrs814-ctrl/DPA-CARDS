@@ -24,3 +24,6 @@ th{color:#5E636B;font-weight:600}
 .legal-foot{margin-top:20px;text-align:center;font-size:14px;color:#5E636B}
 .legal-foot a{margin:0 6px}
 @media (max-width:560px){dl{grid-template-columns:1fr}dt{margin-top:6px}table{font-size:14px}}
+dl > div{display:contents}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.table-wrap table{min-width:560px}
