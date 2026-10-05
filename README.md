@@ -207,6 +207,49 @@ import de logo.
 
 La classe `bash_test_v1` créée dans la console reste en `draft` et n'est pas utilisée.
 
+## Abonnement Stripe
+
+Parcours : compte → onboarding → programme → page « Choisissez votre offre » → Stripe → `/subscription/success`
+→ tableau de bord. Sans abonnement `trialing` ou `active`, tous les écrans du tableau de bord mènent à la page
+d’offres (contrôle dans l’app) et les actions serveur du tableau de bord (notifications, lien Google Wallet)
+répondent `402 subscription_required`. Non concernés : admin, `/join/:slug`, pages légales.
+
+| Offre | Mise en place | Abonnement | Engagement |
+|---|---|---|---|
+| `no_commitment` | 29,00 € | 14,90 €/mois | aucun |
+| `commitment` | 14,90 € | 9,90 €/mois | 12 mois |
+
+**Pourquoi deux étapes.** Stripe Checkout ne permet pas de combiner un essai gratuit et une date d’ancrage
+(`billing_cycle_anchor`) ; l’API Subscriptions, si. Donc :
+
+1. `POST /billing/checkout { plan }` crée une session Checkout `mode=payment` : les frais de mise en place sont
+   débités tout de suite et la carte est enregistrée (`setup_future_usage=off_session`, facture créée).
+2. Au retour (`POST /billing/verify`, qui interroge Stripe) ou par le webhook `checkout.session.completed`, le
+   serveur crée l’abonnement : `trial_end` = +15 jours, `billing_cycle_anchor` = 1er du mois suivant la fin de
+   l’essai à 00:00 (Paris), `proration_behavior=create_prorations`. Stripe facture alors 0 € pendant l’essai,
+   le prorata de la fin de l’essai jusqu’au 1er, puis le mois complet chaque 1er. Clé d’idempotence = session.
+3. `POST /billing/webhook` (signature Stripe vérifiée) synchronise `public.subscriptions` :
+   `checkout.session.completed`, `customer.subscription.created|updated|deleted|paused|resumed`,
+   `invoice.paid|payment_failed|finalized`.
+
+Engagement 12 mois : `commitment_start` = date de souscription, `commitment_end` = 1er cycle complet + 12 mois
+(enregistrés dans Supabase et dans les métadonnées Stripe). Stripe ne bloque pas une résiliation : DPA Cards le fait.
+`POST /billing/cancel` refuse (`409 commitment_active`) pendant l’engagement et enregistre
+`cancel_requested_at` ; sans engagement, résiliation en fin de période. Le portail Stripe
+(`POST /billing/portal`) utilise une configuration sans résiliation pendant l’engagement.
+
+Paramètres → « Mon abonnement » : offre, prix, statut, fin d’essai, prochaine facturation, engagement, carte,
+factures (`POST /billing/summary`, lu chez Stripe), « Gérer mon abonnement » (portail), « Résilier ».
+
+**Secrets Edge Functions** (jamais dans le dépôt ni dans `VITE_*`) : `STRIPE_SECRET_KEY`,
+`STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_SETUP_NO_COMMITMENT`, `STRIPE_PRICE_MONTHLY_NO_COMMITMENT`,
+`STRIPE_PRICE_SETUP_COMMITMENT`, `STRIPE_PRICE_MONTHLY_COMMITMENT`, `STRIPE_PORTAL_CONFIG_DEFAULT`,
+`STRIPE_PORTAL_CONFIG_COMMITMENT`. `node scripts/stripe-setup.mjs --key-file <fichier> --out <secrets.env>`
+crée ou retrouve produit, prix (`lookup_key` `dpa_setup_no_commitment`, `dpa_monthly_no_commitment`,
+`dpa_setup_commitment`, `dpa_monthly_commitment`), webhook et configurations du portail, puis écrit le fichier
+à pousser avec `supabase secrets set --env-file`. Mode test par défaut ; une clé live exige `--live`.
+Migration : `20261005093513_subscriptions`. CGV : `CGV_URL` dans `src/legal-config.js` (vide pour l’instant).
+
 ## Administration (`/admin.html`)
 
 Connexion par lien magique, réservée aux e-mails de `admin_users`. Les données viennent uniquement de

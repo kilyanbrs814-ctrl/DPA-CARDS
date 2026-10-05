@@ -342,6 +342,7 @@ async function saveLink(req: Request): Promise<Response> {
   const { data: member } = await admin.from('merchant_members').select('role')
     .eq('merchant_id', card.merchant_id).eq('user_id', user.id).maybeSingle();
   if (!member) throw new HttpError(403, 'forbidden');
+  await requireAccess(card.merchant_id);
 
   const url = await signedSaveUrl(req, card);
   const { data: pass } = await admin.from('wallet_passes').select('pending, synced_balance, last_error').eq('card_id', cardId).single();
@@ -448,6 +449,7 @@ async function notify(req: Request): Promise<Response> {
   const { data: member } = await admin.from('merchant_members').select('merchant_id').eq('user_id', user.id).maybeSingle();
   if (!member) throw new HttpError(403, 'forbidden');
   const merchantId: string = member.merchant_id;
+  await requireAccess(merchantId);
 
   const body = await req.json().catch(() => ({}));
   const title = cleanText(body?.title, 60, false);
@@ -560,6 +562,13 @@ async function deactivateObjects(objectIds: string[], budgetMs = 20000): Promise
   return { done, failed };
 }
 
+// Dashboard actions need a valid subscription (trialing or active), checked on the server.
+async function requireAccess(merchantId: string) {
+  const { data, error } = await admin.rpc('merchant_has_access', { p_merchant: merchantId });
+  if (error) throw new Error('db_access');
+  if (data !== true) throw new HttpError(402, 'subscription_required');
+}
+
 async function ownerOf(req: Request) {
   const { user } = await authUser(req);
   const { data: member } = await admin.from('merchant_members').select('merchant_id, role').eq('user_id', user.id).maybeSingle();
@@ -624,6 +633,15 @@ async function deleteAccount(req: Request): Promise<Response> {
       if (error) throw new Error('db_wallet_passes');
       objectIds.push(...(data ?? []).map(p => p.google_object_id));
       if ((data ?? []).length < 1000) break;
+    }
+    // Stop billing first: the Stripe subscription is cancelled immediately (best effort, logged).
+    const { data: sub } = await admin.from('subscriptions').select('stripe_subscription_id, status').eq('merchant_id', merchantId).maybeSingle();
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+    if (sub?.stripe_subscription_id && stripeKey && !['canceled', 'incomplete_expired'].includes(sub.status)) {
+      try {
+        const r = await fetch(`https://api.stripe.com/v1/subscriptions/${encodeURIComponent(sub.stripe_subscription_id)}`, { method: 'DELETE', headers: { authorization: `Bearer ${stripeKey}` } });
+        if (!r.ok && r.status !== 404) console.error('wallet error', 'delete-account stripe', `stripe_${r.status}`);
+      } catch (e) { console.error('wallet error', 'delete-account stripe', (e as Error).message); }
     }
     const paths: Record<string, string[]> = {};
     for (const bucket of ['program-assets', 'design-requests']) {

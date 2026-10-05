@@ -128,7 +128,7 @@ a:hover{color:#1A36C4}
     <section aria-label="Liste des commerçants" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;overflow:hidden">
       <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
         <div aria-hidden="true" style="display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.6fr) minmax(0,1.3fr) 80px 80px 90px 140px 110px 24px;gap:12px;padding:12px 20px;background:#F8F7F4;border-bottom:1px solid #E4E1DA;font-size:12px;font-weight:700;letter-spacing:0.06em;color:#5E636B;text-transform:uppercase">
-          <div>Commerce</div><div>Propriétaire</div><div>Programme</div><div style="text-align:right">Clients</div><div style="text-align:right">Cartes</div><div style="text-align:right">Passages</div><div>Statut</div><div>Créé le</div><div></div>
+          <div>Commerce</div><div>Propriétaire</div><div>Programme</div><div style="text-align:right">Clients</div><div style="text-align:right">Cartes</div><div style="text-align:right">Passages</div><div>Abonnement</div><div>Créé le</div><div></div>
         </div>
       </sc-if>
       <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
@@ -211,6 +211,13 @@ a:hover{color:#1A36C4}
             <sc-if value="{{ sel.noProgram }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;color:#5E636B">Aucun programme actif.</div></sc-if>
           </section>
 
+          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px">
+            <h3 style="margin:0 0 4px;font-weight:700;font-size:16px">Abonnement</h3>
+            <dl style="margin:0;display:grid;grid-template-columns:auto 1fr;column-gap:16px;font-size:15px">
+              <sc-for list="{{ sel.subRows }}" as="r" hint-placeholder-count="5"><dt style="padding:9px 0;color:#5E636B;border-top:1px solid #EFEDE8">{{ r.k }}</dt><dd style="margin:0;padding:9px 0;font-weight:600;text-align:right;border-top:1px solid #EFEDE8">{{ r.v }}</dd></sc-for>
+            </dl>
+          </section>
+
           <dl style="margin:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:16px;padding:4px 16px;display:grid;grid-template-columns:auto 1fr;column-gap:16px;font-size:15px">
             <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Propriétaire</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.owner }}</dd>
             <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">E-mail</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8;overflow-wrap:anywhere">{{ sel.email }}</dd>
@@ -264,13 +271,18 @@ const fmt=iso=>{ if(!iso) return '—'; const d=new Date(iso), t=new Date(); con
   if(same(d,t)) return "Aujourd'hui"; const y=new Date(t); y.setDate(t.getDate()-1); if(same(d,y)) return 'Hier';
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
 const fmtTime=iso=>{ if(!iso) return ''; const d=new Date(iso); return fmt(iso)+', '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
-const ST={active:{label:'Actif',bg:'#E4F3EB',fg:'#1F6B45'},setup:{label:'En configuration',bg:'#FFF3DC',fg:'#6B4E00'}};
+// Subscription status (Stripe, mirrored in public.subscriptions).
+const SUBST={trialing:['Essai gratuit','#E8EDFF','#1A36C4'],active:['Actif','#E4F3EB','#1F6B45'],past_due:['Paiement en retard','#FFF3DC','#6B4E00'],
+  unpaid:['Impayé','#FCEBEA','#A11D14'],canceled:['Résilié','#FCEBEA','#A11D14'],incomplete:['Paiement non finalisé','#FFF3DC','#6B4E00'],
+  incomplete_expired:['Expiré','#EFEDE8','#3E424A'],paused:['Suspendu','#FCEBEA','#A11D14'],none:['Sans abonnement','#EFEDE8','#3E424A']};
+const subKey=m=>(m.subscription&&m.subscription.status)||'none';
+const eurC=c=>c==null?'—':(c/100).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
 const DESIGN={validated:'validé',draft:'brouillon',pending_dpa:'en cours de création par DPA Cards'};
 function lum(hex){ const h=(hex||'#FFFFFF').replace('#',''); const v=[0,2,4].map(i=>{const c=parseInt(h.substr(i,2),16)/255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}); return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]; }
 const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
 const nf=n=>(+n||0).toLocaleString('fr-FR');
 const unitOf=p=>p&&p.mode==='points'?'points':'passages';
-const statusOf=m=>m.program&&m.program.design_status==='validated'?'active':'setup';
+const statusOf=m=>['trialing','active'].includes(subKey(m))?'active':'setup';
 const ERR={not_admin:'Accès refusé : ce compte n’est pas administrateur.',not_authenticated:'Session expirée. Reconnectez-vous.'};
 
 class Component extends DCLogic {
@@ -289,15 +301,17 @@ class Component extends DCLogic {
   async open(id){ this.setState({sel:id,detail:null,detailLoading:true});
     try{ const d=await this.api.merchant(id); if(this.state.sel===id) this.setState({detail:d,detailLoading:false}); }
     catch(e){ if(this.state.sel===id) this.setState({detailLoading:false}); this.toast(this.errText(e)); } }
-  view(m){ const st=ST[statusOf(m)], p=m.program, bg=p?p.bg:'#ECEAE4';
+  view(m){ const sk=SUBST[subKey(m)]||SUBST.none, st={label:sk[0],bg:sk[1],fg:sk[2]}, p=m.program, bg=p?p.bg:'#ECEAE4';
     return {id:m.id,name:m.business_name,activity:m.activity||'Activité non renseignée',owner:m.owner_name||'—',email:m.owner_email||'—',
       program:p?p.name:'Aucun programme',clients:nf(m.customers),cards:nf(m.cards),visits:nf(m.visits),joined:fmt(m.created_at),
       status:st.label,stBg:st.bg,stFg:st.fg,bg,accent:p?p.accent:'#FFFFFF',logo:(p&&p.logo)||(m.business_name||'?').slice(0,3).toUpperCase(),logoFg:lum(bg)<0.4?'#FFFFFF':'#1E1418',
       open:()=>this.open(m.id)}; }
   exportCsv(){ const D=this.state.data; if(!D.length) return this.toast('Aucun commerce à exporter.');
     const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
-    const head=['Commerce','Créé le','Propriétaire','E-mail','Programme','Statut','Clients','Cartes','Passages','Événements','Cartes Google Wallet'];
-    const lines=D.map(m=>[m.business_name,(m.created_at||'').slice(0,10),m.owner_name,m.owner_email,m.program?m.program.name:'',ST[statusOf(m)].label,m.customers,m.cards,m.visits,m.events,m.wallet_passes].map(esc).join(';'));
+    const head=['Commerce','Créé le','Propriétaire','E-mail','Programme','Offre','Abonnement','Fin d’essai','Prix mensuel','Engagement jusqu’au','Clients','Cartes','Passages','Événements','Cartes Google Wallet'];
+    const lines=D.map(m=>{ const sb=m.subscription||{}; return [m.business_name,(m.created_at||'').slice(0,10),m.owner_name,m.owner_email,m.program?m.program.name:'',
+      sb.plan_type==='commitment'?'Engagement 12 mois':(sb.plan_type?'Sans engagement':''),(SUBST[subKey(m)]||SUBST.none)[0],(sb.trial_end||'').slice(0,10),sb.monthly_amount_cents!=null?(sb.monthly_amount_cents/100).toFixed(2):'',(sb.commitment_end||'').slice(0,10),
+      m.customers,m.cards,m.visits,m.events,m.wallet_passes].map(esc).join(';'); });
     const url=URL.createObjectURL(new Blob(['﻿'+[head.map(esc).join(';'),...lines].join('\r\n')],{type:'text/csv;charset=utf-8'}));
     const a=document.createElement('a'); a.href=url; a.download='dpa-cards-commercants.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),5000); }
   renderVals(){
@@ -308,20 +322,26 @@ class Component extends DCLogic {
       {label:'Cartes de fidélité',value:nf(K.cards),icon:'style',color:'#2448F0'},
       {label:'Programmes',value:nf(K.programs),icon:'loyalty',color:'#1C1F24'},
       {label:'Notifications envoyées',value:nf(K.notifications_sent),icon:'notifications',color:'#1C1F24'},
-      {label:'Cartes Google Wallet',value:nf(K.wallet_passes),icon:'account_balance_wallet',color:'#2448F0'}];
+      {label:'Cartes Google Wallet',value:nf(K.wallet_passes),icon:'account_balance_wallet',color:'#2448F0'},
+      {label:'Abonnements actifs',value:nf(K.subscriptions_valid),icon:'credit_card',color:'#1F7A4F'}];
     const cards=+K.cards||0, google=+K.wallet_passes||0, none=Math.max(0,cards-google);
     const q=s.q.trim().toLowerCase();
     let list=D.filter(m=>(s.status==='all'||statusOf(m)===s.status)&&(!q||[m.business_name,m.owner_name,m.owner_email].join(' ').toLowerCase().includes(q)));
     list=[...list].sort((a,b)=>s.sort==='name'?a.business_name.localeCompare(b.business_name,'fr'):s.sort==='cards'?b.cards-a.cards:String(b.created_at).localeCompare(String(a.created_at)));
     const cnt=k=>k==='all'?D.length:D.filter(m=>statusOf(m)===k).length;
     const chip=(on)=>({bg:on?'#1C1F24':'#FFFFFF',fg:on?'#FFFFFF':'#1C1F24',border:on?'#1C1F24':'#D4D1C9',pressed:on});
-    const statusFilters=[['all','Tous'],['active','Actifs'],['setup','En configuration']].map(([k,label])=>({label,count:cnt(k),...chip(s.status===k),pick:()=>this.setState({status:k})}));
+    const statusFilters=[['all','Tous'],['active','Abonnement actif'],['setup','Sans abonnement actif']].map(([k,label])=>({label,count:cnt(k),...chip(s.status===k),pick:()=>this.setState({status:k})}));
     const selM=D.find(m=>m.id===s.sel), det=s.detail;
     let sel=null;
     if(selM){ const v=this.view(selM), p=(det&&det.program)||selM.program, c=(det&&det.counts)||{};
       sel={...v,passes:nf(det?c.wallet_passes:selM.wallet_passes),visits:nf(det?c.visits:selM.visits),rewards:det?nf(c.rewards):'…',last:fmt(selM.last_activity),
         hasProgram:!!p,noProgram:!p,program:p?p.name:'',rule:p?`${p.goal} ${unitOf(p)} = ${p.reward}`:'',design:p?(DESIGN[p.design_status]||p.design_status):'',
-        hasEmail:!!selM.owner_email,mailto:selM.owner_email?'mailto:'+selM.owner_email:''}; }
+        hasEmail:!!selM.owner_email,mailto:selM.owner_email?'mailto:'+selM.owner_email:'',
+        subRows:(()=>{ const sb=(det&&det.subscription)||selM.subscription; if(!sb) return [{k:'Statut',v:'Sans abonnement'}];
+          return [{k:'Offre',v:sb.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement'},{k:'Statut',v:(SUBST[sb.status]||SUBST.none)[0]+(sb.cancel_at_period_end?' · résiliation programmée':'')},
+            {k:'Prix mensuel',v:eurC(sb.monthly_amount_cents)},{k:'Fin de l’essai',v:fmt(sb.trial_end)},
+            {k:'Prochaine facture',v:sb.status==='trialing'?fmt(sb.trial_end):fmt(sb.current_period_end)},
+            {k:'Engagement',v:sb.plan_type==='commitment'?'jusqu’au '+fmt(sb.commitment_end):'Aucun'}]; })()}; }
     const ACT={join:['person_add','Inscription','#5E636B'],visit:['add_circle','Passage','#2448F0'],reward:['redeem','Récompense','#1F7A4F'],correction:['undo','Correction','#B42318']};
     const selClients=det?det.clients.map(c=>({name:(c.first_name+' '+(c.last_name||'')).trim(),card:c.card_number,joined:fmt(c.created_at),wallet:!!c.wallet,balance:nf(c.balance)})):[];
     const selActivity=det?det.activity.map(a=>{ const t=ACT[a.type]||ACT.visit; return {icon:t[0],label:t[1],color:t[2],name:a.first_name,when:fmtTime(a.created_at),delta:a.delta>0?'+'+a.delta:(a.delta<0?'−'+Math.abs(a.delta):'')}; }):[];

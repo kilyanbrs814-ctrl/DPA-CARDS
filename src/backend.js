@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js';
 import QRCode from 'qrcode';
 import { makeCropper } from './cropper.js';
+import { LEGAL } from './legal-config.js';
 import { scanDevice, canUseCamera, cameraPermission, decodeKeys, parseCode, qrPath, requestCamera, cameraErrorKind, makeCameraView } from './scanner.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
@@ -108,6 +109,17 @@ const DB_ERRORS = {
   owner_only: 'Seul le propriétaire du commerce peut effectuer cette action.',
   confirmation_required: 'Saisissez SUPPRIMER pour confirmer.',
   account_delete_failed: 'La suppression du compte n’a pas pu être terminée. Réessayez ou contactez DPA Cards.',
+  billing_not_configured: 'Le paiement n’est pas encore disponible. Réessayez plus tard.',
+  billing_unavailable: 'Le service de paiement ne répond pas. Réessayez dans un instant.',
+  already_subscribed: 'Votre abonnement est déjà actif.',
+  payment_issue: 'Un paiement est en attente sur votre abonnement : régularisez-le depuis « Gérer mon abonnement ».',
+  onboarding_incomplete: 'Terminez d’abord la configuration de votre programme.',
+  invalid_plan: 'Offre inconnue.',
+  invalid_session: 'Session de paiement invalide.',
+  payment_method_missing: 'Le moyen de paiement n’a pas pu être enregistré. Réessayez.',
+  subscription_required: 'Un abonnement actif est nécessaire pour utiliser cette fonction.',
+  no_subscription: 'Aucun abonnement en cours.',
+  no_merchant: 'Aucun commerce associé à ce compte.',
 };
 
 function errorMessage(e) {
@@ -238,7 +250,9 @@ async function loadAll(user) {
     .map(k => ({ ...toClient(k, byCust.get(k.customer_id), byCard.get(k.id) || []), wallet: google.has(k.id) ? 'google' : null }));
   const { data: req } = await sb.from('design_requests').select('*').eq('merchant_id', merchant.id)
     .order('created_at', { ascending: false }).limit(1).maybeSingle();
-  return { merchant, program: prog ? toProgram(prog) : null, clients, role: mem.role, designRequest: toRequest(req), notifications };
+  const { data: subscription, error: se } = await sb.from('subscriptions').select('*').eq('merchant_id', merchant.id).maybeSingle();
+  if (se) throw se;
+  return { merchant, program: prog ? toProgram(prog) : null, clients, role: mem.role, designRequest: toRequest(req), notifications, subscription: subscription || null };
 }
 
 // ---------------------------------------------------------------- notifications (Google Wallet)
@@ -270,9 +284,10 @@ const notifRow = nf => ({
 async function invokeFn(name, body) {
   const { data, error } = await sb.functions.invoke(name, { body });
   if (error) {
-    let code = '';
-    try { code = (await error.context.json()).error || ''; } catch (e) {}
-    throw Object.assign(new Error(code || error.message || 'wallet_unavailable'), { code });
+    let info = {};
+    try { info = (await error.context.json()) || {}; } catch (e) {}
+    const code = info.error || '';
+    throw Object.assign(new Error(code || error.message || 'wallet_unavailable'), { code, info });
   }
   return data;
 }
@@ -484,6 +499,21 @@ const api = {
       notifications,
     };
   },
+  // ---- subscription (Stripe). The browser only names a plan; prices, trial and billing
+  // dates are decided by the billing Edge Function, and Stripe stays the source of truth.
+  billing: {
+    checkout: plan => invokeFn('billing/checkout', { plan }),
+    verify: sessionId => invokeFn('billing/verify', { session_id: sessionId }),
+    summary: () => invokeFn('billing/summary', {}),
+    portal: () => invokeFn('billing/portal', {}),
+    cancel: () => invokeFn('billing/cancel', {}),
+    async refresh(merchantId) {
+      const { data, error } = await sb.from('subscriptions').select('*').eq('merchant_id', merchantId).maybeSingle();
+      if (error) throw error;
+      return data || null;
+    },
+  },
+  cgvUrl: LEGAL.CGV_URL || null,
   // PNG of the shop's sign-up QR code, for printing.
   qrPng: text => QRCode.toDataURL(text, { margin: 2, width: 1024, errorCorrectionLevel: 'M' }),
   // ---- notifications: drafts are written with the merchant's session (RLS, drafts only);
