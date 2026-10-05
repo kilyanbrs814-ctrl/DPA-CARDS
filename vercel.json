@@ -2,6 +2,8 @@
   "rewrites": [
     { "source": "/join/:slug", "destination": "/index.html" },
     { "source": "/mentions-legales", "destination": "/mentions-legales.html" },
-    { "source": "/confidentialite", "destination": "/confidentialite.html" }
+    { "source": "/confidentialite", "destination": "/confidentialite.html" },
+    { "source": "/subscription/success", "destination": "/index.html" },
+    { "source": "/subscription/cancel", "destination": "/index.html" }
   ]
 }

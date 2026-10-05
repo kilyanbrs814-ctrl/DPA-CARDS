@@ -1,7 +1,8 @@
 import { defineConfig } from 'vite';
 
-// Same rules as vercel.json, for `vite` and `vite preview`: /join/<slug> is served by index.html,
-// the legal pages by their own HTML file. Every other path keeps the MPA behaviour.
+// Same rules as vercel.json, for `vite` and `vite preview`: /join/<slug> and the Stripe return pages
+// (/subscription/success, /subscription/cancel) are served by index.html, the legal pages by their
+// own HTML file. Every other path keeps the MPA behaviour.
 const joinRoute = {
   name: 'dpa-join-route',
   configureServer(server) { server.middlewares.use(rewriteJoin); },
@@ -10,7 +11,7 @@ const joinRoute = {
 function rewriteJoin(req, res, next) {
   const url = req.url || '';
   const legal = /^\/(mentions-legales|confidentialite)\/?(\?|$)/.exec(url);
-  if (/^\/join\/[^/?#]+\/?(\?|$)/.test(url)) req.url = '/index.html';
+  if (/^\/join\/[^/?#]+\/?(\?|$)/.test(url) || /^\/subscription\/(success|cancel)\/?(\?|$)/.test(url)) req.url = '/index.html' + (url.includes('?') ? url.slice(url.indexOf('?')) : '');
   else if (legal) req.url = '/' + legal[1] + '.html';
   next();
 }

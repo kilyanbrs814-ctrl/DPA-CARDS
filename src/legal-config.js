@@ -25,6 +25,10 @@ export const LEGAL = {
   HOST_ADDRESS: '440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis',
   HOST_URL: 'https://vercel.com',
 
+  // Conditions générales de vente : pas encore de page. Renseigner l’URL (ex. '/cgv') quand elle existe ;
+  // le lien « Voir les conditions » de la page d’abonnement s’active alors automatiquement.
+  CGV_URL: null,
+
   // Région du projet Supabase où sont stockées les données (voir le tableau de bord Supabase).
   DATA_REGION: TODO,
   LAST_UPDATE: '4 octobre 2026',
