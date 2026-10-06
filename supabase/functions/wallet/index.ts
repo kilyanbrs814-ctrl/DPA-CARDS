@@ -37,7 +37,8 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ISSUER_ID = Deno.env.get('GOOGLE_WALLET_ISSUER_ID') ?? '';
 const WALLET_API = 'https://walletobjects.googleapis.com/walletobjects/v1';
 const LOGO_URL = `${SUPABASE_URL}/functions/v1/wallet/logo.png`;
-const ALLOWED_ORIGINS = (Deno.env.get('WALLET_ALLOWED_ORIGINS') ?? 'https://dpa-cards.vercel.app,http://localhost:5173,http://localhost:5174')
+// The second host is the Vercel production alias: Supabase Auth's Site URL, where sign-in links land.
+const ALLOWED_ORIGINS = (Deno.env.get('WALLET_ALLOWED_ORIGINS') ?? 'https://dpa-cards.vercel.app,https://dpa-cards-kilyanbrs814-7703s-projects.vercel.app,http://localhost:5173,http://localhost:5174')
   .split(',').map(s => s.trim()).filter(Boolean);
 
 function envKey(jsonVar: string, legacyVar: string): string {

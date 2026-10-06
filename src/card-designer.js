@@ -289,7 +289,15 @@ export function makeCardDesigner(React, api) {
   const DST = { submitted: 'À traiter', in_progress: 'En cours', delivered: 'Livré', cancelled: 'Annulé' };
   const fmtDate = iso => { if (!iso) return ''; const d = new Date(iso); return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); };
   const ERR = { test_card_not_found: 'Carte test introuvable (supprimée ?).', program_not_found: 'Programme introuvable.', merchant_not_found: 'Commerce introuvable.', design_request_not_found: 'Demande de design introuvable ou non payée.', invalid_design_request: 'Cette demande de design ne correspond pas à ce programme.', not_admin: 'Accès refusé.' };
-  const errText = e => ERR[e && (e.code || e.message)] || (e && /^(missing|invalid)_(logo|hero|background|stamp)$/.test(e.code || '') ? 'Une image du design est introuvable ou invalide : importez-la à nouveau.' : 'Opération impossible pour le moment. Réessayez.');
+  // Admin screen: always show the real error code (route included) rather than a generic message.
+  const errText = e => {
+    const code = (e && (e.code || e.message)) || 'erreur_inconnue';
+    if (ERR[code]) return ERR[code];
+    if (/^(missing|invalid)_(logo|hero|background|stamp)$/.test(code)) return 'Une image du design est introuvable ou invalide : importez-la à nouveau.';
+    const where = e && e.route ? ' — ' + e.route : '';
+    if (code === 'network_or_cors') return `Requête bloquée avant le serveur (réseau ou CORS) depuis ${typeof location !== 'undefined' ? location.origin : 'cette page'}${where}. Code : network_or_cors.`;
+    return `Opération impossible — code : ${code}${where}.`;
+  };
 
   let fontsLoaded = false;
   function loadFonts() {

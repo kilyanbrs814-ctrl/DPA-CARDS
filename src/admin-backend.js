@@ -60,7 +60,9 @@ async function adminCall(route, body = {}) {
   if (error) {
     let code = '', info = null;
     try { info = await error.context.json(); code = info.error || ''; } catch (e) {}
-    throw Object.assign(new Error(code || 'admin_unavailable'), { code, info });
+    // No JSON body: say why (blocked request / CORS, or the HTTP status) instead of a generic error.
+    if (!code) code = error.name === 'FunctionsFetchError' ? 'network_or_cors' : (error.context && error.context.status ? 'http_' + error.context.status : (error.name || 'admin_unavailable'));
+    throw Object.assign(new Error(code), { code, info, route });
   }
   return data;
 }
