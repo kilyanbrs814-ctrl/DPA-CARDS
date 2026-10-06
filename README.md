@@ -299,6 +299,21 @@ côté serveur la session, l’e-mail confirmé et sa présence dans `admin_user
 fonctions SQL `admin_overview` / `admin_merchant_detail` (migration `20261004190429_admin_dashboard`),
 exécutables par `service_role` uniquement. Lecture seule ; « Exporter » produit un CSV de la liste.
 
+**Générateur de cartes** (onglet de l’admin, `#generateur`, `src/card-designer.js`). Un projet de design par
+programme, décliné en deux dispositions : **Apple Wallet** (rectangle complet, coins arrondis uniquement : en-tête
+logo / nom / progression, grand visuel avec les tampons, 3 colonnes client / récompense / récompenses dispo, QR
+centré sur fond blanc) et **Google Wallet** (logo rond, pastille de progression, visuel arrondi, tampons sous le
+visuel, lignes d’informations, QR). Le design (couleurs, logo, images, tampons, police, ajustements par
+plateforme) est commun, chaque plateforme peut surcharger ses couleurs et son affichage. Le nom du client, la
+progression, les récompenses et le QR code (vrai QR `DPA1:` vectoriel) ne font jamais partie du design : l’éditeur
+utilise des données de démonstration. Routes `wallet` (admin, même contrôle `admin_users`) :
+`admin-card-designer` (projet d’un commerce ou d’une demande payée), `admin-card-upload` (URL d’envoi signée vers
+`program-assets/<commerce>/<programme>/designer/`), `admin-card-save` (brouillon dans `card_designs`, programme
+inchangé), `admin-card-validate` (applique le design : `programs.card_design` sans les données de démonstration,
+`bg`/`accent`, et `logo_path`/`hero_path` si les images respectent les règles Google Wallet). La validation ne
+change ni la règle de fidélité ni le statut de la demande de design (« Marquer comme livré » reste séparé).
+Migration `20261006180155_card_designer`.
+
 ## Pages légales et données personnelles
 
 - Pages publiques `/mentions-legales` et `/confidentialite` (`mentions-legales.html`, `confidentialite.html`),

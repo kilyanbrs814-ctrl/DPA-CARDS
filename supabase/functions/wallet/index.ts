@@ -14,6 +14,10 @@
 //   POST /wallet/admin-merchant   admin session → one merchant's details
 //   POST /wallet/admin-designs    admin session → paid custom design requests (signed file links)
 //   POST /wallet/admin-design-status  admin session, { id, status } → in_progress / delivered
+//   POST /wallet/admin-card-designer  admin session, { merchant_id | design_request_id } → design project
+//   POST /wallet/admin-card-upload    admin session → signed upload URL for a designer image
+//   POST /wallet/admin-card-save      admin session → saves the design draft (program untouched)
+//   POST /wallet/admin-card-validate  admin session → applies the design to the program
 //
 // verify_jwt is off: the platform check does not understand every key type, so
 // each route authorises itself. The browser only sends a card id; merchant,
@@ -760,6 +764,174 @@ async function adminDesignStatus(req: Request): Promise<Response> {
   return json(req, 200, { request: { id: row.id, status: row.status, in_progress_at: row.in_progress_at, delivered_at: row.delivered_at }, email });
 }
 
+// ---------------------------------------------------------------- card designer (admin)
+// One design project per program, shared by the Apple and Google layouts (card_designs).
+// The design only describes the look: layout, colours, images, stamp style, typography.
+// Customer name, balance, rewards and QR code are never part of it: they are rendered live.
+
+const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
+const DESIGN_FONTS = ['hanken', 'space', 'playfair'];
+const STAMP_SHAPES = ['circle', 'rounded', 'square'];
+const STAMP_STYLES = ['outline', 'soft'];
+const STAMP_ICONS = ['none', 'check', 'star', 'favorite', 'local_cafe', 'local_pizza', 'content_cut', 'restaurant', 'cake', 'spa', 'local_bar', 'icecream', 'bakery_dining', 'custom'];
+const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp'] as const;
+type AssetKind = typeof ASSET_KINDS[number];
+
+const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '');
+const hex = (v: unknown, dflt: string) => (typeof v === 'string' && HEX_RE.test(v) ? v.toUpperCase() : dflt);
+const pick = <T extends string>(v: unknown, list: readonly T[], dflt: T): T => (list.includes(v as T) ? v as T : dflt);
+const int = (v: unknown, min: number, max: number, dflt: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt; };
+// Images of the program's own folder: the designer's uploads, or the logo / cover the program already uses.
+const designerPath = (m: string, p: string) => new RegExp(`^${m}/${p}/(designer/)?(logo|hero|background|stamp)-[0-9a-f-]{36}\\.(png|jpg)$`);
+
+// Whitelist of the design document; anything else is dropped. Colours of a platform are optional overrides.
+function cleanDesign(raw: any, merchantId: string, programId: string) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  const re = designerPath(merchantId, programId);
+  const asset = (a: any, kind: AssetKind) => (a && typeof a.path === 'string' && re.test(a.path) && a.path.split('/').pop()!.startsWith(`${kind}-`) ? { path: a.path } : null);
+  const colors = (c: any, base: Record<string, string> | null) => {
+    const o = c && typeof c === 'object' ? c : {};
+    if (!base) return Object.fromEntries(['primary', 'secondary', 'text', 'accent'].filter(k => HEX_RE.test(o[k] ?? '')).map(k => [k, String(o[k]).toUpperCase()]));
+    return { primary: hex(o.primary, base.primary), secondary: hex(o.secondary, base.secondary), text: hex(o.text, base.text), accent: hex(o.accent, base.accent) };
+  };
+  const platform = (p: any) => {
+    const o = p && typeof p === 'object' ? p : {};
+    return { colors: colors(o.colors, null), showHero: o.showHero !== false, showSubtitle: o.showSubtitle !== false, useBackground: o.useBackground === true,
+      heroFocus: int(o.heroFocus, 0, 100, 50), label: str(o.label, 16) };
+  };
+  const s = r.stamps && typeof r.stamps === 'object' ? r.stamps : {};
+  const pv = r.preview && typeof r.preview === 'object' ? r.preview : {};
+  const assets = r.assets && typeof r.assets === 'object' ? r.assets : {};
+  return {
+    v: 1,
+    identity: { name: str(r.identity?.name, 40), subtitle: str(r.identity?.subtitle, 40) },
+    colors: colors(r.colors, { primary: '#1C1F24', secondary: '#2448F0', text: '#FFFFFF', accent: '#F2C94C' }),
+    font: pick(r.font, DESIGN_FONTS, 'hanken'),
+    label: str(r.label, 16),
+    assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
+    stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, 'check'), style: pick(s.style, STAMP_STYLES, 'outline'),
+      filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF') },
+    apple: platform(r.apple),
+    google: platform(r.google),
+    // Editor only (demo customer, demo progress): never copied to the program.
+    preview: { mode: pick(pv.mode, ['passages', 'points'] as const, 'passages'), goal: int(pv.goal, 1, 1000, 10), progress: int(pv.progress, 0, 100000, 3),
+      reward: str(pv.reward, 80), available: int(pv.available, 0, 99, 1), client: str(pv.client, 60) },
+  };
+}
+
+const PROGRAM_SELECT = 'id, merchant_id, name, mode, goal, reward, bg, accent, logo, logo_path, hero_path, design_status, design_mode, card_design, card_design_validated_at';
+const programView = (p: any) => ({ ...p, logo_url: p.logo_path ? assetUrl(p.logo_path) : null, hero_url: p.hero_path ? assetUrl(p.hero_path) : null });
+const withUrls = (c: any) => c && ({ ...c, assets: Object.fromEntries(Object.entries(c.assets ?? {}).map(([k, a]: [string, any]) => [k, a ? { ...a, url: assetUrl(a.path) } : null])) });
+
+async function designProgram(programId: unknown) {
+  const id = String(programId ?? '');
+  if (!UUID_RE.test(id)) throw new HttpError(400, 'invalid_request');
+  const { data, error } = await admin.from('programs').select(PROGRAM_SELECT).eq('id', id).maybeSingle();
+  if (error) throw new Error('db_programs');
+  if (!data) throw new HttpError(404, 'program_not_found');
+  return data;
+}
+// Only a paid request of this program can be linked to its design.
+async function linkedRequest(id: unknown, program: any) {
+  if (id == null || id === '') return null;
+  const rid = String(id);
+  if (!UUID_RE.test(rid)) throw new HttpError(400, 'invalid_request');
+  const { data } = await admin.from('design_requests').select('id, program_id, payment_status').eq('id', rid).maybeSingle();
+  if (!data || data.program_id !== program.id || data.payment_status !== 'paid') throw new HttpError(422, 'invalid_design_request');
+  return data.id as string;
+}
+
+async function adminCardDesigner(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  let merchantId = String(body?.merchant_id ?? ''), programId: string | null = null, requestId: string | null = null;
+  if (body?.design_request_id) {
+    const rid = String(body.design_request_id);
+    if (!UUID_RE.test(rid)) throw new HttpError(400, 'invalid_request');
+    const { data: r } = await admin.from('design_requests').select('id, merchant_id, program_id, payment_status').eq('id', rid).maybeSingle();
+    if (!r || r.payment_status !== 'paid') throw new HttpError(404, 'design_request_not_found');
+    merchantId = r.merchant_id; programId = r.program_id; requestId = r.id;
+  }
+  if (!UUID_RE.test(merchantId)) throw new HttpError(400, 'invalid_request');
+  const { data: merchant } = await admin.from('merchants').select('id, business_name, activity').eq('id', merchantId).maybeSingle();
+  if (!merchant) throw new HttpError(404, 'merchant_not_found');
+  let q = admin.from('programs').select(PROGRAM_SELECT).eq('merchant_id', merchantId);
+  q = programId ? q.eq('id', programId) : q.eq('is_active', true);
+  const { data: program } = await q.maybeSingle();
+  if (!program) return json(req, 200, { merchant, program: null, draft: null, request: null, requests: [] });
+  const { data: draft } = await admin.from('card_designs').select('config, status, design_request_id, validated_at, updated_at').eq('program_id', program.id).maybeSingle();
+  const sign = async (p: string | null) => p ? (await admin.storage.from('design-requests').createSignedUrl(p, 3600)).data?.signedUrl ?? null : null;
+  const { data: reqs } = await admin.from('design_requests')
+    .select('id, status, paid_at, colors, description, contact_name, contact_email, contact_phone, logo_path, reference_paths')
+    .eq('program_id', program.id).eq('payment_status', 'paid').order('paid_at', { ascending: false });
+  const requests = await Promise.all((reqs ?? []).map(async ({ logo_path, reference_paths, ...r }) => ({
+    ...r, logo_url: await sign(logo_path), reference_urls: (await Promise.all((reference_paths ?? []).map(sign))).filter(Boolean),
+  })));
+  const current = requestId ?? draft?.design_request_id ?? requests.find(r => r.status === 'submitted' || r.status === 'in_progress')?.id ?? null;
+  return json(req, 200, {
+    merchant, program: { ...programView(program), card_design: withUrls(program.card_design) },
+    draft: draft ? { ...draft, config: withUrls(draft.config) } : null,
+    request: requests.find(r => r.id === current) ?? null, requests,
+  });
+}
+
+// Signed upload to program-assets/<merchant>/<program>/designer/<kind>-<uuid>.<ext> (PNG or JPEG, 2 MB, bucket rules).
+async function adminCardUpload(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const program = await designProgram(body?.program_id);
+  const kind = String(body?.kind ?? '') as AssetKind, type = String(body?.type ?? '');
+  if (!ASSET_KINDS.includes(kind) || !['image/png', 'image/jpeg'].includes(type)) throw new HttpError(400, 'invalid_request');
+  const path = `${program.merchant_id}/${program.id}/designer/${kind}-${crypto.randomUUID()}.${type === 'image/png' ? 'png' : 'jpg'}`;
+  const { data, error } = await admin.storage.from('program-assets').createSignedUploadUrl(path);
+  if (error || !data) throw new Error('storage_signed_upload');
+  return json(req, 200, { path, token: data.token, url: assetUrl(path) });
+}
+
+async function adminCardSave(req: Request): Promise<Response> {
+  const user = await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const program = await designProgram(body?.program_id);
+  const config = cleanDesign(body?.config, program.merchant_id, program.id);
+  const design_request_id = await linkedRequest(body?.design_request_id, program);
+  // Saving a draft never touches the program, the request status or the applied design.
+  const { data, error } = await admin.from('card_designs').upsert({ merchant_id: program.merchant_id, program_id: program.id, design_request_id, config, status: 'draft', updated_by: user.id },
+    { onConflict: 'program_id' }).select('config, status, design_request_id, validated_at, updated_at').single();
+  if (error) throw new Error('db_card_designs');
+  return json(req, 200, { draft: { ...data, config: withUrls(data.config) } });
+}
+
+// Applies the design to the program. The design request keeps its status ("Marquer comme livré" stays separate).
+async function adminCardValidate(req: Request): Promise<Response> {
+  const user = await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const program = await designProgram(body?.program_id);
+  const config = cleanDesign(body?.config, program.merchant_id, program.id);
+  const design_request_id = await linkedRequest(body?.design_request_id, program);
+  // Every image must exist and really be a PNG or JPEG.
+  const fit: Record<string, boolean> = {};
+  for (const kind of ASSET_KINDS) {
+    const a = (config.assets as any)[kind]; if (!a) continue;
+    const { data: f } = await admin.storage.from('program-assets').download(a.path);
+    if (!f) throw new HttpError(422, `missing_${kind}`);
+    const bytes = new Uint8Array(await f.arrayBuffer()), info = imageInfo(bytes);
+    if (!info) throw new HttpError(422, `invalid_${kind}`);
+    if (kind === 'logo' || kind === 'hero') { const rule = IMAGE_RULES[kind]; fit[kind] = (rule.types as readonly string[]).includes(info.type) && bytes.length <= rule.maxBytes && rule.ok(info.w, info.h); }
+  }
+  const { preview: _preview, ...applied } = config;
+  const now = new Date().toISOString();
+  // The fields the existing card and Google Wallet class already read follow the design (only images that meet their rules).
+  const patch: Record<string, unknown> = { card_design: applied, card_design_validated_at: now, bg: config.colors.primary, accent: config.colors.secondary };
+  if (config.assets.logo && fit.logo) patch.logo_path = config.assets.logo.path;
+  if (config.assets.hero && fit.hero) patch.hero_path = config.assets.hero.path;
+  const { data: saved, error } = await admin.from('programs').update(patch).eq('id', program.id).select(PROGRAM_SELECT).single();
+  if (error) throw new Error('db_programs');
+  const { data: draft, error: de } = await admin.from('card_designs').upsert({ merchant_id: program.merchant_id, program_id: program.id, design_request_id, config, status: 'validated', validated_at: now, updated_by: user.id },
+    { onConflict: 'program_id' }).select('config, status, design_request_id, validated_at, updated_at').single();
+  if (de) throw new Error('db_card_designs');
+  return json(req, 200, { program: { ...programView(saved), card_design: withUrls(saved.card_design) }, draft: { ...draft, config: withUrls(draft.config) } });
+}
+
 async function sync(req: Request): Promise<Response> {
   const secret = req.headers.get('x-wallet-worker') ?? '';
   const { data: ok } = await admin.rpc('wallet_check_worker', { p_secret: secret });
@@ -787,6 +959,10 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-merchant')) return await adminMerchant(req);
     if (req.method === 'POST' && path.endsWith('/admin-designs')) return await adminDesigns(req);
     if (req.method === 'POST' && path.endsWith('/admin-design-status')) return await adminDesignStatus(req);
+    if (req.method === 'POST' && path.endsWith('/admin-card-designer')) return await adminCardDesigner(req);
+    if (req.method === 'POST' && path.endsWith('/admin-card-upload')) return await adminCardUpload(req);
+    if (req.method === 'POST' && path.endsWith('/admin-card-save')) return await adminCardSave(req);
+    if (req.method === 'POST' && path.endsWith('/admin-card-validate')) return await adminCardValidate(req);
     if (req.method === 'POST' && path.endsWith('/finalize-design')) return await finalizeDesign(req);
     if (req.method === 'POST' && path.endsWith('/sync')) return await sync(req);
     return json(req, 404, { error: 'not_found' });

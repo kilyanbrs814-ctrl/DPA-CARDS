@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { makeCardDesigner } from './card-designer.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -127,8 +128,24 @@ sb.auth.onAuthStateChange(() => {
   setTimeout(refreshAccess, 0);
 });
 
+// Card designer: built on first use, once dc-runtime has loaded React.
+const designerApi = {
+  load: target => adminCall('admin-card-designer', target),
+  // Images go straight to Storage through a signed upload URL issued after the admin check.
+  async upload(programId, kind, blob) {
+    const r = await adminCall('admin-card-upload', { program_id: programId, kind, type: blob.type });
+    const { error } = await sb.storage.from('program-assets').uploadToSignedUrl(r.path, r.token, blob, { contentType: blob.type, cacheControl: '31536000' });
+    if (error) throw Object.assign(new Error('upload_failed'), { code: 'upload_failed' });
+    return { path: r.path, url: r.url };
+  },
+  save: (programId, requestId, config) => adminCall('admin-card-save', { program_id: programId, design_request_id: requestId, config }),
+  validate: (programId, requestId, config) => adminCall('admin-card-validate', { program_id: programId, design_request_id: requestId, config }),
+};
+let designer = null;
+
 refreshAccess();
 window.__dpaAdminResolve({
+  designer: () => designer || (designer = makeCardDesigner(window.React, designerApi)),
   supabase: sb,
   onAccess(cb) { accessListeners.push(cb); if (app.style.display === 'block') cb(); },
   overview: () => adminCall('admin-overview'),
