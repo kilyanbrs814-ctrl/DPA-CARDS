@@ -5,8 +5,9 @@
 //   POST /billing/summary   member session → subscription, payment method and invoices (from Stripe)
 //   POST /billing/portal    owner session → Stripe Billing Portal URL
 //   POST /billing/cancel    owner session → cancel at period end, refused while a 12-month commitment runs
-//   POST /billing/design-checkout  owner session → Stripe Checkout for the 29 € custom design (one-time)
+//   POST /billing/design-checkout  owner session → Stripe Checkout for the 29,90 € custom design (one-time), once the subscription is valid
 //   POST /billing/design-verify    member session, { session_id } → confirms that payment with Stripe
+//   POST /billing/design-cancel    owner session, { design_request_id } → cancels an unpaid request (never a paid one)
 //   POST /billing/webhook   Stripe signature → keeps public.subscriptions in sync with Stripe and
 //                           confirms custom design payments (metadata.type = custom_design)
 //
@@ -39,15 +40,43 @@ const STRIPE_KEY = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
 const stripe = STRIPE_KEY ? new Stripe(STRIPE_KEY, { apiVersion: '2025-02-24.acacia', httpClient: Stripe.createFetchHttpClient() }) : null;
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
-// The only place where plans are defined. Amounts are read back from Stripe prices.
-// Custom design: one fixed Stripe price (29,00 € TTC, one-time), never an amount from the browser.
-const DESIGN_PRICE = Deno.env.get('STRIPE_PRICE_CUSTOM_DESIGN') ?? '';
+// The only place where prices are defined: Stripe lookup_key, amount in cents (TTC), recurring.
+// Prices are created by scripts/stripe-setup.mjs; the amount is checked here, so an old or
+// wrong price is never used. Custom design: 29,90 € TTC one-time, never an amount from the browser.
+const PRICES = {
+  setup_no_commitment: { lookup: 'dpa_setup_no_commitment', cents: 4900, recurring: false },
+  monthly_no_commitment: { lookup: 'dpa_monthly_no_commitment', cents: 2490, recurring: true },
+  setup_commitment: { lookup: 'dpa_setup_commitment', cents: 2900, recurring: false },
+  monthly_commitment: { lookup: 'dpa_monthly_commitment', cents: 1990, recurring: true },
+  custom_design: { lookup: 'dpa_custom_design', cents: 2990, recurring: false },
+} as const;
+type PriceName = keyof typeof PRICES;
 
 const PLANS = {
-  no_commitment: { setup: Deno.env.get('STRIPE_PRICE_SETUP_NO_COMMITMENT') ?? '', monthly: Deno.env.get('STRIPE_PRICE_MONTHLY_NO_COMMITMENT') ?? '', commitmentMonths: 0 },
-  commitment: { setup: Deno.env.get('STRIPE_PRICE_SETUP_COMMITMENT') ?? '', monthly: Deno.env.get('STRIPE_PRICE_MONTHLY_COMMITMENT') ?? '', commitmentMonths: 12 },
+  no_commitment: { setup: 'setup_no_commitment', monthly: 'monthly_no_commitment', commitmentMonths: 0 },
+  commitment: { setup: 'setup_commitment', monthly: 'monthly_commitment', commitmentMonths: 12 },
 } as const;
 type PlanType = keyof typeof PLANS;
+
+// Active Stripe price ids, cached 10 minutes per instance. A missing price, or an amount that
+// differs from PRICES, makes billing unavailable rather than charging a wrong amount.
+let priceCache: { at: number; ids: Record<PriceName, string> } | null = null;
+async function priceIds(): Promise<Record<PriceName, string>> {
+  if (priceCache && Date.now() - priceCache.at < 600_000) return priceCache.ids;
+  const s = requireStripe();
+  const list = await s.prices.list({ lookup_keys: Object.values(PRICES).map(p => p.lookup), active: true, limit: 10 });
+  const ids = {} as Record<PriceName, string>;
+  for (const [name, want] of Object.entries(PRICES) as [PriceName, (typeof PRICES)[PriceName]][]) {
+    const p = list.data.find(x => x.lookup_key === want.lookup);
+    if (!p || p.unit_amount !== want.cents || p.currency !== 'eur' || !!p.recurring !== want.recurring) {
+      console.error('billing error', 'price', want.lookup);
+      throw new HttpError(503, 'billing_not_configured');
+    }
+    ids[name] = p.id;
+  }
+  priceCache = { at: Date.now(), ids };
+  return ids;
+}
 
 // ---------------------------------------------------------------- http
 
@@ -162,6 +191,7 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
   if (!customer || !paymentMethod) throw new HttpError(409, 'payment_method_missing');
 
   const plan = PLANS[planType];
+  const monthlyPrice = (await priceIds())[plan.monthly];
   const trialEnd = (session.created ?? Math.floor(Date.now() / 1000)) + TRIAL_DAYS * 86400;
   const safeTrialEnd = Math.max(trialEnd, Math.floor(Date.now() / 1000) + 3600);
   const anchor = firstOfNextMonthParis(safeTrialEnd);
@@ -174,7 +204,7 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
   await s.customers.update(customer, { invoice_settings: { default_payment_method: paymentMethod } });
   const sub = await s.subscriptions.create({
     customer,
-    items: [{ price: plan.monthly }],
+    items: [{ price: monthlyPrice }],
     default_payment_method: paymentMethod,
     trial_end: safeTrialEnd,
     billing_cycle_anchor: anchor,
@@ -193,7 +223,8 @@ async function checkout(req: Request): Promise<Response> {
   const planType = String(body?.plan ?? '') as PlanType;
   if (!(planType in PLANS)) throw new HttpError(422, 'invalid_plan');
   const plan = PLANS[planType];
-  if (!plan.setup || !plan.monthly) throw new HttpError(503, 'billing_not_configured');
+  const ids = await priceIds();
+  const setupId = ids[plan.setup], monthlyId = ids[plan.monthly];
 
   const { data: program } = await admin.from('programs').select('id').eq('merchant_id', merchantId).eq('is_active', true).maybeSingle();
   if (!program) throw new HttpError(409, 'onboarding_incomplete');
@@ -209,7 +240,7 @@ async function checkout(req: Request): Promise<Response> {
       { idempotencyKey: `dpa-customer-${merchantId}` });
     customer = c.id;
   }
-  const [setupPrice, monthlyPrice] = await Promise.all([s.prices.retrieve(plan.setup), s.prices.retrieve(plan.monthly)]);
+  const [setupPrice, monthlyPrice] = await Promise.all([s.prices.retrieve(setupId), s.prices.retrieve(monthlyId)]);
   const eur = (c: number | null) => ((c ?? 0) / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
   const origin = siteOrigin(req);
   const metadata = { merchant_id: merchantId, plan_type: planType, user_id: user.id };
@@ -219,7 +250,7 @@ async function checkout(req: Request): Promise<Response> {
     // Card only: the subscription is later charged off-session on this saved card, which
     // methods like Klarna or Satispay (enabled by default on the account) do not allow.
     payment_method_types: ['card'],
-    line_items: [{ price: plan.setup, quantity: 1 }],
+    line_items: [{ price: setupId, quantity: 1 }],
     payment_intent_data: { setup_future_usage: 'off_session', metadata, description: 'DPA Cards — frais de mise en place' },
     invoice_creation: { enabled: true, invoice_data: { metadata, description: 'Frais de mise en place DPA Cards' } },
     metadata,
@@ -230,7 +261,7 @@ async function checkout(req: Request): Promise<Response> {
   });
   const row = {
     merchant_id: merchantId, stripe_customer_id: customer, stripe_checkout_session_id: session.id, plan_type: planType,
-    commitment_months: plan.commitmentMonths, stripe_setup_price_id: plan.setup, stripe_price_id: plan.monthly,
+    commitment_months: plan.commitmentMonths, stripe_setup_price_id: setupId, stripe_price_id: monthlyId,
     setup_amount_cents: setupPrice.unit_amount, monthly_amount_cents: monthlyPrice.unit_amount,
   };
   if (existing) {
@@ -312,7 +343,7 @@ async function cancel(req: Request): Promise<Response> {
   return json(req, 200, { subscription: await syncSubscription(sub, { cancel_requested_at: new Date().toISOString() }) });
 }
 
-// ---------------------------------------------------------------- custom design (29 € one-time)
+// ---------------------------------------------------------------- custom design (29,90 € one-time)
 // The request exists as 'pending_payment' (files + brief); it becomes an order ('submitted')
 // only once Stripe confirms the payment. Separate from the subscription in every way.
 
@@ -327,9 +358,13 @@ async function customerFor(s: Stripe, merchantId: string, email?: string | null,
 }
 
 async function designCheckout(req: Request): Promise<Response> {
-  const s = requireStripe();
-  if (!DESIGN_PRICE) throw new HttpError(503, 'billing_not_configured');
   const { user, merchantId } = await member(req);
+  // The design is paid after the offer: no design checkout without a valid subscription
+  // (this only orders the steps; the two payments stay independent).
+  const sub = await rowOf(merchantId);
+  if (!sub || !ACCESS.includes(sub.status)) throw new HttpError(402, 'subscription_required');
+  const s = requireStripe();
+  const designPrice = (await priceIds()).custom_design;
   const body = await req.json().catch(() => ({}));
   const wanted = body?.design_request_id ? String(body.design_request_id) : null;
   if (wanted && !UUID.test(wanted)) throw new HttpError(400, 'invalid_request');
@@ -350,7 +385,7 @@ async function designCheckout(req: Request): Promise<Response> {
     mode: 'payment',
     customer,
     payment_method_types: ['card'],
-    line_items: [{ price: DESIGN_PRICE, quantity: 1 }],
+    line_items: [{ price: designPrice, quantity: 1 }],
     payment_intent_data: { metadata, description: 'DPA Cards — création de carte sur mesure' },
     invoice_creation: { enabled: true, invoice_data: { metadata, description: 'Création de carte sur mesure DPA Cards' } },
     metadata,
@@ -362,6 +397,45 @@ async function designCheckout(req: Request): Promise<Response> {
   const { error: ue } = await admin.from('design_requests').update({ stripe_checkout_session_id: session.id }).eq('id', reqRow.id).eq('status', 'pending_payment');
   if (ue) throw new Error('db_design_requests');
   return json(req, 200, { url: session.url });
+}
+
+// Change of mind before paying: the unpaid request is cancelled and the program stays a draft
+// the merchant customises. Open Checkout sessions for it are expired first, so it can no longer
+// be paid; one paid in the meantime becomes an order instead. A paid request (submitted,
+// in_progress, delivered) is never touched here, and the subscription is not involved.
+async function designCancel(req: Request): Promise<Response> {
+  const { merchantId } = await member(req);
+  const body = await req.json().catch(() => ({}));
+  const id = String(body?.design_request_id ?? '');
+  if (!UUID.test(id)) throw new HttpError(400, 'invalid_request');
+  const { data: r, error } = await admin.from('design_requests')
+    .select('id, merchant_id, program_id, status, payment_status, stripe_checkout_session_id').eq('id', id).maybeSingle();
+  if (error) throw new Error('db_design_requests');
+  if (!r || r.merchant_id !== merchantId) throw new HttpError(404, 'design_request_not_found');
+  if (r.status === 'cancelled' && r.payment_status !== 'paid') return json(req, 200, { cancelled: true });
+  if (r.payment_status === 'paid' || r.status !== 'pending_payment') throw new HttpError(409, 'design_not_cancellable');
+  if (r.stripe_checkout_session_id) {
+    const s = requireStripe();
+    const last = await s.checkout.sessions.retrieve(r.stripe_checkout_session_id);
+    const customer = typeof last.customer === 'string' ? last.customer : last.customer?.id;
+    const open = customer ? (await s.checkout.sessions.list({ customer, status: 'open', limit: 100 })).data : [];
+    const sessions = [last, ...open.filter(x => x.id !== last.id)].filter(x => x.metadata?.design_request_id === id);
+    for (const x of sessions) {
+      let cur = x;
+      if (cur.status === 'open') {
+        try { cur = await s.checkout.sessions.expire(cur.id); } catch { cur = await s.checkout.sessions.retrieve(cur.id); }
+      }
+      if (cur.payment_status === 'paid') await confirmDesign(await s.checkout.sessions.retrieve(cur.id, { expand: ['payment_intent'] }));
+      if (cur.status === 'complete' || cur.payment_status === 'paid') throw new HttpError(409, 'design_not_cancellable');
+    }
+  }
+  const { data: done, error: ue } = await admin.from('design_requests').update({ status: 'cancelled' })
+    .eq('id', id).eq('status', 'pending_payment').neq('payment_status', 'paid').select('id').maybeSingle();
+  if (ue) throw new Error('db_design_requests');
+  if (!done) throw new HttpError(409, 'design_not_cancellable');
+  // Self-customisation again (an unpaid request never moved the program out of draft).
+  await admin.from('programs').update({ design_mode: null }).eq('id', r.program_id).eq('design_status', 'draft').eq('design_mode', 'dpa');
+  return json(req, 200, { cancelled: true });
 }
 
 // Signed links (7 days) to the brief files, for the alert e-mail.
@@ -409,7 +483,8 @@ async function confirmDesign(session: Stripe.Checkout.Session) {
   if (!reqRow || reqRow.merchant_id !== merchantId) throw new HttpError(403, 'forbidden');
   if (session.payment_status !== 'paid') return { paid: false, request: null };
   const items = await s.checkout.sessions.listLineItems(session.id, { limit: 5 });
-  if (!items.data.some(i => i.price?.id === DESIGN_PRICE) || session.amount_total == null) throw new HttpError(409, 'invalid_session');
+  const designPrice = (await priceIds()).custom_design;
+  if (!items.data.some(i => i.price?.id === designPrice) || session.amount_total !== PRICES.custom_design.cents) throw new HttpError(409, 'invalid_session');
   const pi = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
   const { data, error } = await admin.rpc('design_mark_paid', { p_request: requestId, p_session: session.id, p_payment_intent: pi, p_amount: session.amount_total, p_currency: session.currency });
   if (error) throw new Error('db_design_mark_paid');
@@ -487,6 +562,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/cancel')) return await cancel(req);
     if (req.method === 'POST' && path.endsWith('/design-checkout')) return await designCheckout(req);
     if (req.method === 'POST' && path.endsWith('/design-verify')) return await designVerify(req);
+    if (req.method === 'POST' && path.endsWith('/design-cancel')) return await designCancel(req);
     return json(req, 404, { error: 'not_found' });
   } catch (e) {
     if (e instanceof HttpError) return json(req, e.status, { error: e.code, ...e.extra });

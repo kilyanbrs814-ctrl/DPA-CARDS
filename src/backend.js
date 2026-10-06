@@ -122,6 +122,7 @@ const DB_ERRORS = {
   no_merchant: 'Aucun commerce associé à ce compte.',
   design_request_not_found: 'Aucune demande de design en attente.',
   design_already_paid: 'Cette demande de design est déjà payée.',
+  design_not_cancellable: 'Cette demande de design est déjà payée : elle ne peut plus être annulée.',
   program_unavailable: 'Les inscriptions à ce programme ne sont pas encore ouvertes.',
 };
 
@@ -513,9 +514,11 @@ const api = {
     summary: () => invokeFn('billing/summary', {}),
     portal: () => invokeFn('billing/portal', {}),
     cancel: () => invokeFn('billing/cancel', {}),
-    // Custom design (29 € one-time): the server picks the price and the merchant's request.
+    // Custom design (29,90 € one-time): the server picks the price and the merchant's request.
     designCheckout: requestId => invokeFn('billing/design-checkout', requestId ? { design_request_id: requestId } : {}),
     designVerify: sessionId => invokeFn('billing/design-verify', { session_id: sessionId }),
+    // Change of mind before paying: cancels the unpaid request only (refused once paid).
+    designCancel: requestId => invokeFn('billing/design-cancel', { design_request_id: requestId }),
     async refresh(merchantId) {
       const { data, error } = await sb.from('subscriptions').select('*').eq('merchant_id', merchantId).maybeSingle();
       if (error) throw error;

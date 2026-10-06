@@ -216,8 +216,16 @@ répondent `402 subscription_required`. Non concernés : admin, `/join/:slug`, p
 
 | Offre | Mise en place | Abonnement | Engagement |
 |---|---|---|---|
-| `no_commitment` | 29,00 € | 14,90 €/mois | aucun |
-| `commitment` | 14,90 € | 9,90 €/mois | 12 mois |
+| `no_commitment` | 49,00 € | 24,90 €/mois | aucun |
+| `commitment` | 29,00 € | 19,90 €/mois | 12 mois |
+
+Les montants sont définis à un seul endroit côté serveur (`PRICES` dans `supabase/functions/billing/index.ts`) :
+l’Edge Function retrouve les prix Stripe par `lookup_key` et vérifie leur montant ; un prix absent ou d’un autre
+montant rend la facturation indisponible (`503 billing_not_configured`) plutôt que de débiter un mauvais montant.
+Les montants affichés (`PLAN_UI` dans `index.html`, `cgv.html`) doivent rester identiques.
+
+La page « Choisissez votre offre » propose « Choisir mon offre plus tard » : le commerçant accède alors au tableau
+de bord en mode verrouillé.
 
 **Pourquoi deux étapes.** Stripe Checkout ne permet pas de combiner un essai gratuit et une date d’ancrage
 (`billing_cycle_anchor`) ; l’API Subscriptions, si. Donc :
@@ -242,12 +250,13 @@ Paramètres → « Mon abonnement » : offre, prix, statut, fin d’essai, proch
 factures (`POST /billing/summary`, lu chez Stripe), « Gérer mon abonnement » (portail), « Résilier ».
 
 **Secrets Edge Functions** (jamais dans le dépôt ni dans `VITE_*`) : `STRIPE_SECRET_KEY`,
-`STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_SETUP_NO_COMMITMENT`, `STRIPE_PRICE_MONTHLY_NO_COMMITMENT`,
-`STRIPE_PRICE_SETUP_COMMITMENT`, `STRIPE_PRICE_MONTHLY_COMMITMENT`, `STRIPE_PORTAL_CONFIG_DEFAULT`,
-`STRIPE_PORTAL_CONFIG_COMMITMENT`. `node scripts/stripe-setup.mjs --key-file <fichier> --out <secrets.env>`
-crée ou retrouve produit, prix (`lookup_key` `dpa_setup_no_commitment`, `dpa_monthly_no_commitment`,
-`dpa_setup_commitment`, `dpa_monthly_commitment`), webhook et configurations du portail, puis écrit le fichier
-à pousser avec `supabase secrets set --env-file`. Mode test par défaut ; une clé live exige `--live`.
+`STRIPE_WEBHOOK_SECRET`, `STRIPE_PORTAL_CONFIG_DEFAULT`, `STRIPE_PORTAL_CONFIG_COMMITMENT` (les anciens
+`STRIPE_PRICE_*` ne sont plus lus). `node scripts/stripe-setup.mjs --key-file <fichier> [--out <secrets.env>]`
+crée ou retrouve les produits, les prix (`lookup_key` `dpa_setup_no_commitment`, `dpa_monthly_no_commitment`,
+`dpa_setup_commitment`, `dpa_monthly_commitment`, `dpa_custom_design`), le webhook et les configurations du
+portail ; quand un montant change, le nouveau prix reprend la `lookup_key` et les anciens prix sont archivés (les
+abonnements existants continuent sur leur prix). `--out` écrit le fichier à pousser avec
+`supabase secrets set --env-file`. Mode test par défaut ; une clé live exige `--live`.
 Migration : `20261005093513_subscriptions`. CGV : `CGV_URL` dans `src/legal-config.js` (vide pour l’instant).
 
 ## Mode verrouillé et création de carte payante
@@ -262,9 +271,14 @@ les politiques d’insertion `customers`, `cards`, `notifications` l’exigent a
 402 (notifications, lien Google Wallet) et ferme la page publique (`403 program_unavailable`). Restent possibles :
 suppression d’un client, suppression du compte, export.
 
-**« Confier le design à DPA Cards » — 29 € TTC, paiement unique** (prix Stripe `STRIPE_PRICE_CUSTOM_DESIGN`,
-lookup_key `dpa_custom_design`). `submit_design_request` crée la demande en `pending_payment` (fichiers + brief),
-`POST /billing/design-checkout` ouvre Stripe Checkout (`metadata.type = custom_design`), puis `/design/success`
+**« Confier le design à DPA Cards » — 29,90 € TTC, paiement unique** (lookup_key `dpa_custom_design`).
+`submit_design_request` crée la demande en `pending_payment` (fichiers + brief). Le design se paie **après**
+l’offre : sans abonnement `trialing`/`active`, le commerçant est envoyé sur la page d’offres et
+`POST /billing/design-checkout` répond `402 subscription_required`. Une fois l’offre payée, `/subscription/success`
+propose « Payer mon design — 29,90 € » ; si l’offre est reportée (« Choisir mon offre plus tard »), aucun paiement de
+design n’est demandé et l’accueil affiche un rappel « Demande de design en attente » (bouton « Choisir mon offre »,
+puis « Payer mon design » une fois l’abonnement actif). Tant qu’elle n’est pas payée, le commerçant peut changer d’avis (« Je préfère personnaliser ma carte moi-même », avec confirmation) : `POST /billing/design-cancel` expire d’abord les sessions Checkout ouvertes de la demande, puis la passe en `cancelled` ; le programme reste en brouillon et l’étape « Ma carte » rouvre en personnalisation manuelle. Une demande payée (`submitted`, `in_progress`, `delivered`) est refusée (`409 design_not_cancellable`) ; l’abonnement n’est pas concerné. `POST /billing/design-checkout` ouvre Stripe Checkout
+(`metadata.type = custom_design`), puis `/design/success`
 (`POST /billing/design-verify`, vérifié chez Stripe) ou le webhook `checkout.session.completed` appellent
 `design_mark_paid` : la demande passe en `submitted` (payée), le programme en `pending_dpa`, et une alerte e-mail
 part une seule fois vers `contact@digitalprojectagency.fr`. Ce paiement n’active pas l’abonnement (et inversement).

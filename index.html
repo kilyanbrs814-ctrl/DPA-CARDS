@@ -289,7 +289,7 @@ a:hover{color:#1A36C4}
           <sc-if value="{{ obDpa }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
               <p style="margin:0;color:#3E424A;font-size:15px;line-height:1.5;flex:1;min-width:220px">Décrivez la carte souhaitée : DPA Cards en crée le design. Votre carte Google Wallet sera disponible une fois ce design validé.</p>
-              <span style="padding:6px 12px;border-radius:999px;background:#E8EDFF;color:#1A36C4;font-weight:700;font-size:14px">Sur devis</span>
+              <span style="padding:6px 12px;border-radius:999px;background:#E8EDFF;color:#1A36C4;font-weight:700;font-size:14px">29,90 € TTC</span>
             </div>
             <div>
               <div style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Logo <span style="font-weight:400;color:#5E636B">(facultatif)</span></div>
@@ -323,6 +323,7 @@ a:hover{color:#1A36C4}
               </div>
               <sc-if value="{{ err.drcontact }}" hint-placeholder-val="{{ false }}"><div role="alert" style="display:flex;gap:6px;align-items:center;margin-top:8px;color:#B42318;font-size:14px;font-weight:500"><span class="material-symbols-rounded" style="font-size:18px">error</span>{{ err.drcontact }}</div></sc-if>
             </fieldset>
+            <div style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#F1EFEA;color:#3E424A;font-size:14px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:20px;color:#5E636B">info</span><span>{{ obDpaNote }}</span></div>
           </sc-if>
         </sc-if>
         <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
@@ -400,8 +401,11 @@ a:hover{color:#1A36C4}
       <span style="padding:5px 12px;border-radius:999px;background:#E8EDFF;color:#1A36C4;font-size:13px;font-weight:700">Dernière étape</span>
       <h1 style="margin:0;font-weight:800;font-size:clamp(30px,6vw,42px);letter-spacing:-0.03em;line-height:1.05">Choisissez votre offre</h1>
       <p style="margin:0;color:#4A4E55;font-size:17px;line-height:1.5">15 jours d’essai gratuit sur votre abonnement.</p>
-      <sc-if value="{{ canSkipBilling }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ toHome }}" style="min-height:40px;padding:0 10px;border:0;background:none;color:#2448F0;font-weight:600;font-size:15px">Accéder à mon espace (fonctions limitées)</button></sc-if>
+      <sc-if value="{{ canSkipBilling }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ skipBilling }}" style="min-height:44px;padding:0 12px;border:0;background:none;color:#2448F0;font-weight:600;font-size:15px;text-decoration:underline;text-underline-offset:3px">Choisir mon offre plus tard</button></sc-if>
     </div>
+    <sc-if value="{{ billDesignNote }}" hint-placeholder-val="{{ false }}">
+      <div role="status" style="display:flex;gap:12px;align-items:flex-start;padding:16px 18px;border-radius:16px;background:#EEF1FF;color:#1A36C4;font-size:15px;line-height:1.5"><span class="material-symbols-rounded" style="font-size:22px">brush</span><div style="flex:1;min-width:0">{{ billDesignNote }}</div></div>
+    </sc-if>
     <sc-if value="{{ bill.hasIssue }}" hint-placeholder-val="{{ false }}">
       <div role="alert" style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;padding:16px 18px;border-radius:16px;background:#FFF3DC;color:#5C4200;font-size:15px;line-height:1.5"><span class="material-symbols-rounded" style="font-size:22px">warning</span><div style="flex:1;min-width:220px">{{ bill.issue }}</div><sc-if value="{{ bill.canPortal }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openPortal }}" disabled="{{ busy }}" style="min-height:44px;padding:0 14px;border:0;border-radius:12px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:14px">Gérer mon abonnement</button></sc-if></div>
     </sc-if>
@@ -434,7 +438,8 @@ a:hover{color:#1A36C4}
       <div style="width:60px;height:60px;border-radius:18px;background:{{ sv.bg }};color:{{ sv.fg }};display:grid;place-items:center"><sc-if value="{{ sv.loading }}" hint-placeholder-val="{{ true }}">{{ spin }}</sc-if><sc-if value="{{ sv.notLoading }}" hint-placeholder-val="{{ false }}"><span class="material-symbols-rounded" style="font-size:32px">{{ sv.icon }}</span></sc-if></div>
       <h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em;line-height:1.15">{{ sv.title }}</h1>
       <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">{{ sv.text }}</p>
-      <sc-if value="{{ sv.ok }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ toHome }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px">Accéder au tableau de bord</button></sc-if>
+      <sc-if value="{{ sv.design }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ resumeDesign }}" disabled="{{ busy }}" aria-busy="{{ busy }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>Payer mon design — 29,90 €</button><button type="button" onClick="{{ toHome }}" style="min-height:44px;padding:0 12px;border:0;background:none;color:#3E424A;font-weight:600;font-size:15px">Plus tard</button></sc-if>
+      <sc-if value="{{ sv.home }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ toHome }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px">Accéder au tableau de bord</button></sc-if>
       <sc-if value="{{ sv.retry }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ resumeBilling }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:16px">Reprendre</button></sc-if>
     </div>
   </div>
@@ -586,9 +591,9 @@ a:hover{color:#1A36C4}
     </sc-if>
     <sc-if value="{{ homeDesign.show }}" hint-placeholder-val="{{ false }}">
       <div style="max-width:1160px;margin:0 auto;padding:clamp(14px,3vw,24px) clamp(16px,4vw,40px) 0">
-        <div role="status" style="display:flex;align-items:flex-start;gap:14px;padding:16px 18px;border-radius:18px;background:{{ homeDesign.bg }};border:1px solid {{ homeDesign.border }}">
+        <div role="status" style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;padding:16px 18px;border-radius:18px;background:{{ homeDesign.bg }};border:1px solid {{ homeDesign.border }}">
           <div style="width:44px;height:44px;border-radius:12px;background:#FFFFFF;color:{{ homeDesign.fg }};display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:24px">{{ homeDesign.icon }}</span></div>
-          <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px;color:{{ homeDesign.fg }}">{{ homeDesign.title }}</div><div style="margin-top:2px;font-size:14px;color:#3E424A;line-height:1.45">{{ homeDesign.text }}</div><div style="margin-top:6px;font-size:13px;color:#5E636B">{{ homeDesign.meta }}</div></div>
+          <div style="flex:1 1 240px;min-width:0"><div style="font-weight:700;font-size:16px;color:{{ homeDesign.fg }}">{{ homeDesign.title }}</div><div style="margin-top:2px;font-size:14px;color:#3E424A;line-height:1.45">{{ homeDesign.text }}</div><div style="margin-top:6px;font-size:13px;color:#5E636B">{{ homeDesign.meta }}</div></div><sc-if value="{{ homeDesign.cta }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ homeDesign.act }}" disabled="{{ busy }}" aria-busy="{{ busy }}" style="align-self:center;min-height:46px;padding:0 18px;border:0;border-radius:12px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:15px;flex:none;display:flex;align-items:center;gap:8px" style-hover="background:#1A36C4"><sc-if value="{{ homeDesign.spin }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ homeDesign.cta }}</button></sc-if><sc-if value="{{ homeDesign.alt }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ homeDesign.altAct }}" disabled="{{ busy }}" style="align-self:center;min-height:46px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;color:#1C1F24;font-weight:600;font-size:15px;flex:none" style-hover="border-color:#1C1F24">{{ homeDesign.alt }}</button></sc-if><sc-if value="{{ homeDesign.ask }}" hint-placeholder-val="{{ false }}"><div role="group" aria-label="Annuler la demande de création sur mesure" style="flex:1 1 100%;display:flex;flex-direction:column;gap:12px;padding:14px 16px;border-radius:14px;background:#FFFFFF;border:1px solid #E4E1DA"><p style="margin:0;font-size:15px;color:#1C1F24;line-height:1.5">Votre demande de création sur mesure sera annulée. Vous pourrez personnaliser votre carte vous-même.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" onClick="{{ homeDesign.confirm }}" disabled="{{ busy }}" aria-busy="{{ busy }}" style="min-height:46px;padding:0 18px;border:0;border-radius:12px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>Annuler ma demande</button><button type="button" onClick="{{ homeDesign.keep }}" disabled="{{ busy }}" style="min-height:46px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;color:#1C1F24;font-weight:600;font-size:15px">Garder ma demande</button></div></div></sc-if>
         </div>
       </div>
     </sc-if>
@@ -1919,8 +1924,8 @@ function joinUrl(slug){ return PUBLIC_SITE+'/join/'+slug; }
 const SUB_RETURN=(()=>{ try{ const r=/^\/subscription\/(success|cancel)\/?$/.exec(window.location.pathname); return r?r[1]:null; }catch(e){ return null; } })();
 // Display only: prices, trial and billing dates are decided by the server and Stripe.
 const PLAN_UI=[
-  {key:'no_commitment',title:'Sans engagement',setup:'29 €',monthly:'14,90 €',lead:['15 jours gratuits','Sans engagement']},
-  {key:'commitment',title:'Engagement 12 mois',badge:'Meilleure offre',setup:'14,90 €',monthly:'9,90 €',saving:'Économisez 74,10 € sur la première année',lead:['15 jours gratuits','Engagement 12 mois','Exactement les mêmes fonctionnalités']}];
+  {key:'no_commitment',title:'Sans engagement',setup:'49 €',monthly:'24,90 €',lead:['15 jours gratuits','Sans engagement']},
+  {key:'commitment',title:'Engagement 12 mois',badge:'Meilleure offre',setup:'29 €',monthly:'19,90 €',saving:'Économisez 80 € sur la première année',lead:['15 jours gratuits','Engagement 12 mois','Exactement les mêmes fonctionnalités']}];
 const PLAN_FEATURES=['Cartes de fidélité digitales','Google Wallet','Apple Wallet (dès sa disponibilité)','Scanner QR','Gestion des clients','Récompenses','Notifications','Tableau de bord','Support'];
 const SUB_ST={trialing:'Essai gratuit',active:'Actif',past_due:'Paiement en retard',unpaid:'Impayé',canceled:'Résilié',incomplete:'Paiement non finalisé',incomplete_expired:'Expiré',paused:'Suspendu'};
 // Without a valid subscription the dashboard stays open in a locked mode: these screens show a lock instead.
@@ -1934,6 +1939,8 @@ LOCK_TEXT.client=LOCK_TEXT.clients; LOCK_TEXT.notifNew=LOCK_TEXT.notifs; LOCK_TE
 // Return from the custom design payment: /design/success?session_id=… or /design/cancel.
 const DESIGN_RETURN=(()=>{ try{ const r=/^\/design\/(success|cancel)\/?$/.exec(window.location.pathname); return r?r[1]:null; }catch(e){ return null; } })();
 function subOk(sub){ return !!sub&&(sub.status==='trialing'||sub.status==='active'); }
+// Custom design saved (files + brief) but not paid: its 29,90 € payment only comes after the offer is paid.
+function designUnpaid(r){ return !!r&&r.status==='pending_payment'&&r.paymentStatus!=='paid'; }
 function fmtFull(iso){ if(!iso) return '—'; const d=new Date(iso); return d.getDate()+' '+['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'][d.getMonth()]+' '+d.getFullYear(); }
 function eur(c){ return c==null?'—':(c/100).toLocaleString('fr-FR',{style:'currency',currency:'EUR'}); }
 function lum(hex){ const h=hex.replace('#',''); const v=[0,2,4].map(i=>{const c=parseInt(h.substr(i,2),16)/255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}); return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]; }
@@ -2164,8 +2171,8 @@ class Component extends DCLogic {
         this.setState({...base,screen:'ob',merchant:me,sd:{...me},clients:[],ob:{...this.initState().ob,biz,logo:initials(biz).slice(0,4)}});
       } else {
         const p=d.program, m=d.merchant;
-        if(p.designStatus==='draft') this.setState({...base,screen:'ob',merchant:m,sd:{...m},program:p,draft:{...p},clients:d.clients,designReq:d.designRequest,
-          ob:{...this.initState().ob,step:3,biz:m.business,activity:m.activity||'Restaurant',mode:p.mode,goal:p.goal,reward:p.reward,prog:p.name,hex:(p.bg||'#FFFFFF').toUpperCase(),drName:(m.first+' '+m.last).trim(),drEmail:m.email}});
+        if(p.designStatus==='draft'&&!designUnpaid(d.designRequest)) this.setState({...base,screen:'ob',merchant:m,sd:{...m},program:p,draft:{...p},clients:d.clients,designReq:d.designRequest,
+          ob:this.obStep3(m,p)});
         else { const scr=SUB_RETURN==='success'?'subSuccess':(SUB_RETURN==='cancel'?'subCancel':'home');
           this.setState({...base,screen:scr,loadingHome:false,merchant:m,sd:{...m},program:p,draft:{...p},clients:d.clients,designReq:d.designRequest});
           if(SUB_RETURN==='success') setTimeout(()=>this.verifySub(),0); }
@@ -2175,6 +2182,17 @@ class Component extends DCLogic {
     }catch(e){ this._liveUid=null; useCalendar(false); this.setState({busy:false,screen:'login',err:{loginPwd:'Impossible de charger votre espace : '+api.errorMessage(e)}}); }
     finally{ this._opening=false; }
   }
+  obStep3(m,p,design){ return {...this.initState().ob,step:3,biz:m.business,activity:m.activity||'Restaurant',mode:p.mode,goal:p.goal,reward:p.reward,prog:p.name,hex:(p.bg||'#FFFFFF').toUpperCase(),drName:(m.first+' '+m.last).trim(),drEmail:m.email,...(design?{design}:{})}; }
+  // Change of mind before paying the custom design: the unpaid request is cancelled (server side,
+  // never a paid one) and the merchant customises the card at onboarding step 3. Subscription untouched.
+  cancelDesignReq=async()=>{ const s=this.state, r=s.designReq; if(s.busy||!designUnpaid(r)) return; this.setState({busy:true});
+    try{ await this.api.billing.designCancel(r.id); const d=await this.api.loadAll((await this.api.session()).user);
+      const p=d.program, m=d.merchant;
+      this.setState({busy:false,designAsk:false,program:p,draft:{...p},merchant:m,sd:{...m},clients:d.clients,designReq:d.designRequest,subscription:d.subscription,
+        ...(p.designStatus==='draft'?{screen:'ob',err:{},ob:this.obStep3(m,p,'custom')}:{})});
+      this.scrollTop(); this.showToast('Demande annulée : vous pouvez personnaliser votre carte.','ok'); }
+    catch(e){ this.setState({busy:false,designAsk:false}); this.showToast(this.api.errorMessage(e),'error');
+      if(e.code==='design_not_cancellable'){ try{ const d=await this.api.loadAll((await this.api.session()).user); this.setState({designReq:d.designRequest,program:d.program,draft:{...d.program}}); }catch(x){} } } };
   // Same request id until the call settles, so a retry after a lost response is not counted twice.
   reqId(key){ this._req=this._req||{}; return this._req[key]||(this._req[key]=this.api.uuid()); }
   settleReq(key,e){ if(!e||!this.api.isNetwork(e)) delete this._req[key]; }
@@ -2313,8 +2331,10 @@ class Component extends DCLogic {
     try{ const req=await this.api.submitDesignRequest(s.merchant.id,this.reqId('design'),{logo:s.drLogo,refs:s.drRefs,colors:o.drColors.trim(),description:o.drDesc.trim(),
         contactName:o.drName.trim(),contactEmail:o.drEmail.trim(),contactPhone:o.drPhone.trim()});
       this.settleReq('design');
-      // Not an order yet: it becomes one once Stripe confirms the 29 € payment (server side).
+      // Not an order yet: it becomes one once Stripe confirms the 29,90 € payment (server side).
       if(req.paymentStatus==='paid'){ const d=await this.api.loadAll((await this.api.session()).user); this.setState({busy:false,program:d.program,draft:{...d.program},designReq:d.designRequest||req,screen:'designSent'}); return this.scrollTop(); }
+      // The design is paid after the offer: without a valid subscription, the offer page comes first.
+      if(!subOk(this.state.subscription)){ this.setState({busy:false,designReq:req}); this.go('billing'); return this.scrollTop(); }
       const r=await this.api.billing.designCheckout(req.id); window.location.assign(r.url); }
     catch(e){ this.settleReq('design',e); this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
   clearDesignUrl(){ try{ history.replaceState(null,'','/'); }catch(e){} }
@@ -2333,10 +2353,11 @@ class Component extends DCLogic {
     try{ const r=await this.api.billing.designCheckout(null); window.location.assign(r.url); }
     catch(e){ this.setState({busy:false}); this.clearDesignUrl();
       if(e.code==='design_already_paid') return this.designContinue();
+      if(e.code==='subscription_required'){ this.showToast('Choisissez d’abord votre offre : le paiement du design vous sera proposé ensuite.','info'); return this.go('billing'); }
       if(e.code==='design_request_not_found'){ this.showToast('Aucune commande en attente : complétez à nouveau votre demande.','info'); return this.setState(x=>({screen:x.program&&x.program.designStatus==='draft'?'ob':'home',ob:{...x.ob,step:3,design:'dpa'}})); }
       this.showToast(this.api.errorMessage(e),'error'); } };
   designContinue=()=>{ this.clearDesignUrl(); const s=this.state;
-    if(s.program&&s.program.designStatus==='draft') return this.setState(x=>({screen:'ob',ob:{...x.ob,step:3}}));
+    if(s.program&&s.program.designStatus==='draft'&&!designUnpaid(s.designReq)) return this.setState(x=>({screen:'ob',ob:{...x.ob,step:3}}));
     if(!subOk(s.subscription)) return this.go('billing');
     this.go('home'); };
   unitOf(p){ return p.mode==='points'?'points':'passages'; }
@@ -2479,7 +2500,7 @@ class Component extends DCLogic {
     for(let i=0;i<8;i++){
       try{ const r=await this.api.billing.verify(id);
         if(r.access){ this.clearSubUrl(); this.setState({subscription:r.subscription,subVerify:{st:'ok',sub:r.subscription}});
-          clearTimeout(this._toHome); this._toHome=setTimeout(()=>{ if(this.state.screen==='subSuccess') this.go('home'); },5000); return; }
+          clearTimeout(this._toHome); if(!designUnpaid(this.state.designReq)) this._toHome=setTimeout(()=>{ if(this.state.screen==='subSuccess') this.go('home'); },5000); return; }
         if(!r.paid&&i>=2){ this.clearSubUrl(); return this.setState({subVerify:{st:'unpaid'}}); } }
       catch(e){ if(e.code==='forbidden'||e.code==='invalid_session'||i===7){ this.clearSubUrl(); return this.setState({subVerify:{st:'error',msg:this.api.errorMessage(e)}}); } }
       await new Promise(r=>setTimeout(r,2000)); }
@@ -2694,8 +2715,9 @@ class Component extends DCLogic {
     if(sub&&sub.stripe_subscription_id&&['past_due','unpaid','paused'].includes(st)) Object.assign(bill,{hasIssue:true,canPortal:true,issue:st==='past_due'?'Votre dernier paiement a échoué. Mettez à jour votre moyen de paiement pour retrouver l’accès à votre tableau de bord.':'Votre abonnement est suspendu faute de paiement. Régularisez-le pour retrouver l’accès à votre tableau de bord.'});
     else if(st==='canceled') Object.assign(bill,{hasIssue:true,issue:'Votre abonnement a pris fin. Choisissez une offre pour réactiver votre compte.'});
     const v=s.subVerify||{st:'loading'};
-    const sv=v.st==='ok'?{ok:true,retry:false,loading:false,notLoading:true,icon:'task_alt',bg:'#E4F3EB',fg:'#1F7A4F',title:'Votre compte est activé',
-        text:'Paiement confirmé par Stripe. Votre essai gratuit court jusqu’au '+fmtFull(v.sub&&v.sub.trial_end)+'. Redirection vers votre tableau de bord…'}
+    const dUnpaid=designUnpaid(s.designReq);
+    const sv=v.st==='ok'?{ok:true,design:dUnpaid,home:!dUnpaid,retry:false,loading:false,notLoading:true,icon:'task_alt',bg:'#E4F3EB',fg:'#1F7A4F',title:'Votre compte est activé',
+        text:'Paiement confirmé par Stripe. Votre essai gratuit court jusqu’au '+fmtFull(v.sub&&v.sub.trial_end)+'. '+(dUnpaid?'Dernière étape : le paiement de votre création de carte sur mesure (29,90 € TTC, paiement unique).':'Redirection vers votre tableau de bord…')}
       :v.st==='unpaid'?{ok:false,retry:true,loading:false,notLoading:true,icon:'credit_card_off',bg:'#FFF3DC',fg:'#8A5A00',title:'Paiement non confirmé',text:'Stripe n’a pas confirmé le paiement. Aucun abonnement n’a été créé.'}
       :v.st==='error'?{ok:false,retry:true,loading:false,notLoading:true,icon:'error',bg:'#FCEBEA',fg:'#B42318',title:'Vérification impossible',text:v.msg||'Réessayez dans un instant.'}
       :{ok:false,retry:false,loading:true,notLoading:false,icon:'',bg:'#E8EDFF',fg:'#2448F0',title:'Confirmation du paiement…',text:'Nous vérifions votre paiement auprès de Stripe.'};
@@ -2714,7 +2736,8 @@ class Component extends DCLogic {
     const IST={paid:'Payée',open:'À payer',void:'Annulée',uncollectible:'Irrécouvrable'};
     const invoices=(sum.invoices||[]).map(i=>({date:fmtFull(i.date),amount:eur(i.amount_cents),number:i.number||'Facture',status:IST[i.status]||i.status,url:i.url||'',hasUrl:!!i.url}));
     const msg=s.billMsg||(sum.error||'');
-    return {plans,bill,retractText:'La rétractation concerne l’abonnement. Les frais de mise en place restent dus dès lors que la prestation de configuration a commencé. Les périodes d’abonnement déjà consommées restent également dues.',
+    const billDesignNote=dUnpaid&&!subOk(sub)?'Votre demande de création sur mesure est enregistrée. Son paiement (29,90 € TTC) vous sera proposé juste après celui de votre offre. Si vous choisissez votre offre plus tard, aucun paiement de design n’est demandé d’ici là.':'';
+    return {plans,bill,billDesignNote,retractText:'La rétractation concerne l’abonnement. Les frais de mise en place restent dus dès lors que la prestation de configuration a commencé. Les périodes d’abonnement déjà consommées restent également dues.',
       hasCgv:!!(this.api&&this.api.cgvUrl),noCgv:!(this.api&&this.api.cgvUrl),cgvUrl:(this.api&&this.api.cgvUrl)||'',
       billNote:'Aujourd’hui, seuls les frais de mise en place sont débités. Votre abonnement démarre après 15 jours d’essai gratuit : la première facture couvre, au prorata, la période jusqu’au 1er du mois suivant, puis l’abonnement est facturé le 1er de chaque mois.',
       sv,resumeBilling:this.resumeBilling,toHome:()=>{ clearTimeout(this._toHome); this.go('home'); },
@@ -2852,12 +2875,12 @@ class Component extends DCLogic {
       logoBusy:ib==='logo',heroBusy:ib==='hero',logoIdle:ib!=='logo',heroIdle:ib!=='hero',anyBusy:!!ib,logoAction:pr.logoUrl?'Remplacer':'Importer le logo',heroAction:pr.heroUrl?'Remplacer':'Importer une image',
       pickerValue:hexOk?o.hex.toLowerCase():'#ffffff'};
     const choice=(k,label,sub,icon,price)=>{ const on=o.design===k; return {label,sub,icon,on,price:price||'',bg:on?'#EEF1FF':'#FFFFFF',border:on?'#2448F0':'#D4D1C9',pick:()=>this.setState(x=>({ob:{...x.ob,design:k},err:{}}))}; };
-    const obChoices=[choice('custom','Personnaliser ma carte','Nom, logo, image de couverture et couleur de fond.','palette'),choice('dpa','Confier le design à DPA Cards','Nous créons votre carte à partir de votre logo, vos couleurs et vos références visuelles.','brush','29 € TTC — paiement unique')];
+    const obChoices=[choice('custom','Personnaliser ma carte','Nom, logo, image de couverture et couleur de fond.','palette'),choice('dpa','Confier le design à DPA Cards','Nous créons votre carte à partir de votre logo, vos couleurs et vos références visuelles.','brush','29,90 € TTC — paiement unique')];
     const fileIcon=f=>f.type==='application/pdf'?'picture_as_pdf':'image';
     const drV={logoAction:s.drLogo?'Remplacer':'Importer',hasLogo:!!s.drLogo,logoName:s.drLogo?s.drLogo.name:'',canAddRef:s.drRefs.length<5,hasRefs:s.drRefs.length>0,
       refs:s.drRefs.map((f,i)=>({name:f.name,icon:fileIcon(f),removeLabel:'Retirer '+f.name,remove:()=>this.setState(x=>({drRefs:x.drRefs.filter((_,j)=>j!==i)}))}))};
     const rq=s.designReq, RQ={pending_payment:'En attente de paiement',submitted:'Reçue',in_progress:'En cours',delivered:'Livrée',cancelled:'Annulée'};
-    const dReq=rq?{price:rq.paymentStatus==='paid'?'29 € TTC (payé)':'29 € TTC',statusLabel:RQ[rq.status]||rq.status,date:fmtLong(ymdOf(new Date(rq.createdAt))),contact:[rq.contactName,rq.contactEmail,rq.contactPhone].filter(Boolean).join(' · '),files:rq.files?String(rq.files):'Aucun'}:{statusLabel:'',date:'',contact:'',files:''};
+    const dReq=rq?{price:rq.paymentStatus==='paid'?'29,90 € TTC (payé)':'29,90 € TTC',statusLabel:RQ[rq.status]||rq.status,date:fmtLong(ymdOf(new Date(rq.createdAt))),contact:[rq.contactName,rq.contactEmail,rq.contactPhone].filter(Boolean).join(' · '),files:rq.files?String(rq.files):'Aucun'}:{statusLabel:'',date:'',contact:'',files:''};
     const cropEl=s.crop&&this.api?React.createElement(this.api.Cropper,{key:s.crop.src,src:s.crop.src,aspect:s.crop.kind==='logo'?1:1032/812,outW:s.crop.kind==='logo'?660:1032,outH:s.crop.kind==='logo'?660:812,
       mime:s.crop.kind==='logo'?'image/png':'image/jpeg',round:s.crop.kind==='logo',title:s.crop.kind==='logo'?'Recadrer le logo':'Recadrer l’image de couverture',
       hint:s.crop.kind==='logo'?'Google Wallet affiche le logo dans un cercle. Gardez l’essentiel à l’intérieur du cercle pointillé.':'L’image occupe toute la largeur en bas de la carte (format 1032 × 812 px).',
@@ -2938,7 +2961,8 @@ class Component extends DCLogic {
       logoutNote:s.demo?'Vous devrez vous reconnecter pour scanner des cartes. Les données de démonstration seront réinitialisées.':'Vous devrez vous reconnecter pour scanner des cartes. Vos données restent enregistrées.',
       authCard,
       ob:o, O, obSteps, obActs, obCard, obStep1:o.step===1, obStep2:o.step===2, obStep3:o.step===3, obNotFirst:o.step>1, obNext:this.obNext, obBack:()=>this.setState(x=>({ob:{...x.ob,step:x.ob.step-1},err:{}})),
-      obNextLabel:o.step===3?(o.design==='custom'?(s.busy?'Validation…':'Valider ma carte'):o.design==='dpa'?(s.busy?'Redirection vers le paiement…':'Commander mon design — 29 €'):'Continuer'):(s.busy?'Enregistrement…':'Continuer'),
+      obNextLabel:o.step===3?(o.design==='custom'?(s.busy?'Validation…':'Valider ma carte'):o.design==='dpa'?(subOk(s.subscription)?(s.busy?'Redirection vers le paiement…':'Commander mon design — 29,90 €'):(s.busy?'Enregistrement…':'Enregistrer ma demande et choisir mon offre')):'Continuer'):(s.busy?'Enregistrement…':'Continuer'),
+      obDpaNote:subOk(s.subscription)?'Paiement unique de 29,90 € TTC par carte bancaire (Stripe). Votre demande est transmise à DPA Cards dès le paiement confirmé.':'Paiement unique de 29,90 € TTC, proposé juste après le paiement de votre offre. Si vous choisissez votre offre plus tard, aucun paiement de design n’est demandé d’ici là.',
       obChoices, obCustom:o.design==='custom', obDpa:o.design==='dpa', wp, dz, dr:drV, dReq, designPending:!!s.live&&pr.designStatus==='pending_dpa'&&!!rq, cropEl,
       obPickLogo:this.obPick('logo'), obPickHero:this.obPick('hero'), obRemoveLogo:()=>this.removeImage('logo'), obRemoveHero:()=>this.removeImage('hero'),
       drPickLogo:this.drPick(false), drPickRefs:this.drPick(true), drRemoveLogo:()=>this.setState({drLogo:null}), obMode:mkMode('ob'), obGoalDown:stepGoal('ob',-1), obGoalUp:stepGoal('ob',1), obUnit:o.mode==='points'?'points':'passages',
@@ -2946,15 +2970,21 @@ class Component extends DCLogic {
       obDoneGo:()=>{ if(s.live&&!subOk(s.subscription)) return this.go('billing'); this.go('home',{loadingHome:true}); setTimeout(()=>this.setState({loadingHome:false}),600); },
       qrBiz:locked?null:(this.api?this.realQr(pubUrl,200,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,200)), qrBizSm:locked?null:(this.api?this.realQr(pubUrl,168,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,168)), link, pubUrl, hasLink:!!link, noLink:!link,
       copyLink:()=>locked?this.go('invite'):this.copyJoinLink(),
-      lockBanner:locked&&S.app, toBilling:()=>this.go('billing'), canSkipBilling:locked&&!!s.program&&s.program.designStatus!=='draft',
+      lockBanner:locked&&S.app, toBilling:()=>this.go('billing'), canSkipBilling:locked&&!!s.program&&(s.program.designStatus!=='draft'||designUnpaid(s.designReq)),
+      skipBilling:()=>{ this.go('home'); this.scrollTop(); },
       lockView:{title:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[0],text:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[1]},
-      homeDesign:(()=>{ const r=s.designReq; if(!s.live||!S.home||!r||r.paymentStatus!=='paid') return {show:false};
+      homeDesign:(()=>{ const r=s.designReq; if(!s.live||!S.home||!r) return {show:false};
+        if(designUnpaid(r)){ const ask=!!s.designAsk, meta='Demande du '+fmtFull(r.createdAt)+' · En attente de paiement';
+          const change={ask,alt:ask?'':'Je préfère personnaliser ma carte moi-même',altAct:()=>this.setState({designAsk:true}),keep:()=>this.setState({designAsk:false}),confirm:this.cancelDesignReq};
+          if(subOk(s.subscription)) return {show:true,icon:'brush',bg:'#FFF3DC',border:'#F2D49B',fg:'#8A5A00',title:'Votre création sur mesure attend son paiement',text:'Réglez la création de votre carte (29,90 € TTC, paiement unique) : DPA Cards commence dès le paiement confirmé.',meta,cta:ask?'':(s.busy?'Redirection…':'Payer mon design — 29,90 €'),spin:!!s.busy,act:this.resumeDesign,...change};
+          return {show:true,icon:'brush',bg:'#FFF3DC',border:'#F2D49B',fg:'#8A5A00',title:'Demande de design en attente',text:'Choisissez d’abord votre offre : le paiement de votre création sur mesure (29,90 € TTC) vous sera proposé juste après. Aucun paiement de design n’est demandé d’ici là.',meta,cta:ask?'':'Choisir mon offre',spin:false,act:()=>this.go('billing'),...change}; }
+        if(r.paymentStatus!=='paid') return {show:false};
         const when='Demande du '+fmtFull(r.paidAt||r.createdAt)+' · '+({submitted:'Envoyée',in_progress:'En cours de création',delivered:'Livrée'}[r.status]||r.status);
         if(r.status==='delivered') return {show:true,icon:'task_alt',bg:'#E4F3EB',border:'#B9E0CB',fg:'#1F6B45',title:'Votre design est prêt.',text:'Votre carte créée par DPA Cards est disponible.',meta:when};
         if(r.status==='submitted'||r.status==='in_progress') return {show:true,icon:'brush',bg:'#EEF1FF',border:'#C9D3FF',fg:'#1A36C4',title:'Création sur mesure en cours',text:'Votre carte est en cours de création par DPA Cards. Nous vous préviendrons dès qu’elle sera prête.',meta:when};
         return {show:false}; })(),
       dv:(()=>{ const v=s.designVerify||{st:'loading'};
-        if(v.st==='ok') return {ok:true,retry:false,loading:false,notLoading:true,icon:'task_alt',bg:'#E4F3EB',fg:'#1F7A4F',title:'Votre demande a bien été envoyée à DPA Cards.',text:'Paiement de 29 € confirmé par Stripe. Nous vous préviendrons dès que votre carte sera prête.'};
+        if(v.st==='ok') return {ok:true,retry:false,loading:false,notLoading:true,icon:'task_alt',bg:'#E4F3EB',fg:'#1F7A4F',title:'Votre demande a bien été envoyée à DPA Cards.',text:'Paiement de 29,90 € confirmé par Stripe. Nous vous préviendrons dès que votre carte sera prête.'};
         if(v.st==='unpaid') return {ok:false,retry:true,loading:false,notLoading:true,icon:'credit_card_off',bg:'#FFF3DC',fg:'#8A5A00',title:'Paiement non confirmé',text:'Stripe n’a pas confirmé le paiement : votre demande n’a pas été transmise.'};
         if(v.st==='error') return {ok:false,retry:true,loading:false,notLoading:true,icon:'error',bg:'#FCEBEA',fg:'#B42318',title:'Vérification impossible',text:v.msg||'Réessayez dans un instant.'};
         return {ok:false,retry:false,loading:true,notLoading:false,icon:'',bg:'#E8EDFF',fg:'#2448F0',title:'Confirmation du paiement…',text:'Nous vérifions votre paiement auprès de Stripe.'}; })(),
