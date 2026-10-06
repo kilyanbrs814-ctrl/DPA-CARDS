@@ -21,6 +21,8 @@
 //   POST /wallet/admin-card-google-sync  admin session → retries that Google Wallet class update
 //   POST /wallet/admin-merchant-create  admin session → "Ajouter un client": login (no password), shop, program
 //   POST /wallet/admin-merchant-access  admin session → sends that shop's owner the "choose your password" link
+//   POST /wallet/admin-test-cards, -get, -save, -upload, -duplicate, -delete, -new-qr, -wallet
+//                                admin session → test cards (no merchant), QR DPA_TEST:, demo Google Wallet pass
 //
 // verify_jwt is off: the platform check does not understand every key type, so
 // each route authorises itself. The browser only sends a card id; merchant,
@@ -802,12 +804,13 @@ const hex = (v: unknown, dflt: string) => (typeof v === 'string' && HEX_RE.test(
 const pick = <T extends string>(v: unknown, list: readonly T[], dflt: T): T => (list.includes(v as T) ? v as T : dflt);
 const int = (v: unknown, min: number, max: number, dflt: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt; };
 // Images of the program's own folder: the designer's uploads, or the logo / cover the program already uses.
-const designerPath = (m: string, p: string) => new RegExp(`^${m}/${p}/(designer/)?(logo|hero|background|stamp)-[0-9a-f-]{36}\\.(png|jpg)$`);
+// `folder` = "<merchant>/<program>" for a real program, "tests/<test id>" for a test card (designer/ only).
+const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp)-[0-9a-f-]{36}\\.(png|jpg)$`);
 
 // Whitelist of the design document; anything else is dropped. Colours of a platform are optional overrides.
-function cleanDesign(raw: any, merchantId: string, programId: string) {
+function cleanDesign(raw: any, folder: string) {
   const r = raw && typeof raw === 'object' ? raw : {};
-  const re = designerPath(merchantId, programId);
+  const re = designerPath(folder);
   const asset = (a: any, kind: AssetKind) => (a && typeof a.path === 'string' && re.test(a.path) && a.path.split('/').pop()!.startsWith(`${kind}-`) ? { path: a.path } : null);
   const colors = (c: any, base: Record<string, string> | null) => {
     const o = c && typeof c === 'object' ? c : {};
@@ -921,7 +924,7 @@ async function adminCardSave(req: Request): Promise<Response> {
   const user = await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   const program = await designProgram(body?.program_id);
-  const config = cleanDesign(body?.config, program.merchant_id, program.id);
+  const config = cleanDesign(body?.config, `${program.merchant_id}/${program.id}`);
   const design_request_id = await linkedRequest(body?.design_request_id, program);
   // Saving a draft never touches the program, the request status or the applied design.
   const { data, error } = await admin.from('card_designs').upsert({ merchant_id: program.merchant_id, program_id: program.id, design_request_id, config, status: 'draft', updated_by: user.id },
@@ -974,7 +977,7 @@ async function adminCardValidate(req: Request): Promise<Response> {
   const user = await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   const program = await designProgram(body?.program_id);
-  const config = cleanDesign(body?.config, program.merchant_id, program.id);
+  const config = cleanDesign(body?.config, `${program.merchant_id}/${program.id}`);
   const design_request_id = await linkedRequest(body?.design_request_id, program);
   // Every image must exist and really be a PNG or JPEG.
   const fit: Record<string, boolean> = {};
@@ -1096,6 +1099,161 @@ async function adminMerchantAccess(req: Request): Promise<Response> {
   return json(req, 200, { sent: true, email, sent_at: now });
 }
 
+// ---------------------------------------------------------------- admin: test cards ("Créer une carte test")
+// Demo cards made with the same designer, linked to no merchant, program, customer or subscription
+// (test_card_designs). Images: program-assets/tests/<id>/designer/. QR: DPA_TEST:<qr_token>, which the
+// scanner shows as « Carte de démonstration » and lookup_card can never match (real cards are DPA1:).
+// Google Wallet: own class / object ids (…dpa-test-class-<id>, …dpa-test-<id>), never a real program's.
+
+const TEST_SELECT = 'id, name, config, qr_token, google_class_id, google_object_id, google_synced_at, created_at, updated_at';
+const testFolder = (id: string) => `tests/${id}`;
+const testView = (t: any) => ({ ...t, config: withUrls(t.config), qr_value: `DPA_TEST:${t.qr_token}`, card_number: `TEST ${String(t.id).slice(0, 4).toUpperCase()} ${String(t.qr_token).slice(0, 4).toUpperCase()}` });
+async function testRow(id: unknown) {
+  const tid = String(id ?? '');
+  if (!UUID_RE.test(tid)) throw new HttpError(400, 'invalid_request');
+  const { data, error } = await admin.from('test_card_designs').select(TEST_SELECT).eq('id', tid).maybeSingle();
+  if (error) throw new Error('db_test_cards');
+  if (!data) throw new HttpError(404, 'test_card_not_found');
+  return data;
+}
+async function testFiles(id: string): Promise<string[]> {
+  const out: string[] = [];
+  for (const sub of ['', '/designer']) {
+    const { data } = await admin.storage.from('program-assets').list(testFolder(id) + sub, { limit: 1000 });
+    for (const it of data ?? []) if (it.id) out.push(`${testFolder(id)}${sub}/${it.name}`);
+  }
+  return out;
+}
+
+async function adminTestCards(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const { data, error } = await admin.from('test_card_designs').select(TEST_SELECT).order('updated_at', { ascending: false }).limit(200);
+  if (error) throw new Error('db_test_cards');
+  return json(req, 200, { tests: (data ?? []).map(testView) });
+}
+async function adminTestCardGet(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  return json(req, 200, { test: testView(await testRow(body?.id)) });
+}
+// Creates (no id) or updates a test card. Its design goes through the same whitelist as a real one.
+async function adminTestCardSave(req: Request): Promise<Response> {
+  const user = await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const name = str(body?.name, 80) || 'Carte test';
+  if (body?.id) {
+    const t = await testRow(body.id);
+    const { data, error } = await admin.from('test_card_designs').update({ name, config: cleanDesign(body?.config, testFolder(t.id)) }).eq('id', t.id).select(TEST_SELECT).single();
+    if (error) throw new Error('db_test_cards');
+    return json(req, 200, { test: testView(data) });
+  }
+  const id = crypto.randomUUID();
+  const { data, error } = await admin.from('test_card_designs').insert({ id, name, config: cleanDesign(body?.config ?? {}, testFolder(id)), created_by: user.id }).select(TEST_SELECT).single();
+  if (error) throw new Error('db_test_cards');
+  return json(req, 200, { test: testView(data) });
+}
+async function adminTestCardUpload(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const t = await testRow(body?.id);
+  const kind = String(body?.kind ?? '') as AssetKind, type = String(body?.type ?? '');
+  if (!ASSET_KINDS.includes(kind) || !['image/png', 'image/jpeg'].includes(type)) throw new HttpError(400, 'invalid_request');
+  const path = `${testFolder(t.id)}/designer/${kind}-${crypto.randomUUID()}.${type === 'image/png' ? 'png' : 'jpg'}`;
+  const { data, error } = await admin.storage.from('program-assets').createSignedUploadUrl(path);
+  if (error || !data) throw new Error('storage_signed_upload');
+  return json(req, 200, { path, token: data.token, url: assetUrl(path) });
+}
+// Copy: new id, new QR, its own copies of the images; no Google Wallet object.
+async function adminTestCardDuplicate(req: Request): Promise<Response> {
+  const user = await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const t = await testRow(body?.id);
+  const id = crypto.randomUUID(), cfg = JSON.parse(JSON.stringify(t.config ?? {}));
+  for (const kind of ASSET_KINDS) {
+    const a = cfg.assets?.[kind]; if (!a?.path) continue;
+    const to = `${testFolder(id)}/designer/${kind}-${crypto.randomUUID()}.${a.path.endsWith('.png') ? 'png' : 'jpg'}`;
+    const { error } = await admin.storage.from('program-assets').copy(a.path, to);
+    cfg.assets[kind] = error ? null : { path: to };
+  }
+  const name = `Copie de ${t.name}`.slice(0, 80);
+  const { data, error } = await admin.from('test_card_designs').insert({ id, name, config: cleanDesign(cfg, testFolder(id)), created_by: user.id }).select(TEST_SELECT).single();
+  if (error) throw new Error('db_test_cards');
+  return json(req, 200, { test: testView(data) });
+}
+// Removes the test card, its images and deactivates its Google Wallet demo object. Nothing else is touched.
+async function adminTestCardDelete(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const t = await testRow(body?.id);
+  const files = await testFiles(t.id);
+  if (files.length) await admin.storage.from('program-assets').remove(files);
+  const wallet = t.google_object_id ? await deactivateObjects([t.google_object_id], 8000) : null;
+  const { error } = await admin.from('test_card_designs').delete().eq('id', t.id);
+  if (error) throw new Error('db_test_cards');
+  return json(req, 200, { deleted: true, files: files.length, wallet });
+}
+// A new unique test QR (the old one stops matching this card).
+async function adminTestCardNewQr(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const t = await testRow(body?.id);
+  const { data, error } = await admin.from('test_card_designs').update({ qr_token: crypto.randomUUID() }).eq('id', t.id).select(TEST_SELECT).single();
+  if (error) throw new Error('db_test_cards');
+  return json(req, 200, { test: testView(data) });
+}
+
+// "Ajouter à Google Wallet" for a test card: a real demo pass in its own class, with the demo data.
+async function adminTestCardWallet(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const t = await testRow(body?.id);
+  if (!ISSUER_ID) throw new HttpError(503, 'wallet_not_configured');
+  try { sa(); } catch { throw new HttpError(503, 'wallet_not_configured'); }
+  const d = t.config ?? {}, pv = d.preview ?? {}, colors = { ...(d.colors ?? {}), ...(d.google?.colors ?? {}) };
+  const text = (value: string) => ({ defaultValue: { language: 'fr-FR', value } });
+  // Only images that meet the Google rules (same as real programs); otherwise the generic DPA Cards logo.
+  const fits = async (kind: 'logo' | 'hero') => {
+    const p = d.assets?.[kind]?.path; if (!p || !designerPath(testFolder(t.id)).test(p)) return null;
+    const { data: f } = await admin.storage.from('program-assets').download(p); if (!f) return null;
+    const bytes = new Uint8Array(await f.arrayBuffer()), info = imageInfo(bytes), rule = IMAGE_RULES[kind];
+    return info && (rule.types as readonly string[]).includes(info.type) && bytes.length <= rule.maxBytes && rule.ok(info.w, info.h) ? p : null;
+  };
+  const [logo, hero] = await Promise.all([fits('logo'), fits('hero')]);
+  const issuer = String(d.identity?.name || 'Carte test DPA Cards').slice(0, 40);
+  const classId = `${ISSUER_ID}.dpa-test-class-${t.id}`, objectId = `${ISSUER_ID}.dpa-test-${t.id}`;
+  const branding = {
+    issuerName: issuer, programName: 'Carte de démonstration',
+    programLogo: { sourceUri: { uri: logo ? assetUrl(logo) : LOGO_URL }, contentDescription: text(issuer) },
+    ...(hero && d.google?.showHero !== false ? { heroImage: { sourceUri: { uri: assetUrl(hero) }, contentDescription: text(issuer) } } : {}),
+    hexBackgroundColor: HEX_RE.test(colors.primary ?? '') ? colors.primary : '#1C1F24',
+    accountNameLabel: 'Client', accountIdLabel: 'N° de carte',
+  };
+  const cg = await google('GET', `/loyaltyClass/${encodeURIComponent(classId)}`);
+  if (cg.status === 404) { const r = await google('POST', '/loyaltyClass', { id: classId, ...branding, reviewStatus: 'UNDER_REVIEW', countryCode: 'FR' }); if (r.status !== 200 && r.status !== 409) throw gErr('test_class_insert', r); }
+  else if (cg.status === 200) { const next: any = { ...cg.data, ...branding, reviewStatus: 'UNDER_REVIEW' }; if (!branding.heroImage) delete next.heroImage;
+    const r = await google('PUT', `/loyaltyClass/${encodeURIComponent(classId)}`, next); if (r.status !== 200) throw gErr('test_class_update', r); }
+  else throw gErr('test_class_get', cg);
+  const mode = pv.mode === 'points' ? 'points' : 'passages', view = testView(t);
+  const object = {
+    id: objectId, classId, state: 'ACTIVE', accountId: view.card_number, accountName: String(pv.client || 'Client test').slice(0, 60),
+    loyaltyPoints: { label: unitLabel(mode), balance: { int: Math.max(0, Math.round(Number(pv.progress) || 0)) } },
+    barcode: { type: 'QR_CODE', value: view.qr_value, alternateText: 'CARTE TEST' },
+    textModulesData: [
+      { id: 'reward', header: 'Récompense', body: `${pv.goal ?? 10} ${mode} = ${pv.reward || 'Récompense'}` },
+      { id: 'demo', header: 'Carte de démonstration', body: 'Carte de test DPA Cards : elle n’appartient à aucun commerce et n’a aucune valeur.' },
+    ],
+  };
+  const og = await google('GET', `/loyaltyObject/${encodeURIComponent(objectId)}`);
+  if (og.status === 404) { const r = await google('POST', '/loyaltyObject', object); if (r.status !== 200 && r.status !== 409) throw gErr('test_object_insert', r); }
+  else if (og.status === 200) { const r = await google('PUT', `/loyaltyObject/${encodeURIComponent(objectId)}`, { ...og.data, ...object }); if (r.status !== 200) throw gErr('test_object_update', r); }
+  else throw gErr('test_object_get', og);
+  await admin.from('test_card_designs').update({ google_class_id: classId, google_object_id: objectId, google_synced_at: new Date().toISOString() }).eq('id', t.id);
+  const origin = req.headers.get('origin');
+  const jwt = await signJwt({ iss: sa().client_email, aud: 'google', typ: 'savetowallet', iat: Math.floor(Date.now() / 1000),
+    origins: origin && ALLOWED_ORIGINS.includes(origin) ? [origin] : [], payload: { loyaltyObjects: [{ id: objectId }] } });
+  return json(req, 200, { url: `https://pay.google.com/gp/v/save/${jwt}`, class_id: classId, object_id: objectId });
+}
+
 async function sync(req: Request): Promise<Response> {
   const secret = req.headers.get('x-wallet-worker') ?? '';
   const { data: ok } = await admin.rpc('wallet_check_worker', { p_secret: secret });
@@ -1130,6 +1288,14 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-card-google-sync')) return await adminCardGoogleSync(req);
     if (req.method === 'POST' && path.endsWith('/admin-merchant-create')) return await adminMerchantCreate(req);
     if (req.method === 'POST' && path.endsWith('/admin-merchant-access')) return await adminMerchantAccess(req);
+    if (req.method === 'POST' && path.endsWith('/admin-test-cards')) return await adminTestCards(req);
+    if (req.method === 'POST' && path.endsWith('/admin-test-card-get')) return await adminTestCardGet(req);
+    if (req.method === 'POST' && path.endsWith('/admin-test-card-save')) return await adminTestCardSave(req);
+    if (req.method === 'POST' && path.endsWith('/admin-test-card-upload')) return await adminTestCardUpload(req);
+    if (req.method === 'POST' && path.endsWith('/admin-test-card-duplicate')) return await adminTestCardDuplicate(req);
+    if (req.method === 'POST' && path.endsWith('/admin-test-card-delete')) return await adminTestCardDelete(req);
+    if (req.method === 'POST' && path.endsWith('/admin-test-card-new-qr')) return await adminTestCardNewQr(req);
+    if (req.method === 'POST' && path.endsWith('/admin-test-card-wallet')) return await adminTestCardWallet(req);
     if (req.method === 'POST' && path.endsWith('/finalize-design')) return await finalizeDesign(req);
     if (req.method === 'POST' && path.endsWith('/sync')) return await sync(req);
     return json(req, 404, { error: 'not_found' });

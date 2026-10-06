@@ -288,7 +288,7 @@ export function makeCardDesigner(React, api) {
   };
   const DST = { submitted: 'À traiter', in_progress: 'En cours', delivered: 'Livré', cancelled: 'Annulé' };
   const fmtDate = iso => { if (!iso) return ''; const d = new Date(iso); return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' à ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); };
-  const ERR = { program_not_found: 'Programme introuvable.', merchant_not_found: 'Commerce introuvable.', design_request_not_found: 'Demande de design introuvable ou non payée.', invalid_design_request: 'Cette demande de design ne correspond pas à ce programme.', not_admin: 'Accès refusé.' };
+  const ERR = { test_card_not_found: 'Carte test introuvable (supprimée ?).', program_not_found: 'Programme introuvable.', merchant_not_found: 'Commerce introuvable.', design_request_not_found: 'Demande de design introuvable ou non payée.', invalid_design_request: 'Cette demande de design ne correspond pas à ce programme.', not_admin: 'Accès refusé.' };
   const errText = e => ERR[e && (e.code || e.message)] || (e && /^(missing|invalid)_(logo|hero|background|stamp)$/.test(e.code || '') ? 'Une image du design est introuvable ou invalide : importez-la à nouveau.' : 'Opération impossible pour le moment. Réessayez.');
 
   let fontsLoaded = false;
@@ -375,6 +375,12 @@ export function makeCardDesigner(React, api) {
         h('button', { type: 'submit', disabled: busy, style: { minHeight: 50, padding: '0 20px', border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('person_add', 20), busy ? 'Création…' : 'Créer le client')));
   }
 
+  // A test card as a designer project: no merchant, no program, no request.
+  const testProject = t => { const pv = (t.config && t.config.preview) || {};
+    return { test: t, merchant: { id: null, business_name: (t.config && t.config.identity && t.config.identity.name) || 'Commerce test', activity: '' },
+      program: { id: null, name: 'Carte de démonstration', mode: pv.mode === 'points' ? 'points' : 'passages', goal: pv.goal || 10, reward: pv.reward || DEMO.reward, bg: '#1C1F24', accent: '#2448F0', logo_path: null, hero_path: null },
+      draft: null, requests: [], account: null }; };
+
   // ------------------------------------------------------------ the designer screen
   function CardDesigner({ merchants, target, onTarget, toast, width, onMerchantsChanged }) {
     const [project, setProject] = useState(null);
@@ -390,12 +396,24 @@ export function makeCardDesigner(React, api) {
     const [adding, setAdding] = useState(false);
     const [created, setCreated] = useState(null);
     const [askAccess, setAskAccess] = useState(false);
-    const key = target ? (target.requestId ? 'r:' + target.requestId : target.merchantId ? 'm:' + target.merchantId : '') : '';
+    const [testName, setTestName] = useState('');
+    const [tests, setTests] = useState(null);
+    const [askDelete, setAskDelete] = useState(null);
+    const key = target ? (target.testId ? 't:' + target.testId : target.requestId ? 'r:' + target.requestId : target.merchantId ? 'm:' + target.merchantId : '') : '';
     useEffect(loadFonts, []);
+    const refreshTests = () => api.testList().then(r => setTests(r.tests || [])).catch(() => setTests(t => t || []));
+    useEffect(() => { refreshTests(); }, [key]);
 
     useEffect(() => {
       if (!key) { setProject(null); setDesign(null); return undefined; }
       let live = true; setLoading(true); setError(null);
+      // Test card: a project of its own, linked to no merchant (same designer, same layouts).
+      if (target.testId) {
+        api.testGet(target.testId).then(r => { if (!live) return; const p = testProject(r.test), cfg = normalize(r.test.config, p);
+          setProject(p); setRequestId(null); setTestName(r.test.name); setDesign(cfg); setSaved(JSON.stringify(cfg) + '|' + r.test.name); setLoading(false); })
+          .catch(e => { if (live) { setLoading(false); setError(errText(e)); } });
+        return () => { live = false; };
+      }
       api.load(target.requestId ? { design_request_id: target.requestId } : { merchant_id: target.merchantId })
         .then(p => { if (!live) return; setProject(p); setRequestId(p.request ? p.request.id : null);
           const cfg = p.program ? normalize((p.draft && p.draft.config) || p.program.card_design || null, p) : null;
@@ -405,7 +423,9 @@ export function makeCardDesigner(React, api) {
       return () => { live = false; };
     }, [key]);
 
-    const dirty = !!design && JSON.stringify(design) !== saved;
+    const isTest = !!(project && project.test);
+    const snap = () => JSON.stringify(design) + (isTest ? '|' + testName : '');
+    const dirty = !!design && snap() !== saved;
     useEffect(() => {
       const w = e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
       window.addEventListener('beforeunload', w); return () => window.removeEventListener('beforeunload', w);
@@ -419,14 +439,44 @@ export function makeCardDesigner(React, api) {
     };
     const uploadCropped = async blob => {
       const kind = crop.kind; URL.revokeObjectURL(crop.src); setCrop(null); setBusy('up-' + kind);
-      try { const a = await api.upload(project.program.id, kind, blob); set('assets.' + kind, a); if (kind === 'stamp') set('stamps.icon', 'custom'); }
+      try { const a = isTest ? await api.testUpload(project.test.id, kind, blob) : await api.upload(project.program.id, kind, blob); set('assets.' + kind, a); if (kind === 'stamp') set('stamps.icon', 'custom'); }
       catch (e) { toast(errText(e)); }
       finally { setBusy(null); }
     };
     const save = async () => {
       if (busy) return; setBusy('save');
-      try { const snap = JSON.stringify(design); await api.save(project.program.id, requestId, design); setSaved(snap); toast('Brouillon enregistré.'); }
+      try { const s = snap();
+        if (isTest) { const r = await api.testSave(project.test.id, testName, design); setProject(p => ({ ...p, test: r.test })); setSaved(s); refreshTests(); toast('Carte test enregistrée.'); }
+        else { await api.save(project.program.id, requestId, design); setSaved(s); toast('Brouillon enregistré.'); } }
       catch (e) { toast(errText(e)); } finally { setBusy(null); }
+    };
+    // ---- test cards
+    const createTest = async () => {
+      if (busy) return; if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Continuer ?')) return; setBusy('test');
+      try { const base = defaultDesign({ merchant: { business_name: 'Commerce test', activity: 'Démonstration' }, program: { bg: '#1C1F24', accent: '#2448F0', mode: 'passages', goal: 10, reward: DEMO.reward } });
+        const r = await api.testSave(null, 'Nouvelle carte test', base); setAdding(false); setCreated(null); refreshTests(); onTarget({ testId: r.test.id }); toast('Carte test créée.'); }
+      catch (e) { toast(errText(e)); } finally { setBusy(null); }
+    };
+    const duplicateTest = async id => {
+      if (busy) return; setBusy('dup');
+      try { const r = await api.testDuplicate(id); refreshTests(); onTarget({ testId: r.test.id }); toast('Carte test dupliquée.'); }
+      catch (e) { toast(errText(e)); } finally { setBusy(null); }
+    };
+    const deleteTest = async id => {
+      if (busy) return; setBusy('del');
+      try { await api.testDelete(id); setAskDelete(null); refreshTests(); if (project && project.test && project.test.id === id) { setSaved(''); setDesign(null); onTarget(null); } toast('Carte test supprimée.'); }
+      catch (e) { setAskDelete(null); toast(errText(e)); } finally { setBusy(null); }
+    };
+    const newQr = async () => {
+      if (busy) return; setBusy('qr');
+      try { const r = await api.testNewQr(project.test.id); setProject(p => ({ ...p, test: r.test })); toast('Nouveau QR de test généré.'); }
+      catch (e) { toast(errText(e)); } finally { setBusy(null); }
+    };
+    const testWallet = async () => {
+      if (busy) return; setBusy('wallet');
+      try { if (dirty) { const r0 = await api.testSave(project.test.id, testName, design); setProject(p => ({ ...p, test: r0.test })); setSaved(snap()); }
+        const r = await api.testWallet(project.test.id); window.open(r.url, '_blank', 'noopener'); toast('Carte de démonstration prête pour Google Wallet.'); }
+      catch (e) { toast(e && e.code === 'wallet_not_configured' ? 'Google Wallet n’est pas configuré.' : errText(e)); } finally { setBusy(null); }
     };
     const validate = async () => {
       if (busy) return; setBusy('validate');
@@ -454,31 +504,54 @@ export function makeCardDesigner(React, api) {
 
     const desk = width >= 1024, two = width >= 900;
     const list = created && !merchants.some(m => m.id === created.merchant.id) ? [...merchants, { id: created.merchant.id, name: created.merchant.business_name, program: true }] : merchants;
-    const merchantOptions = [['', 'Sélectionner un commerce…'], ...list.map(m => [m.id, m.name + (m.program ? '' : ' (sans programme)')])];
+    const merchantOptions = [['', 'Sélectionner un commerce…'], ...list.map(m => [m.id, m.name + (m.program ? '' : ' (sans programme)')]),
+      ...(tests || []).map(t => ['t:' + t.id, 'Carte test · ' + t.name])];
+    const selValue = adding ? '' : target && target.testId ? 't:' + target.testId : project && project.merchant && project.merchant.id ? project.merchant.id : (target && target.merchantId) || '';
+    const pickSel = v => { if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Changer de carte ?')) return; setAdding(false); setCreated(null);
+      onTarget(!v ? null : v.startsWith('t:') ? { testId: v.slice(2) } : { merchantId: v, requestId: null }); };
+    const btnTop = (label, ic, onClick, dark, extra) => h('button', { type: 'button', onClick, disabled: !!busy, ...extra,
+      style: { minHeight: 46, padding: '0 16px', border: dark ? 0 : '1.5px solid #1C1F24', borderRadius: 12, background: dark ? '#1C1F24' : '#FFFFFF', color: dark ? '#FFFFFF' : '#1C1F24', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' } }, icon(ic, 20), label);
+    const testsPanel = h('section', { 'aria-labelledby': 'tests-h', 'data-tests': (tests || []).length, style: { background: '#FFFFFF', border: '1px solid #E4E1DA', borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 } },
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } }, icon('science', 22, { color: '#1A36C4' }), h('h2', { id: 'tests-h', style: { margin: 0, fontWeight: 800, fontSize: 18, flex: 1 } }, 'Cartes test'),
+        h('span', { style: { fontSize: 13, color: '#5E636B' } }, 'Démos liées à aucun commerce')),
+      tests === null ? h('div', { role: 'status', style: { color: '#5E636B', fontSize: 14 } }, 'Chargement…')
+        : !tests.length ? h('div', { style: { color: '#5E636B', fontSize: 14 } }, 'Aucune carte test. « + Créer une carte test » en crée une, avec le même générateur que les vraies cartes.')
+        : tests.map(t => h('div', { key: t.id, 'data-test-row': t.id, style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid #EFEDE8' } },
+          h('div', { style: { flex: '1 1 200px', minWidth: 0 } }, h('div', { style: { fontWeight: 700, fontSize: 15, overflowWrap: 'anywhere' } }, t.name), h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Modifiée le ' + fmtDate(t.updated_at))),
+          h('button', { type: 'button', onClick: () => pickSel('t:' + t.id), style: { minHeight: 40, padding: '0 12px', border: 0, borderRadius: 10, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 14 } }, 'Ouvrir'),
+          h('button', { type: 'button', onClick: () => duplicateTest(t.id), disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: '1.5px solid #D4D1C9', borderRadius: 10, background: '#FFFFFF', fontWeight: 600, fontSize: 14 } }, 'Dupliquer'),
+          h('button', { type: 'button', onClick: () => setAskDelete(t), disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: 0, borderRadius: 10, background: 'none', color: '#B42318', fontWeight: 600, fontSize: 14 } }, 'Supprimer'))));
     const top = h('div', { style: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' } },
       h('div', null,
         h('h1', { style: { margin: 0, fontWeight: 800, fontSize: 'clamp(28px,5vw,38px)', letterSpacing: '-0.03em', lineHeight: 1.05 } }, 'Générateur de cartes'),
         h('div', { style: { marginTop: 6, color: '#5E636B', fontSize: 15 } }, 'Un seul projet de design par programme, décliné en Apple Wallet et Google Wallet.')),
       h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', flex: desk ? 'none' : '1 1 260px' } },
-        h('div', { style: { minWidth: 260, flex: '1 1 260px' } },
-          h(Select, { label: 'Commerce', value: adding ? '' : project && project.merchant ? project.merchant.id : (target && target.merchantId) || '', options: merchantOptions,
-            onChange: v => { if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Changer de commerce ?')) return; setAdding(false); setCreated(null); onTarget(v ? { merchantId: v, requestId: null } : null); } })),
-        h('button', { type: 'button', onClick: () => { if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Continuer ?')) return; setAdding(true); setCreated(null); },
-          'aria-pressed': adding, style: { minHeight: 46, padding: '0 16px', border: 0, borderRadius: 12, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' } },
-          icon('add', 20), 'Ajouter un client')));
+        h('div', { style: { minWidth: 260, flex: '1 1 260px' } }, h(Select, { label: 'Commerce', value: selValue, options: merchantOptions, onChange: pickSel })),
+        btnTop('Ajouter un client', 'add', () => { if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Continuer ?')) return; setAdding(true); setCreated(null); }, true, { 'aria-pressed': adding }),
+        btnTop(busy === 'test' ? 'Création…' : 'Créer une carte test', 'science', createTest, false, { 'data-create-test': true })));
+    const deleteDialog = askDelete ? h('div', { onClick: () => busy !== 'del' && setAskDelete(null), style: { position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(20,22,28,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 } },
+      h('div', { role: 'dialog', 'aria-modal': true, 'aria-label': 'Supprimer la carte test', onClick: e => e.stopPropagation(), style: { width: '100%', maxWidth: 480, background: '#FFFFFF', borderRadius: 20, padding: 22, display: 'flex', flexDirection: 'column', gap: 14 } },
+        h('h2', { style: { margin: 0, fontWeight: 800, fontSize: 22 } }, 'Supprimer la carte test ?'),
+        h('p', { style: { margin: 0, fontSize: 15, color: '#3E424A', lineHeight: 1.5 } }, `« ${askDelete.name} », ses images et sa carte Google Wallet de démonstration seront supprimées. Aucun commerce, programme ou client n’est concerné.`),
+        h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
+          h('button', { type: 'button', onClick: () => setAskDelete(null), disabled: busy === 'del', style: { flex: 1, minWidth: 120, minHeight: 50, border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 15 } }, 'Annuler'),
+          h('button', { type: 'button', onClick: () => deleteTest(askDelete.id), disabled: busy === 'del', style: { flex: 2, minWidth: 160, minHeight: 50, border: 0, borderRadius: 12, background: '#B42318', color: '#FFFFFF', fontWeight: 700, fontSize: 15 } }, busy === 'del' ? 'Suppression…' : 'Supprimer la carte test')))) : null;
 
     if (adding) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h(NewClientForm, { onCancel: () => setAdding(false), onCreated }));
     if (!key) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top,
       h('div', { style: { background: '#FFFFFF', border: '1px solid #E4E1DA', borderRadius: 18, padding: '32px 20px', textAlign: 'center', color: '#5E636B' } }, icon('style', 36, { color: '#9A9EA6' }),
-        h('div', { style: { marginTop: 10, fontWeight: 700, fontSize: 17, color: '#1C1F24' } }, 'Choisissez un commerce'), h('div', { style: { marginTop: 6, fontSize: 15 } }, 'Ou ouvrez une demande de design payée avec « Créer la carte ».')));
+        h('div', { style: { marginTop: 10, fontWeight: 700, fontSize: 17, color: '#1C1F24' } }, 'Choisissez un commerce'), h('div', { style: { marginTop: 6, fontSize: 15 } }, 'Ou ouvrez une demande de design payée avec « Créer la carte », ajoutez un client, ou créez une carte test.')),
+      testsPanel, deleteDialog);
     if (loading || (!design && !error && !(project && !project.program))) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h('div', { role: 'status', style: { padding: 30, textAlign: 'center', color: '#5E636B' } }, 'Chargement du projet…'));
     if (error) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h('div', { role: 'alert', style: { padding: '14px 16px', borderRadius: 14, background: '#FCEBEA', color: '#7A1A13', fontWeight: 600 } }, error));
     if (!project.program) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h('div', { style: { padding: '14px 16px', borderRadius: 14, background: '#FFF3DC', color: '#5C4200', fontWeight: 600 } }, 'Ce commerce n’a pas encore de programme de fidélité : terminez d’abord son inscription.'));
 
     const pg = project.program, req = (project.requests || []).find(r => r.id === requestId) || null, pv = design.preview;
-    const data = { ...DEMO, client: pv.client || DEMO.client, progress: pv.progress, goal: pv.goal, mode: pv.mode, reward: pv.reward || DEMO.reward, available: pv.available };
+    const data = { ...DEMO, client: pv.client || DEMO.client, progress: pv.progress, goal: pv.goal, mode: pv.mode, reward: pv.reward || DEMO.reward, available: pv.available,
+      ...(isTest ? { qr: project.test.qr_value, cardNumber: project.test.card_number } : {}) };
     const po = design[platform], pName = platform === 'apple' ? 'Apple Wallet' : 'Google Wallet';
-    const status = project.draft && project.draft.status === 'validated' && !dirty ? ['Design validé le ' + fmtDate(project.draft.validated_at), '#E4F3EB', '#1F6B45']
+    const status = isTest ? (dirty ? ['Modifications non enregistrées', '#FFF3DC', '#8A5A00'] : ['CARTE TEST · enregistrée le ' + fmtDate(project.test.updated_at), '#EEF1FF', '#1A36C4'])
+      : project.draft && project.draft.status === 'validated' && !dirty ? ['Design validé le ' + fmtDate(project.draft.validated_at), '#E4F3EB', '#1F6B45']
       : dirty ? ['Modifications non enregistrées', '#FFF3DC', '#8A5A00']
       : project.draft ? ['Brouillon enregistré le ' + fmtDate(project.draft.updated_at), '#E8EDFF', '#1A36C4'] : ['Nouveau projet', '#EFEDE8', '#3E424A'];
     const applied = pg.card_design_validated_at ? 'Design appliqué au programme le ' + fmtDate(pg.card_design_validated_at) : 'Aucun design appliqué à ce programme pour l’instant.';
@@ -506,8 +579,18 @@ export function makeCardDesigner(React, api) {
         h('button', { type: 'button', onClick: () => setCreated(null), style: { minHeight: 46, padding: '0 18px', border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('style', 20), 'Créer sa carte'),
         accessBtn(false))) : null;
 
+    // Test card: its name, its unique test QR, duplicate / delete. No merchant, no request, no validation.
+    const smallBtn = (label, onClick, extra) => h('button', { type: 'button', onClick, disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: '1.5px solid #D4D1C9', borderRadius: 10, background: '#FFFFFF', fontWeight: 600, fontSize: 14, ...((extra && extra.style) || {}) } }, label);
+    const testSection = isTest ? h(Section, { title: 'Carte test' },
+      h('span', { 'data-test-badge': true, style: { alignSelf: 'flex-start', padding: '4px 10px', borderRadius: 999, background: '#1A36C4', color: '#FFFFFF', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em' } }, 'CARTE TEST'),
+      h(Text, { label: 'Nom de la carte test', value: testName, max: 80, placeholder: 'Démo Restaurant', onChange: setTestName }),
+      h('div', { style: { fontSize: 14 } }, 'QR de test unique : ', h('code', { 'data-test-qr': project.test.qr_value, style: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, overflowWrap: 'anywhere' } }, project.test.qr_value)),
+      h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45 } }, 'Format DPA_TEST : le scanner l’affiche comme « Carte de démonstration » et n’enregistre jamais de passage. Il ne peut pas correspondre à une vraie carte (DPA1).'),
+      h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, smallBtn(busy === 'qr' ? 'Génération…' : 'Générer un nouveau QR', newQr), smallBtn('Dupliquer', () => duplicateTest(project.test.id)),
+        smallBtn('Supprimer', () => setAskDelete(project.test), { style: { border: 0, background: 'none', color: '#B42318' } })),
+      project.test.google_synced_at ? h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Carte Google Wallet de démonstration mise à jour le ' + fmtDate(project.test.google_synced_at)) : null) : null;
     const params = h('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
-      h(Section, { title: 'Projet' },
+      testSection, !isTest && h(Section, { title: 'Projet' },
         h('div', { style: { fontSize: 15 } }, h('strong', null, project.merchant.business_name), ' · ', pg.name, ' · ', `${pg.goal} ${pg.mode === 'points' ? 'points' : 'passages'} = ${pg.reward}`),
         h('div', { style: { fontSize: 13, color: '#5E636B' } }, applied),
         accessBlock,
@@ -579,7 +662,7 @@ export function makeCardDesigner(React, api) {
           [['primary', 'Fond'], ['secondary', 'Secondaire'], ['text', 'Texte'], ['accent', 'Accent']].map(([k, l]) => h(Color, { key: k, label: l + ' (' + pName + ')', value: po.colors[k] || design.colors[k], onChange: v => set(platform + '.colors.' + k, v) }))) : null),
       h(Section, { title: 'QR code' },
         h(Check, { label: 'QR de démonstration dans l’éditeur', checked: true, onChange: () => toast('L’éditeur utilise toujours un QR de démonstration : le vrai QR est généré pour chaque carte.') }),
-        h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Le QR code est généré par DPA Cards pour chaque carte (format DPA1). Il reste toujours sur fond blanc et ne fait jamais partie d’une image.')));
+        h('div', { style: { fontSize: 13, color: '#5E636B' } }, isTest ? 'Carte test : QR unique au format DPA_TEST, reconnu par le scanner comme carte de démonstration. Il reste sur fond blanc et ne fait jamais partie d’une image.' : 'Le QR code est généré par DPA Cards pour chaque carte (format DPA1). Il reste toujours sur fond blanc et ne fait jamais partie d’une image.')));
 
     const tabs = h('div', { role: 'tablist', 'aria-label': 'Plateforme', style: { display: 'flex', gap: 6, padding: 4, borderRadius: 14, background: '#ECEAE4', alignSelf: 'center' } },
       [['apple', 'Apple Wallet', 'phone_iphone'], ['google', 'Google Wallet', 'android']].map(([k, l, ic]) => h('button', { key: k, type: 'button', role: 'tab', 'aria-selected': platform === k, onClick: () => setPlatform(k),
@@ -589,22 +672,27 @@ export function makeCardDesigner(React, api) {
       tabs,
       h('div', { 'data-preview': platform, style: { display: 'flex', justifyContent: 'center', padding: '22px 12px', borderRadius: 20, background: 'repeating-linear-gradient(45deg,#EFEDE8 0 12px,#F4F2EE 12px 24px)' } },
         h('div', { style: { width: 340 * scale, display: 'flex', justifyContent: 'center' } }, h('div', { style: { transform: `scale(${scale})`, transformOrigin: 'top center', height: 'fit-content' } }, h(CardPreview, { design, data, platform })))),
-      h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45, textAlign: 'center' } }, 'Aperçu avec des données de démonstration. Sur une vraie carte, le nom du client, la progression, les récompenses et le QR code sont générés pour chaque client.'));
+      h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45, textAlign: 'center' } }, isTest ? 'Carte test : données et QR de démonstration (DPA_TEST), propres à cette carte.' : 'Aperçu avec des données de démonstration. Sur une vraie carte, le nom du client, la progression, les récompenses et le QR code sont générés pour chaque client.'));
 
     const actions = h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
       h('span', { role: 'status', style: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, background: status[1], color: status[2], fontSize: 13, fontWeight: 700 } }, status[0]),
       h('div', { style: { flex: 1 } }),
-      h('button', { type: 'button', onClick: save, disabled: !!busy, style: { minHeight: 46, padding: '0 16px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('save', 20), busy === 'save' ? 'Enregistrement…' : 'Enregistrer le brouillon'),
-      h('button', { type: 'button', onClick: () => setConfirm(true), disabled: !!busy, style: { minHeight: 46, padding: '0 16px', border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('verified', 20), 'Valider le design'));
+      h('button', { type: 'button', onClick: save, disabled: !!busy, style: { minHeight: 46, padding: '0 16px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('save', 20), busy === 'save' ? 'Enregistrement…' : isTest ? 'Enregistrer la carte test' : 'Enregistrer le brouillon'),
+      isTest ? h('button', { type: 'button', onClick: testWallet, disabled: !!busy, 'data-test-wallet': true, style: { minHeight: 46, padding: '0 16px', border: 0, borderRadius: 12, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('account_balance_wallet', 20), busy === 'wallet' ? 'Préparation…' : 'Ajouter à Google Wallet') : null,
+      !isTest && h('button', { type: 'button', onClick: () => setConfirm(true), disabled: !!busy, style: { minHeight: 46, padding: '0 16px', border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('verified', 20), 'Valider le design'));
 
     const modal = (body, onClose, label) => h('div', { onClick: onClose, style: { position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(20,22,28,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 } },
       h('div', { role: 'dialog', 'aria-modal': true, 'aria-label': label, onClick: e => e.stopPropagation(), style: { width: '100%', maxWidth: 520, maxHeight: '92vh', overflow: 'auto', background: '#FFFFFF', borderRadius: 20, padding: 22, display: 'flex', flexDirection: 'column', gap: 14 } }, body));
     const cropC = crop && CROPS[crop.kind];
 
     return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } },
-      top, summary, actions,
+      top, summary,
+      isTest ? h('div', { role: 'note', 'data-test-mode': true, style: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: '#1A36C4', color: '#FFFFFF' } }, icon('science', 24),
+        h('div', null, h('div', { style: { fontWeight: 800, fontSize: 16, letterSpacing: '0.06em' } }, 'MODE TEST'), h('div', { style: { fontSize: 14, opacity: 0.9 } }, 'Carte de démonstration : aucun commerce, aucun compte, aucun client, aucun abonnement.'))) : null,
+      actions, deleteDialog,
       h('div', { style: two ? { display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(380px, 1fr)', gap: 24, alignItems: 'start' } : { display: 'flex', flexDirection: 'column', gap: 18 } },
         two ? params : preview, two ? preview : params),
+      isTest ? testsPanel : null,
       crop ? modal(h(Cropper, { key: crop.src, src: crop.src, aspect: cropC.aspect, outW: cropC.outW, outH: cropC.outH, mime: cropC.mime, round: false, title: cropC.title, hint: cropC.hint, onDone: uploadCropped, onCancel: () => { URL.revokeObjectURL(crop.src); setCrop(null); } }), () => {}, cropC.title) : null,
       askAccess ? modal([
         h('h2', { key: 't', style: { margin: 0, fontWeight: 800, fontSize: 22 } }, 'Envoyer l’accès au commerçant ?'),

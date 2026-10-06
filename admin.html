@@ -318,12 +318,12 @@ const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
 const nf=n=>(+n||0).toLocaleString('fr-FR');
 const unitOf=p=>p&&p.mode==='points'?'points':'passages';
 const statusOf=m=>['trialing','active'].includes(subKey(m))?'active':'setup';
-// #generateur, #generateur/m/<merchant id>, #generateur/r/<design request id>[/<merchant id>]
+// #generateur, #generateur/m/<merchant id>, #generateur/r/<design request id>[/<merchant id>], #generateur/t/<test card id>
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function readHash(){ try{ const p=(window.location.hash||'').replace(/^#/,'').split('/'); if(p[0]!=='generateur') return {tab:'list',gen:null};
   if(p[1]==='r'&&UUID.test(p[2]||'')) return {tab:'gen',gen:{requestId:p[2],merchantId:UUID.test(p[3]||'')?p[3]:null}};
-  if(p[1]==='m'&&UUID.test(p[2]||'')) return {tab:'gen',gen:{merchantId:p[2],requestId:null}}; return {tab:'gen',gen:null}; }catch(e){ return {tab:'list',gen:null}; } }
-function writeHash(tab,g){ const h=tab!=='gen'?'':'#generateur'+(g&&g.requestId?'/r/'+g.requestId+(g.merchantId?'/'+g.merchantId:''):(g&&g.merchantId?'/m/'+g.merchantId:''));
+  if(p[1]==='m'&&UUID.test(p[2]||'')) return {tab:'gen',gen:{merchantId:p[2],requestId:null}}; if(p[1]==='t'&&UUID.test(p[2]||'')) return {tab:'gen',gen:{testId:p[2]}}; return {tab:'gen',gen:null}; }catch(e){ return {tab:'list',gen:null}; } }
+function writeHash(tab,g){ const h=tab!=='gen'?'':'#generateur'+(g&&g.testId?'/t/'+g.testId:g&&g.requestId?'/r/'+g.requestId+(g.merchantId?'/'+g.merchantId:''):(g&&g.merchantId?'/m/'+g.merchantId:''));
   try{ history.replaceState(null,'',window.location.pathname+window.location.search+h); }catch(e){} }
 const ERR={not_admin:'Accès refusé : ce compte n’est pas administrateur.',not_authenticated:'Session expirée. Reconnectez-vous.'};
 

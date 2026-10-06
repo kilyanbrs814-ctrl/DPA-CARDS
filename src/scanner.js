@@ -69,6 +69,9 @@ export function decodeKeys(keys) {
 // What the scanner accepts: a DPA Cards QR, a card number, or its last digits.
 export function parseCode(raw) {
   const s = String(raw || '').trim();
+  // Demo card made in the admin card designer: never looked up, never credited.
+  const demo = /^dpa_test:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(s);
+  if (demo) return { kind: 'demo', code: 'DPA_TEST:' + demo[1].toLowerCase() };
   const tok = /^(?:dpa1:)?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i.exec(s);
   if (tok) return { kind: 'qr', code: 'DPA1:' + tok[1].toLowerCase() };
   if (/^(dpa)?[\d .-]+$/i.test(s)) {

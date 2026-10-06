@@ -144,6 +144,20 @@ const designerApi = {
   // "Ajouter un client": the server creates the login (no password), the shop and its program.
   createMerchant: payload => adminCall('admin-merchant-create', payload),
   sendAccess: merchantId => adminCall('admin-merchant-access', { merchant_id: merchantId }),
+  // Test cards: same designer, no merchant (test_card_designs, images under program-assets/tests/<id>/).
+  testList: () => adminCall('admin-test-cards'),
+  testGet: id => adminCall('admin-test-card-get', { id }),
+  testSave: (id, name, config) => adminCall('admin-test-card-save', { id: id || undefined, name, config }),
+  async testUpload(id, kind, blob) {
+    const r = await adminCall('admin-test-card-upload', { id, kind, type: blob.type });
+    const { error } = await sb.storage.from('program-assets').uploadToSignedUrl(r.path, r.token, blob, { contentType: blob.type, cacheControl: '31536000' });
+    if (error) throw Object.assign(new Error('upload_failed'), { code: 'upload_failed' });
+    return { path: r.path, url: r.url };
+  },
+  testDuplicate: id => adminCall('admin-test-card-duplicate', { id }),
+  testDelete: id => adminCall('admin-test-card-delete', { id }),
+  testNewQr: id => adminCall('admin-test-card-new-qr', { id }),
+  testWallet: id => adminCall('admin-test-card-wallet', { id }),
 };
 let designer = null;
 

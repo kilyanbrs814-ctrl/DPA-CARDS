@@ -337,6 +337,16 @@ Le commerce s’ouvre aussitôt dans le générateur ; à la validation de sa ca
 envoie l’e-mail standard « choisir un mot de passe » (écran « Nouveau mot de passe » de l’application) ; date, nombre
 d’envois et dernière erreur dans `admin_created_merchants`. Migrations `20261006200816_admin_create_merchant`, `…200832_…_fix`.
 
+**« + Créer une carte test »** (générateur, bandeau « MODE TEST », badge « CARTE TEST », `#generateur/t/<id>`). Même
+générateur et mêmes layouts Apple / Google, sans commerce, compte, client ni abonnement : table `test_card_designs`
+(`name`, `config`, `qr_token`, ids Google, service role uniquement), images dans `program-assets/tests/<id>/designer/`.
+Liste « Cartes test » (ouvrir, dupliquer avec copie des images et nouveau QR, supprimer avec images et carte Google).
+QR `DPA_TEST:<qr_token>` : le scanner affiche « Carte de démonstration » sans aucune recherche ni passage, et
+`lookup_card` le refuse (`invalid_code`). « Ajouter à Google Wallet » crée une vraie carte de démonstration dans sa propre
+classe `<issuer>.dpa-test-class-<id>` / objet `<issuer>.dpa-test-<id>` (jamais dans `wallet_classes` / `wallet_passes`).
+Routes `wallet` admin : `admin-test-cards`, `admin-test-card-get|save|upload|duplicate|delete|new-qr|wallet`.
+Migration `20261006204044_test_card_designs`.
+
 ## Pages légales et données personnelles
 
 - Pages publiques `/mentions-legales` et `/confidentialite` (`mentions-legales.html`, `confidentialite.html`),

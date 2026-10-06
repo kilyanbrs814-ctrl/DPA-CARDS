@@ -865,6 +865,13 @@ a:hover{color:#1A36C4}
               <button type="button" onClick="{{ resetScan }}" style="min-height:44px;padding:0 14px;border:1.5px solid #E0C88A;border-radius:12px;background:#FFFFFF;color:#5C4200;font-weight:600">Réessayer</button>
             </div>
           </sc-if>
+<sc-if value="{{ scanV.demo }}" hint-placeholder-val="{{ false }}">
+<div role="alert" data-scan-demo="1" style="display:flex;gap:12px;align-items:flex-start;padding:16px;border-radius:16px;background:#EEF1FF;color:#1A36C4">
+<span class="material-symbols-rounded" style="font-size:24px">science</span>
+<div style="flex:1"><div style="font-weight:700;font-size:16px">Carte de démonstration</div><div style="margin-top:4px;font-size:14px;line-height:1.45">Cette carte de test DPA Cards n’appartient à aucun commerce. Aucun passage n’est enregistré.</div></div>
+<button type="button" onClick="{{ resetScan }}" style="min-height:44px;padding:0 14px;border:1.5px solid #C9D3FF;border-radius:12px;background:#FFFFFF;color:#1A36C4;font-weight:600">Réessayer</button>
+</div>
+</sc-if>
           <button type="button" onClick="{{ openManual }}" style="min-height:54px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#F8F7F4"><span class="material-symbols-rounded" style="font-size:22px">keyboard</span>Saisir le numéro de carte</button>
         </div>
         </sc-if>
@@ -957,6 +964,13 @@ a:hover{color:#1A36C4}
             <button type="button" onClick="{{ resetScan }}" style="min-height:44px;padding:0 14px;border:1.5px solid #E0C88A;border-radius:12px;background:#FFFFFF;color:#5C4200;font-weight:700;font-size:14px;flex:none">Réessayer</button>
           </div>
         </sc-if>
+<sc-if value="{{ scanV.demo }}" hint-placeholder-val="{{ false }}">
+<div role="alert" data-scan-demo="1" style="display:flex;gap:12px;align-items:center;padding:12px 12px 12px 14px;border-radius:16px;background:#EEF1FF;color:#1A36C4;animation:dpaUp .2s ease-out">
+<span class="material-symbols-rounded" style="font-size:24px">science</span>
+<div style="flex:1;min-width:0;text-align:left"><div style="font-weight:700;font-size:16px">Carte de démonstration</div><div style="margin-top:2px;font-size:14px;line-height:1.4">Carte de test : aucun passage enregistré.</div></div>
+<button type="button" onClick="{{ resetScan }}" style="min-height:44px;padding:0 14px;border:1.5px solid #C9D3FF;border-radius:12px;background:#FFFFFF;color:#1A36C4;font-weight:700;font-size:14px;flex:none">Réessayer</button>
+</div>
+</sc-if>
         <sc-if value="{{ scanCamLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openManual }}" style="min-height:52px;border:1.5px solid rgba(255,255,255,0.35);border-radius:16px;background:transparent;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px"><span class="material-symbols-rounded" style="font-size:22px">keyboard</span>Saisir le numéro de carte</button></sc-if>
         <sc-if value="{{ scanCam }}" hint-placeholder-val="{{ true }}">
         <button type="button" onClick="{{ openSearch }}" style="min-height:56px;border:0;border-radius:16px;background:#FFFFFF;color:#1C1F24;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-active="background:#E4E1DA"><span class="material-symbols-rounded" style="font-size:22px">search</span>Rechercher un client</button>
@@ -2063,6 +2077,8 @@ class Component extends DCLogic {
   // One lookup for the USB reader, the camera and the keyboard: QR → card id → client.
   async lookupScan(raw,source){ const api=this.api; if(!api) return;
     const cands=(Array.isArray(raw)?raw:[raw]).filter(Boolean), parsed=cands.map(c=>api.scanner.parseCode(c));
+    // Test card from the admin designer (DPA_TEST:): shown as a demo card, no lookup, no change to any real card.
+    if(parsed.some(x=>x.kind==='demo')) return this.scanFail('demo',source);
     const p=parsed.find(x=>x.kind==='qr')||parsed.find(x=>x.kind==='number'||x.kind==='suffix')||parsed.find(x=>x.kind==='incomplete')||{kind:'invalid'};
     if(source==='camera') console.log('[DPA scanner] lookupScan', {raw:cands,parsed:p});
     if(p.kind==='invalid'||p.kind==='incomplete') return this.scanFail(p.kind,source);
@@ -2082,9 +2098,9 @@ class Component extends DCLogic {
   demoLookup(p){ if(p.kind==='qr') return []; const cl=this.state.clients, d=p.code;
     return cl.filter(c=>{ const n=c.card.replace(/\D/g,''); return p.kind==='number'?n===d:n.endsWith(d); }).map(c=>c.id); }
   scanFail(kind,source){ const M={invalid:'Ce code n’est pas une carte DPA Cards.',incomplete:'Numéro incomplet : saisissez au moins les 4 derniers chiffres de la carte.',
-      unknown:'Carte inconnue : aucune carte de votre commerce ne correspond.',multiple:'Plusieurs cartes se terminent par ces chiffres. Saisissez le numéro complet.'};
+      unknown:'Carte inconnue : aucune carte de votre commerce ne correspond.',demo:'Carte de démonstration : cette carte de test DPA Cards n’appartient à aucun commerce. Aucun passage n’est enregistré.',multiple:'Plusieurs cartes se terminent par ces chiffres. Saisissez le numéro complet.'};
     if(source==='manual') return this.setState(x=>({pos:{loading:false,err:null,merr:null},err:{...x.err,manualNo:M[kind]}}));
-    if(source==='camera') return this.setState(x=>({pos:{loading:false,err:null,merr:null},scan:{st:'unknown',id:null,added:false,used:false,msg:''}}));
+    if(source==='camera') return this.setState(x=>({pos:{loading:false,err:null,merr:null},scan:{st:kind==='demo'?'demo':'unknown',id:null,added:false,used:false,msg:''}}));
     if(source==='keyboard') return this.setState(x=>({pos:{loading:false,err:null,merr:M[kind]},scan:x.scan.st==='found'?x.scan:{st:'ready',id:null,added:false,used:false,msg:''}}));
     this.setState(x=>({f:{...x.f,readerNo:''},pos:{loading:false,err:M[kind],merr:null},scan:{st:'ready',id:null,added:false,used:false,msg:''}})); }
   onCamCode=text=>{ console.log('[DPA scanner] onCamCode', {raw:text,scanState:this.state.scan.st,locked:!!this._camLock});
@@ -2857,7 +2873,7 @@ class Component extends DCLogic {
     const scanV={camTitle:CAMT[ce]||'Caméra indisponible',
       camText:CAMX[ce]?CAMX[ce]:ce==='denied'?'L’accès à la caméra a été refusé. Autorisez-le dans les réglages du navigateur, ou saisissez le numéro de carte.':(ce==='unavailable'?'Aucune caméra utilisable n’a été trouvée sur cet appareil (la page doit aussi être ouverte en HTTPS). Saisissez le numéro de carte.':'L’accès a été refusé ou aucune caméra n’est détectée. Autorisez-la dans les réglages du navigateur, ou saisissez le numéro de carte.'),
       camTextMob:CAMX[ce]?CAMX[ce]:ce==='denied'?'L’accès à la caméra a été refusé. Autorisez-le dans les réglages du navigateur, ou saisissez le numéro de carte.':(ce==='unavailable'?'Aucune caméra utilisable n’a été trouvée sur cet appareil (la page doit aussi être ouverte en HTTPS). Saisissez le numéro de carte.':'L’accès a été refusé ou aucune caméra n’est détectée. Autorisez-la dans les réglages du navigateur, ou recherchez le client.'),
-      perm:st==='permission',denied:st==='denied',view:['ready','scanning','unknown','other'].includes(st),scanning:st==='scanning',ready:st==='ready',unknown:st==='unknown',other:st==='other',found:st==='found'&&!!sc,notFound:!(st==='found'&&sc),added:s.scan.added&&!s.scan.used,used:s.scan.used,msg:s.scan.msg,canSim:st!=='scanning'};
+      perm:st==='permission',denied:st==='denied',view:['ready','scanning','unknown','other','demo'].includes(st),scanning:st==='scanning',ready:st==='ready',unknown:st==='unknown',other:st==='other',demo:st==='demo',found:st==='found'&&!!sc,notFound:!(st==='found'&&sc),added:s.scan.added&&!s.scan.used,used:s.scan.used,msg:s.scan.msg,canSim:st!=='scanning'};
 
     const d=s.draft, dirty=JSON.stringify({...d,goal:+d.goal})!==JSON.stringify({...P,goal:+P.goal});
     const D={}; ['name','reward','conditions','logo'].forEach(k=>D[k]=this.dh(k));
