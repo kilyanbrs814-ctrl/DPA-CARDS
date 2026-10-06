@@ -140,6 +140,7 @@ const designerApi = {
   },
   save: (programId, requestId, config) => adminCall('admin-card-save', { program_id: programId, design_request_id: requestId, config }),
   validate: (programId, requestId, config) => adminCall('admin-card-validate', { program_id: programId, design_request_id: requestId, config }),
+  googleSync: programId => adminCall('admin-card-google-sync', { program_id: programId }),
 };
 let designer = null;
 

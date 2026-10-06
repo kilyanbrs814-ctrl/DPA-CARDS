@@ -516,7 +516,7 @@ a:hover{color:#1A36C4}
       <sc-if value="{{ s.joinDone }}" hint-placeholder-val="{{ false }}">
         <div style="padding:24px;display:flex;flex-direction:column;gap:18px">
           <p style="margin:0;font-size:16px;line-height:1.5">Bienvenue {{ joined.first }} ! Ajoutez votre carte à votre téléphone, puis présentez son QR code personnel en caisse.</p>
-          <sc-if value="{{ hasJoined }}" hint-placeholder-val="{{ false }}"><div style="max-width:320px;width:100%;margin:0 auto"><dc-import name="LoyaltyCard" c="{{ joinCard }}" hint-size="100%,440px"></dc-import></div></sc-if>
+          <sc-if value="{{ hasJoined }}" hint-placeholder-val="{{ false }}"><div style="max-width:320px;width:100%;margin:0 auto"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ joinCard }}" hint-size="100%,440px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdJoin }}</sc-if></div></sc-if>
           <button type="button" onClick="{{ openApple }}" style="height:54px;border:0;border-radius:12px;background:#000000;color:#FFFFFF;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px"><span class="material-symbols-rounded" style="font-size:22px">wallet</span>Ajouter à Apple Wallet</button>
           <button type="button" onClick="{{ openGoogle }}" style="height:54px;border:1.5px solid #1C1F24;border-radius:12px;background:#FFFFFF;color:#1C1F24;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px"><span class="material-symbols-rounded" style="font-size:22px">account_balance_wallet</span>Ajouter à Google Wallet</button>
           <p style="margin:0;font-size:13px;color:#5E636B;text-align:center">{{ walletNote }}</p>
@@ -661,7 +661,7 @@ a:hover{color:#1A36C4}
         <div style="display:flex;flex-direction:column;gap:20px">
           <section aria-label="Ma carte" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
             <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-weight:700;font-size:18px">Ma carte</h2></div>
-            <div style="max-width:320px;width:100%;align-self:center"><dc-import name="LoyaltyCard" c="{{ homeCard }}" hint-size="100%,260px"></dc-import></div>
+            <div style="max-width:320px;width:100%;align-self:center"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ homeCard }}" hint-size="100%,260px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdHome }}</sc-if></div>
             <div style="font-size:14px;color:#4A4E55;text-align:center">{{ ruleText }} · aperçu indicatif</div>
             <sc-if value="{{ designPending }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#E8EDFF;color:#1A36C4;font-size:14px;line-height:1.45;text-align:left"><span class="material-symbols-rounded" style="font-size:20px">brush</span><span>Création sur mesure en cours · demande du {{ dReq.date }} · statut : {{ dReq.statusLabel }} · sur devis</span></div></sc-if>
           </section>
@@ -682,7 +682,7 @@ a:hover{color:#1A36C4}
       </div>
       <section aria-labelledby="mcard-h" style="width:100%;min-width:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:14px">
         <h2 id="mcard-h" style="margin:0;font-weight:700;font-size:18px">Ma carte</h2>
-        <div style="max-width:320px;width:100%;align-self:center"><dc-import name="LoyaltyCard" c="{{ homeCard }}" hint-size="100%,260px"></dc-import></div>
+        <div style="max-width:320px;width:100%;align-self:center"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ homeCard }}" hint-size="100%,260px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdHome }}</sc-if></div>
         <div style="width:100%;font-size:14px;color:#4A4E55;text-align:center;overflow-wrap:anywhere">{{ ruleText }} · aperçu indicatif</div>
         <sc-if value="{{ designPending }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#E8EDFF;color:#1A36C4;font-size:14px;line-height:1.45;text-align:left"><span class="material-symbols-rounded" style="font-size:20px">brush</span><span>Création sur mesure en cours · demande du {{ dReq.date }} · statut : {{ dReq.statusLabel }} · sur devis</span></div></sc-if>
       </section>
@@ -1125,7 +1125,7 @@ a:hover{color:#1A36C4}
             <dt style="padding:12px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Passages enregistrés</dt><dd style="margin:0;padding:12px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.visits }}</dd>
             <dt style="padding:12px 0;color:#5E636B">Récompenses utilisées</dt><dd style="margin:0;padding:12px 0;font-weight:600;text-align:right">{{ sel.rewardsUsed }}</dd>
           </dl>
-          <div style="max-width:300px;width:100%;align-self:center"><dc-import name="LoyaltyCard" c="{{ selCard }}" hint-size="100%,420px"></dc-import><div style="margin-top:10px;text-align:center;font-size:13px;color:#5E636B">Carte du client · aperçu indicatif</div><sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openGWallet }}" style="margin:6px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#2448F0;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">account_balance_wallet</span>Ajouter à Google Wallet</button></sc-if><sc-if value="{{ canDelClient }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ askDelClient }}" style="margin:2px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#B42318;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">delete</span>Supprimer le client</button></sc-if></div>
+          <div style="max-width:300px;width:100%;align-self:center"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ selCard }}" hint-size="100%,420px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdSel }}</sc-if><div style="margin-top:10px;text-align:center;font-size:13px;color:#5E636B">Carte du client · aperçu indicatif</div><sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openGWallet }}" style="margin:6px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#2448F0;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">account_balance_wallet</span>Ajouter à Google Wallet</button></sc-if><sc-if value="{{ canDelClient }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ askDelClient }}" style="margin:2px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#B42318;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">delete</span>Supprimer le client</button></sc-if></div>
         </div>
         <section aria-labelledby="hist-h" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px">
           <h2 id="hist-h" style="margin:0 0 8px;font-weight:700;font-size:18px">Historique</h2>
@@ -1185,7 +1185,7 @@ a:hover{color:#1A36C4}
         <dt style="padding:12px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Passages enregistrés</dt><dd style="margin:0;padding:12px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.visits }}</dd>
         <dt style="padding:12px 0;color:#5E636B">Récompenses utilisées</dt><dd style="margin:0;padding:12px 0;font-weight:600;text-align:right">{{ sel.rewardsUsed }}</dd>
       </dl>
-      <div style="max-width:280px;width:100%;align-self:center"><dc-import name="LoyaltyCard" c="{{ selCard }}" hint-size="100%,400px"></dc-import><div style="margin-top:10px;text-align:center;font-size:13px;color:#5E636B">Carte du client · aperçu indicatif</div><sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openGWallet }}" style="margin:6px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#2448F0;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">account_balance_wallet</span>Ajouter à Google Wallet</button></sc-if><sc-if value="{{ canDelClient }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ askDelClient }}" style="margin:2px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#B42318;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">delete</span>Supprimer le client</button></sc-if></div>
+      <div style="max-width:280px;width:100%;align-self:center"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ selCard }}" hint-size="100%,400px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdSel }}</sc-if><div style="margin-top:10px;text-align:center;font-size:13px;color:#5E636B">Carte du client · aperçu indicatif</div><sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openGWallet }}" style="margin:6px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#2448F0;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">account_balance_wallet</span>Ajouter à Google Wallet</button></sc-if><sc-if value="{{ canDelClient }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ askDelClient }}" style="margin:2px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#B42318;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">delete</span>Supprimer le client</button></sc-if></div>
     </div>
     <div style="position:fixed;left:0;right:0;bottom:calc(72px + env(safe-area-inset-bottom));z-index:25;background:rgba(246,245,241,0.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid #E4E1DA">
       <div style="max-width:640px;margin:0 auto;padding:10px 16px;display:flex;gap:10px">
@@ -1251,8 +1251,9 @@ a:hover{color:#1A36C4}
             <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{ t.pressed }}" onClick="{{ t.pick }}" style="height:44px;border:0;border-radius:10px;background:{{ t.bg }};color:{{ t.fg }};box-shadow:{{ t.shadow }};font-weight:700;font-size:15px">{{ t.label }}</button></sc-for>
           </div>
           <div style="width:100%;max-width:330px;margin:0 auto">
-            <sc-if value="{{ tabApple }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ draftCard }}" hint-size="100%,470px"></dc-import></sc-if>
-            <sc-if value="{{ tabGoogle }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ tabApple }}" hint-placeholder-val="{{ true }}"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ draftCard }}" hint-size="100%,470px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdDraftA }}</sc-if></sc-if>
+            <sc-if value="{{ tabGoogleCD }}" hint-placeholder-val="{{ false }}">{{ cdDraftG }}</sc-if>
+            <sc-if value="{{ tabGoogleClassic }}" hint-placeholder-val="{{ false }}">
               <div style="border-radius:24px;background:{{ draftCard.bg }};color:{{ draftCard.fg }};overflow:hidden;box-shadow:0 12px 32px rgba(20,22,28,0.14)">
                 <div style="display:flex;align-items:center;gap:12px;padding:16px 18px">
                   <div style="width:36px;height:36px;border-radius:50%;background:{{ draftCard.accent }};color:{{ draftCard.accentFg }};display:grid;place-items:center;font-weight:800;font-size:9px">{{ draftCard.logo }}</div>
@@ -2747,6 +2748,14 @@ class Component extends DCLogic {
       openPortal:this.openPortal,askCancelSub:this.askCancelSub,cancelSub:this.cancelSub,
       cancelSubText:'Votre abonnement restera actif jusqu’au '+fmtFull(ss&&(ss.status==='trialing'?ss.trial_end:ss.current_period_end))+', puis ne sera plus renouvelé. Vous pourrez souscrire à nouveau à tout moment.'};
   }
+  // Card drawn from the design validated in the admin (programs.card_design), with this card's live data:
+  // customer name, balance, rewards available, card number and its own QR code (DPA1:<qr_token>). null = classic card.
+  designCard(p,platform,c,business){ const api=this.api; if(!api||!api.prepareCardDesign||!p||!p.cardDesign) return null;
+    const key=JSON.stringify(p.cardDesign)+'|'+p.logoPath+'|'+p.heroPath+'|'+business+'|'+p.bg+'|'+p.accent;
+    if(this._cdKey!==key){ this._cdKey=key; this._cd=api.prepareCardDesign(p,business,(this.state.merchant||{}).activity||''); }
+    if(!this._cd) return null; const goal=Math.max(1,+p.goal||1), b=c?Math.max(0,+c.balance||0):0;
+    return React.createElement(api.cardKit().FitCard,{design:this._cd,platform,data:{mode:p.mode==='points'?'points':'passages',goal,progress:b,reward:p.reward||'',available:Math.floor(b/goal),
+      client:c?c.name:'Client',qr:c&&c.qr?c.qr:null,cardNumber:c&&c.card?c.card:''}}); }
   cardProps(p,business,member,value,cardNo,qr,showQr){
     const dark=lum(p.bg)<0.4, adark=lum(p.accent)<0.4;
     return {bg:p.bg,fg:dark?'#FFFFFF':'#1E1418',muted:dark?'rgba(255,255,255,0.8)':'rgba(30,20,24,0.72)',accent:p.logoUrl?'#FFFFFF':p.accent,accentFg:adark?'#FFFFFF':'#1E1418',
@@ -2918,6 +2927,14 @@ class Component extends DCLogic {
     const joinCard=joined?this.cardProps(P,m.business,joined.first,`0 / ${goal}`,joined.card,this.cardQr(clients.find(c=>c.id===s.joinedId),112),true):null;
     const homeCard=this.cardProps(P,m.business,sampleC?sampleC.first:'Client',sampleC?`${Math.min(sampleC.balance,goal)} / ${goal}`:`0 / ${goal}`,'',null,false);
     const selCard=sel?this.cardProps(P,m.business,sel.full,sel.value,sel.card,this.cardQr(clients.find(c=>c.id===s.selId),96),true):null;
+    // Validated card design: Apple layout in DPA Cards, Google layout on Android for the public page.
+    const cdOn=!!(s.live||s.pubSlug)&&!!(P&&P.cardDesign), liveQr=c=>c&&(s.live||s.pubSlug)&&c.qrValue?c.qrValue:null;
+    const rawSel=sel?clients.find(c=>c.id===s.selId):null, rawJoin=joined?clients.find(c=>c.id===s.joinedId):null;
+    const cdHome=cdOn?this.designCard(P,'apple',sampleC?{name:(sampleC.first+' '+(sampleC.last||'')).trim(),balance:sampleC.balance,card:sampleC.card,qr:liveQr(sampleC)}:null,m.business):null;
+    const cdSel=cdOn&&sel?this.designCard(P,'apple',{name:sel.full,balance:sel.balance,card:sel.card,qr:liveQr(rawSel)},m.business):null;
+    const cdJoin=cdOn&&joined?this.designCard(P,(typeof navigator!=='undefined'&&/Android/i.test(navigator.userAgent))?'google':'apple',{name:joined.first,balance:rawJoin?rawJoin.balance:0,card:joined.card,qr:liveQr(rawJoin)},m.business):null;
+    const cdSample=sampleC?{name:(sampleC.first+' '+(sampleC.last||'')).trim(),balance:sampleC.balance,card:sampleC.card,qr:liveQr(sampleC)}:{name:'Client',balance:0,card:'',qr:null};
+    const cdDraftA=cdOn?this.designCard(P,'apple',cdSample,m.business):null, cdDraftG=cdOn?this.designCard(P,'google',cdSample,m.business):null;
     const authCard=this.cardProps(P0,M0.business,'Léa M.','4 / 10','DPA 4821 0935',qrSvg('DPA 4821 0935',104),true);
     const rwC=cv(clients.find(c=>c.id===s.target));
     const corrC=clients.find(c=>c.id===s.corr.client), corrE=corrC&&corrC.history.find(h=>h.id===s.corr.entry);
@@ -3004,7 +3021,7 @@ class Component extends DCLogic {
       camWaiting:camOn&&!s.camStream, camEl, camAria:'Zone de scan de la caméra', pos:posV,
       sc, scanV, scanActs, allowCam:()=>{ if(smode!=='camera') return; this.startCamera(); }, denyCam:()=>this.setState({cam:'denied',scan:{st:'denied',id:null,added:false,used:false,msg:''}}),
       retryCam:()=>camLive?this.startCamera():this.setState({cam:null,scan:{st:'permission',id:null,added:false,used:false,msg:''}}), openManual:()=>this.setState({modal:'manual',err:{}}), submitManual:this.submitManual, resetScan:this.resetScan,
-      d, D, dirty, notDirty:!dirty, draftCard, tabs, tabApple:s.tab==='apple', tabGoogle:s.tab==='google', dMode:mkMode('draft'), dGoalDown:stepGoal('draft',-1), dGoalUp:stepGoal('draft',1), dUnit:d.mode==='points'?'points':'passages',
+      d, D, dirty, notDirty:!dirty, draftCard, tabs, tabApple:s.tab==='apple', tabGoogle:s.tab==='google', tabGoogleClassic:s.tab==='google'&&!cdOn, tabGoogleCD:s.tab==='google'&&cdOn, dMode:mkMode('draft'), dGoalDown:stepGoal('draft',-1), dGoalUp:stepGoal('draft',1), dUnit:d.mode==='points'?'points':'passages',
       dBg:mkSw(BGS,'bg','draft'), dAccent:mkSw(ACCENTS,'accent','draft'), dPat:mkPat('draft'), saveCard:this.saveCard, saveLabel:s.busy?'Enregistrement…':'Enregistrer les modifications',
       resetDraft:()=>this.setState(x=>({draft:{...x.program}})), importLogo:()=>this.showToast(s.live?'L’import de logo n’est pas encore disponible. Utilisez les initiales.':'Démo : import d’image simulé, aucun fichier n’est envoyé.','info'),
       moreItems, logout:()=>this.setState({modal:'logout'}), confirmLogout:()=>{ if(s.live) return this.logoutLive(); this.setState({...this.initState(),w:window.innerWidth,screen:'login'}); },
@@ -3025,7 +3042,7 @@ class Component extends DCLogic {
           syncText:!sy?'':(sy.last_error?'Mise à jour du solde Google en attente : nouvel essai automatique.':(sy.pending?'Solde Google en cours de mise à jour.':`Solde Google Wallet à jour : ${sy.synced_balance}.`)),
           copy:()=>{ try{ navigator.clipboard&&navigator.clipboard.writeText(g.url).catch(()=>{}); }catch(e){} this.showToast('Lien copié'); }}; })(),
       walletNote:s.live||s.pubSlug?'Apple Wallet n’est pas encore disponible.':'Boutons de démonstration : aucune carte n’est installée.',
-      joined, joinCard, hasJoined:!!joined, openWallet:k=>()=>this.setState({modal:'wallet',target:k}), openApple:()=>{ if(s.pubSlug) return this.showToast('Apple Wallet n’est pas encore disponible.','info'); this.setState({modal:'wallet',target:'apple'}); }, openGoogle:()=>{ if(s.pubSlug) return this.openPublicWallet(); if(s.live&&s.joinedId) return this.openGWallet(s.joinedId); this.setState({modal:'wallet',target:'google'}); },
+      joined, joinCard, hasJoined:!!joined, hasCD:cdOn, noCD:!cdOn, cdHome, cdSel, cdJoin, cdDraftA, cdDraftG, openWallet:k=>()=>this.setState({modal:'wallet',target:k}), openApple:()=>{ if(s.pubSlug) return this.showToast('Apple Wallet n’est pas encore disponible.','info'); this.setState({modal:'wallet',target:'apple'}); }, openGoogle:()=>{ if(s.pubSlug) return this.openPublicWallet(); if(s.live&&s.joinedId) return this.openGWallet(s.joinedId); this.setState({modal:'wallet',target:'google'}); },
       mod, closeModal, stop:e=>e.stopPropagation(), rwC, confirmReward:this.confirmReward, rewardBtn:s.busy?'Validation…':'Confirmer', corrE:corrE?{...corrE,when:`${fmtDate(corrE.date)}, ${corrE.time}`}:null, corrName:corrC?corrC.first+' '+corrC.last:'', motifs, confirmCorr:this.confirmCorr, corrBtn:s.busy?'Correction…':'Confirmer la correction', walletName,
       modalAlign:isDesk?'center':'flex-end', modalRadius:isDesk?'20px':'22px 22px 0 0', toast:s.toast, toastBottom:isDesk?'28px':toastM, toastIcon:s.toast&&s.toast.kind==='info'?'info':(s.toast&&s.toast.kind==='error'?'error':'check_circle'), toastIconColor:s.toast&&s.toast.kind==='info'?'#9DB0FF':(s.toast&&s.toast.kind==='error'?'#FF9B8F':'#7FE0AE'),
       prevOrder:isDesk?'2':'0', mainPadB:isDesk?'48px':(mShowNav?(scr==='client'?'calc(170px + env(safe-area-inset-bottom))':'calc(96px + env(safe-area-inset-bottom))'):'0px'), toNotifs:go('notifs'), ...nv,

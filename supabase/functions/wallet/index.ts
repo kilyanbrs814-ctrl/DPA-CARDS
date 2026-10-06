@@ -17,7 +17,8 @@
 //   POST /wallet/admin-card-designer  admin session, { merchant_id | design_request_id } → design project
 //   POST /wallet/admin-card-upload    admin session → signed upload URL for a designer image
 //   POST /wallet/admin-card-save      admin session → saves the design draft (program untouched)
-//   POST /wallet/admin-card-validate  admin session → applies the design to the program
+//   POST /wallet/admin-card-validate  admin session → applies the design to the program, then updates its Google Wallet class
+//   POST /wallet/admin-card-google-sync  admin session → retries that Google Wallet class update
 //
 // verify_jwt is off: the platform check does not understand every key type, so
 // each route authorises itself. The browser only sends a card id; merchant,
@@ -136,21 +137,38 @@ const unitLabel = (mode: string) => (mode === 'points' ? 'Points' : 'Passages');
 const assetUrl = (path: string) =>
   `${SUPABASE_URL}/storage/v1/object/public/program-assets/${path.split('/').map(encodeURIComponent).join('/')}`;
 
+// Branding of the program's class. Google Wallet has a fixed layout: only what its API supports is
+// mapped — issuer and program names, logo, hero image, background colour and field labels. Stamps,
+// free layout and the Apple version stay in the DPA Cards previews. Customer data (name, balance,
+// card number, QR) lives on each card's object and is never touched here.
+// Images: programs.logo_path / hero_path, which the designer only replaces with images that meet the
+// Google rules (IMAGE_RULES); otherwise the previous image, or the generic DPA Cards logo, is kept.
+function classBranding(program: any, businessName: string) {
+  const text = (value: string) => ({ defaultValue: { language: 'fr-FR', value } });
+  const d = program.card_design && typeof program.card_design === 'object' ? program.card_design : null;
+  const colors = { ...(d?.colors ?? {}), ...(d?.google?.colors ?? {}) };
+  const issuer = String(d?.identity?.name || businessName || program.name).slice(0, 40);
+  const showHero = d ? d.google?.showHero !== false : true;
+  return {
+    issuerName: issuer,
+    programName: program.name,
+    // Programs created before the design flow have no uploaded logo: they keep the generic one.
+    programLogo: { sourceUri: { uri: program.logo_path ? assetUrl(program.logo_path) : LOGO_URL }, contentDescription: text(issuer) },
+    ...(showHero && program.hero_path ? { heroImage: { sourceUri: { uri: assetUrl(program.hero_path) }, contentDescription: text(program.name) } } : {}),
+    hexBackgroundColor: HEX_RE.test(colors.primary ?? '') ? colors.primary : program.bg,
+    ...(d ? { accountNameLabel: 'Client', accountIdLabel: 'N° de carte' } : {}),
+  };
+}
+
 async function ensureClass(program: any, businessName: string): Promise<string> {
   if (program.design_status !== 'validated') throw new HttpError(409, 'design_pending');
   const { data: row } = await admin.from('wallet_classes').select('google_class_id').eq('program_id', program.id).maybeSingle();
   const classId = row?.google_class_id ?? classIdFor(program.id);
   const got = await google('GET', `/loyaltyClass/${encodeURIComponent(classId)}`);
   if (got.status === 404) {
-    const text = (value: string) => ({ defaultValue: { language: 'fr-FR', value } });
     const ins = await google('POST', '/loyaltyClass', {
       id: classId,
-      issuerName: businessName.slice(0, 40),
-      programName: program.name,
-      // Programs created before the design flow have no uploaded logo: they keep the generic one.
-      programLogo: { sourceUri: { uri: program.logo_path ? assetUrl(program.logo_path) : LOGO_URL }, contentDescription: text(businessName) },
-      ...(program.hero_path ? { heroImage: { sourceUri: { uri: assetUrl(program.hero_path) }, contentDescription: text(program.name) } } : {}),
-      hexBackgroundColor: program.bg,
+      ...classBranding(program, businessName),
       reviewStatus: 'UNDER_REVIEW',
       countryCode: 'FR',
     });
@@ -318,7 +336,7 @@ async function finalizeDesign(req: Request): Promise<Response> {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const CARD_SELECT = 'id, merchant_id, card_number, qr_token, customers(first_name, last_name), programs(id, merchant_id, name, mode, goal, reward, bg, logo_path, hero_path, design_status), merchants(business_name)';
+const CARD_SELECT = 'id, merchant_id, card_number, qr_token, customers(first_name, last_name), programs(id, merchant_id, name, mode, goal, reward, bg, logo_path, hero_path, design_status, card_design), merchants(business_name)';
 
 // Class + object for one card already authorised by the caller, then the signed save link.
 async function signedSaveUrl(req: Request, card: any): Promise<string> {
@@ -370,7 +388,7 @@ async function publicProgramBySlug(raw: unknown) {
   if (error) throw new Error('db_merchants');
   if (!m) throw new HttpError(404, 'program_not_found');
   const { data: p, error: pe } = await admin.from('programs')
-    .select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, logo_path, hero_path, design_status')
+    .select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, logo_path, hero_path, design_status, card_design')
     .eq('merchant_id', m.id).eq('is_active', true).maybeSingle();
   if (pe) throw new Error('db_programs');
   if (!p) throw new HttpError(404, 'program_not_found');
@@ -819,6 +837,7 @@ function cleanDesign(raw: any, merchantId: string, programId: string) {
   };
 }
 
+const DRAFT_SELECT = 'config, status, design_request_id, validated_at, updated_at, google_sync_status, google_sync_error, google_synced_at';
 const PROGRAM_SELECT = 'id, merchant_id, name, mode, goal, reward, bg, accent, logo, logo_path, hero_path, design_status, design_mode, card_design, card_design_validated_at';
 const programView = (p: any) => ({ ...p, logo_url: p.logo_path ? assetUrl(p.logo_path) : null, hero_url: p.hero_path ? assetUrl(p.hero_path) : null });
 const withUrls = (c: any) => c && ({ ...c, assets: Object.fromEntries(Object.entries(c.assets ?? {}).map(([k, a]: [string, any]) => [k, a ? { ...a, url: assetUrl(a.path) } : null])) });
@@ -859,7 +878,7 @@ async function adminCardDesigner(req: Request): Promise<Response> {
   q = programId ? q.eq('id', programId) : q.eq('is_active', true);
   const { data: program } = await q.maybeSingle();
   if (!program) return json(req, 200, { merchant, program: null, draft: null, request: null, requests: [] });
-  const { data: draft } = await admin.from('card_designs').select('config, status, design_request_id, validated_at, updated_at').eq('program_id', program.id).maybeSingle();
+  const { data: draft } = await admin.from('card_designs').select(DRAFT_SELECT).eq('program_id', program.id).maybeSingle();
   const sign = async (p: string | null) => p ? (await admin.storage.from('design-requests').createSignedUrl(p, 3600)).data?.signedUrl ?? null : null;
   const { data: reqs } = await admin.from('design_requests')
     .select('id, status, paid_at, colors, description, contact_name, contact_email, contact_phone, logo_path, reference_paths')
@@ -896,9 +915,48 @@ async function adminCardSave(req: Request): Promise<Response> {
   const design_request_id = await linkedRequest(body?.design_request_id, program);
   // Saving a draft never touches the program, the request status or the applied design.
   const { data, error } = await admin.from('card_designs').upsert({ merchant_id: program.merchant_id, program_id: program.id, design_request_id, config, status: 'draft', updated_by: user.id },
-    { onConflict: 'program_id' }).select('config, status, design_request_id, validated_at, updated_at').single();
+    { onConflict: 'program_id' }).select(DRAFT_SELECT).single();
   if (error) throw new Error('db_card_designs');
   return json(req, 200, { draft: { ...data, config: withUrls(data.config) } });
+}
+
+// Existing class of the program → same class id, new branding (GET, merge, PUT so a removed hero is
+// really removed). Objects reference the class, so every card already in Google Wallet shows the new
+// branding with its own name, balance, card number, QR and messages unchanged; nothing is recreated.
+async function updateClassBranding(programId: string) {
+  const { data: program } = await admin.from('programs').select('id, merchant_id, name, bg, logo_path, hero_path, design_status, card_design').eq('id', programId).single();
+  if (!program) throw new Error('db_programs');
+  const { data: row } = await admin.from('wallet_classes').select('google_class_id').eq('program_id', programId).maybeSingle();
+  // No class yet: it will be created from this design by the first "Ajouter à Google Wallet".
+  if (!row) return { status: 'no_class' as const };
+  const { data: m } = await admin.from('merchants').select('business_name').eq('id', program.merchant_id).single();
+  const id = encodeURIComponent(row.google_class_id);
+  const got = await google('GET', `/loyaltyClass/${id}`);
+  if (got.status === 404) return { status: 'no_class' as const };
+  if (got.status !== 200) throw gErr('class_get', got);
+  const next = { ...got.data, ...classBranding(program, m?.business_name ?? ''), reviewStatus: 'UNDER_REVIEW' };
+  if (!classBranding(program, m?.business_name ?? '').heroImage) delete next.heroImage;
+  const put = await google('PUT', `/loyaltyClass/${id}`, next);
+  if (put.status !== 200) throw gErr('class_update', put);
+  return { status: 'synced' as const };
+}
+// Records the outcome on the design project; a failure never undoes the validated design.
+async function syncDesignToGoogle(programId: string) {
+  let out: { status: 'synced' | 'no_class' | 'error'; error: string | null };
+  try { out = { ...(await updateClassBranding(programId)), error: null }; }
+  catch (e) { out = { status: 'error', error: String((e as Error).message).slice(0, 300) }; console.error('wallet error', 'class-branding', out.error); }
+  await admin.from('card_designs').update({ google_sync_status: out.status, google_sync_error: out.error, ...(out.status === 'error' ? {} : { google_synced_at: new Date().toISOString() }) }).eq('program_id', programId);
+  return out;
+}
+
+async function adminCardGoogleSync(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const program = await designProgram(body?.program_id);
+  if (!program.card_design) throw new HttpError(409, 'design_not_validated');
+  const google = await syncDesignToGoogle(program.id);
+  const { data: draft } = await admin.from('card_designs').select(DRAFT_SELECT).eq('program_id', program.id).maybeSingle();
+  return json(req, 200, { google, draft: draft ? { ...draft, config: withUrls(draft.config) } : null });
 }
 
 // Applies the design to the program. The design request keeps its status ("Marquer comme livré" stays separate).
@@ -926,10 +984,13 @@ async function adminCardValidate(req: Request): Promise<Response> {
   if (config.assets.hero && fit.hero) patch.hero_path = config.assets.hero.path;
   const { data: saved, error } = await admin.from('programs').update(patch).eq('id', program.id).select(PROGRAM_SELECT).single();
   if (error) throw new Error('db_programs');
-  const { data: draft, error: de } = await admin.from('card_designs').upsert({ merchant_id: program.merchant_id, program_id: program.id, design_request_id, config, status: 'validated', validated_at: now, updated_by: user.id },
-    { onConflict: 'program_id' }).select('config, status, design_request_id, validated_at, updated_at').single();
+  const { data: draft, error: de } = await admin.from('card_designs').upsert({ merchant_id: program.merchant_id, program_id: program.id, design_request_id, config, status: 'validated', validated_at: now, updated_by: user.id, google_sync_status: 'pending', google_sync_error: null },
+    { onConflict: 'program_id' }).select(DRAFT_SELECT).single();
   if (de) throw new Error('db_card_designs');
-  return json(req, 200, { program: { ...programView(saved), card_design: withUrls(saved.card_design) }, draft: { ...draft, config: withUrls(draft.config) } });
+  // Then the Google Wallet class (best effort: an error is stored and can be retried from the admin).
+  const google = await syncDesignToGoogle(program.id);
+  return json(req, 200, { program: { ...programView(saved), card_design: withUrls(saved.card_design) },
+    draft: { ...draft, config: withUrls(draft.config), google_sync_status: google.status, google_sync_error: google.error }, google });
 }
 
 async function sync(req: Request): Promise<Response> {
@@ -963,6 +1024,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-card-upload')) return await adminCardUpload(req);
     if (req.method === 'POST' && path.endsWith('/admin-card-save')) return await adminCardSave(req);
     if (req.method === 'POST' && path.endsWith('/admin-card-validate')) return await adminCardValidate(req);
+    if (req.method === 'POST' && path.endsWith('/admin-card-google-sync')) return await adminCardGoogleSync(req);
     if (req.method === 'POST' && path.endsWith('/finalize-design')) return await finalizeDesign(req);
     if (req.method === 'POST' && path.endsWith('/sync')) return await sync(req);
     return json(req, 404, { error: 'not_found' });

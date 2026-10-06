@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js';
 import QRCode from 'qrcode';
 import { makeCropper } from './cropper.js';
+import { makeCardDesigner, prepareDesign } from './card-designer.js';
 import { LEGAL } from './legal-config.js';
 import { scanDevice, canUseCamera, cameraPermission, decodeKeys, parseCode, qrPath, requestCamera, cameraErrorKind, makeCameraView } from './scanner.js';
 
@@ -170,6 +171,7 @@ function toMerchant(m, email) {
   };
 }
 
+let cardKitInstance = null;
 const assetUrl = path => path
   ? `${URL_}/storage/v1/object/public/program-assets/${path.split('/').map(encodeURIComponent).join('/')}`
   : null;
@@ -180,6 +182,8 @@ function toProgram(p) {
     pattern: p.pattern, logo: p.logo, conditions: p.conditions,
     designStatus: p.design_status || 'validated', designMode: p.design_mode || null,
     logoPath: p.logo_path || null, heroPath: p.hero_path || null, logoUrl: assetUrl(p.logo_path), heroUrl: assetUrl(p.hero_path),
+    // Design validated in the admin card designer (layout, colours, images, stamps); null = classic card.
+    cardDesign: p.card_design && typeof p.card_design === 'object' ? p.card_design : null,
   };
 }
 function toRequest(r) {
@@ -339,6 +343,12 @@ const api = {
   },
   // ---- card design (initial creation only; the server locks it once validated)
   Cropper: makeCropper(window.React),
+  // Cards drawn from programs.card_design (Apple / Google layouts). Customer data is passed per card.
+  cardKit() { return cardKitInstance || (cardKitInstance = makeCardDesigner(window.React, null)); },
+  prepareCardDesign(program, business, activity) {
+    return program && program.cardDesign ? prepareDesign(program.cardDesign, { bg: program.bg, accent: program.accent, mode: program.mode, goal: program.goal, reward: program.reward,
+      logo_path: program.logoPath, hero_path: program.heroPath }, { business_name: business, activity }, assetUrl) : null;
+  },
   async saveRules(programId, { mode, goal, reward }) {
     const { data, error } = await sb.from('programs').update({ mode, goal: +goal, reward: reward.trim() }).eq('id', programId).select().single();
     if (error) throw error;

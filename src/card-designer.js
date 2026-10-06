@@ -55,6 +55,21 @@ export function normalize(config, project) {
     assets: { ...d.assets, ...(c.assets || {}) }, stamps: { ...d.stamps, ...(c.stamps || {}) }, apple: plat('apple'), google: plat('google'),
     preview: { ...d.preview, ...(c.preview || {}) } };
 }
+// Real cards: the validated programs.card_design (paths only) → a renderable design. Missing parts fall
+// back to the program's own values (bg, accent, logo, cover), so an incomplete design never breaks a card.
+// program: { bg, accent, mode, goal, reward, logo_path, hero_path }, merchant: { business_name, activity }.
+export function prepareDesign(cardDesign, program, merchant, assetUrl) {
+  if (!cardDesign || typeof cardDesign !== 'object') return null;
+  const project = { merchant, program: { ...program, logo_url: assetUrl(program.logo_path), hero_url: assetUrl(program.hero_path) } };
+  const d = normalize(cardDesign, project), base = defaultDesign(project);
+  const withUrl = (a, fb) => (a && a.path ? { path: a.path, url: assetUrl(a.path), fallback: fb ? fb.url : null } : fb);
+  d.assets = { logo: withUrl(cardDesign.assets && cardDesign.assets.logo, base.assets.logo), hero: withUrl(cardDesign.assets && cardDesign.assets.hero, base.assets.hero),
+    background: withUrl(cardDesign.assets && cardDesign.assets.background, null), stamp: withUrl(cardDesign.assets && cardDesign.assets.stamp, null) };
+  if (!d.identity.name) d.identity.name = base.identity.name;
+  if (d.stamps.icon === 'custom' && !d.assets.stamp) d.stamps.icon = 'check';
+  return d;
+}
+
 // Shared design + the platform's own adjustments.
 export function effective(design, platform) {
   const p = design[platform] || {};
@@ -69,6 +84,12 @@ export function makeCardDesigner(React, api) {
 
   // ------------------------------------------------------------ real QR code (vector, never an image)
   function Qr({ value, size }) {
+    // Overview cards (no customer card yet): a neutral box, never a fake code.
+    if (!value) return h('div', { 'data-qr-placeholder': true, style: { width: size, height: size, display: 'grid', placeItems: 'center', textAlign: 'center', color: '#5E636B', fontSize: 11, lineHeight: 1.3, border: '1.5px dashed #C9C6BE', borderRadius: 6, boxSizing: 'border-box', padding: 8 } },
+      h('div', null, icon('qr_code_2', 28), h('div', null, 'QR personnel du client')));
+    return h(QrCode, { value, size });
+  }
+  function QrCode({ value, size }) {
     const d = useMemo(() => {
       const q = QRCode.create(value, { errorCorrectionLevel: 'M' }), n = q.modules.size, bits = q.modules.data;
       let path = '';
@@ -108,11 +129,22 @@ export function makeCardDesigner(React, api) {
       lines.map((l, r) => h('div', { key: r, style: { display: 'flex', gap } }, l.map(i => h(Stamp, { key: i, on: i < done, st: d.stamps, size, stampUrl })))));
   }
 
-  const Logo = ({ d, size, round }) => d.assets.logo && d.assets.logo.url
-    ? h('div', { style: { width: size, height: size, borderRadius: round ? '50%' : Math.round(size * 0.22), overflow: 'hidden', flex: 'none', background: round ? '#FFFFFF' : 'transparent' } },
-      h('img', { src: d.assets.logo.url, alt: 'Logo', style: { width: '100%', height: '100%', objectFit: 'contain', display: 'block' } }))
-    : h('div', { style: { width: size, height: size, borderRadius: round ? '50%' : Math.round(size * 0.22), flex: 'none', background: d.colors.accent, color: onColor(d.colors.accent), display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: Math.round(size * 0.32) } },
-      (d.identity.name || 'DPA').replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).map(w => w[0] || '').join('').slice(0, 3).toUpperCase());
+  // An image that cannot load falls back to the program's own image, then to `fallback` (never a broken icon).
+  function Img({ asset, style, alt, fallback }) {
+    const srcs = asset ? [asset.url, asset.fallback].filter(Boolean) : [];
+    const [i, setI] = useState(0);
+    useEffect(() => setI(0), [srcs.join('|')]);
+    if (i >= srcs.length) return fallback || null;
+    return h('img', { src: srcs[i], alt: alt || '', onError: () => setI(n => n + 1), style });
+  }
+  const initialsOf = d => (d.identity.name || 'DPA').replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).map(w => w[0] || '').join('').slice(0, 3).toUpperCase();
+  const Logo = ({ d, size, round }) => {
+    const box = { width: size, height: size, borderRadius: round ? '50%' : Math.round(size * 0.22), overflow: 'hidden', flex: 'none' };
+    const mono = h('div', { style: { ...box, background: d.colors.accent, color: onColor(d.colors.accent), display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: Math.round(size * 0.32) } }, initialsOf(d));
+    if (!d.assets.logo || !d.assets.logo.url) return mono;
+    return h(Img, { asset: d.assets.logo, alt: 'Logo', fallback: mono,
+      style: { ...box, objectFit: 'contain', display: 'block', background: round ? '#FFFFFF' : 'transparent' } });
+  };
   const cardBg = (d, opt) => opt.useBackground && d.assets.background && d.assets.background.url
     ? `linear-gradient(${rgba(d.colors.primary, 0.62)}, ${rgba(d.colors.primary, 0.62)}), url("${d.assets.background.url}") center / cover no-repeat, ${d.colors.primary}`
     : d.colors.primary;
@@ -135,8 +167,8 @@ export function makeCardDesigner(React, api) {
           h('div', { style: small }, label(d, o, data)),
           h('div', { 'data-field': 'progress', style: { fontWeight: 700, fontSize: 22, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', color: c.accent } }, data.mode === 'points' ? data.progress.toLocaleString('fr-FR') : `${Math.min(data.progress, data.goal)}/${data.goal}`))),
       // Zones 2 + 3 — main visual with the stamps on it
-      h('div', { style: { position: 'relative', width: W, height: Math.round(W / 2.45), background: hero ? '#000' : `linear-gradient(135deg, ${c.secondary}, ${c.primary})`, overflow: 'hidden' } },
-        hero ? h('img', { src: d.assets.hero.url, alt: '', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `50% ${o.heroFocus}%`, display: 'block' } }) : null,
+      h('div', { style: { position: 'relative', width: W, height: Math.round(W / 2.45), background: `linear-gradient(135deg, ${c.secondary}, ${c.primary})`, overflow: 'hidden' } },
+        hero ? h(Img, { asset: d.assets.hero, style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `50% ${o.heroFocus}%`, display: 'block' } }) : null,
         h('div', { style: { position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: '10px 18px', background: hero ? 'linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.28))' : 'none', color: '#FFFFFF' } },
           h(Progress, { d, data, width: W - 36, align: 'center', dark: false }))),
       // Zone 4 — information (3 columns)
@@ -166,8 +198,8 @@ export function makeCardDesigner(React, api) {
         h('div', { 'data-field': 'progress', style: { flex: 'none', padding: '6px 12px', borderRadius: 999, background: c.accent, color: onColor(c.accent), fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums' } },
           data.mode === 'points' ? `${data.progress.toLocaleString('fr-FR')} pts` : `${Math.min(data.progress, data.goal)} / ${data.goal}`)),
       // Main visual, inset with rounded corners
-      hero ? h('div', { style: { margin: '0 16px', height: 158, borderRadius: 16, overflow: 'hidden', background: '#000' } },
-        h('img', { src: d.assets.hero.url, alt: '', style: { width: '100%', height: '100%', objectFit: 'cover', objectPosition: `50% ${o.heroFocus}%`, display: 'block' } })) : null,
+      hero ? h('div', { style: { margin: '0 16px', height: 158, borderRadius: 16, overflow: 'hidden', background: `linear-gradient(135deg, ${c.secondary}, ${c.primary})` } },
+        h(Img, { asset: d.assets.hero, style: { width: '100%', height: '100%', objectFit: 'cover', objectPosition: `50% ${o.heroFocus}%`, display: 'block' } })) : null,
       // Progress on the card background
       h('div', { style: { padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 } },
         h('div', { style: lab }, label(d, o, data).charAt(0) + label(d, o, data).slice(1).toLowerCase()),
@@ -184,6 +216,21 @@ export function makeCardDesigner(React, api) {
   }
 
   function CardPreview({ design, data, platform }) { return h(platform === 'google' ? GoogleCard : AppleCard, { design, data }); }
+  // The card is drawn at 340 px and scaled to the width of its container (merchant screens use 280–330 px).
+  function FitCard({ design, data, platform }) {
+    const outer = useRef(null), inner = useRef(null);
+    const [box, setBox] = useState({ w: 0, h: 0 });
+    useEffect(() => {
+      const o = outer.current, i = inner.current; if (!o || !i || typeof ResizeObserver === 'undefined') return undefined;
+      const upd = () => setBox({ w: o.clientWidth, h: i.offsetHeight });
+      const ro = new ResizeObserver(upd); ro.observe(o); ro.observe(i); upd();
+      return () => ro.disconnect();
+    }, []);
+    const k = box.w ? Math.min(1, box.w / 340) : 1;
+    return h('div', { ref: outer, 'data-card-design': platform, style: { width: '100%', height: box.h ? Math.ceil(box.h * k) : 'auto', position: 'relative' } },
+      h('div', { ref: inner, style: { width: 340, position: box.w ? 'absolute' : 'static', left: box.w ? Math.max(0, (box.w - 340 * k) / 2) : 0, top: 0, transform: `scale(${k})`, transformOrigin: 'top left' } },
+        h(CardPreview, { design, data, platform })));
+  }
 
   // ------------------------------------------------------------ editor controls
   const inputStyle = { width: '100%', height: 46, padding: '0 12px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontSize: 15, outline: 'none', boxSizing: 'border-box' };
@@ -305,7 +352,14 @@ export function makeCardDesigner(React, api) {
     const validate = async () => {
       if (busy) return; setBusy('validate');
       try { const snap = JSON.stringify(design); const r = await api.validate(project.program.id, requestId, design);
-        setProject(p => ({ ...p, program: r.program, draft: r.draft })); setSaved(snap); setConfirm(false); toast('Design validé et appliqué au programme.'); }
+        setProject(p => ({ ...p, program: r.program, draft: r.draft })); setSaved(snap); setConfirm(false);
+        toast('Design validé et appliqué au programme.' + (r.google && r.google.status === 'synced' ? ' Google Wallet mis à jour.' : r.google && r.google.status === 'error' ? ' Synchro Google Wallet en erreur : réessayez.' : '')); }
+      catch (e) { toast(errText(e)); } finally { setBusy(null); }
+    };
+    const retryGoogle = async () => {
+      if (busy) return; setBusy('google');
+      try { const r = await api.googleSync(project.program.id); setProject(p => ({ ...p, draft: r.draft || p.draft }));
+        toast(r.google.status === 'synced' ? 'Google Wallet mis à jour.' : r.google.status === 'no_class' ? 'Aucune carte Google Wallet pour l’instant : le design sera utilisé à la première.' : 'La synchro Google Wallet a encore échoué.'); }
       catch (e) { toast(errText(e)); } finally { setBusy(null); }
     };
 
@@ -338,6 +392,14 @@ export function makeCardDesigner(React, api) {
       h(Section, { title: 'Projet' },
         h('div', { style: { fontSize: 15 } }, h('strong', null, project.merchant.business_name), ' · ', pg.name, ' · ', `${pg.goal} ${pg.mode === 'points' ? 'points' : 'passages'} = ${pg.reward}`),
         h('div', { style: { fontSize: 13, color: '#5E636B' } }, applied),
+        pg.card_design_validated_at && project.draft && project.draft.google_sync_status ? (() => {
+          const g = project.draft, G = { synced: ['Google Wallet à jour' + (g.google_synced_at ? ' (' + fmtDate(g.google_synced_at) + ')' : ''), '#E4F3EB', '#1F6B45'],
+            no_class: ['Google Wallet : aucune carte ajoutée pour l’instant, le design sera utilisé à la première', '#EFEDE8', '#3E424A'],
+            pending: ['Google Wallet : synchronisation en attente', '#FFF3DC', '#8A5A00'], error: ['Google Wallet : synchronisation en erreur', '#FCEBEA', '#A11D14'] }[g.google_sync_status];
+          return h('div', { 'data-google-sync': g.google_sync_status, style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 12, background: G[1], color: G[2], fontSize: 14, fontWeight: 600 } },
+            icon(g.google_sync_status === 'error' ? 'sync_problem' : g.google_sync_status === 'synced' ? 'cloud_done' : 'cloud_sync', 20), h('span', { style: { flex: 1, minWidth: 0 } }, G[0]),
+            g.google_sync_status === 'error' || g.google_sync_status === 'pending' ? h('button', { type: 'button', onClick: retryGoogle, disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: 0, borderRadius: 10, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700, fontSize: 14 } }, busy === 'google' ? 'Synchronisation…' : 'Réessayer') : null);
+        })() : null,
         (project.requests || []).length ? h(Select, { label: 'Demande de design liée', value: requestId || '', onChange: v => setRequestId(v || null),
           options: [['', 'Aucune'], ...project.requests.map(r => [r.id, 'Payée le ' + fmtDate(r.paid_at) + ' — ' + (DST[r.status] || r.status)])] }) : null,
         req ? h('div', { 'data-request': req.id, style: { display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: 12, background: '#F6F5F1', fontSize: 14 } },
@@ -435,5 +497,5 @@ export function makeCardDesigner(React, api) {
         () => busy !== 'validate' && setConfirm(false), 'Valider le design') : null);
   }
 
-  return { CardDesigner, CardPreview, AppleCard, GoogleCard, Qr };
+  return { CardDesigner, CardPreview, FitCard, AppleCard, GoogleCard, Qr };
 }

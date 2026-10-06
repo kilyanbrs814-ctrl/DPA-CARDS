@@ -314,6 +314,18 @@ inchangé), `admin-card-validate` (applique le design : `programs.card_design` s
 change ni la règle de fidélité ni le statut de la demande de design (« Marquer comme livré » reste séparé).
 Migration `20261006180155_card_designer`.
 
+**Design validé sur les vraies cartes.** `programs.card_design` pilote le rendu : accueil, fiche client, écran
+« Ma carte » (onglets Apple / Google) et carte affichée après inscription sur `/join` (layout Google sur Android,
+Apple ailleurs) utilisent `FitCard` de `src/card-designer.js` avec les données de la carte (nom, solde, récompenses
+disponibles = solde ÷ objectif, numéro, QR `DPA1:<qr_token>`). `card_design` absent : `LoyaltyCard` habituelle ;
+incomplet ou image introuvable : couleurs, logo et couverture du programme. Google Wallet : à la validation,
+la classe existante du programme est relue puis remplacée (même id, `PUT`) avec `issuerName`, `programName`,
+`programLogo`, `heroImage`, `hexBackgroundColor` (couleur Google du design), `accountNameLabel`, `accountIdLabel` ;
+les objets clients (id, QR, numéro, nom, solde, messages) ne sont pas touchés et héritent du branding de la
+classe. Une nouvelle classe est créée directement avec ce branding. L’état est suivi dans
+`card_designs.google_sync_status` (`synced`, `no_class`, `error` + message) ; en cas d’erreur le design reste
+validé et l’admin peut relancer (`POST /wallet/admin-card-google-sync`). Migration `20261006182755_card_design_google_sync`.
+
 ## Pages légales et données personnelles
 
 - Pages publiques `/mentions-legales` et `/confidentialite` (`mentions-legales.html`, `confidentialite.html`),
