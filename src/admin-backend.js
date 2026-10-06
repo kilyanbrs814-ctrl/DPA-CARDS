@@ -2,9 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Only decides who may request a sign-in link (so no Auth user is created for other e-mails).
+// Admin access itself is granted by admin_users alone, checked again by the Edge Function.
 const ALLOWED = new Set([
   'kilyan.brs814@gmail.com',
   'mael.81400@icloud.com',
+  'contact@digitalprojectagency.fr',
 ]);
 
 const sb = createClient(URL_, KEY, {
@@ -63,7 +66,7 @@ async function adminCall(route, body = {}) {
 
 async function isAuthorized(user) {
   const mail = (user?.email || '').trim().toLowerCase();
-  if (!mail || !ALLOWED.has(mail)) return false;
+  if (!mail) return false;
 
   const { data, error } = await sb
     .from('admin_users')
