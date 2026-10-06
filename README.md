@@ -326,6 +326,17 @@ classe. Une nouvelle classe est créée directement avec ce branding. L’état 
 `card_designs.google_sync_status` (`synced`, `no_class`, `error` + message) ; en cas d’erreur le design reste
 validé et l’admin peut relancer (`POST /wallet/admin-card-google-sync`). Migration `20261006182755_card_design_google_sync`.
 
+**« + Ajouter un client »** (générateur de cartes). L’admin crée un commerçant complet : `POST /wallet/admin-merchant-create`
+vérifie `admin_users`, refuse un lien public déjà pris (`slug_taken`, 24 caractères max.), une adresse qui possède déjà
+un commerce (`email_has_merchant`), demande confirmation pour un compte existant sans commerce (`attach_existing`) ou un
+nom de commerce déjà utilisé (`allow_same_name`), crée l’utilisateur Auth **sans mot de passe** (e-mail confirmé), puis
+appelle `admin_create_merchant` : il exécute `create_merchant` au nom du nouvel utilisateur (mêmes règles que
+l’inscription) et enregistre téléphone et adresse. Aucun abonnement n’est créé : le tableau de bord reste verrouillé.
+Le commerce s’ouvre aussitôt dans le générateur ; à la validation de sa carte, son programme passe en design DPA validé.
+« Envoyer l’accès au commerçant » (`POST /wallet/admin-merchant-access`, uniquement pour ces commerces, jamais automatique)
+envoie l’e-mail standard « choisir un mot de passe » (écran « Nouveau mot de passe » de l’application) ; date, nombre
+d’envois et dernière erreur dans `admin_created_merchants`. Migrations `20261006200816_admin_create_merchant`, `…200832_…_fix`.
+
 ## Pages légales et données personnelles
 
 - Pages publiques `/mentions-legales` et `/confidentialite` (`mentions-legales.html`, `confidentialite.html`),

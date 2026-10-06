@@ -58,9 +58,9 @@ function showApp() {
 async function adminCall(route, body = {}) {
   const { data, error } = await sb.functions.invoke('wallet/' + route, { body });
   if (error) {
-    let code = '';
-    try { code = (await error.context.json()).error || ''; } catch (e) {}
-    throw Object.assign(new Error(code || 'admin_unavailable'), { code });
+    let code = '', info = null;
+    try { info = await error.context.json(); code = info.error || ''; } catch (e) {}
+    throw Object.assign(new Error(code || 'admin_unavailable'), { code, info });
   }
   return data;
 }
@@ -141,6 +141,9 @@ const designerApi = {
   save: (programId, requestId, config) => adminCall('admin-card-save', { program_id: programId, design_request_id: requestId, config }),
   validate: (programId, requestId, config) => adminCall('admin-card-validate', { program_id: programId, design_request_id: requestId, config }),
   googleSync: programId => adminCall('admin-card-google-sync', { program_id: programId }),
+  // "Ajouter un client": the server creates the login (no password), the shop and its program.
+  createMerchant: payload => adminCall('admin-merchant-create', payload),
+  sendAccess: merchantId => adminCall('admin-merchant-access', { merchant_id: merchantId }),
 };
 let designer = null;
 

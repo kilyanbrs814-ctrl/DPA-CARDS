@@ -401,7 +401,7 @@ class Component extends DCLogic {
     const tabs=[{label:'Commerçants',icon:'storefront',...tabOn('list'),pick:()=>this.goTab('list')},{label:'Générateur de cartes',icon:'style',...tabOn('gen'),pick:()=>this.goTab('gen')}];
     // The designer is a React component (src/card-designer.js); this page only opens after the admin check.
     const genEl=s.tab==='gen'&&this.api&&this.api.designer?React.createElement(this.api.designer().CardDesigner,{merchants:D.map(m=>({id:m.id,name:m.business_name,program:!!m.program})),target:s.gen,width:s.w,
-      onTarget:g=>{ this.setState({gen:g}); writeHash('gen',g); },toast:m=>this.toast(m)}):null;
+      onTarget:g=>{ this.setState({gen:g}); writeHash('gen',g); },toast:m=>this.toast(m),onMerchantsChanged:()=>this.load()}):null;
     return {tabs,tabGen:s.tab==='gen',tabList:s.tab!=='gen',genEl,isDesk,isMob:!isDesk,kpis,tot:{google:nf(google),none:nf(none),googlePct:pct(google,cards),nonePct:pct(none,cards)},
       loading:s.loading,hasError:!!s.error,error:s.error||'',reload:()=>this.load(),
       q:s.q,setQ:e=>this.setState({q:e.target.value}),sort:s.sort,setSort:e=>this.setState({sort:e.target.value}),

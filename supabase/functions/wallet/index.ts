@@ -19,6 +19,8 @@
 //   POST /wallet/admin-card-save      admin session → saves the design draft (program untouched)
 //   POST /wallet/admin-card-validate  admin session → applies the design to the program, then updates its Google Wallet class
 //   POST /wallet/admin-card-google-sync  admin session → retries that Google Wallet class update
+//   POST /wallet/admin-merchant-create  admin session → "Ajouter un client": login (no password), shop, program
+//   POST /wallet/admin-merchant-access  admin session → sends that shop's owner the "choose your password" link
 //
 // verify_jwt is off: the platform check does not understand every key type, so
 // each route authorises itself. The browser only sends a card id; merchant,
@@ -872,12 +874,20 @@ async function adminCardDesigner(req: Request): Promise<Response> {
     merchantId = r.merchant_id; programId = r.program_id; requestId = r.id;
   }
   if (!UUID_RE.test(merchantId)) throw new HttpError(400, 'invalid_request');
-  const { data: merchant } = await admin.from('merchants').select('id, business_name, activity').eq('id', merchantId).maybeSingle();
-  if (!merchant) throw new HttpError(404, 'merchant_not_found');
+  const { data: m0 } = await admin.from('merchants').select('id, business_name, activity, first_name, last_name, phone, address, slug, created_by').eq('id', merchantId).maybeSingle();
+  if (!m0) throw new HttpError(404, 'merchant_not_found');
+  const { created_by, ...merchant } = m0;
+  // Account summary for the designer (owner, public link, subscription, admin-prepared shop and its access link).
+  const [{ data: sub }, { data: prepared }, emails] = await Promise.all([
+    admin.from('subscriptions').select('status').eq('merchant_id', merchantId).maybeSingle(),
+    admin.from('admin_created_merchants').select('created_at, access_sent_at, access_sent_count, access_last_error').eq('merchant_id', merchantId).maybeSingle(),
+    ownerEmails([created_by]),
+  ]);
+  const account = { owner_email: emails[created_by] ?? null, public_url: `${PUBLIC_SITE}/join/${merchant.slug}`, subscription_status: sub?.status ?? null, admin_created: prepared ?? null };
   let q = admin.from('programs').select(PROGRAM_SELECT).eq('merchant_id', merchantId);
   q = programId ? q.eq('id', programId) : q.eq('is_active', true);
   const { data: program } = await q.maybeSingle();
-  if (!program) return json(req, 200, { merchant, program: null, draft: null, request: null, requests: [] });
+  if (!program) return json(req, 200, { merchant, account, program: null, draft: null, request: null, requests: [] });
   const { data: draft } = await admin.from('card_designs').select(DRAFT_SELECT).eq('program_id', program.id).maybeSingle();
   const sign = async (p: string | null) => p ? (await admin.storage.from('design-requests').createSignedUrl(p, 3600)).data?.signedUrl ?? null : null;
   const { data: reqs } = await admin.from('design_requests')
@@ -888,7 +898,7 @@ async function adminCardDesigner(req: Request): Promise<Response> {
   })));
   const current = requestId ?? draft?.design_request_id ?? requests.find(r => r.status === 'submitted' || r.status === 'in_progress')?.id ?? null;
   return json(req, 200, {
-    merchant, program: { ...programView(program), card_design: withUrls(program.card_design) },
+    merchant, account, program: { ...programView(program), card_design: withUrls(program.card_design) },
     draft: draft ? { ...draft, config: withUrls(draft.config) } : null,
     request: requests.find(r => r.id === current) ?? null, requests,
   });
@@ -980,6 +990,12 @@ async function adminCardValidate(req: Request): Promise<Response> {
   const now = new Date().toISOString();
   // The fields the existing card and Google Wallet class already read follow the design (only images that meet their rules).
   const patch: Record<string, unknown> = { card_design: applied, card_design_validated_at: now, bg: config.colors.primary, accent: config.colors.secondary };
+  // A shop prepared by the admin gets its card from DPA Cards: its draft program becomes a finished
+  // DPA design (the merchant then lands on the dashboard, not on the onboarding card step).
+  if (program.design_status === 'draft') {
+    const { data: prepared } = await admin.from('admin_created_merchants').select('merchant_id').eq('merchant_id', program.merchant_id).maybeSingle();
+    if (prepared) Object.assign(patch, { design_status: 'validated', design_mode: 'dpa', design_validated_at: now });
+  }
   if (config.assets.logo && fit.logo) patch.logo_path = config.assets.logo.path;
   if (config.assets.hero && fit.hero) patch.hero_path = config.assets.hero.path;
   const { data: saved, error } = await admin.from('programs').update(patch).eq('id', program.id).select(PROGRAM_SELECT).single();
@@ -991,6 +1007,93 @@ async function adminCardValidate(req: Request): Promise<Response> {
   const google = await syncDesignToGoogle(program.id);
   return json(req, 200, { program: { ...programView(saved), card_design: withUrls(saved.card_design) },
     draft: { ...draft, config: withUrls(draft.config), google_sync_status: google.status, google_sync_error: google.error }, google });
+}
+
+// ---------------------------------------------------------------- admin: "Ajouter un client"
+// A merchant account prepared by DPA Cards. The login is created without a password (the merchant
+// app signs in with a password): "Envoyer l'accès au commerçant" later sends the standard
+// "choose your password" link. No subscription is created, so the dashboard stays locked as usual.
+
+const PUBLIC_SITE = 'https://dpa-cards.vercel.app';
+const SLUG_MAX = 24; // create_merchant keeps the first 24 characters
+const multiline = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ').trim().slice(0, max) : '');
+const initialsOf = (name: string) => name.normalize('NFD').replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 4).toUpperCase() || 'DPA';
+
+async function adminMerchantCreate(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const b = await req.json().catch(() => ({}));
+  const o = b?.owner ?? {}, biz = b?.business ?? {}, pr = b?.program ?? {};
+  const first = str(o.first, 80), last = str(o.last, 80), email = str(o.email, 254).toLowerCase(), phone = str(o.phone, 40);
+  const business = str(biz.name, 120), activity = str(biz.activity, 60), address = str(biz.address, 200), slug = str(biz.slug, 60).toLowerCase();
+  const mode = pr.mode === 'points' ? 'points' : 'passages', goal = Math.round(Number(pr.goal));
+  const reward = str(pr.reward, 120), programName = str(pr.name, 80) || `Club ${business}`.slice(0, 80), conditions = multiline(pr.conditions, 600);
+  const bad = (field: string) => json(req, 422, { error: 'invalid_' + field });
+  if (!first) return bad('first');
+  if (!EMAIL_RE.test(email)) return bad('email');
+  if (!business) return bad('business');
+  if (!SLUG_RE.test(slug) || slug.length > SLUG_MAX) return bad('slug');
+  if (mode === 'passages' ? !(goal >= 3 && goal <= 20) : !(goal >= 50 && goal <= 1000)) return bad('goal');
+  if (!reward) return bad('reward');
+
+  // Duplicates: never two shops on one slug, one login, or silently on the same name.
+  const { data: taken } = await admin.from('merchants').select('id').eq('slug', slug).maybeSingle();
+  if (taken) return json(req, 409, { error: 'slug_taken' });
+  const { data: same } = await admin.from('merchants').select('business_name').ilike('business_name', business.replace(/[%_\\]/g, m => '\\' + m)).limit(3);
+  if ((same ?? []).length && b?.allow_same_name !== true) return json(req, 409, { error: 'business_exists', existing: same!.map(x => x.business_name) });
+  const { data: found, error: fe } = await admin.rpc('admin_user_by_email', { p_email: email });
+  if (fe) throw new Error('db_user_by_email');
+  const existing = (found ?? [])[0];
+  if (existing?.has_merchant) return json(req, 409, { error: 'email_has_merchant' });
+  // An existing login without a shop (it signed up, or is an admin) can own the new shop, on explicit request only.
+  if (existing && b?.attach_existing !== true) return json(req, 409, { error: 'email_exists' });
+
+  let userId = existing?.user_id as string | undefined, created = false;
+  if (!userId) {
+    const { data: u, error } = await admin.auth.admin.createUser({ email, email_confirm: true, user_metadata: { first_name: first, last_name: last, business_name: business } });
+    if (error || !u?.user) return json(req, 409, { error: 'email_exists' });
+    userId = u.user.id; created = true;
+  }
+  const { data, error } = await admin.rpc('admin_create_merchant', {
+    p_user: userId, p_business: business, p_first: first, p_last: last, p_activity: activity, p_slug: slug,
+    p_program: { name: programName, mode, goal, reward, conditions, logo: initialsOf(business) }, p_phone: phone, p_address: address,
+  });
+  if (error) {
+    if (created) await admin.auth.admin.deleteUser(userId).catch(() => undefined);
+    if (/user_has_merchant|merchants_one_per_creator|merchant_members_one_merchant_per_user/.test(error.message)) return json(req, 409, { error: 'email_has_merchant' });
+    if (/merchants_slug_key/.test(error.message)) return json(req, 409, { error: 'slug_taken' });
+    console.error('wallet error', 'admin-merchant-create', error.code);
+    throw new Error('db_admin_create_merchant');
+  }
+  const m = data.merchant, p = data.program;
+  return json(req, 200, {
+    merchant: { id: m.id, business_name: m.business_name, activity: m.activity, address: m.address, phone: m.phone, slug: m.slug, first_name: m.first_name, last_name: m.last_name },
+    program: { id: p.id, name: p.name, mode: p.mode, goal: p.goal, reward: p.reward, conditions: p.conditions },
+    owner: { email, attached: !created }, public_url: `${PUBLIC_SITE}/join/${m.slug}`, subscription: null,
+  });
+}
+
+// "Envoyer l'accès au commerçant": the standard password link (same e-mail as « Mot de passe oublié »),
+// only for shops prepared by the admin and only when the admin asks.
+async function adminMerchantAccess(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const id = String(body?.merchant_id ?? '');
+  if (!UUID_RE.test(id)) throw new HttpError(400, 'invalid_request');
+  const { data: m } = await admin.from('merchants').select('id, created_by').eq('id', id).maybeSingle();
+  if (!m) throw new HttpError(404, 'merchant_not_found');
+  const { data: row } = await admin.from('admin_created_merchants').select('access_sent_count').eq('merchant_id', id).maybeSingle();
+  if (!row) throw new HttpError(409, 'not_admin_created');
+  const email = (await admin.auth.admin.getUserById(m.created_by)).data.user?.email;
+  if (!email) throw new HttpError(409, 'owner_missing');
+  const origin = req.headers.get('origin') ?? '';
+  const redirectTo = (ALLOWED_ORIGINS.includes(origin) ? origin : PUBLIC_SITE) + '/';
+  const anon = createClient(SUPABASE_URL, PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { error } = await anon.auth.resetPasswordForEmail(email, { redirectTo });
+  const errCode = error ? String((error as any).code || error.message || 'email_failed').slice(0, 300) : null;
+  const now = new Date().toISOString();
+  await admin.from('admin_created_merchants').update(error ? { access_last_error: errCode } : { access_sent_at: now, access_sent_count: row.access_sent_count + 1, access_last_error: null }).eq('merchant_id', id);
+  if (error) return json(req, 502, { error: 'access_email_failed', detail: errCode });
+  return json(req, 200, { sent: true, email, sent_at: now });
 }
 
 async function sync(req: Request): Promise<Response> {
@@ -1025,6 +1128,8 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-card-save')) return await adminCardSave(req);
     if (req.method === 'POST' && path.endsWith('/admin-card-validate')) return await adminCardValidate(req);
     if (req.method === 'POST' && path.endsWith('/admin-card-google-sync')) return await adminCardGoogleSync(req);
+    if (req.method === 'POST' && path.endsWith('/admin-merchant-create')) return await adminMerchantCreate(req);
+    if (req.method === 'POST' && path.endsWith('/admin-merchant-access')) return await adminMerchantAccess(req);
     if (req.method === 'POST' && path.endsWith('/finalize-design')) return await finalizeDesign(req);
     if (req.method === 'POST' && path.endsWith('/sync')) return await sync(req);
     return json(req, 404, { error: 'not_found' });

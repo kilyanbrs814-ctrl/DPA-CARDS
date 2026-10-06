@@ -299,8 +299,84 @@ export function makeCardDesigner(React, api) {
     document.head.appendChild(l);
   }
 
+  // ------------------------------------------------------------ "Ajouter un client" (new merchant account)
+  const ACTIVITIES = ['Restaurant', 'Fast-food', 'Coiffeur', 'Barbier', 'Boulangerie', 'Autre'];
+  const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  const slugify = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+/, '').slice(0, 24).replace(/-+$/, '');
+  const ACCESS_ERR = { over_email_send_rate_limit: 'Limite d’envoi d’e-mails atteinte : réessayez dans quelques minutes.', email_address_not_authorized: 'Le service e-mail du projet n’autorise pas encore cette adresse (serveur SMTP à configurer dans Supabase).' };
+  function Input({ id, label, value, onChange, error, type, max, placeholder, hint, required, multi }) {
+    const base = { ...inputStyle, borderColor: error ? '#B42318' : '#D4D1C9', ...(multi ? { height: 88, padding: '10px 12px', resize: 'vertical', fontFamily: 'inherit' } : {}) };
+    return h('div', null, h('label', { htmlFor: id, style: labelStyle }, label, required ? h('span', { 'aria-hidden': true, style: { color: '#B42318' } }, ' *') : null),
+      h(multi ? 'textarea' : 'input', { id, name: id, type: multi ? undefined : (type || 'text'), value, maxLength: max, placeholder, 'aria-invalid': !!error, list: id === 'nc-activity' ? 'nc-activities' : undefined,
+        onChange: e => onChange(e.target.value), style: base }),
+      id === 'nc-activity' ? h('datalist', { id: 'nc-activities' }, ACTIVITIES.map(a => h('option', { key: a, value: a }))) : null,
+      error ? h('div', { role: 'alert', style: { marginTop: 6, color: '#B42318', fontSize: 14, fontWeight: 500 } }, error) : hint ? h('div', { style: { fontSize: 13, color: '#5E636B', marginTop: 5 } }, hint) : null);
+  }
+  function NewClientForm({ onCancel, onCreated }) {
+    const [f, setF] = useState({ first: '', last: '', email: '', phone: '', business: '', activity: '', address: '', slug: '', slugEdited: false, program: '', programEdited: false, mode: 'passages', goal: 10, reward: '', conditions: '' });
+    const [err, setErr] = useState({}); const [busy, setBusy] = useState(false); const [ask, setAsk] = useState(null); const [fail, setFail] = useState('');
+    const up = k => v => setF(x => { const n = { ...x, [k]: v };
+      if (k === 'business') { if (!x.slugEdited) n.slug = slugify(v); if (!x.programEdited) n.program = v.trim() ? ('Club ' + v.trim()).slice(0, 80) : ''; }
+      if (k === 'slug') { n.slugEdited = true; n.slug = v.toLowerCase(); } if (k === 'program') n.programEdited = true; if (k === 'mode') n.goal = v === 'points' ? 100 : 10; return n; });
+    const check = () => { const e = {}, pts = f.mode === 'points';
+      if (!f.first.trim()) e.first = 'Indiquez le prénom du responsable.';
+      if (!EMAIL.test(f.email.trim())) e.email = 'Adresse e-mail invalide.';
+      if (!f.business.trim()) e.business = 'Indiquez le nom du commerce.';
+      if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(f.slug) || f.slug.length > 24) e.slug = 'Lettres minuscules, chiffres et tirets uniquement (24 caractères maximum).';
+      if (pts ? !(f.goal >= 50 && f.goal <= 1000) : !(f.goal >= 3 && f.goal <= 20)) e.goal = pts ? 'Entre 50 et 1000 points.' : 'Entre 3 et 20 passages.';
+      if (!f.reward.trim()) e.reward = 'Indiquez la récompense.';
+      setErr(e); return !Object.keys(e).length; };
+    const submit = async (opts = {}) => {
+      if (busy || !check()) return; setBusy(true); setFail(''); setAsk(null);
+      try {
+        const r = await api.createMerchant({ owner: { first: f.first, last: f.last, email: f.email.trim(), phone: f.phone }, business: { name: f.business, activity: f.activity, address: f.address, slug: f.slug },
+          program: { name: f.program, mode: f.mode, goal: f.goal, reward: f.reward, conditions: f.conditions }, ...opts });
+        onCreated(r);
+      } catch (e) {
+        const c = e && e.code, info = (e && e.info) || {}, FIELD = { invalid_first: 'first', invalid_email: 'email', invalid_business: 'business', invalid_slug: 'slug', invalid_goal: 'goal', invalid_reward: 'reward' };
+        if (FIELD[c]) setErr({ [FIELD[c]]: 'Valeur refusée par le serveur : vérifiez ce champ.' });
+        else if (c === 'slug_taken') setErr({ slug: 'Ce lien public est déjà utilisé par un autre commerce.' });
+        else if (c === 'email_has_merchant') setErr({ email: 'Cette adresse possède déjà un commerce DPA Cards. Utilisez une autre adresse : deux commerces ne sont jamais fusionnés.' });
+        else if (c === 'email_exists') setAsk({ text: 'Un compte DPA Cards existe déjà avec cette adresse, sans commerce. Rattacher ce nouveau commerce à ce compte (aucun second compte ne sera créé) ?', label: 'Rattacher et créer', opts: { ...opts, attach_existing: true } });
+        else if (c === 'business_exists') setAsk({ text: `Un commerce porte déjà ce nom (${(info.existing || []).join(', ')}). Les deux commerces resteront distincts. Créer quand même ?`, label: 'Créer quand même', opts: { ...opts, allow_same_name: true } });
+        else setFail(errText(e));
+      } finally { setBusy(false); }
+    };
+    const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 };
+    return h('form', { 'data-new-client': true, noValidate: true, onSubmit: e => { e.preventDefault(); submit(); }, style: { display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 860 } },
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } }, icon('person_add', 26, { color: '#2448F0' }), h('h2', { style: { margin: 0, fontWeight: 800, fontSize: 24 } }, 'Ajouter un client')),
+      h('p', { style: { margin: 0, color: '#4A4E55', fontSize: 15, lineHeight: 1.5 } }, 'Créez le compte complet du commerçant : il s’ouvre ensuite dans le générateur pour préparer sa carte. Aucun abonnement n’est créé et aucun e-mail n’est envoyé tant que vous ne cliquez pas sur « Envoyer l’accès au commerçant ».'),
+      h(Section, { title: 'Responsable' }, h('div', { style: grid },
+        h(Input, { id: 'nc-first', label: 'Prénom', required: true, value: f.first, max: 80, onChange: up('first'), error: err.first }),
+        h(Input, { id: 'nc-last', label: 'Nom', value: f.last, max: 80, onChange: up('last') }),
+        h(Input, { id: 'nc-email', label: 'E-mail', required: true, type: 'email', value: f.email, max: 254, onChange: up('email'), error: err.email }),
+        h(Input, { id: 'nc-phone', label: 'Téléphone', type: 'tel', value: f.phone, max: 40, onChange: up('phone') }))),
+      h(Section, { title: 'Commerce' }, h('div', { style: grid },
+        h(Input, { id: 'nc-business', label: 'Nom du commerce', required: true, value: f.business, max: 120, onChange: up('business'), error: err.business }),
+        h(Input, { id: 'nc-activity', label: 'Activité', value: f.activity, max: 60, onChange: up('activity'), placeholder: 'Restaurant, Barbier…' }),
+        h(Input, { id: 'nc-address', label: 'Adresse', value: f.address, max: 200, onChange: up('address') }),
+        h(Input, { id: 'nc-slug', label: 'Lien public', required: true, value: f.slug, max: 24, onChange: up('slug'), error: err.slug, hint: 'dpa-cards.vercel.app/join/' + (f.slug || '…') }))),
+      h(Section, { title: 'Programme de fidélité' }, h('div', { style: grid },
+        h(Input, { id: 'nc-program', label: 'Nom du programme', value: f.program, max: 80, onChange: up('program'), placeholder: 'Club ' + (f.business || '…') }),
+        h(Select, { label: 'Mode', value: f.mode, options: [['passages', 'Passages'], ['points', 'Points']], onChange: up('mode') }),
+        h('div', null, h(Num, { label: 'Objectif', value: f.goal, min: f.mode === 'points' ? 50 : 3, max: f.mode === 'points' ? 1000 : 20, onChange: up('goal') }), err.goal ? h('div', { role: 'alert', style: { marginTop: 6, color: '#B42318', fontSize: 14 } }, err.goal) : null),
+        h(Input, { id: 'nc-reward', label: 'Récompense', required: true, value: f.reward, max: 120, onChange: up('reward'), error: err.reward, placeholder: '1 dessert offert' })),
+        h(Input, { id: 'nc-conditions', label: 'Conditions (facultatif)', value: f.conditions, max: 600, onChange: up('conditions'), multi: true })),
+      h(Section, { title: 'Compte' },
+        h('div', { style: { fontSize: 15 } }, 'E-mail de connexion : ', h('strong', null, f.email.trim() || '—')),
+        h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45 } }, 'Aucun mot de passe à saisir : le commerçant choisira le sien grâce au lien « Envoyer l’accès au commerçant », quand vous le déciderez.')),
+      ask ? h('div', { role: 'alertdialog', 'aria-label': 'Confirmation', style: { display: 'flex', flexDirection: 'column', gap: 10, padding: 14, borderRadius: 14, background: '#FFF3DC', color: '#5C4200', fontSize: 15 } }, ask.text,
+        h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
+          h('button', { type: 'button', onClick: () => submit(ask.opts), disabled: busy, style: { minHeight: 44, padding: '0 14px', border: 0, borderRadius: 12, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700 } }, ask.label),
+          h('button', { type: 'button', onClick: () => setAsk(null), style: { minHeight: 44, padding: '0 14px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600 } }, 'Modifier'))) : null,
+      fail ? h('div', { role: 'alert', style: { padding: '12px 14px', borderRadius: 12, background: '#FCEBEA', color: '#7A1A13', fontWeight: 600 } }, fail) : null,
+      h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
+        h('button', { type: 'button', onClick: onCancel, disabled: busy, style: { minHeight: 50, padding: '0 18px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 15 } }, 'Annuler'),
+        h('button', { type: 'submit', disabled: busy, style: { minHeight: 50, padding: '0 20px', border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('person_add', 20), busy ? 'Création…' : 'Créer le client')));
+  }
+
   // ------------------------------------------------------------ the designer screen
-  function CardDesigner({ merchants, target, onTarget, toast, width }) {
+  function CardDesigner({ merchants, target, onTarget, toast, width, onMerchantsChanged }) {
     const [project, setProject] = useState(null);
     const [design, setDesign] = useState(null);
     const [saved, setSaved] = useState('');
@@ -311,6 +387,9 @@ export function makeCardDesigner(React, api) {
     const [crop, setCrop] = useState(null);
     const [confirm, setConfirm] = useState(false);
     const [requestId, setRequestId] = useState(null);
+    const [adding, setAdding] = useState(false);
+    const [created, setCreated] = useState(null);
+    const [askAccess, setAskAccess] = useState(false);
     const key = target ? (target.requestId ? 'r:' + target.requestId : target.merchantId ? 'm:' + target.merchantId : '') : '';
     useEffect(loadFonts, []);
 
@@ -363,16 +442,32 @@ export function makeCardDesigner(React, api) {
       catch (e) { toast(errText(e)); } finally { setBusy(null); }
     };
 
+    const sendAccess = async () => {
+      if (busy || !project) return; setBusy('access');
+      try { const r = await api.sendAccess(project.merchant.id);
+        setProject(p => ({ ...p, account: { ...p.account, admin_created: { ...(p.account.admin_created || {}), access_sent_at: r.sent_at, access_sent_count: ((p.account.admin_created || {}).access_sent_count || 0) + 1, access_last_error: null } } }));
+        setAskAccess(false); toast('Accès envoyé à ' + r.email + '.'); }
+      catch (e) { setAskAccess(false); const d = e && e.info && e.info.detail; toast(e && e.code === 'access_email_failed' ? 'Envoi impossible : ' + (ACCESS_ERR[d] || d || 'erreur du service e-mail') : errText(e)); }
+      finally { setBusy(null); }
+    };
+    const onCreated = r => { setAdding(false); setCreated(r); setProject(null); setDesign(null); onTarget({ merchantId: r.merchant.id, requestId: null }); if (onMerchantsChanged) onMerchantsChanged(); };
+
     const desk = width >= 1024, two = width >= 900;
-    const merchantOptions = [['', 'Choisir un commerce…'], ...merchants.map(m => [m.id, m.name + (m.program ? '' : ' (sans programme)')])];
+    const list = created && !merchants.some(m => m.id === created.merchant.id) ? [...merchants, { id: created.merchant.id, name: created.merchant.business_name, program: true }] : merchants;
+    const merchantOptions = [['', 'Sélectionner un commerce…'], ...list.map(m => [m.id, m.name + (m.program ? '' : ' (sans programme)')])];
     const top = h('div', { style: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' } },
       h('div', null,
         h('h1', { style: { margin: 0, fontWeight: 800, fontSize: 'clamp(28px,5vw,38px)', letterSpacing: '-0.03em', lineHeight: 1.05 } }, 'Générateur de cartes'),
         h('div', { style: { marginTop: 6, color: '#5E636B', fontSize: 15 } }, 'Un seul projet de design par programme, décliné en Apple Wallet et Google Wallet.')),
-      h('div', { style: { minWidth: 260, flex: desk ? 'none' : '1 1 260px' } },
-        h(Select, { label: 'Créer la carte pour', value: project && project.merchant ? project.merchant.id : (target && target.merchantId) || '', options: merchantOptions,
-          onChange: v => { if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Changer de commerce ?')) return; onTarget(v ? { merchantId: v, requestId: null } : null); } })));
+      h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', flex: desk ? 'none' : '1 1 260px' } },
+        h('div', { style: { minWidth: 260, flex: '1 1 260px' } },
+          h(Select, { label: 'Commerce', value: adding ? '' : project && project.merchant ? project.merchant.id : (target && target.merchantId) || '', options: merchantOptions,
+            onChange: v => { if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Changer de commerce ?')) return; setAdding(false); setCreated(null); onTarget(v ? { merchantId: v, requestId: null } : null); } })),
+        h('button', { type: 'button', onClick: () => { if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Continuer ?')) return; setAdding(true); setCreated(null); },
+          'aria-pressed': adding, style: { minHeight: 46, padding: '0 16px', border: 0, borderRadius: 12, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' } },
+          icon('add', 20), 'Ajouter un client')));
 
+    if (adding) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h(NewClientForm, { onCancel: () => setAdding(false), onCreated }));
     if (!key) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top,
       h('div', { style: { background: '#FFFFFF', border: '1px solid #E4E1DA', borderRadius: 18, padding: '32px 20px', textAlign: 'center', color: '#5E636B' } }, icon('style', 36, { color: '#9A9EA6' }),
         h('div', { style: { marginTop: 10, fontWeight: 700, fontSize: 17, color: '#1C1F24' } }, 'Choisissez un commerce'), h('div', { style: { marginTop: 6, fontSize: 15 } }, 'Ou ouvrez une demande de design payée avec « Créer la carte ».')));
@@ -388,10 +483,34 @@ export function makeCardDesigner(React, api) {
       : project.draft ? ['Brouillon enregistré le ' + fmtDate(project.draft.updated_at), '#E8EDFF', '#1A36C4'] : ['Nouveau projet', '#EFEDE8', '#3E424A'];
     const applied = pg.card_design_validated_at ? 'Design appliqué au programme le ' + fmtDate(pg.card_design_validated_at) : 'Aucun design appliqué à ce programme pour l’instant.';
 
+    // Shop prepared by the admin: its owner gets the access link only when the admin sends it.
+    const acc = project.account || {}, ac = acc.admin_created;
+    const accessBtn = (primary) => h('button', { type: 'button', onClick: () => setAskAccess(true), disabled: !!busy, 'data-send-access': true,
+      style: { minHeight: 44, padding: '0 14px', border: primary ? 0 : '1.5px solid #1C1F24', borderRadius: 12, background: primary ? '#1C1F24' : '#FFFFFF', color: primary ? '#FFFFFF' : '#1C1F24', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
+      icon('forward_to_inbox', 18), ac && ac.access_sent_at ? 'Renvoyer l’accès au commerçant' : 'Envoyer l’accès au commerçant');
+    const accessBlock = ac ? h('div', { 'data-access': ac.access_sent_at ? 'sent' : 'not_sent', style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 12, background: '#F6F5F1', fontSize: 14 } },
+      icon('badge', 20, { color: '#5E636B' }),
+      h('span', { style: { flex: '1 1 220px', minWidth: 0 } }, 'Compte préparé par DPA Cards · ', acc.owner_email || '—', ' · ',
+        ac.access_sent_at ? 'accès envoyé le ' + fmtDate(ac.access_sent_at) + (ac.access_sent_count > 1 ? ` (${ac.access_sent_count} envois)` : '') : 'accès pas encore envoyé',
+        ac.access_last_error ? ' · dernier envoi en erreur' : ''),
+      accessBtn(false)) : null;
+    const SUBL = { trialing: 'Essai gratuit', active: 'Actif', past_due: 'Paiement en retard', canceled: 'Résilié', incomplete: 'Non finalisé', unpaid: 'Impayé', paused: 'Suspendu' };
+    const summary = created && created.merchant.id === project.merchant.id ? h('section', { 'data-created': created.merchant.id, 'aria-label': 'Client créé', style: { background: '#E4F3EB', border: '1px solid #B9E0CB', borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 } },
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } }, icon('task_alt', 26, { color: '#1F6B45' }), h('h2', { style: { margin: 0, fontWeight: 800, fontSize: 20, color: '#1F6B45' } }, 'Client créé avec succès')),
+      h('dl', { style: { margin: 0, display: 'grid', gridTemplateColumns: 'minmax(120px,max-content) minmax(0,1fr)', gap: '6px 16px', fontSize: 15 } },
+        [['Commerce', created.merchant.business_name], ['Responsable', [created.merchant.first_name, created.merchant.last_name].filter(Boolean).join(' ')], ['E-mail', created.owner.email + (created.owner.attached ? ' (compte existant rattaché)' : '')],
+          ['Lien public', created.public_url], ['Abonnement', acc.subscription_status ? (SUBL[acc.subscription_status] || acc.subscription_status) : 'Non activé'],
+          ['Programme', `${created.program.name} · ${created.program.goal} ${created.program.mode === 'points' ? 'points' : 'passages'} = ${created.program.reward}`]]
+          .map(([k, v]) => [h('dt', { key: k + 't', style: { color: '#3E424A' } }, k), h('dd', { key: k + 'd', style: { margin: 0, fontWeight: 600, overflowWrap: 'anywhere' } }, v)])),
+      h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
+        h('button', { type: 'button', onClick: () => setCreated(null), style: { minHeight: 46, padding: '0 18px', border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('style', 20), 'Créer sa carte'),
+        accessBtn(false))) : null;
+
     const params = h('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
       h(Section, { title: 'Projet' },
         h('div', { style: { fontSize: 15 } }, h('strong', null, project.merchant.business_name), ' · ', pg.name, ' · ', `${pg.goal} ${pg.mode === 'points' ? 'points' : 'passages'} = ${pg.reward}`),
         h('div', { style: { fontSize: 13, color: '#5E636B' } }, applied),
+        accessBlock,
         pg.card_design_validated_at && project.draft && project.draft.google_sync_status ? (() => {
           const g = project.draft, G = { synced: ['Google Wallet à jour' + (g.google_synced_at ? ' (' + fmtDate(g.google_synced_at) + ')' : ''), '#E4F3EB', '#1F6B45'],
             no_class: ['Google Wallet : aucune carte ajoutée pour l’instant, le design sera utilisé à la première', '#EFEDE8', '#3E424A'],
@@ -483,10 +602,17 @@ export function makeCardDesigner(React, api) {
     const cropC = crop && CROPS[crop.kind];
 
     return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } },
-      top, actions,
+      top, summary, actions,
       h('div', { style: two ? { display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(380px, 1fr)', gap: 24, alignItems: 'start' } : { display: 'flex', flexDirection: 'column', gap: 18 } },
         two ? params : preview, two ? preview : params),
       crop ? modal(h(Cropper, { key: crop.src, src: crop.src, aspect: cropC.aspect, outW: cropC.outW, outH: cropC.outH, mime: cropC.mime, round: false, title: cropC.title, hint: cropC.hint, onDone: uploadCropped, onCancel: () => { URL.revokeObjectURL(crop.src); setCrop(null); } }), () => {}, cropC.title) : null,
+      askAccess ? modal([
+        h('h2', { key: 't', style: { margin: 0, fontWeight: 800, fontSize: 22 } }, 'Envoyer l’accès au commerçant ?'),
+        h('p', { key: 'p', style: { margin: 0, fontSize: 15, color: '#3E424A', lineHeight: 1.5 } }, `Un e-mail sera envoyé à ${acc.owner_email || 'l’adresse du commerçant'} avec un lien pour choisir son mot de passe et se connecter à son espace DPA Cards. Son abonnement restera à choisir de son côté.`),
+        h('div', { key: 'b', style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
+          h('button', { type: 'button', onClick: () => setAskAccess(false), disabled: busy === 'access', style: { flex: 1, minWidth: 120, minHeight: 50, border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 15 } }, 'Annuler'),
+          h('button', { type: 'button', onClick: sendAccess, disabled: busy === 'access', style: { flex: 2, minWidth: 160, minHeight: 50, border: 0, borderRadius: 12, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700, fontSize: 15 } }, busy === 'access' ? 'Envoi…' : 'Envoyer l’accès'))],
+        () => busy !== 'access' && setAskAccess(false), 'Envoyer l’accès au commerçant') : null,
       confirm ? modal([
         h('h2', { key: 't', style: { margin: 0, fontWeight: 800, fontSize: 22 } }, 'Valider le design ?'),
         h('p', { key: 'p', style: { margin: 0, fontSize: 15, color: '#3E424A', lineHeight: 1.5 } }, `Le design sera appliqué au programme « ${pg.name} » de ${project.merchant.business_name} : couleurs, logo, image principale et style des tampons, pour Apple Wallet et Google Wallet. Les données de chaque client restent générées par DPA Cards.`),
