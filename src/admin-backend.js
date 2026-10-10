@@ -11,8 +11,11 @@ const ALLOWED = new Set([
   'contact@digitalprojectagency.fr',
 ]);
 
+// Own storage key: the merchant app (same origin) keeps its session under the default key, and
+// its sign-in, sign-out and "Se souvenir de moi" (sessionStorage) must not replace or drop this one.
 const sb = createClient(URL_, KEY, {
   auth: {
+    storageKey: 'dpa-admin-auth',
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
