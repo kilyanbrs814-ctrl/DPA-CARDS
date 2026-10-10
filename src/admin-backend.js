@@ -120,9 +120,22 @@ form.addEventListener('submit', async (e) => {
   submit.textContent = 'Recevoir le lien de connexion';
 
   message.textContent = error
-    ? 'Impossible d’envoyer le lien pour le moment.'
+    ? linkErrorMessage(error)
     : 'Lien envoyé. Ouvrez l’e-mail reçu pour vous connecter.';
 });
+
+// Supabase Auth errors on a sign-in link request, from its error code and status (never the raw message).
+function linkErrorMessage(error) {
+  const code = error.code || '', status = error.status || 0;
+  const wait = /after (\d+) seconds?/i.exec(error.message || '');
+  if (code === 'over_email_send_rate_limit' && wait) return `Un lien vient d’être envoyé à cette adresse. Patientez ${wait[1]} secondes avant d’en demander un autre.`;
+  if (code === 'over_email_send_rate_limit') return 'Limite d’envoi d’e-mails atteinte. Utilisez le dernier lien reçu (vérifiez les spams) ou réessayez dans une heure.';
+  if (status === 429 || code === 'over_request_rate_limit') return 'Trop de tentatives. Réessayez dans quelques minutes.';
+  if (status >= 500) return 'Le service d’e-mail n’a pas pu envoyer le lien. Réessayez dans quelques minutes.';
+  if (!status) return 'Service de connexion injoignable. Vérifiez votre connexion internet puis réessayez.';
+  if (code === 'email_address_invalid' || code === 'email_address_not_authorized') return 'Cette adresse ne peut pas recevoir de lien de connexion.';
+  return 'Impossible d’envoyer le lien pour le moment.';
+}
 
 signout.addEventListener('click', async () => {
   await sb.auth.signOut({ scope: 'local' });
