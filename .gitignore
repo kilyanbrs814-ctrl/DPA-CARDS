@@ -5,3 +5,4 @@ supabase/.temp/
 supabase/.branches/
 supabase/functions/.env
 *.service-account.json
+supabase-email-backup-*.json
