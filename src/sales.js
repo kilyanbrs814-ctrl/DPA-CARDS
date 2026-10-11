@@ -17,9 +17,14 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xx
 const COMM = { to_validate: ['À valider', C.amberBg, C.amber], to_pay: ['À payer', C.blueBg, C.blueInk], paid: ['Payé', C.greenBg, C.green], cancelled: ['Annulé', C.greyBg, C.grey] };
 const PAY = { paid: ['Payé', C.greenBg, C.green], failed: ['Échoué', C.redBg, C.red], refunded: ['Remboursé', C.redBg, C.red], partially_refunded: ['Remboursé en partie', C.amberBg, C.amber], pending: ['En attente', C.greyBg, C.grey] };
 const SUB = { active: ['Actif', C.greenBg, C.green], trialing: ['Essai', C.blueBg, C.blueInk], canceled: ['Résilié', C.redBg, C.red], past_due: ['Paiement en retard', C.amberBg, C.amber],
-  unpaid: ['Impayé', C.redBg, C.red], incomplete: ['Non finalisé', C.amberBg, C.amber], incomplete_expired: ['Expiré', C.greyBg, C.grey], paused: ['Suspendu', C.redBg, C.red], none: ['Sans abonnement', C.greyBg, C.grey] };
-const PAYKIND = { setup: 'Mise en place', subscription: 'Mensualité', design: 'Design', other: 'Autre' };
-const subKey = m => (m.subscription_status === 'canceled' || m.cancel_at_period_end ? 'canceled' : m.subscription_status || 'none');
+  unpaid: ['Impayé', C.redBg, C.red], incomplete: ['Non finalisé', C.amberBg, C.amber], incomplete_expired: ['Expiré', C.greyBg, C.grey], paused: ['Suspendu', C.redBg, C.red], expired: ['Offre terminée', C.greyBg, C.grey], prepaid: ['Payé en une fois', C.greenBg, C.green], none: ['Sans abonnement', C.greyBg, C.grey] };
+const PAYKIND = { setup: 'Mise en place', subscription: 'Mensualité', prepaid: 'Engagement payé en une fois', design: 'Design', other: 'Autre' };
+// A commitment paid in one go shows as such (never as a monthly subscription), until its period ends.
+const subKey = m => (m.billing_mode === 'prepaid' && m.subscription_status === 'active' ? (m.period_end && new Date(m.period_end) <= new Date() ? 'expired' : 'prepaid')
+  : m.subscription_status === 'canceled' || m.cancel_at_period_end ? 'canceled' : m.subscription_status || 'none');
+// No commission rule covers a one-go payment yet: tracked, no amount computed.
+const RULE_TODO = ['Règle de commission à définir', C.amberBg, C.amber];
+const periodText = p => (p.period_start && p.period_end ? 'Période couverte : ' + day(p.period_start) + ' → ' + day(p.period_end) : '');
 const commKind = c => (c.reverses_id ? 'Régularisation' : c.kind === 'initial' ? 'Initiale' : 'Récurrente');
 const PLAN = { no_commitment: 'Sans engagement', commitment: 'Engagement 12 mois' };
 function ruleText(r, repName) {
@@ -119,7 +124,7 @@ export function makeSales(React, api) {
     const filters = h('div', { style: { display: 'grid', gridTemplateColumns: isDesk ? 'repeat(4, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))', gap: 10 } },
       field('Période', select(period, setPeriod, periods, 'Période')),
       field('Commercial', select(rep, setRep, [['all', 'Tous'], ...reps.map(r => [r.id, r.name]), ['none', 'Non attribués']], 'Commercial')),
-      field('Abonnement', select(subSt, setSubSt, [['all', 'Tous'], ['active', 'Actif'], ['trialing', 'Essai'], ['canceled', 'Résilié'], ['past_due', 'Paiement en retard'], ['none', 'Sans abonnement']], 'Statut d’abonnement')),
+      field('Abonnement', select(subSt, setSubSt, [['all', 'Tous'], ['active', 'Actif'], ['trialing', 'Essai'], ['prepaid', 'Payé en une fois'], ['expired', 'Offre terminée'], ['canceled', 'Résilié'], ['past_due', 'Paiement en retard'], ['none', 'Sans abonnement']], 'Statut d’abonnement')),
       field('Commission', select(commSt, setCommSt, [['all', 'Toutes'], ['to_validate', 'À valider'], ['to_pay', 'À payer'], ['paid', 'Payées'], ['cancelled', 'Annulées']], 'Statut de commission')));
 
     const VIEWS = [['overview', 'Vue d’ensemble', 'monitoring'], ['statement', 'Relevé et versements', 'receipt_long'], ['merchants', 'Commerçants', 'storefront'],
@@ -155,26 +160,30 @@ export function makeSales(React, api) {
         h('div', { style: { fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted } }, 'Activité commerciale'),
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 } },
           metric('Comptes créés', nf(r.merchants)), metric('Cartes créées', nf(r.cards)), metric('Ventes payées', nf(r.sales_paid)),
-          metric('Abonnements actifs', nf(r.active)), metric('En essai', nf(r.trialing)), metric('Résiliés', nf(r.canceled))),
+          metric('Abonnements actifs', nf(r.active)), metric('En essai', nf(r.trialing)), metric('Résiliés', nf(r.canceled)),
+          ...(r.prepaid_active || r.prepaid_sales ? [metric('Payés en une fois (en cours)', nf(r.prepaid_active))] : [])),
         (r.payments_failed || r.refunds || r.past_due) ? h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
           r.past_due ? badge([`${r.past_due} en retard de paiement`, C.amberBg, C.amber]) : null,
           r.payments_failed ? badge([`${r.payments_failed} paiement${r.payments_failed > 1 ? 's' : ''} échoué${r.payments_failed > 1 ? 's' : ''}`, C.redBg, C.red]) : null,
           r.refunds ? badge([`${r.refunds} remboursement${r.refunds > 1 ? 's' : ''}`, C.redBg, C.red]) : null) : null,
         h('div', { style: { fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted } }, 'Chiffre d’affaires encaissé'),
-        h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 } }, metric('Initial (mise en place)', eur(r.revenue_initial_cents)), metric('Mensuel (abonnements)', eur(r.revenue_monthly_cents))),
+        h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 } }, metric('Initial (mise en place)', eur(r.revenue_initial_cents)), metric('Mensuel (abonnements)', eur(r.revenue_monthly_cents)),
+          ...(r.revenue_prepaid_cents || r.prepaid_sales ? [metric('Engagement payé en une fois', eur(r.revenue_prepaid_cents))] : [])),
+        r.prepaid_sales ? h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: 13, color: C.muted } }, badge(RULE_TODO),
+          `${r.prepaid_sales} paiement${r.prepaid_sales > 1 ? 's' : ''} en une fois : aucune commission calculée`) : null,
         h('div', { style: { fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted } }, 'Commissions'),
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 } },
           metric('Initiales dues', eur(r.comm_initial_cents)), metric('Récurrentes dues', eur(r.comm_recurring_cents)),
           metric('Déjà versées', eur(r.comm_paid_cents), '#1F6B45'), metric('Restant à payer', eur(r.comm_to_validate_cents + r.comm_to_pay_cents), C.blueInk)));
       const cols = [{ label: 'Commercial' }, { label: 'Comptes', num: 1 }, { label: 'Cartes', num: 1 }, { label: 'Ventes payées', num: 1 }, { label: 'Actifs', num: 1 }, { label: 'Essai', num: 1 }, { label: 'Résiliés', num: 1 },
-        { label: 'CA initial', num: 1 }, { label: 'CA mensuel', num: 1 }, { label: 'Comm. dues', num: 1 }, { label: 'Versées', num: 1 }, { label: 'Reste', num: 1 }];
+        { label: 'CA initial', num: 1 }, { label: 'CA mensuel', num: 1 }, { label: 'CA payé en une fois', num: 1 }, { label: 'Comm. dues', num: 1 }, { label: 'Versées', num: 1 }, { label: 'Reste', num: 1 }];
       const totals = k => shownReps.reduce((s, r) => s + (+r[k] || 0), 0);
       const rowOf = (r, bold) => h('tr', { key: r.id || 'total', style: bold ? { fontWeight: 800, background: '#F8F7F4' } : null },
         h('td', { style: { ...td, fontWeight: 700 } }, r.name), ...['merchants', 'cards', 'sales_paid', 'active', 'trialing', 'canceled'].map(k => h('td', { key: k, style: { ...td, ...num } }, nf(r[k]))),
-        ...['revenue_initial_cents', 'revenue_monthly_cents'].map(k => h('td', { key: k, style: { ...td, ...num } }, eur(r[k]))),
+        ...['revenue_initial_cents', 'revenue_monthly_cents', 'revenue_prepaid_cents'].map(k => h('td', { key: k, style: { ...td, ...num } }, eur(r[k]))),
         h('td', { style: { ...td, ...num } }, eur(r.comm_initial_cents + r.comm_recurring_cents)), h('td', { style: { ...td, ...num, color: C.green } }, eur(r.comm_paid_cents)),
         h('td', { style: { ...td, ...num, color: C.blueInk, fontWeight: 700 } }, eur(r.comm_to_validate_cents + r.comm_to_pay_cents)));
-      const sum = { name: 'Total' }; ['merchants', 'cards', 'sales_paid', 'active', 'trialing', 'canceled', 'revenue_initial_cents', 'revenue_monthly_cents', 'comm_initial_cents', 'comm_recurring_cents', 'comm_paid_cents', 'comm_to_validate_cents', 'comm_to_pay_cents'].forEach(k => { sum[k] = totals(k); });
+      const sum = { name: 'Total' }; ['merchants', 'cards', 'sales_paid', 'active', 'trialing', 'canceled', 'revenue_initial_cents', 'revenue_monthly_cents', 'revenue_prepaid_cents', 'comm_initial_cents', 'comm_recurring_cents', 'comm_paid_cents', 'comm_to_validate_cents', 'comm_to_pay_cents'].forEach(k => { sum[k] = totals(k); });
       return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } },
         isDesk ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
           h('h2', { style: { margin: 0, fontSize: 20, fontWeight: 800 } }, 'Tableau des performances · ' + monthLabel(period === 'all' ? null : period)),
@@ -277,11 +286,16 @@ export function makeSales(React, api) {
     function Payments() {
       const list = data.payments.filter(p => rep === 'all' || (rep === 'none' ? !p.sales_rep_id : p.sales_rep_id === rep));
       return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
-        h('p', { style: { margin: 0, color: C.muted, fontSize: 14, lineHeight: 1.5 } }, 'Paiements reçus de Stripe : mises en place, mensualités, échecs et remboursements. Un paiement reçu plusieurs fois par Stripe n’apparaît qu’une fois.'),
+        h('p', { style: { margin: 0, color: C.muted, fontSize: 14, lineHeight: 1.5 } }, 'Paiements reçus de Stripe : mises en place, mensualités, engagements payés en une fois, échecs et remboursements. Un paiement reçu plusieurs fois par Stripe n’apparaît qu’une fois. Un paiement en une fois est compté une seule fois, à sa date, jamais comme des mensualités.'),
         table(['Date', 'Commerce', 'Commercial', 'Type', 'Statut', { label: 'Montant', num: 1 }, { label: 'Remboursé', num: 1 }, 'Référence'],
           list.map(p => h('tr', { key: p.id }, h('td', { style: td }, day(p.paid_at || p.failed_at)),
             h('td', { style: td }, p.merchant_id ? h('button', { type: 'button', onClick: () => onOpenMerchant(p.merchant_id), style: { border: 0, background: 'transparent', padding: 0, color: C.blueInk, fontWeight: 700, textAlign: 'left' } }, p.merchant_name) : p.merchant_name),
-            h('td', { style: td }, p.sales_rep_id ? repName(p.sales_rep_id) : '—'), h('td', { style: td }, PAYKIND[p.kind] || p.kind), h('td', { style: td }, badge(PAY[p.status] || PAY.pending)),
+            h('td', { style: td }, p.sales_rep_id ? repName(p.sales_rep_id) : '—'), h('td', { style: td }, PAYKIND[p.kind] || p.kind,
+              p.kind === 'prepaid' ? h('div', { style: { fontSize: 12, color: C.muted, marginTop: 2 } }, periodText(p), p.prepaid ? h('div', null, eur(p.prepaid.setup_cents) + ' de mise en place + ' + p.prepaid.months + ' × ' + eur(p.prepaid.monthly_cents)) : null) : null,
+              p.kind === 'prepaid' && p.sales_rep_id ? h('div', { style: { marginTop: 4 } }, badge(RULE_TODO)) : null,
+              p.prepaid && p.prepaid.conflict ? h('div', { style: { marginTop: 4 } }, badge(['Offre déjà en cours : à rembourser', C.redBg, C.red])) : null,
+              p.prepaid && p.prepaid.dispute_status ? h('div', { style: { marginTop: 4 } }, badge(['Litige ' + ({ open: 'en cours', won: 'gagné', lost: 'perdu' }[p.prepaid.dispute_status]), C.amberBg, C.amber])) : null),
+            h('td', { style: td }, badge(PAY[p.status] || PAY.pending)),
             h('td', { style: { ...td, ...num, fontWeight: 700 } }, eur(p.amount_cents)), h('td', { style: { ...td, ...num, color: p.refunded_cents ? C.red : C.muted } }, p.refunded_cents ? eur(p.refunded_cents) : '—'),
             h('td', { style: { ...td, fontSize: 12, color: C.muted, fontFamily: "'IBM Plex Mono',monospace" } }, p.ref))), 'Aucun paiement sur cette période.'));
     }
@@ -415,7 +429,8 @@ export function makeSales(React, api) {
       h('div', { style: { fontSize: 15 } }, 'Commercial : ', h('strong', null, salesRep ? salesRep.name : 'non attribué'),
         salesRep ? h('span', { style: { color: C.muted, fontSize: 13 } }, ' · ' + (salesRep.source === 'admin_creation' ? 'créé depuis l’admin' : 'attribution manuelle') + ' le ' + day(salesRep.at)) : null),
       h('h4', { style: { ...sub, fontSize: 14, marginTop: 6 } }, 'Paiements'),
-      sales.payments.length ? sales.payments.map((p, i) => line('p' + i, h('span', null, (PAYKIND[p.kind] || p.kind) + ' · ' + day(p.paid_at || p.failed_at)), eur(p.amount_cents), badge(PAY[p.status] || PAY.pending)))
+      sales.payments.length ? sales.payments.map((p, i) => line('p' + i, h('span', null, (PAYKIND[p.kind] || p.kind) + ' · ' + day(p.paid_at || p.failed_at),
+          p.kind === 'prepaid' ? h('div', { style: { fontSize: 12, color: C.muted } }, periodText(p) + ' · règle de commission à définir') : null), eur(p.amount_cents), badge(PAY[p.status] || PAY.pending)))
         : h('div', { style: { fontSize: 14, color: C.muted } }, 'Aucun paiement encaissé.'),
       h('h4', { style: { ...sub, fontSize: 14, marginTop: 6 } }, 'Commissions'),
       sales.commissions.length ? sales.commissions.map(c => line(c.id, h('span', null, commKind(c) + ' · ' + repName(c.sales_rep_id) + ' · ' + monthLabel(c.period.slice(0, 7))), eur(c.amount_cents), badge(COMM[c.status])))

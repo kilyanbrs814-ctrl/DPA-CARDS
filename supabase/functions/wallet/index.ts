@@ -753,8 +753,12 @@ async function adminOverview(req: Request): Promise<Response> {
   const user = await requireAdmin(req);
   const { data, error } = await admin.rpc('admin_overview');
   if (error) throw new Error('db_admin_overview');
-  const [emails, reps] = await Promise.all([ownerEmails((data.merchants as any[]).map(m => m.owner_id)), attributions()]);
-  const merchants = (data.merchants as any[]).map(({ owner_id, ...m }) => ({ ...m, owner_email: emails[owner_id] ?? null, sales_rep: reps[m.id] ?? null }));
+  const [emails, reps, { data: modes }] = await Promise.all([ownerEmails((data.merchants as any[]).map(m => m.owner_id)), attributions(),
+    admin.from('subscriptions').select('merchant_id, billing_mode')]);
+  // Monthly or paid in one go (commitment offer), next to the subscription the dashboard already shows.
+  const mode: Record<string, string> = Object.fromEntries((modes ?? []).map(x => [x.merchant_id, x.billing_mode]));
+  const merchants = (data.merchants as any[]).map(({ owner_id, ...m }) => ({ ...m, owner_email: emails[owner_id] ?? null, sales_rep: reps[m.id] ?? null,
+    subscription: m.subscription ? { ...m.subscription, billing_mode: mode[m.id] ?? 'monthly' } : null }));
   return json(req, 200, { kpis: data.kpis, merchants, me: { email: user.dpaEmail, role: user.dpaRole } });
 }
 
@@ -767,7 +771,12 @@ async function adminMerchant(req: Request): Promise<Response> {
   if (error) throw new Error('db_admin_merchant');
   if (!data) throw new HttpError(404, 'merchant_not_found');
   const { owner_id, ...merchant } = data.merchant;
-  const [emails, reps] = await Promise.all([ownerEmails([owner_id]), attributions([id])]);
+  const [emails, reps, { data: sub }, { data: prepaid }] = await Promise.all([ownerEmails([owner_id]), attributions([id]),
+    admin.from('subscriptions').select('billing_mode').eq('merchant_id', id).maybeSingle(),
+    // Commitment paid in one go: what was collected, the period it covers, refunds (pending attempts left out).
+    admin.from('prepaid_purchases').select('id, months, monthly_cents, setup_cents, total_cents, status, conflict, dispute_status, access_start, access_end, paid_at, refunded_cents, refunded_at, access_revoked_at')
+      .eq('merchant_id', id).in('status', ['paid', 'refunded', 'partially_refunded']).order('paid_at', { ascending: false })]);
+  if (data.subscription) data.subscription.billing_mode = sub?.billing_mode ?? 'monthly';
   // Payments, commissions and attribution history: director only.
   let sales = null;
   if (user.dpaRole === 'director') {
@@ -778,7 +787,7 @@ async function adminMerchant(req: Request): Promise<Response> {
     if (se || re) throw new Error('db_sales_merchant');
     sales = { ...s, reps };
   }
-  return json(req, 200, { ...data, merchant: { ...merchant, owner_email: emails[owner_id] ?? null }, sales_rep: reps[id] ?? null, sales });
+  return json(req, 200, { ...data, merchant: { ...merchant, owner_email: emails[owner_id] ?? null }, sales_rep: reps[id] ?? null, prepaid: prepaid ?? [], sales });
 }
 
 // ---------------------------------------------------------------- sales tracking (director only)

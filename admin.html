@@ -328,7 +328,8 @@ const fmtTime=iso=>{ if(!iso) return ''; const d=new Date(iso); return fmt(iso)+
 // Subscription status (Stripe, mirrored in public.subscriptions).
 const SUBST={trialing:['Essai gratuit','#E8EDFF','#1A36C4'],active:['Actif','#E4F3EB','#1F6B45'],past_due:['Paiement en retard','#FFF3DC','#6B4E00'],
   unpaid:['Impayé','#FCEBEA','#A11D14'],canceled:['Résilié','#FCEBEA','#A11D14'],incomplete:['Paiement non finalisé','#FFF3DC','#6B4E00'],
-  incomplete_expired:['Expiré','#EFEDE8','#3E424A'],paused:['Suspendu','#FCEBEA','#A11D14'],none:['Sans abonnement','#EFEDE8','#3E424A']};
+  incomplete_expired:['Expiré','#EFEDE8','#3E424A'],paused:['Suspendu','#FCEBEA','#A11D14'],expired:['Offre terminée','#EFEDE8','#3E424A'],none:['Sans abonnement','#EFEDE8','#3E424A']};
+const PPST={paid:'Payé',partially_refunded:'Remboursé en partie',refunded:'Remboursé'};
 const subKey=m=>(m.subscription&&m.subscription.status)||'none';
 const eurC=c=>c==null?'—':(c/100).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
 const DESIGN={validated:'validé',draft:'brouillon',pending_dpa:'en cours de création par DPA Cards'};
@@ -410,10 +411,20 @@ class Component extends DCLogic {
         hasEmail:!!selM.owner_email,mailto:selM.owner_email?'mailto:'+selM.owner_email:'',
         rep:(()=>{ const r=(det&&det.sales_rep!==undefined)?det.sales_rep:selM.sales_rep; return r&&r.name?r.name:'Non attribué'; })(),
         subRows:(()=>{ const sb=(det&&det.subscription)||selM.subscription; if(!sb) return [{k:'Statut',v:'Sans abonnement'}];
+          // Commitment paid in one go: one payment for the whole period, never a monthly revenue.
+          if(sb.billing_mode==='prepaid'){ const pp=(det&&det.prepaid||[])[0];
+            return [{k:'Offre',v:'Engagement 12 mois — payé en une fois'},{k:'Statut',v:(SUBST[sb.status]||SUBST.none)[0]},
+              {k:'Encaissé',v:pp?eurC(pp.total_cents)+' · '+fmt(pp.paid_at):(det?'—':'…')},
+              {k:'Détail',v:pp?eurC(pp.setup_cents)+' de mise en place + '+pp.months+' × '+eurC(pp.monthly_cents):(det?'—':'…')},
+              {k:'Période couverte',v:fmt(sb.current_period_start)+' → '+fmt(sb.current_period_end)},
+              {k:'Paiement',v:pp?(PPST[pp.status]||pp.status)+(pp.refunded_cents?' ('+eurC(pp.refunded_cents)+' remboursés)':'')+(pp.dispute_status?' · litige '+({open:'en cours',won:'gagné',lost:'perdu'}[pp.dispute_status]):''):(det?'—':'…')},
+              {k:'Renouvellement',v:'Aucun (pas de prélèvement à l’échéance)'}]; }
           return [{k:'Offre',v:sb.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement'},{k:'Statut',v:(SUBST[sb.status]||SUBST.none)[0]+(sb.cancel_at_period_end?' · résiliation programmée':'')},
             {k:'Prix mensuel',v:eurC(sb.monthly_amount_cents)},{k:'Fin de l’essai',v:fmt(sb.trial_end)},
             {k:'Prochaine facture',v:sb.status==='trialing'?fmt(sb.trial_end):fmt(sb.current_period_end)},
-            {k:'Engagement',v:sb.plan_type==='commitment'?'jusqu’au '+fmt(sb.commitment_end):'Aucun'}]; })()}; }
+            {k:'Engagement',v:sb.plan_type==='commitment'?'jusqu’au '+fmt(sb.commitment_end):'Aucun'},
+            // A one-go payment collected while this subscription was valid opened nothing: to refund by hand.
+            ...((det&&det.prepaid)||[]).filter(x=>x.conflict&&x.status==='paid').map(x=>({k:'À rembourser',v:'Paiement en une fois de '+eurC(x.total_cents)+' du '+fmt(x.paid_at)+' (offre déjà en cours)'}))]; })()}; }
     const ACT={join:['person_add','Inscription','#5E636B'],visit:['add_circle','Passage','#2448F0'],reward:['redeem','Récompense','#1F7A4F'],correction:['undo','Correction','#B42318']};
     const selClients=det?det.clients.map(c=>({name:(c.first_name+' '+(c.last_name||'')).trim(),card:c.card_number,joined:fmt(c.created_at),wallet:!!c.wallet,balance:nf(c.balance)})):[];
     const selActivity=det?det.activity.map(a=>{ const t=ACT[a.type]||ACT.visit; return {icon:t[0],label:t[1],color:t[2],name:a.first_name,when:fmtTime(a.created_at),delta:a.delta>0?'+'+a.delta:(a.delta<0?'−'+Math.abs(a.delta):'')}; }):[];

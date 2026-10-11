@@ -114,6 +114,9 @@ const DB_ERRORS = {
   billing_unavailable: 'Le service de paiement ne répond pas. Réessayez dans un instant.',
   already_subscribed: 'Votre abonnement est déjà actif.',
   payment_issue: 'Un paiement est en attente sur votre abonnement : régularisez-le depuis « Gérer mon abonnement ».',
+  checkout_in_progress: 'Un paiement est déjà en cours d’ouverture pour votre compte. Patientez quelques secondes puis réessayez.',
+  payment_processing: 'Votre paiement précédent est en cours de traitement par Stripe. Votre offre sera activée dès sa confirmation.',
+  amount_mismatch: 'Le montant payé ne correspond pas à l’offre. Aucun accès n’a été activé : contactez DPA Cards.',
   onboarding_incomplete: 'Terminez d’abord la configuration de votre programme.',
   invalid_plan: 'Offre inconnue.',
   invalid_session: 'Session de paiement invalide.',
@@ -519,7 +522,8 @@ const api = {
   // ---- subscription (Stripe). The browser only names a plan; prices, trial and billing
   // dates are decided by the billing Edge Function, and Stripe stays the source of truth.
   billing: {
-    checkout: plan => invokeFn('billing/checkout', { plan }),
+    // billing 'prepaid': commitment paid in one go (the server computes the amount from Stripe prices).
+    checkout: (plan, billing) => invokeFn('billing/checkout', billing ? { plan, billing } : { plan }),
     verify: sessionId => invokeFn('billing/verify', { session_id: sessionId }),
     summary: () => invokeFn('billing/summary', {}),
     portal: () => invokeFn('billing/portal', {}),

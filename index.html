@@ -418,13 +418,26 @@ a:hover{color:#1A36C4}
           <sc-if value="{{ p.badge }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:-14px;left:24px;display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:#2448F0;color:#FFFFFF;font-size:13px;font-weight:700;box-shadow:0 6px 16px rgba(36,72,240,0.3)"><span class="material-symbols-rounded" style="font-size:16px">star</span>{{ p.badge }}</span></sc-if>
           <h2 id="{{ p.hid }}" style="margin:0;font-weight:800;font-size:22px;letter-spacing:-0.02em">{{ p.title }}</h2>
           <div style="display:flex;flex-direction:column;gap:6px">
-            <div style="display:flex;align-items:baseline;gap:6px"><span style="font-weight:800;font-size:42px;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums">{{ p.monthly }}</span><span style="font-size:16px;color:#4A4E55;font-weight:600">/mois</span></div>
-            <div style="font-size:15px;color:#4A4E55"><strong style="color:#1C1F24">{{ p.setup }}</strong> de mise en place</div>
+            <sc-if value="{{ p.hasModes }}" hint-placeholder-val="{{ false }}">
+              <div role="radiogroup" aria-label="Mode de paiement" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;margin-bottom:6px;border-radius:14px;background:#F1EFEA">
+                <sc-for list="{{ p.modes }}" as="md" hint-placeholder-count="2"><button type="button" role="radio" aria-checked="{{ md.on }}" onClick="{{ md.pick }}" style="min-height:44px;padding:6px 8px;border:0;border-radius:11px;background:{{ md.bg }};color:{{ md.color }};font-weight:{{ md.weight }};font-size:14px;line-height:1.2;box-shadow:{{ md.shadow }}">{{ md.label }}</button></sc-for>
+              </div>
+            </sc-if>
+            <div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap"><span style="font-weight:800;font-size:42px;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums">{{ p.big }}</span><span style="font-size:16px;color:#4A4E55;font-weight:600">{{ p.unit }}</span></div>
+            <div style="font-size:15px;color:#4A4E55"><strong style="color:#1C1F24">{{ p.setup }}</strong>{{ p.setupSuffix }}</div>
             <sc-if value="{{ p.saving }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-start;margin-top:4px;padding:4px 10px;border-radius:8px;background:#E4F3EB;color:#1F6B45;font-size:14px;font-weight:700">{{ p.saving }}</div></sc-if>
           </div>
           <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px;flex:1">
             <sc-for list="{{ p.features }}" as="ft" hint-placeholder-count="10"><li style="display:flex;gap:10px;align-items:flex-start;font-size:15px;line-height:1.4"><span class="material-symbols-rounded" style="font-size:20px;color:{{ ft.color }};flex:none">{{ ft.icon }}</span><span style="font-weight:{{ ft.weight }}">{{ ft.label }}</span></li></sc-for>
           </ul>
+          <sc-if value="{{ p.pre }}" hint-placeholder-val="{{ false }}">
+            <div role="region" aria-label="Récapitulatif du paiement en une fois" style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:16px;background:#F5F7FF;border:1px solid #D9E0FF">
+              <dl style="margin:0;display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);column-gap:12px;font-size:14px">
+                <sc-for list="{{ p.preRows }}" as="pr" hint-placeholder-count="6"><dt style="padding:7px 0;color:#4A4E55;border-bottom:1px solid #E3E7FA">{{ pr.k }}</dt><dd style="margin:0;padding:7px 0;font-weight:700;text-align:right;border-bottom:1px solid #E3E7FA;overflow-wrap:anywhere">{{ pr.v }}</dd></sc-for>
+              </dl>
+              <div style="font-size:13px;color:#3E424A;line-height:1.5">{{ p.preNote }}</div>
+            </div>
+          </sc-if>
           <div style="position:relative;font-size:14px;color:#3E424A;display:flex;align-items:center">30 jours de rétractation<button type="button" onClick="{{ p.tipToggle }}" onMouseEnter="{{ p.tipEnter }}" onMouseLeave="{{ p.tipLeave }}" aria-expanded="{{ p.tipOpen }}" aria-label="Conditions de rétractation" style="min-width:32px;min-height:32px;border:0;background:none;color:#2448F0;font-weight:800;font-size:18px;padding:0 6px;line-height:1">*</button>
             <sc-if value="{{ p.tipOpen }}" hint-placeholder-val="{{ false }}"><div role="tooltip" onMouseEnter="{{ p.tipEnter }}" onMouseLeave="{{ p.tipLeave }}" style="position:absolute;left:0;right:0;bottom:calc(100% + 6px);z-index:10;padding:14px 16px;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-size:14px;line-height:1.5;box-shadow:0 12px 30px rgba(20,22,28,0.3)">{{ retractText }} <sc-if value="{{ hasCgv }}" hint-placeholder-val="{{ false }}"><a href="{{ cgvUrl }}" target="_blank" rel="noopener" style="color:#9DB0FF;font-weight:700">Voir les conditions</a></sc-if><sc-if value="{{ noCgv }}" hint-placeholder-val="{{ true }}"><span aria-disabled="true" title="Conditions générales de vente bientôt disponibles" style="color:#9DB0FF;font-weight:700;opacity:0.7">Voir les conditions</span></sc-if></div></sc-if>
           </div>
@@ -1664,10 +1677,10 @@ a:hover{color:#1A36C4}
           </dl>
           <sc-if value="{{ bs.hasMessage }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:#FFF3DC;color:#5C4200;font-size:14px;line-height:1.5"><span class="material-symbols-rounded" style="font-size:20px">info</span>{{ bs.message }}</div></sc-if>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button type="button" onClick="{{ openPortal }}" disabled="{{ busy }}" style="flex:1 1 200px;min-height:52px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">open_in_new</span>Gérer mon abonnement</button>
+            <button type="button" onClick="{{ openPortal }}" disabled="{{ busy }}" style="flex:1 1 200px;min-height:52px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">open_in_new</span>{{ bs.portalLabel }}</button>
             <sc-if value="{{ bs.canCancel }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ askCancelSub }}" disabled="{{ busy }}" style="flex:1 1 160px;min-height:52px;border:1.5px solid #E3B3AE;border-radius:14px;background:#FFFFFF;color:#B42318;font-weight:700;font-size:16px">Résilier</button></sc-if>
           </div>
-          <div style="font-size:13px;color:#5E636B;line-height:1.45">Le portail sécurisé Stripe permet de modifier le moyen de paiement, l’adresse de facturation et de télécharger les factures.</div>
+          <div style="font-size:13px;color:#5E636B;line-height:1.45">{{ bs.portalHint }}</div>
         </div>
         <section aria-labelledby="inv-h" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:6px">
           <h2 id="inv-h" style="margin:0 0 6px;font-weight:700;font-size:18px">Factures</h2>
@@ -1945,9 +1958,14 @@ const SUB_RETURN=(()=>{ try{ const r=/^\/subscription\/(success|cancel)\/?$/.exe
 // Display only: prices, trial and billing dates are decided by the server and Stripe.
 const PLAN_UI=[
   {key:'no_commitment',title:'Sans engagement',setup:'49 €',monthly:'24,90 €',lead:['15 jours gratuits','Sans engagement']},
-  {key:'commitment',title:'Engagement 12 mois',badge:'Meilleure offre',setup:'29 €',monthly:'19,90 €',saving:'Économisez 80 € sur la première année',lead:['15 jours gratuits','Engagement 12 mois','Exactement les mêmes fonctionnalités']}];
+  {key:'commitment',title:'Engagement 12 mois',badge:'Meilleure offre',setup:'29 €',monthly:'19,90 €',saving:'Économisez 80 € sur la première année',lead:['15 jours gratuits','Engagement 12 mois','Exactement les mêmes fonctionnalités'],
+   // "Paiement en une fois": 12 × the monthly price + the setup fee once, no discount (amounts in cents, display only).
+   prepaid:{months:12,monthlyCents:1990,setupCents:2900,lead:['Payé en une fois','Engagement 12 mois','Exactement les mêmes fonctionnalités']}}];
 const PLAN_FEATURES=['Cartes de fidélité digitales','Google Wallet','Apple Wallet (dès sa disponibilité)','Scanner QR','Gestion des clients','Récompenses','Notifications','Tableau de bord','Support'];
-const SUB_ST={trialing:'Essai gratuit',active:'Actif',past_due:'Paiement en retard',unpaid:'Impayé',canceled:'Résilié',incomplete:'Paiement non finalisé',incomplete_expired:'Expiré',paused:'Suspendu'};
+const SUB_ST={trialing:'Essai gratuit',active:'Actif',past_due:'Paiement en retard',unpaid:'Impayé',canceled:'Résilié',incomplete:'Paiement non finalisé',incomplete_expired:'Expiré',paused:'Suspendu',expired:'Offre terminée'};
+const PREPAID_ST={paid:'Payé',partially_refunded:'Payé · remboursé en partie',refunded:'Remboursé',processing:'En cours de traitement',failed:'Échoué'};
+// Same calendar rule as the server: same day N months later, clamped to the month's last day.
+function addMonthsCal(d,n){ const r=new Date(d.getFullYear(),d.getMonth()+n,1,d.getHours(),d.getMinutes()); r.setDate(Math.min(d.getDate(),new Date(r.getFullYear(),r.getMonth()+1,0).getDate())); return r; }
 // Without a valid subscription the dashboard stays open in a locked mode: these screens show a lock instead.
 const LOCKED_SCREENS=['invite','scanner','clients','client','notifs','notifNew','join','joinDone'];
 const LOCK_TEXT={invite:['Activez votre abonnement pour inviter vos clients','Votre lien d’inscription et votre QR code seront disponibles dès l’activation de votre abonnement.'],
@@ -1958,7 +1976,8 @@ const LOCK_TEXT={invite:['Activez votre abonnement pour inviter vos clients','Vo
 LOCK_TEXT.client=LOCK_TEXT.clients; LOCK_TEXT.notifNew=LOCK_TEXT.notifs; LOCK_TEXT.join=LOCK_TEXT.invite; LOCK_TEXT.joinDone=LOCK_TEXT.invite;
 // Return from the custom design payment: /design/success?session_id=… or /design/cancel.
 const DESIGN_RETURN=(()=>{ try{ const r=/^\/design\/(success|cancel)\/?$/.exec(window.location.pathname); return r?r[1]:null; }catch(e){ return null; } })();
-function subOk(sub){ return !!sub&&(sub.status==='trialing'||sub.status==='active'); }
+// A prepaid period (commitment paid in one go) is valid until its end date only, like on the server.
+function subOk(sub){ return !!sub&&(sub.status==='trialing'||sub.status==='active')&&(sub.billing_mode!=='prepaid'||new Date(sub.current_period_end)>new Date()); }
 // Custom design saved (files + brief) but not paid: its 29,90 € payment only comes after the offer is paid.
 function designUnpaid(r){ return !!r&&r.status==='pending_payment'&&r.paymentStatus!=='paid'; }
 function fmtFull(iso){ if(!iso) return '—'; const d=new Date(iso); return d.getDate()+' '+['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'][d.getMonth()]+' '+d.getFullYear(); }
@@ -2508,8 +2527,8 @@ class Component extends DCLogic {
     const ok=()=>this.showToast('Lien copié'), ko=()=>this.showToast('Copie impossible sur ce navigateur. Lien : '+url,'info');
     try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok,ko); else ko(); }catch(e){ ko(); } }
   // ---- subscription (Stripe). The page only names a plan; the billing Edge Function does the rest.
-  choosePlan=async plan=>{ if(this.state.busy) return; this.setState({busy:true,billingPlan:plan});
-    try{ const r=await this.api.billing.checkout(plan); window.location.assign(r.url); }
+  choosePlan=async(plan,billing)=>{ if(this.state.busy) return; this.setState({busy:true,billingPlan:plan});
+    try{ const r=await this.api.billing.checkout(plan,billing); window.location.assign(r.url); }
     catch(e){ this.setState({busy:false,billingPlan:null});
       if(e.code==='already_subscribed'){ await this.refreshSub(); return this.go('home'); }
       this.showToast(this.api.errorMessage(e),'error'); } };
@@ -2521,9 +2540,12 @@ class Component extends DCLogic {
     this.setState({screen:'subSuccess',subVerify:{st:'loading'}});
     for(let i=0;i<8;i++){
       try{ const r=await this.api.billing.verify(id);
-        if(r.access){ this.clearSubUrl(); this.setState({subscription:r.subscription,subVerify:{st:'ok',sub:r.subscription}});
+        if(r.access){ this.clearSubUrl(); this.setState({subscription:r.subscription,subVerify:{st:'ok',sub:r.subscription,prepaid:r.prepaid||null}});
           clearTimeout(this._toHome); if(!designUnpaid(this.state.designReq)) this._toHome=setTimeout(()=>{ if(this.state.screen==='subSuccess') this.go('home'); },5000); return; }
-        if(!r.paid&&i>=2){ this.clearSubUrl(); return this.setState({subVerify:{st:'unpaid'}}); } }
+        // Deferred payment still processing at Stripe: nothing is opened until Stripe confirms it.
+        if(!r.paid&&r.pending&&i>=2){ this.clearSubUrl(); return this.setState({subVerify:{st:'pending'}}); }
+        if(r.paid&&r.billing_mode==='prepaid'&&!r.access&&i>=2){ this.clearSubUrl(); return this.setState({subVerify:{st:'error',msg:'Paiement reçu, mais votre compte avait déjà une offre en cours : DPA Cards vous contactera pour le rembourser.'}}); }
+        if(!r.paid&&!r.pending&&i>=2){ this.clearSubUrl(); return this.setState({subVerify:{st:'unpaid'}}); } }
       catch(e){ if(e.code==='forbidden'||e.code==='invalid_session'||i===7){ this.clearSubUrl(); return this.setState({subVerify:{st:'error',msg:this.api.errorMessage(e)}}); } }
       await new Promise(r=>setTimeout(r,2000)); }
     this.setState({subVerify:{st:'error',msg:'La confirmation prend plus de temps que prévu. Actualisez la page dans un instant.'}}); }
@@ -2723,30 +2745,56 @@ class Component extends DCLogic {
     const setTip=(k,pinned)=>this.setState({tip:{open:k,pinned}});
     const plans=PLAN_UI.map(p=>{ const best=!!p.badge, open=tip.open===p.key, busy=s.busy&&s.billingPlan===p.key;
       const issue=!!(sub&&sub.stripe_subscription_id&&['past_due','unpaid','paused'].includes(sub.status));
-      return {hid:'plan-'+p.key,title:p.title,badge:p.badge||'',setup:p.setup,monthly:p.monthly,saving:p.saving||'',
-        features:[...p.lead.map(l=>({label:l,icon:'check_circle',color:'#2448F0',weight:700})),...PLAN_FEATURES.map(l=>({label:l,icon:'check',color:'#1F7A4F',weight:500}))],
+      // Commitment offer: "Paiement mensuel" (unchanged) or "Paiement en une fois" (prepaid, no renewal).
+      const pp=p.prepaid, pre=!!pp&&s.billMode==='prepaid';
+      const base=pp?pp.monthlyCents*pp.months:0, total=pp?base+pp.setupCents:0, start=new Date(), end=pp?addMonthsCal(start,pp.months):null;
+      const modes=pp?[['monthly','Paiement mensuel'],['prepaid','Paiement en une fois']].map(([k,l])=>{ const on=(s.billMode||'monthly')===k;
+        return {label:l,on,bg:on?'#FFFFFF':'transparent',color:on?'#1C1F24':'#4A4E55',weight:on?700:600,shadow:on?'0 1px 4px rgba(20,22,28,0.14)':'none',pick:()=>this.setState({billMode:k})}; }):[];
+      return {hid:'plan-'+p.key,title:p.title,badge:p.badge||'',setup:p.setup,saving:p.saving||'',
+        big:pre?eur(total):p.monthly,unit:pre?'en une fois':'/mois',setupSuffix:pre?' de mise en place inclus':' de mise en place',
+        hasModes:!!pp,modes,pre,
+        preRows:pre?[{k:'À payer maintenant',v:eur(total)},{k:'Dont frais de mise en place',v:eur(pp.setupCents)+' (une seule fois)'},
+          {k:'Dont '+pp.months+' mensualités',v:pp.months+' × '+eur(pp.monthlyCents)+' = '+eur(base)},
+          {k:'Durée couverte',v:pp.months+' mois, du '+fmtFull(start.toISOString())+' au '+fmtFull(end.toISOString())},
+          {k:'Prélèvements mensuels',v:'Aucun'},{k:'Renouvellement',v:'Aucun renouvellement automatique'}]:[],
+        preNote:pre?'Votre accès de '+pp.months+' mois commence à la confirmation du paiement (sans essai gratuit). À l’échéance, rien n’est prélevé : l’offre s’arrête et vous pourrez en choisir une nouvelle. Vos données sont conservées.':'',
+        features:[...((pre?pp.lead:p.lead).map(l=>({label:l,icon:'check_circle',color:'#2448F0',weight:700}))),...PLAN_FEATURES.map(l=>({label:l,icon:'check',color:'#1F7A4F',weight:500}))],
         border:best?'2px solid #2448F0':'1px solid #E4E1DA',shadow:best?'0 18px 40px rgba(36,72,240,0.14)':'0 1px 3px rgba(20,22,28,0.06)',
-        ctaBg:best?'#2448F0':'#1C1F24',cta:busy?'Redirection vers le paiement…':'Choisir cette offre',busy,disabled:s.busy||issue,opacity:issue?0.5:1,
+        ctaBg:best?'#2448F0':'#1C1F24',cta:busy?'Redirection vers le paiement…':(pre?'Payer '+eur(total)+' en une fois':'Choisir cette offre'),busy,disabled:s.busy||issue,opacity:issue?0.5:1,
         tipOpen:open,
         tipToggle:()=>setTip(open&&tip.pinned?null:p.key,!(open&&tip.pinned)),
         tipEnter:()=>{ if(!tip.pinned&&window.matchMedia&&window.matchMedia('(hover: hover)').matches) setTip(p.key,false); },
         tipLeave:()=>{ if(!this.state.tip.pinned) setTip(null,false); },
-        choose:()=>this.choosePlan(p.key)}; });
+        choose:()=>this.choosePlan(p.key,pre?'prepaid':undefined)}; });
     const st=sub&&sub.status;
     const bill={hasIssue:false,issue:'',canPortal:false};
     if(sub&&sub.stripe_subscription_id&&['past_due','unpaid','paused'].includes(st)) Object.assign(bill,{hasIssue:true,canPortal:true,issue:st==='past_due'?'Votre dernier paiement a échoué. Mettez à jour votre moyen de paiement pour retrouver l’accès à votre tableau de bord.':'Votre abonnement est suspendu faute de paiement. Régularisez-le pour retrouver l’accès à votre tableau de bord.'});
     else if(st==='canceled') Object.assign(bill,{hasIssue:true,issue:'Votre abonnement a pris fin. Choisissez une offre pour réactiver votre compte.'});
+    else if(st==='expired'||(sub&&sub.billing_mode==='prepaid'&&st==='active'&&!subOk(sub))) Object.assign(bill,{hasIssue:true,issue:'Votre offre avec engagement payée en une fois a pris fin le '+fmtFull(sub.current_period_end)+'. Aucun prélèvement n’a été effectué. Choisissez une offre pour réactiver votre compte : vos données sont conservées.'});
     const v=s.subVerify||{st:'loading'};
     const dUnpaid=designUnpaid(s.designReq);
+    const vPre=!!(v.sub&&v.sub.billing_mode==='prepaid');
     const sv=v.st==='ok'?{ok:true,design:dUnpaid,home:!dUnpaid,retry:false,loading:false,notLoading:true,icon:'task_alt',bg:'#E4F3EB',fg:'#1F7A4F',title:'Votre compte est activé',
-        text:'Paiement confirmé par Stripe. Votre essai gratuit court jusqu’au '+fmtFull(v.sub&&v.sub.trial_end)+'. '+(dUnpaid?'Dernière étape : le paiement de votre création de carte sur mesure (29,90 € TTC, paiement unique).':'Redirection vers votre tableau de bord…')}
+        text:(vPre?'Paiement confirmé par Stripe. Votre offre avec engagement est payée en une fois : accès du '+fmtFull(v.sub.current_period_start)+' au '+fmtFull(v.sub.current_period_end)+', sans prélèvement mensuel ni renouvellement automatique. '
+          :'Paiement confirmé par Stripe. Votre essai gratuit court jusqu’au '+fmtFull(v.sub&&v.sub.trial_end)+'. ')+(dUnpaid?'Dernière étape : le paiement de votre création de carte sur mesure (29,90 € TTC, paiement unique).':'Redirection vers votre tableau de bord…')}
+      :v.st==='pending'?{ok:false,retry:true,loading:false,notLoading:true,icon:'hourglass_top',bg:'#FFF3DC',fg:'#8A5A00',title:'Paiement en cours de traitement',text:'Stripe n’a pas encore confirmé votre paiement. Votre offre sera activée automatiquement dès sa confirmation ; rien n’est activé avant.'}
       :v.st==='unpaid'?{ok:false,retry:true,loading:false,notLoading:true,icon:'credit_card_off',bg:'#FFF3DC',fg:'#8A5A00',title:'Paiement non confirmé',text:'Stripe n’a pas confirmé le paiement. Aucun abonnement n’a été créé.'}
       :v.st==='error'?{ok:false,retry:true,loading:false,notLoading:true,icon:'error',bg:'#FCEBEA',fg:'#B42318',title:'Vérification impossible',text:v.msg||'Réessayez dans un instant.'}
       :{ok:false,retry:false,loading:true,notLoading:false,icon:'',bg:'#E8EDFF',fg:'#2448F0',title:'Confirmation du paiement…',text:'Nous vérifions votre paiement auprès de Stripe.'};
     const sum=s.billSum||{}, ss=(sum.subscription||sub)||null, pm=sum.payment_method;
     const commitment=!!(ss&&ss.plan_type==='commitment'), running=commitment&&ss.commitment_end&&new Date(ss.commitment_end)>new Date();
     const next=sum.upcoming?fmtFull(sum.upcoming.date)+' · '+eur(sum.upcoming.amount_cents):(ss&&ss.cancel_at_period_end?'Aucune (résiliation au '+fmtFull(ss.current_period_end)+')':(ss&&ss.status==='trialing'?'Après l’essai, le '+fmtFull(ss.trial_end):(ss?fmtFull(ss.current_period_end):'—')));
-    const rows=ss?[
+    // Commitment paid in one go: what was paid, the period, the payment status and the (absent) renewal.
+    const pre=!!(ss&&ss.billing_mode==='prepaid'), pp=sum.prepaid||null;
+    const rows=pre?[
+      {k:'Offre',v:'Offre avec engagement — payée en une fois'},
+      {k:'Montant payé',v:pp?eur(pp.total_cents)+' (dont '+eur(pp.setup_cents)+' de mise en place)':(sum.loading?'…':'—')},
+      {k:'Statut du paiement',v:pp?(PREPAID_ST[pp.status]||pp.status)+(pp.dispute_status==='open'?' · contestation en cours':pp.dispute_status==='lost'?' · contesté':''):(sum.loading?'…':'—')},
+      {k:'Accès',v:subOk(ss)?'Actif':(SUB_ST[ss.status==='active'?'expired':ss.status]||ss.status)},
+      {k:'Date de début',v:fmtFull(ss.current_period_start)},
+      {k:'Date de fin',v:fmtFull(ss.current_period_end)},
+      {k:'Renouvellement',v:'Aucun renouvellement automatique, aucun prélèvement à l’échéance'}]
+      :ss?[
       {k:'Offre',v:commitment?'Engagement 12 mois':'Sans engagement'},
       {k:'Prix mensuel',v:eur(ss.monthly_amount_cents)},
       {k:'Statut',v:(SUB_ST[ss.status]||ss.status)+(ss.cancel_at_period_end?' · résiliation programmée':'')},
@@ -2761,9 +2809,13 @@ class Component extends DCLogic {
     const billDesignNote=dUnpaid&&!subOk(sub)?'Votre demande de création sur mesure est enregistrée. Son paiement (29,90 € TTC) vous sera proposé juste après celui de votre offre. Si vous choisissez votre offre plus tard, aucun paiement de design n’est demandé d’ici là.':'';
     return {plans,bill,billDesignNote,retractText:'La rétractation concerne l’abonnement. Les frais de mise en place restent dus dès lors que la prestation de configuration a commencé. Les périodes d’abonnement déjà consommées restent également dues.',
       hasCgv:!!(this.api&&this.api.cgvUrl),noCgv:!(this.api&&this.api.cgvUrl),cgvUrl:(this.api&&this.api.cgvUrl)||'',
-      billNote:'Aujourd’hui, seuls les frais de mise en place sont débités. Votre abonnement démarre après 15 jours d’essai gratuit : la première facture couvre, au prorata, la période jusqu’au 1er du mois suivant, puis l’abonnement est facturé le 1er de chaque mois.',
+      billNote:s.billMode==='prepaid'
+        ?'Paiement mensuel : aujourd’hui, seuls les frais de mise en place sont débités, puis l’abonnement est facturé chaque mois après 15 jours d’essai gratuit. Paiement en une fois (offre avec engagement) : le montant total est débité aujourd’hui, sans prélèvement mensuel ni renouvellement automatique.'
+        :'Aujourd’hui, seuls les frais de mise en place sont débités. Votre abonnement démarre après 15 jours d’essai gratuit : la première facture couvre, au prorata, la période jusqu’au 1er du mois suivant, puis l’abonnement est facturé le 1er de chaque mois.',
       sv,resumeBilling:this.resumeBilling,toHome:()=>{ clearTimeout(this._toHome); this.go('home'); },
-      bs:{loading:!!sum.loading,rows,invoices,noInvoices:!sum.loading&&invoices.length===0,hasMessage:!!msg,message:msg,canCancel:!!(ss&&['trialing','active','past_due'].includes(ss.status)&&!ss.cancel_at_period_end)},
+      bs:{loading:!!sum.loading,rows,invoices,noInvoices:!sum.loading&&invoices.length===0,hasMessage:!!msg,message:msg,canCancel:!pre&&!!(ss&&['trialing','active','past_due'].includes(ss.status)&&!ss.cancel_at_period_end),
+        portalLabel:pre?'Mes factures':'Gérer mon abonnement',
+        portalHint:pre?'Le portail sécurisé Stripe permet de télécharger vos factures et de mettre à jour votre adresse de facturation. Aucun prélèvement n’est prévu.':'Le portail sécurisé Stripe permet de modifier le moyen de paiement, l’adresse de facturation et de télécharger les factures.'},
       openPortal:this.openPortal,askCancelSub:this.askCancelSub,cancelSub:this.cancelSub,
       cancelSubText:'Votre abonnement restera actif jusqu’au '+fmtFull(ss&&(ss.status==='trialing'?ss.trial_end:ss.current_period_end))+', puis ne sera plus renouvelé. Vous pourrez souscrire à nouveau à tout moment.'};
   }
@@ -2936,7 +2988,7 @@ class Component extends DCLogic {
       {icon:'storefront',label:'Informations du commerce',sub:m.business,run:openSec('business')},
       {icon:'lock',label:'Sécurité et mot de passe',sub:s.live?'Mot de passe, export des données, suppression du compte':'Modifier le mot de passe',run:openSec('security')},
       {icon:'help',label:'Aide et contact',sub:'Questions fréquentes, support',run:openSec('help')},
-      ...(s.live?[{icon:'credit_card',label:'Mon abonnement',sub:s.subscription?(s.subscription.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement')+' · '+(SUB_ST[s.subscription.status]||s.subscription.status):'Offre, factures, moyen de paiement',run:openSec('billing')}]:[]),
+      ...(s.live?[{icon:'credit_card',label:'Mon abonnement',sub:s.subscription?(s.subscription.billing_mode==='prepaid'?'Engagement 12 mois · payé en une fois':s.subscription.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement')+' · '+(s.subscription.billing_mode==='prepaid'&&s.subscription.status==='active'&&!subOk(s.subscription)?SUB_ST.expired:(SUB_ST[s.subscription.status]||s.subscription.status)):'Offre, factures, moyen de paiement',run:openSec('billing')}]:[]),
       {icon:'restart_alt',label:'Réinitialiser la démo',sub:'Revenir aux données BASH',run:()=>{ this.enterDemo(); this.showToast('Données de démonstration réinitialisées'); }}].filter(x=>!s.live||x.icon!=='restart_alt');
     const secTitle={profile:'Profil du responsable',business:'Informations du commerce',security:'Sécurité et mot de passe',help:'Aide et contact',billing:'Mon abonnement'}[s.section];
     const sec={profile:s.section==='profile',business:s.section==='business',security:s.section==='security',help:s.section==='help',billing:s.section==='billing',form:s.section!=='help'&&s.section!=='billing'};

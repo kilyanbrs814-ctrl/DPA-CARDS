@@ -575,7 +575,7 @@ export function makeCardDesigner(React, api) {
         ac.access_sent_at ? 'accès envoyé le ' + fmtDate(ac.access_sent_at) + (ac.access_sent_count > 1 ? ` (${ac.access_sent_count} envois)` : '') : 'accès pas encore envoyé',
         ac.access_last_error ? ' · dernier envoi en erreur' : ''),
       accessBtn(false)) : null;
-    const SUBL = { trialing: 'Essai gratuit', active: 'Actif', past_due: 'Paiement en retard', canceled: 'Résilié', incomplete: 'Non finalisé', unpaid: 'Impayé', paused: 'Suspendu' };
+    const SUBL = { trialing: 'Essai gratuit', active: 'Actif', past_due: 'Paiement en retard', canceled: 'Résilié', incomplete: 'Non finalisé', unpaid: 'Impayé', paused: 'Suspendu', expired: 'Offre terminée' };
     const summary = created && created.merchant.id === project.merchant.id ? h('section', { 'data-created': created.merchant.id, 'aria-label': 'Client créé', style: { background: '#E4F3EB', border: '1px solid #B9E0CB', borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 } },
       h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } }, icon('task_alt', 26, { color: '#1F6B45' }), h('h2', { style: { margin: 0, fontWeight: 800, fontSize: 20, color: '#1F6B45' } }, 'Client créé avec succès')),
       h('dl', { style: { margin: 0, display: 'grid', gridTemplateColumns: 'minmax(120px,max-content) minmax(0,1fr)', gap: '6px 16px', fontSize: 15 } },

@@ -1,7 +1,10 @@
 // DPA Cards — subscriptions with Stripe (test mode first).
 //
-//   POST /billing/checkout  owner session, { plan } → Stripe Checkout URL (setup fee + card saved)
+//   POST /billing/checkout  owner session, { plan, billing? } → Stripe Checkout URL (setup fee + card saved);
+//                           billing = 'prepaid' (commitment only): setup fee + every monthly payment of the
+//                           commitment in one payment, no subscription, no renewal
 //   POST /billing/verify    owner session, { session_id } → confirms the payment with Stripe, creates the subscription
+//                           (or opens the prepaid period)
 //   POST /billing/summary   member session → subscription, payment method and invoices (from Stripe)
 //   POST /billing/portal    owner session → Stripe Billing Portal URL
 //   POST /billing/cancel    owner session → cancel at period end, refused while a 12-month commitment runs
@@ -10,7 +13,8 @@
 //   POST /billing/design-cancel    owner session, { design_request_id } → cancels an unpaid request (never a paid one)
 //   POST /billing/webhook   Stripe signature → keeps public.subscriptions in sync with Stripe, records
 //                           collected / failed invoices and refunds in public.sales_payments (commissions), and
-//                           confirms custom design payments (metadata.type = custom_design)
+//                           confirms custom design payments (metadata.type = custom_design) and prepaid
+//                           commitments (metadata.billing_mode = prepaid: paid, failed, expired, refunded, disputed)
 //
 // Why two steps: Stripe Checkout cannot combine a free trial with a billing cycle anchor.
 // The Subscriptions API can: trial_end + billing_cycle_anchor gives a free trial, then a
@@ -187,13 +191,20 @@ async function recordInvoice(inv: any, failed: boolean) {
     merchantId = data?.merchant_id ?? null; plan = plan ?? data?.plan_type ?? null;
   }
   if (!merchantId) return;
-  const kind = subId ? 'subscription' : meta.type === 'custom_design' ? 'design' : meta.plan_type ? 'setup' : 'other';
+  const kind = subId ? 'subscription' : meta.type === 'custom_design' ? 'design' : meta.billing_mode === 'prepaid' ? 'prepaid' : meta.plan_type ? 'setup' : 'other';
   const line = (inv.lines?.data ?? []).find((l: any) => l.period) ?? null;
   const pi = typeof inv.payment_intent === 'string' ? inv.payment_intent : inv.payment_intent?.id ?? null;
+  // Prepaid: one payment for the whole period, recorded once at its date with the period it covers.
+  let period: { start: string | null; end: string | null } = { start: null, end: null };
+  if (kind === 'subscription') period = { start: iso(line?.period?.start), end: iso(line?.period?.end) };
+  if (kind === 'prepaid' && UUID.test(meta.purchase_id ?? '')) {
+    const { data } = await admin.from('prepaid_purchases').select('access_start, access_end').eq('id', meta.purchase_id).maybeSingle();
+    period = { start: data?.access_start ?? null, end: data?.access_end ?? null };
+  }
   const { error } = await admin.rpc('sales_record_payment', { p: {
     provider: 'stripe', provider_payment_id: inv.id, merchant_id: merchantId, kind, status: failed ? 'failed' : 'paid',
     amount_cents: amount, currency: inv.currency, plan_type: plan, provider_subscription_id: subId, provider_charge_ref: pi,
-    period_start: kind === 'subscription' ? iso(line?.period?.start) : null, period_end: kind === 'subscription' ? iso(line?.period?.end) : null,
+    period_start: period.start, period_end: period.end,
     paid_at: failed ? null : iso(inv.status_transitions?.paid_at) ?? new Date().toISOString(), failed_at: failed ? new Date().toISOString() : null,
   } });
   if (error) { console.error('billing error', 'sales_record_payment', error.code); throw new Error('db_sales_payment'); }
@@ -218,6 +229,11 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
   if (row?.stripe_subscription_id) {
     const sub = await s.subscriptions.retrieve(row.stripe_subscription_id);
     return { paid: true, row: await syncSubscription(sub) };
+  }
+  // Never a monthly subscription on top of a prepaid period (old checkout tab paid meanwhile): manual follow-up.
+  if (row?.billing_mode === 'prepaid' && ACCESS.includes(row.status)) {
+    console.error('billing error', 'monthly checkout paid during a prepaid period', session.id);
+    return { paid: true, row };
   }
   const pi = typeof session.payment_intent === 'string'
     ? await s.paymentIntents.retrieve(session.payment_intent)
@@ -250,6 +266,143 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
   return { paid: true, row: await syncSubscription(sub, { stripe_setup_payment_intent_id: pi?.id ?? null, setup_paid_at: new Date().toISOString() }) };
 }
 
+// ---------------------------------------------------------------- commitment paid in one go (prepaid)
+// One Checkout payment (mode=payment, no saved card, no subscription): the commitment's setup fee
+// once + its monthly price × its months, both taken from the verified Stripe prices, never from
+// the browser. The price is frozen in public.prepaid_purchases before Checkout opens; the period
+// (payment date + 12 calendar months, Paris time) opens only once Stripe says the session is paid.
+
+const PREPAID_PLAN: PlanType = 'commitment';
+
+// Abandoned attempts are closed before a new checkout (one attempt at a time per shop). An attempt
+// paid in the meantime is confirmed instead, and the caller then refuses a second purchase.
+async function settleOpenPrepaid(merchantId: string) {
+  const s = requireStripe();
+  const { data: open, error } = await admin.from('prepaid_purchases').select('id, stripe_checkout_session_id')
+    .eq('merchant_id', merchantId).in('status', ['pending', 'processing']);
+  if (error) throw new Error('db_prepaid');
+  for (const p of open ?? []) {
+    if (!p.stripe_checkout_session_id) { await admin.rpc('prepaid_mark', { p_id: p.id, p_status: 'canceled' }); continue; }
+    let cs = await s.checkout.sessions.retrieve(p.stripe_checkout_session_id);
+    if (cs.status === 'open') { try { cs = await s.checkout.sessions.expire(cs.id); } catch { cs = await s.checkout.sessions.retrieve(cs.id); } }
+    if (cs.payment_status === 'paid') { await confirmPrepaid(await s.checkout.sessions.retrieve(cs.id, { expand: ['payment_intent'] })); continue; }
+    // Completed but not paid yet = deferred payment method still processing: no second payment meanwhile.
+    if (cs.status === 'complete') throw new HttpError(409, 'payment_processing');
+    await admin.rpc('prepaid_mark', { p_id: p.id, p_status: 'canceled' });
+  }
+}
+
+// An open monthly Checkout session of this shop cannot be paid any more once a prepaid one starts.
+async function expireOpenMonthly(row: any) {
+  if (!row?.stripe_checkout_session_id || row.stripe_subscription_id || row.status !== 'incomplete' || row.billing_mode === 'prepaid') return;
+  const s = requireStripe();
+  let cs = await s.checkout.sessions.retrieve(row.stripe_checkout_session_id);
+  if (cs.status === 'open') { try { cs = await s.checkout.sessions.expire(cs.id); } catch { cs = await s.checkout.sessions.retrieve(cs.id); } }
+  if (cs.payment_status === 'paid') { await ensureSubscription(await s.checkout.sessions.retrieve(cs.id, { expand: ['payment_intent'] })); throw new HttpError(409, 'already_subscribed'); }
+}
+
+function prepaidError(error: { message?: string; code?: string }): never {
+  const msg = error.message ?? '';
+  for (const code of ['already_subscribed', 'payment_issue', 'checkout_in_progress']) if (msg.includes(code)) throw new HttpError(409, code);
+  if (error.code === '23505') throw new HttpError(409, 'checkout_in_progress');
+  console.error('billing error', 'prepaid', error.code);
+  throw new Error('db_prepaid');
+}
+
+async function checkoutPrepaid(req: Request, user: { id: string; email?: string | null }, merchantId: string): Promise<Response> {
+  const s = requireStripe();
+  const plan = PLANS[PREPAID_PLAN];
+  const ids = await priceIds();
+  const [setupPrice, monthlyPrice] = await Promise.all([s.prices.retrieve(ids[plan.setup]), s.prices.retrieve(ids[plan.monthly])]);
+  // priceIds() already checked these amounts against PRICES; the purchase is computed from them only.
+  const monthly = monthlyPrice.unit_amount!, setup = setupPrice.unit_amount!, months = plan.commitmentMonths;
+
+  const { error: xe } = await admin.rpc('prepaid_expire', { p_merchant: merchantId });
+  if (xe) throw new Error('db_prepaid');
+  const existing = await rowOf(merchantId);
+  if (existing && ACCESS.includes(existing.status) && !(existing.billing_mode === 'prepaid' && new Date(existing.current_period_end) <= new Date())) throw new HttpError(409, 'already_subscribed');
+  if (existing?.stripe_subscription_id && ['past_due', 'unpaid', 'paused'].includes(existing.status)) throw new HttpError(409, 'payment_issue');
+  await settleOpenPrepaid(merchantId);
+  await expireOpenMonthly(existing);
+
+  const { data: purchase, error } = await admin.rpc('prepaid_begin', { p_merchant: merchantId, p_user: user.id, p_months: months, p_monthly: monthly, p_setup: setup });
+  if (error) prepaidError(error);
+  try {
+    const { data: merchant } = await admin.from('merchants').select('business_name').eq('id', merchantId).single();
+    const customer = await customerFor(s, merchantId, user.email, merchant?.business_name);
+    const eur = (c: number) => (c / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
+    const origin = siteOrigin(req);
+    const metadata = { merchant_id: merchantId, plan_type: PREPAID_PLAN, billing_mode: 'prepaid', purchase_id: purchase.id, user_id: user.id };
+    const taxBehavior = monthlyPrice.tax_behavior && monthlyPrice.tax_behavior !== 'unspecified' ? { tax_behavior: monthlyPrice.tax_behavior } : {};
+    const session = await s.checkout.sessions.create({
+      mode: 'payment',
+      customer,
+      payment_method_types: ['card'],
+      line_items: [
+        { price: setupPrice.id, quantity: 1 },
+        { price_data: { currency: 'eur', unit_amount: monthly, product_data: { name: `Offre avec engagement — mensualité (${months} mois payés en une fois)` }, ...taxBehavior }, quantity: months },
+      ],
+      payment_intent_data: { metadata, description: `DPA Cards — offre avec engagement payée en une fois (${months} mois)` },
+      invoice_creation: { enabled: true, invoice_data: { metadata, description: `Offre avec engagement DPA Cards — ${months} mois payés en une fois + frais de mise en place` } },
+      metadata,
+      locale: 'fr',
+      expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+      custom_text: { submit: { message: `Paiement unique de ${eur(purchase.total_cents)} : ${months} × ${eur(monthly)} + ${eur(setup)} de mise en place. Accès de ${months} mois à partir de la confirmation du paiement. Aucun prélèvement mensuel, aucun renouvellement automatique.` } },
+      success_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/subscription/cancel`,
+    }, { idempotencyKey: `dpa-prepaid-${purchase.id}` });
+    const { error: ae } = await admin.rpc('prepaid_attach_session', { p_id: purchase.id, p_session: session.id, p_customer: customer });
+    if (ae) throw new Error('db_prepaid');
+    return json(req, 200, { url: session.url });
+  } catch (e) {
+    await admin.rpc('prepaid_mark', { p_id: purchase.id, p_status: 'canceled' });
+    throw e;
+  }
+}
+
+// Stripe says the session is paid (checked here, with the amount frozen at purchase): period opened once.
+async function confirmPrepaid(session: Stripe.Checkout.Session) {
+  const s = requireStripe();
+  const purchaseId = session.metadata?.purchase_id ?? '', merchantId = session.metadata?.merchant_id;
+  if (session.metadata?.billing_mode !== 'prepaid' || !UUID.test(purchaseId) || !merchantId) throw new HttpError(400, 'invalid_session');
+  const { data: p } = await admin.from('prepaid_purchases').select('*').eq('id', purchaseId).maybeSingle();
+  if (!p || p.merchant_id !== merchantId || (p.stripe_checkout_session_id && p.stripe_checkout_session_id !== session.id)) throw new HttpError(403, 'forbidden');
+  if (!p.stripe_checkout_session_id) await admin.rpc('prepaid_attach_session', { p_id: p.id, p_session: session.id, p_customer: typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null });
+  if (session.payment_status !== 'paid') {
+    // complete + unpaid = deferred payment still processing; expired = abandoned. No access either way.
+    if (session.status === 'complete') await admin.rpc('prepaid_mark', { p_id: p.id, p_status: 'processing' });
+    if (session.status === 'expired') await admin.rpc('prepaid_mark', { p_id: p.id, p_status: 'canceled' });
+    const { data: fresh } = await admin.from('prepaid_purchases').select('*').eq('id', p.id).single();
+    return { paid: false, pending: session.status === 'complete', purchase: fresh, row: await rowOf(merchantId) };
+  }
+  const pi = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
+  const invoiceId = typeof session.invoice === 'string' ? session.invoice : session.invoice?.id ?? null;
+  const customer = typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null;
+  const { data, error } = await admin.rpc('prepaid_confirm', {
+    p_id: p.id, p_session: session.id, p_amount: session.amount_total, p_currency: session.currency,
+    p_payment_intent: pi, p_invoice: invoiceId, p_customer: customer, p_paid_at: null,
+  });
+  if (error) {
+    console.error('billing error', 'prepaid_confirm', error.code, (error.message ?? '').slice(0, 40));
+    throw new HttpError(409, (error.message ?? '').includes('amount_mismatch') ? 'amount_mismatch' : 'invalid_session');
+  }
+  // Sales ledger (same invoice id as the invoice.paid webhook: never counted twice; never blocks the access).
+  if (invoiceId) {
+    try { await recordInvoice(await s.invoices.retrieve(invoiceId), false); }
+    catch (e) { console.error('billing error', 'prepaid ledger', (e as Error).message); }
+  }
+  if (data.purchase?.conflict) console.error('billing error', 'prepaid paid while another offer is valid', p.id);
+  return { paid: true, pending: false, purchase: data.purchase, row: data.subscription };
+}
+
+async function prepaidOf(merchantId: string, id?: string | null) {
+  let q = admin.from('prepaid_purchases').select('id, months, monthly_cents, base_cents, setup_cents, total_cents, currency, auto_renew, status, conflict, dispute_status, access_start, access_end, paid_at, refunded_cents, refunded_at, access_revoked_at')
+    .eq('merchant_id', merchantId);
+  q = id ? q.eq('id', id) : q.in('status', ['paid', 'refunded', 'partially_refunded']).order('paid_at', { ascending: false }).limit(1);
+  const { data } = await q.maybeSingle();
+  return data ?? null;
+}
+
 // ---------------------------------------------------------------- routes
 
 async function checkout(req: Request): Promise<Response> {
@@ -258,16 +411,25 @@ async function checkout(req: Request): Promise<Response> {
   const body = await req.json().catch(() => ({}));
   const planType = String(body?.plan ?? '') as PlanType;
   if (!(planType in PLANS)) throw new HttpError(422, 'invalid_plan');
+  const billing = String(body?.billing ?? 'monthly');
+  if (!['monthly', 'prepaid'].includes(billing) || (billing === 'prepaid' && planType !== PREPAID_PLAN)) throw new HttpError(422, 'invalid_plan');
+  const { data: program } = await admin.from('programs').select('id').eq('merchant_id', merchantId).eq('is_active', true).maybeSingle();
+  if (!program) throw new HttpError(409, 'onboarding_incomplete');
+  if (billing === 'prepaid') return await checkoutPrepaid(req, user, merchantId);
+
   const plan = PLANS[planType];
   const ids = await priceIds();
   const setupId = ids[plan.setup], monthlyId = ids[plan.monthly];
-
-  const { data: program } = await admin.from('programs').select('id').eq('merchant_id', merchantId).eq('is_active', true).maybeSingle();
-  if (!program) throw new HttpError(409, 'onboarding_incomplete');
+  // An ended prepaid period is 'expired' before anything else; an open prepaid attempt is closed.
+  await admin.rpc('prepaid_expire', { p_merchant: merchantId });
   const existing = await rowOf(merchantId);
   if (existing && ACCESS.includes(existing.status)) throw new HttpError(409, 'already_subscribed');
   // A subscription that still exists at Stripe but is unpaid is settled in the portal, never duplicated.
   if (existing?.stripe_subscription_id && ['past_due', 'unpaid', 'paused'].includes(existing.status)) throw new HttpError(409, 'payment_issue');
+  // A prepaid attempt still open is closed first (or confirmed if it was paid meanwhile: then no second offer).
+  await settleOpenPrepaid(merchantId);
+  const settled = await rowOf(merchantId);
+  if (settled?.billing_mode === 'prepaid' && ACCESS.includes(settled.status)) throw new HttpError(409, 'already_subscribed');
 
   const { data: merchant } = await admin.from('merchants').select('business_name').eq('id', merchantId).single();
   let customer = existing?.stripe_customer_id as string | undefined;
@@ -306,7 +468,7 @@ async function checkout(req: Request): Promise<Response> {
       status: 'incomplete', stripe_subscription_id: null, stripe_setup_payment_intent_id: null, setup_paid_at: null,
       trial_start: null, trial_end: null, current_period_start: null, current_period_end: null, billing_cycle_anchor: null,
       commitment_start: null, commitment_end: null, cancel_at_period_end: false, cancel_at: null, canceled_at: null,
-      cancel_requested_at: null, latest_invoice_status: null,
+      cancel_requested_at: null, latest_invoice_status: null, billing_mode: 'monthly', prepaid_purchase_id: null,
     };
     const { error } = await admin.from('subscriptions').update({ ...row, ...reset }).eq('merchant_id', merchantId);
     if (error) throw new Error('db_subscriptions');
@@ -326,14 +488,22 @@ async function verify(req: Request): Promise<Response> {
   const session = await s.checkout.sessions.retrieve(id, { expand: ['payment_intent'] });
   // Never trust the URL alone: the session must be this merchant's, and paid according to Stripe.
   if (session.metadata?.merchant_id !== merchantId) throw new HttpError(403, 'forbidden');
+  if (session.metadata?.billing_mode === 'prepaid') {
+    const r = await confirmPrepaid(session);
+    const { data: access } = await admin.rpc('merchant_has_access', { p_merchant: merchantId });
+    return json(req, 200, { paid: r.paid, pending: r.pending, billing_mode: 'prepaid', status: r.row?.status ?? 'incomplete',
+      access: r.paid && access === true && r.row?.prepaid_purchase_id === r.purchase?.id, subscription: r.row, prepaid: await prepaidOf(merchantId, r.purchase?.id) });
+  }
   const r = await ensureSubscription(session);
   return json(req, 200, { paid: r.paid, status: r.row?.status ?? 'incomplete', access: !!r.row && ACCESS.includes(r.row.status), subscription: r.row });
 }
 
 async function summary(req: Request): Promise<Response> {
   const { merchantId } = await member(req, false);
+  await admin.rpc('prepaid_expire', { p_merchant: merchantId });
   const row = await rowOf(merchantId);
-  const out: Record<string, unknown> = { subscription: row, payment_method: null, invoices: [], upcoming: null };
+  const out: Record<string, unknown> = { subscription: row, payment_method: null, invoices: [], upcoming: null,
+    prepaid: row?.billing_mode === 'prepaid' ? await prepaidOf(merchantId, row.prepaid_purchase_id) : null };
   if (stripe && row?.stripe_customer_id) {
     try {
       const customer = await stripe.customers.retrieve(row.stripe_customer_id, { expand: ['invoice_settings.default_payment_method'] }) as Stripe.Customer;
@@ -563,8 +733,19 @@ async function webhook(req: Request): Promise<Response> {
   await admin.from('sales_provider_events').upsert({ provider: 'stripe', event_id: event.id, type: event.type }, { onConflict: 'provider,event_id', ignoreDuplicates: true });
   switch (event.type) {
     case 'checkout.session.completed':
-    case 'checkout.session.async_payment_succeeded': {
+    case 'checkout.session.async_payment_succeeded':
+    case 'checkout.session.async_payment_failed':
+    case 'checkout.session.expired': {
       const session = event.data.object as Stripe.Checkout.Session;
+      if (session.metadata?.billing_mode === 'prepaid') {
+        // Paid / processing / expired: read again from Stripe (never from the event alone).
+        if (event.type === 'checkout.session.async_payment_failed') {
+          const id = session.metadata?.purchase_id ?? '';
+          if (UUID.test(id)) await admin.rpc('prepaid_mark', { p_id: id, p_status: 'failed' });
+        } else await confirmPrepaid(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
+        break;
+      }
+      if (event.type === 'checkout.session.async_payment_failed' || event.type === 'checkout.session.expired') break;
       if (session.metadata?.type === 'custom_design') await confirmDesign(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
       else if (session.mode === 'payment' && session.metadata?.merchant_id && session.metadata?.plan_type) await ensureSubscription(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
       break;
@@ -593,6 +774,21 @@ async function webhook(req: Request): Promise<Response> {
       if (pi) {
         const { error } = await admin.rpc('sales_record_refund', { p_provider: 'stripe', p_charge_ref: pi, p_refunded: ch.amount_refunded });
         if (error) { console.error('billing error', 'sales_record_refund', error.code); throw new Error('db_sales_refund'); }
+        // Prepaid commitment: full refund ends the paid period, a partial one is recorded.
+        const { error: pe } = await admin.rpc('prepaid_refund', { p_payment_intent: pi, p_refunded: ch.amount_refunded });
+        if (pe) { console.error('billing error', 'prepaid_refund', pe.code); throw new Error('db_prepaid_refund'); }
+      }
+      break;
+    }
+    case 'charge.dispute.created':
+    case 'charge.dispute.closed': {
+      // Prepaid commitment only (monthly payments keep their existing handling): lost = the period ends.
+      const d = event.data.object as Stripe.Dispute;
+      const pi = typeof d.payment_intent === 'string' ? d.payment_intent : d.payment_intent?.id ?? null;
+      const st = event.type === 'charge.dispute.created' ? 'open' : d.status === 'lost' ? 'lost' : d.status === 'won' ? 'won' : null;
+      if (pi && st) {
+        const { error } = await admin.rpc('prepaid_dispute', { p_payment_intent: pi, p_status: st });
+        if (error) { console.error('billing error', 'prepaid_dispute', error.code); throw new Error('db_prepaid_dispute'); }
       }
       break;
     }
