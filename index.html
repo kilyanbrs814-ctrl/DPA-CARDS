@@ -432,8 +432,8 @@ a:hover{color:#1A36C4}
           </ul>
           <sc-if value="{{ p.pre }}" hint-placeholder-val="{{ false }}">
             <div role="region" aria-label="Récapitulatif du paiement en une fois" style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:16px;background:#F5F7FF;border:1px solid #D9E0FF">
-              <dl style="margin:0;display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr);column-gap:12px;font-size:14px">
-                <sc-for list="{{ p.preRows }}" as="pr" hint-placeholder-count="6"><dt style="padding:7px 0;color:#4A4E55;border-bottom:1px solid #E3E7FA">{{ pr.k }}</dt><dd style="margin:0;padding:7px 0;font-weight:700;text-align:right;border-bottom:1px solid #E3E7FA;overflow-wrap:anywhere">{{ pr.v }}</dd></sc-for>
+              <dl style="margin:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);column-gap:12px;font-size:14px">
+                <sc-for list="{{ p.preRows }}" as="pr" hint-placeholder-count="6"><dt style="padding:7px 0;color:#4A4E55;border-bottom:1px solid #E3E7FA">{{ pr.k }}</dt><dd style="margin:0;padding:7px 0;font-weight:700;text-align:right;border-bottom:1px solid #E3E7FA;overflow-wrap:break-word;hyphens:none">{{ pr.v }}</dd></sc-for>
               </dl>
               <div style="font-size:13px;color:#3E424A;line-height:1.5">{{ p.preNote }}</div>
             </div>
