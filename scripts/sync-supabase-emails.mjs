@@ -13,7 +13,9 @@ if (!TOKEN) {
 }
 
 const LOGO = 'https://dpa-cards.vercel.app/assets/dpa-cards-logo.png';
-const HELLO = '{{ if .Data.first_name }}Bonjour {{ .Data.first_name }},{{ else }}Bonjour,{{ end }}';
+// `with` instead of `if .Data.first_name`: no template execution error (and no unsent e-mail)
+// when a template receives no metadata.
+const HELLO = '{{ with .Data }}{{ with .first_name }}Bonjour {{ . }},{{ else }}Bonjour,{{ end }}{{ else }}Bonjour,{{ end }}';
 const URL = '{{ .ConfirmationURL }}';
 const SUPPORT = 'mailto:contact@digitalprojectagency.fr';
 
