@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { makeCardDesigner } from './card-designer.js';
+import { makeSales } from './sales.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -9,6 +10,7 @@ const ALLOWED = new Set([
   'kilyan.brs814@gmail.com',
   'mael.81400@icloud.com',
   'contact@digitalprojectagency.fr',
+  'zakariabouras2020@gmail.com',
 ]);
 
 // Own storage key: the merchant app (same origin) keeps its session under the default key, and
@@ -178,10 +180,21 @@ const designerApi = {
   testWallet: id => adminCall('admin-test-card-wallet', { id }),
 };
 let designer = null;
+// Sales tracking (director only: every route re-checks admin_users.role = 'director' on the server).
+const salesApi = {
+  sales: range => adminCall('admin-sales', range || {}),
+  attribute: (merchantId, repId, reason) => adminCall('admin-sales-attribute', { merchant_id: merchantId, sales_rep_id: repId, reason }),
+  rule: rule => adminCall('admin-sales-rule', rule),
+  validate: ids => adminCall('admin-sales-validate', { ids }),
+  cancel: (id, reason) => adminCall('admin-sales-cancel', { id, reason }),
+  payout: payload => adminCall('admin-sales-payout', payload),
+};
+let sales = null;
 
 refreshAccess();
 window.__dpaAdminResolve({
   designer: () => designer || (designer = makeCardDesigner(window.React, designerApi)),
+  sales: () => sales || (sales = makeSales(window.React, salesApi)),
   supabase: sb,
   onAccess(cb) { accessListeners.push(cb); if (app.style.display === 'block') cb(); },
   overview: () => adminCall('admin-overview'),

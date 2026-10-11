@@ -8,7 +8,8 @@
 //   POST /billing/design-checkout  owner session → Stripe Checkout for the 29,90 € custom design (one-time), once the subscription is valid
 //   POST /billing/design-verify    member session, { session_id } → confirms that payment with Stripe
 //   POST /billing/design-cancel    owner session, { design_request_id } → cancels an unpaid request (never a paid one)
-//   POST /billing/webhook   Stripe signature → keeps public.subscriptions in sync with Stripe and
+//   POST /billing/webhook   Stripe signature → keeps public.subscriptions in sync with Stripe, records
+//                           collected / failed invoices and refunds in public.sales_payments (commissions), and
 //                           confirms custom design payments (metadata.type = custom_design)
 //
 // Why two steps: Stripe Checkout cannot combine a free trial with a billing cycle anchor.
@@ -169,6 +170,35 @@ async function syncSubscription(sub: Stripe.Subscription, extra: Record<string, 
   return data;
 }
 
+// ---------------------------------------------------------------- Stripe → sales ledger (commissions)
+
+// One Stripe invoice = one row of public.sales_payments (unique on provider + invoice id, so a
+// webhook received twice updates the same row). Only money actually collected (or a failed
+// attempt) is recorded: the 0 € invoice that opens the trial is skipped. Commissions are then
+// derived in the database from these rows, never from the subscription status.
+async function recordInvoice(inv: any, failed: boolean) {
+  const amount = failed ? inv.amount_due : inv.amount_paid;
+  if (!amount || amount <= 0 || inv.currency !== 'eur') return;
+  const subId = (typeof inv.subscription === 'string' ? inv.subscription : inv.subscription?.id) ?? inv.parent?.subscription_details?.subscription ?? null;
+  const meta = { ...(inv.subscription_details?.metadata ?? {}), ...(inv.parent?.subscription_details?.metadata ?? {}), ...(inv.metadata ?? {}) };
+  let merchantId: string | null = meta.merchant_id ?? null, plan: string | null = meta.plan_type ?? null;
+  if (!merchantId && subId) {
+    const { data } = await admin.from('subscriptions').select('merchant_id, plan_type').eq('stripe_subscription_id', subId).maybeSingle();
+    merchantId = data?.merchant_id ?? null; plan = plan ?? data?.plan_type ?? null;
+  }
+  if (!merchantId) return;
+  const kind = subId ? 'subscription' : meta.type === 'custom_design' ? 'design' : meta.plan_type ? 'setup' : 'other';
+  const line = (inv.lines?.data ?? []).find((l: any) => l.period) ?? null;
+  const pi = typeof inv.payment_intent === 'string' ? inv.payment_intent : inv.payment_intent?.id ?? null;
+  const { error } = await admin.rpc('sales_record_payment', { p: {
+    provider: 'stripe', provider_payment_id: inv.id, merchant_id: merchantId, kind, status: failed ? 'failed' : 'paid',
+    amount_cents: amount, currency: inv.currency, plan_type: plan, provider_subscription_id: subId, provider_charge_ref: pi,
+    period_start: kind === 'subscription' ? iso(line?.period?.start) : null, period_end: kind === 'subscription' ? iso(line?.period?.end) : null,
+    paid_at: failed ? null : iso(inv.status_transitions?.paid_at) ?? new Date().toISOString(), failed_at: failed ? new Date().toISOString() : null,
+  } });
+  if (error) { console.error('billing error', 'sales_record_payment', error.code); throw new Error('db_sales_payment'); }
+}
+
 // After a paid Checkout session: the subscription with a 15-day trial, prorated to the next 1st.
 // Idempotent (same Stripe idempotency key for the same Checkout session).
 async function ensureSubscription(session: Stripe.Checkout.Session) {
@@ -177,6 +207,12 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
   const planType = session.metadata?.plan_type as PlanType;
   if (!merchantId || !(planType in PLANS)) throw new HttpError(400, 'invalid_session');
   if (session.payment_status !== 'paid') return { paid: false, row: await rowOf(merchantId) };
+  // The setup fee's invoice (Checkout creates it): recorded here too, in case its webhook is late.
+  // Same invoice id as the webhook, so it is never counted twice; a ledger hiccup never blocks the subscription.
+  if (session.invoice) {
+    try { await recordInvoice(typeof session.invoice === 'string' ? await s.invoices.retrieve(session.invoice) : session.invoice, false); }
+    catch (e) { console.error('billing error', 'setup ledger', (e as Error).message); }
+  }
 
   const row = await rowOf(merchantId);
   if (row?.stripe_subscription_id) {
@@ -523,6 +559,8 @@ async function webhook(req: Request): Promise<Response> {
 
   const subOfInvoice = (inv: any): string | null =>
     (typeof inv.subscription === 'string' ? inv.subscription : inv.subscription?.id) ?? inv.parent?.subscription_details?.subscription ?? null;
+  // Received events (information only: every handler below is idempotent on its own).
+  await admin.from('sales_provider_events').upsert({ provider: 'stripe', event_id: event.id, type: event.type }, { onConflict: 'provider,event_id', ignoreDuplicates: true });
   switch (event.type) {
     case 'checkout.session.completed':
     case 'checkout.session.async_payment_succeeded': {
@@ -544,6 +582,18 @@ async function webhook(req: Request): Promise<Response> {
       const inv = event.data.object as any;
       const subId = subOfInvoice(inv);
       if (subId) await syncSubscription(await s.subscriptions.retrieve(subId), { latest_invoice_status: event.type === 'invoice.payment_failed' ? 'payment_failed' : inv.status });
+      // Sales ledger: collected or failed money only. An error makes Stripe retry the event.
+      if (event.type !== 'invoice.finalized') await recordInvoice(inv, event.type === 'invoice.payment_failed');
+      break;
+    }
+    case 'charge.refunded': {
+      // Cumulative refunded amount, matched to the invoice through its payment intent.
+      const ch = event.data.object as Stripe.Charge;
+      const pi = typeof ch.payment_intent === 'string' ? ch.payment_intent : ch.payment_intent?.id ?? null;
+      if (pi) {
+        const { error } = await admin.rpc('sales_record_refund', { p_provider: 'stripe', p_charge_ref: pi, p_refunded: ch.amount_refunded });
+        if (error) { console.error('billing error', 'sales_record_refund', error.code); throw new Error('db_sales_refund'); }
+      }
       break;
     }
   }

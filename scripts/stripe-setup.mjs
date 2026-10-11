@@ -57,7 +57,7 @@ const PRICES = [
   ['dpa_custom_design', 2990, null, 'Création de carte sur mesure', 'design'],
 ];
 const EVENTS = ['checkout.session.completed', 'checkout.session.async_payment_succeeded', 'customer.subscription.created', 'customer.subscription.updated',
-  'customer.subscription.deleted', 'customer.subscription.paused', 'customer.subscription.resumed', 'invoice.paid', 'invoice.payment_failed', 'invoice.finalized'];
+  'customer.subscription.deleted', 'customer.subscription.paused', 'customer.subscription.resumed', 'invoice.paid', 'invoice.payment_failed', 'invoice.finalized', 'charge.refunded'];
 
 (async () => {
   const acct = await api('GET', '/account');

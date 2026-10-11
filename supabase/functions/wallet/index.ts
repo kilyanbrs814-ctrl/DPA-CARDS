@@ -22,6 +22,12 @@
 //   POST /wallet/admin-merchant-create  admin session → "Ajouter un client": login (no password), shop, program
 //   POST /wallet/admin-merchant-access  admin session → sends that shop's owner the "choose your password" link
 //   POST /wallet/admin-test-cards, -get, -save, -upload, -duplicate, -delete, -new-qr, -wallet
+//   POST /wallet/admin-sales            director session, { from, to } → reps, payments, commissions, payouts, rules
+//   POST /wallet/admin-sales-attribute  director session, { merchant_id, sales_rep_id | null, reason } → manual attribution
+//   POST /wallet/admin-sales-rule       director session → creates a commission rule, or { disable: id }
+//   POST /wallet/admin-sales-validate   director session, { ids } → à valider → à payer
+//   POST /wallet/admin-sales-cancel     director session, { id, reason } → cancels an unpaid commission
+//   POST /wallet/admin-sales-payout     director session → records a transfer already made ("Marquer comme payé")
 //                                admin session → test cards (no merchant), QR DPA_TEST:, demo Google Wallet pass
 //
 // verify_jwt is off: the platform check does not understand every key type, so
@@ -710,10 +716,27 @@ async function requireAdmin(req: Request) {
   const { user } = await authUser(req);
   const email = (user.email ?? '').trim().toLowerCase();
   if (!email || !user.email_confirmed_at) throw new HttpError(403, 'not_admin');
-  const { data, error } = await admin.from('admin_users').select('email').eq('email', email).maybeSingle();
+  const { data, error } = await admin.from('admin_users').select('email, role').eq('email', email).maybeSingle();
   if (error) throw new Error('db_admin_users');
   if (!data) throw new HttpError(403, 'not_admin');
+  return Object.assign(user, { dpaEmail: email, dpaRole: data.role as 'admin' | 'director' });
+}
+
+// Sales tracking, commission rules, manual attribution and payouts: the director account only
+// (admin_users.role = 'director'). The database functions check the role again from this e-mail.
+async function requireDirector(req: Request) {
+  const user = await requireAdmin(req);
+  if (user.dpaRole !== 'director') throw new HttpError(403, 'not_director');
   return user;
+}
+
+// Rep of each shop (who brought it), shown to every admin; amounts stay director-only.
+async function attributions(ids?: string[]) {
+  let q = admin.from('merchant_attributions').select('merchant_id, source, attributed_at, sales_reps(id, display_name)');
+  if (ids) q = q.in('merchant_id', ids);
+  const { data, error } = await q;
+  if (error) throw new Error('db_attributions');
+  return Object.fromEntries((data ?? []).map((a: any) => [a.merchant_id, { id: a.sales_reps?.id ?? null, name: a.sales_reps?.display_name ?? null, source: a.source, at: a.attributed_at }]));
 }
 
 // Owner e-mails come from Auth (not readable through the database API).
@@ -727,16 +750,16 @@ async function ownerEmails(ids: string[]): Promise<Record<string, string>> {
 }
 
 async function adminOverview(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user = await requireAdmin(req);
   const { data, error } = await admin.rpc('admin_overview');
   if (error) throw new Error('db_admin_overview');
-  const emails = await ownerEmails((data.merchants as any[]).map(m => m.owner_id));
-  const merchants = (data.merchants as any[]).map(({ owner_id, ...m }) => ({ ...m, owner_email: emails[owner_id] ?? null }));
-  return json(req, 200, { kpis: data.kpis, merchants });
+  const [emails, reps] = await Promise.all([ownerEmails((data.merchants as any[]).map(m => m.owner_id)), attributions()]);
+  const merchants = (data.merchants as any[]).map(({ owner_id, ...m }) => ({ ...m, owner_email: emails[owner_id] ?? null, sales_rep: reps[m.id] ?? null }));
+  return json(req, 200, { kpis: data.kpis, merchants, me: { email: user.dpaEmail, role: user.dpaRole } });
 }
 
 async function adminMerchant(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user = await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   const id = String(body?.merchant_id ?? '');
   if (!UUID_RE.test(id)) throw new HttpError(400, 'invalid_request');
@@ -744,8 +767,114 @@ async function adminMerchant(req: Request): Promise<Response> {
   if (error) throw new Error('db_admin_merchant');
   if (!data) throw new HttpError(404, 'merchant_not_found');
   const { owner_id, ...merchant } = data.merchant;
-  const emails = await ownerEmails([owner_id]);
-  return json(req, 200, { ...data, merchant: { ...merchant, owner_email: emails[owner_id] ?? null } });
+  const [emails, reps] = await Promise.all([ownerEmails([owner_id]), attributions([id])]);
+  // Payments, commissions and attribution history: director only.
+  let sales = null;
+  if (user.dpaRole === 'director') {
+    const [{ data: s, error: se }, { data: reps, error: re }] = await Promise.all([
+      admin.rpc('sales_merchant', { p_merchant: id }),
+      admin.from('sales_reps').select('id, display_name, active').order('created_at'),
+    ]);
+    if (se || re) throw new Error('db_sales_merchant');
+    sales = { ...s, reps };
+  }
+  return json(req, 200, { ...data, merchant: { ...merchant, owner_email: emails[owner_id] ?? null }, sales_rep: reps[id] ?? null, sales });
+}
+
+// ---------------------------------------------------------------- sales tracking (director only)
+
+const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+const monthStart = (v: unknown) => (typeof v === 'string' && MONTH_RE.test(v) ? `${v}-01` : null);
+// Database errors raised on purpose by the sales functions → HTTP codes the dashboard can explain.
+function salesError(error: { message?: string; code?: string }, where: string): never {
+  const msg = error.message ?? '';
+  for (const code of ['not_director', 'merchant_not_found', 'rep_not_found', 'rule_not_found', 'not_cancellable', 'reason_required',
+    'nothing_to_pay', 'selection_changed', 'total_changed', 'invalid_paid_on']) {
+    if (msg.includes(code)) throw new HttpError(code === 'not_director' ? 403 : code.endsWith('not_found') ? 404 : 409, code);
+  }
+  if (error.code === '23514' || error.code === '22023' || error.code === '22P02') throw new HttpError(422, 'invalid_request');
+  console.error('wallet error', where, error.code);
+  throw new Error('db_' + where);
+}
+
+async function adminSales(req: Request): Promise<Response> {
+  await requireDirector(req);
+  const b = await req.json().catch(() => ({}));
+  const from = monthStart(b?.from), to = monthStart(b?.to);
+  const { data, error } = await admin.rpc('sales_dashboard', { p_from: from, p_to: to });
+  if (error) salesError(error, 'sales_dashboard');
+  return json(req, 200, data);
+}
+
+async function adminSalesAttribute(req: Request): Promise<Response> {
+  const user = await requireDirector(req);
+  const b = await req.json().catch(() => ({}));
+  const merchant = String(b?.merchant_id ?? ''), rep = b?.sales_rep_id == null || b.sales_rep_id === '' ? null : String(b.sales_rep_id);
+  if (!UUID_RE.test(merchant) || (rep !== null && !UUID_RE.test(rep))) throw new HttpError(400, 'invalid_request');
+  const { data, error } = await admin.rpc('sales_attribute', { p_merchant: merchant, p_rep: rep, p_actor: user.dpaEmail, p_source: 'manual', p_reason: str(b?.reason, 300) });
+  if (error) salesError(error, 'sales_attribute');
+  return json(req, 200, data);
+}
+
+async function adminSalesRule(req: Request): Promise<Response> {
+  const user = await requireDirector(req);
+  const b = await req.json().catch(() => ({}));
+  if (b?.disable) {
+    if (!UUID_RE.test(String(b.disable))) throw new HttpError(400, 'invalid_request');
+    const { data, error } = await admin.rpc('sales_rule_disable', { p_actor: user.dpaEmail, p_rule: String(b.disable) });
+    if (error) salesError(error, 'sales_rule_disable');
+    return json(req, 200, { rule: data });
+  }
+  const kind = b?.kind === 'recurring' ? 'recurring' : b?.kind === 'initial' ? 'initial' : null;
+  const calc = b?.calc === 'percent' ? 'percent' : b?.calc === 'fixed' ? 'fixed' : null;
+  const value = Number(b?.value);
+  if (!kind || !calc || !Number.isFinite(value) || value <= 0 || (calc === 'percent' && value > 100) || (calc === 'fixed' && value > 100000)) throw new HttpError(422, 'invalid_rule');
+  const duration = b?.duration_months == null || b.duration_months === '' ? null : Math.round(Number(b.duration_months));
+  if (duration !== null && (kind !== 'recurring' || !(duration >= 1 && duration <= 120))) throw new HttpError(422, 'invalid_rule');
+  const rep = b?.sales_rep_id ? String(b.sales_rep_id) : null, plan = b?.plan_type ? String(b.plan_type) : null;
+  if ((rep && !UUID_RE.test(rep)) || (plan && !['no_commitment', 'commitment'].includes(plan))) throw new HttpError(422, 'invalid_rule');
+  const validFrom = typeof b?.valid_from === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.valid_from) ? b.valid_from : null;
+  const rule = { kind, calc, amount_cents: calc === 'fixed' ? Math.round(value * 100) : null, percent: calc === 'percent' ? Math.round(value * 100) / 100 : null,
+    sales_rep_id: rep, plan_type: plan, duration_months: duration, valid_from: validFrom };
+  const { data, error } = await admin.rpc('sales_rule_create', { p_actor: user.dpaEmail, p_rule: rule });
+  if (error) salesError(error, 'sales_rule_create');
+  return json(req, 200, { rule: data });
+}
+
+const uuidList = (v: unknown) => (Array.isArray(v) && v.length > 0 && v.length <= 500 && v.every(x => typeof x === 'string' && UUID_RE.test(x)) ? v as string[] : null);
+
+async function adminSalesValidate(req: Request): Promise<Response> {
+  const user = await requireDirector(req);
+  const b = await req.json().catch(() => ({}));
+  const ids = uuidList(b?.ids);
+  if (!ids) throw new HttpError(400, 'invalid_request');
+  const { data, error } = await admin.rpc('sales_validate', { p_actor: user.dpaEmail, p_ids: ids });
+  if (error) salesError(error, 'sales_validate');
+  return json(req, 200, { validated: data });
+}
+
+async function adminSalesCancel(req: Request): Promise<Response> {
+  const user = await requireDirector(req);
+  const b = await req.json().catch(() => ({}));
+  const id = String(b?.id ?? ''), reason = str(b?.reason, 300);
+  if (!UUID_RE.test(id)) throw new HttpError(400, 'invalid_request');
+  if (!reason) throw new HttpError(422, 'reason_required');
+  const { data, error } = await admin.rpc('sales_cancel', { p_actor: user.dpaEmail, p_id: id, p_reason: reason });
+  if (error) salesError(error, 'sales_cancel');
+  return json(req, 200, { commission: data });
+}
+
+// Records a transfer the director has already made. Never triggers any payment.
+async function adminSalesPayout(req: Request): Promise<Response> {
+  const user = await requireDirector(req);
+  const b = await req.json().catch(() => ({}));
+  const ids = uuidList(b?.ids), rep = String(b?.sales_rep_id ?? ''), period = monthStart(b?.period), key = String(b?.idempotency_key ?? '');
+  const expected = Number(b?.expected_total_cents), paidOn = typeof b?.paid_on === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.paid_on) ? b.paid_on : null;
+  if (!ids || !UUID_RE.test(rep) || !period || !UUID_RE.test(key) || !Number.isInteger(expected) || !paidOn) throw new HttpError(400, 'invalid_request');
+  const { data, error } = await admin.rpc('sales_payout', { p_actor: user.dpaEmail, p_rep: rep, p_period: period, p_ids: ids, p_expected: expected,
+    p_paid_on: paidOn, p_reference: str(b?.reference, 120), p_note: str(b?.note, 500), p_key: key });
+  if (error) salesError(error, 'sales_payout');
+  return json(req, 200, { payout: data });
 }
 
 async function adminDesigns(req: Request): Promise<Response> {
@@ -1024,7 +1153,7 @@ const multiline = (v: unknown, max: number) => (typeof v === 'string' ? v.replac
 const initialsOf = (name: string) => name.normalize('NFD').replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 4).toUpperCase() || 'DPA';
 
 async function adminMerchantCreate(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user = await requireAdmin(req);
   const b = await req.json().catch(() => ({}));
   const o = b?.owner ?? {}, biz = b?.business ?? {}, pr = b?.program ?? {};
   const first = str(o.first, 80), last = str(o.last, 80), email = str(o.email, 254).toLowerCase(), phone = str(o.phone, 40);
@@ -1069,10 +1198,15 @@ async function adminMerchantCreate(req: Request): Promise<Response> {
     throw new Error('db_admin_create_merchant');
   }
   const m = data.merchant, p = data.program;
+  // The rep is the admin of this verified session (never a value sent by the browser). The shop
+  // still belongs to its owner; a failure here never undoes the creation (the director can attribute it).
+  const { data: att, error: ae } = await admin.rpc('sales_attribute', { p_merchant: m.id, p_rep: null, p_actor: user.dpaEmail, p_source: 'admin_creation', p_reason: null });
+  if (ae) console.error('wallet error', 'admin-merchant-create attribution', ae.code);
   return json(req, 200, {
     merchant: { id: m.id, business_name: m.business_name, activity: m.activity, address: m.address, phone: m.phone, slug: m.slug, first_name: m.first_name, last_name: m.last_name },
     program: { id: p.id, name: p.name, mode: p.mode, goal: p.goal, reward: p.reward, conditions: p.conditions },
     owner: { email, attached: !created }, public_url: `${PUBLIC_SITE}/join/${m.slug}`, subscription: null,
+    sales_attribution: ae ? { attributed: false, reason: 'error' } : att,
   });
 }
 
@@ -1289,6 +1423,12 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-card-google-sync')) return await adminCardGoogleSync(req);
     if (req.method === 'POST' && path.endsWith('/admin-merchant-create')) return await adminMerchantCreate(req);
     if (req.method === 'POST' && path.endsWith('/admin-merchant-access')) return await adminMerchantAccess(req);
+    if (req.method === 'POST' && path.endsWith('/admin-sales')) return await adminSales(req);
+    if (req.method === 'POST' && path.endsWith('/admin-sales-attribute')) return await adminSalesAttribute(req);
+    if (req.method === 'POST' && path.endsWith('/admin-sales-rule')) return await adminSalesRule(req);
+    if (req.method === 'POST' && path.endsWith('/admin-sales-validate')) return await adminSalesValidate(req);
+    if (req.method === 'POST' && path.endsWith('/admin-sales-cancel')) return await adminSalesCancel(req);
+    if (req.method === 'POST' && path.endsWith('/admin-sales-payout')) return await adminSalesPayout(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-cards')) return await adminTestCards(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-get')) return await adminTestCardGet(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-save')) return await adminTestCardSave(req);
