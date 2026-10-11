@@ -12,13 +12,13 @@ export const LEGAL = {
   PUBLISHER_BRAND: 'DigitalProjectAgency',
   LEGAL_NAME: 'Kilyan Bouras', // entrepreneur individuel exerçant sous le nom commercial DigitalProjectAgency
   LEGAL_FORM: 'Entrepreneur individuel — micro-entreprise',
-  LEGAL_ADDRESS: TODO,       // adresse du siège
+  LEGAL_ADDRESS: '127 rue Elie Augustin, 81400 Blaye-les-Mines', // siège (concordant avec le répertoire Sirene, 11/10/2026)
   SIREN: '104 064 621',
   SIRET: '104 064 621 00014',
   VAT_NUMBER: 'TVA non applicable, article 293 B du CGI',
   PUBLICATION_DIRECTOR: 'Kilyan Bouras',
   CONTACT_EMAIL: 'contact@digitalprojectagency.fr', // contact public, aussi utilisé pour les demandes RGPD
-  CONTACT_PHONE: TODO,
+  CONTACT_PHONE: '07 53 80 14 15',
 
   SITE_URL: 'https://dpa-cards.vercel.app',
   HOST_NAME: 'Vercel Inc.',
@@ -28,9 +28,9 @@ export const LEGAL = {
   // Conditions générales de vente et d’abonnement (page publique /cgv). Le lien « Voir les conditions »
   // de la page d’abonnement pointe ici.
   CGV_URL: '/cgv',
-  CGV_LAST_UPDATE: '5 octobre 2026',
+  CGV_LAST_UPDATE: '11 octobre 2026',
 
   // Région du projet Supabase où sont stockées les données (voir le tableau de bord Supabase).
   DATA_REGION: TODO,
-  LAST_UPDATE: '4 octobre 2026',
+  LAST_UPDATE: '11 octobre 2026',
 };
