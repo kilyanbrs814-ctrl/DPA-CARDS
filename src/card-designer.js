@@ -321,6 +321,8 @@ export function makeCardDesigner(React, api) {
       error ? h('div', { role: 'alert', style: { marginTop: 6, color: '#B42318', fontSize: 14, fontWeight: 500 } }, error) : hint ? h('div', { style: { fontSize: 13, color: '#5E636B', marginTop: 5 } }, hint) : null);
   }
   function NewClientForm({ onCancel, onCreated }) {
+    const [requestId] = useState(() => crypto.randomUUID());
+    const [deferCard, setDeferCard] = useState(true);
     const [f, setF] = useState({ first: '', last: '', email: '', phone: '', business: '', activity: '', address: '', slug: '', slugEdited: false, program: '', programEdited: false, mode: 'passages', goal: 10, reward: '', conditions: '' });
     const [err, setErr] = useState({}); const [busy, setBusy] = useState(false); const [ask, setAsk] = useState(null); const [fail, setFail] = useState('');
     const up = k => v => setF(x => { const n = { ...x, [k]: v };
@@ -331,13 +333,13 @@ export function makeCardDesigner(React, api) {
       if (!EMAIL.test(f.email.trim())) e.email = 'Adresse e-mail invalide.';
       if (!f.business.trim()) e.business = 'Indiquez le nom du commerce.';
       if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(f.slug) || f.slug.length > 24) e.slug = 'Lettres minuscules, chiffres et tirets uniquement (24 caractères maximum).';
-      if (pts ? !(f.goal >= 50 && f.goal <= 1000) : !(f.goal >= 3 && f.goal <= 20)) e.goal = pts ? 'Entre 50 et 1000 points.' : 'Entre 3 et 20 passages.';
-      if (!f.reward.trim()) e.reward = 'Indiquez la récompense.';
+      if (!deferCard && (pts ? !(f.goal >= 50 && f.goal <= 1000) : !(f.goal >= 3 && f.goal <= 20))) e.goal = pts ? 'Entre 50 et 1000 points.' : 'Entre 3 et 20 passages.';
+      if (!deferCard && !f.reward.trim()) e.reward = 'Indiquez la récompense.';
       setErr(e); return !Object.keys(e).length; };
     const submit = async (opts = {}) => {
       if (busy || !check()) return; setBusy(true); setFail(''); setAsk(null);
       try {
-        const r = await api.createMerchant({ owner: { first: f.first, last: f.last, email: f.email.trim(), phone: f.phone }, business: { name: f.business, activity: f.activity, address: f.address, slug: f.slug },
+        const r = await api.createMerchant({ request_id: requestId, defer_card: deferCard, owner: { first: f.first, last: f.last, email: f.email.trim(), phone: f.phone }, business: { name: f.business, activity: f.activity, address: f.address, slug: f.slug },
           program: { name: f.program, mode: f.mode, goal: f.goal, reward: f.reward, conditions: f.conditions }, ...opts });
         onCreated(r);
       } catch (e) {
@@ -353,7 +355,7 @@ export function makeCardDesigner(React, api) {
     const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 };
     return h('form', { 'data-new-client': true, noValidate: true, onSubmit: e => { e.preventDefault(); submit(); }, style: { display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 860 } },
       h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } }, icon('person_add', 26, { color: '#2448F0' }), h('h2', { style: { margin: 0, fontWeight: 800, fontSize: 24 } }, 'Ajouter un client')),
-      h('p', { style: { margin: 0, color: '#4A4E55', fontSize: 15, lineHeight: 1.5 } }, 'Créez le compte complet du commerçant : il s’ouvre ensuite dans le générateur pour préparer sa carte. Aucun abonnement n’est créé et aucun e-mail n’est envoyé tant que vous ne cliquez pas sur « Envoyer l’accès au commerçant ».'),
+      h('p', { style: { margin: 0, color: '#4A4E55', fontSize: 15, lineHeight: 1.5 } }, 'Créez le compte du commerçant. Son attribution commerciale est conservée, même s’il termine lui-même sa carte plus tard. Aucun abonnement n’est créé et aucun e-mail n’est envoyé tant que vous ne cliquez pas sur « Envoyer l’accès au commerçant ».'),
       h(Section, { title: 'Responsable' }, h('div', { style: grid },
         h(Input, { id: 'nc-first', label: 'Prénom', required: true, value: f.first, max: 80, onChange: up('first'), error: err.first }),
         h(Input, { id: 'nc-last', label: 'Nom', value: f.last, max: 80, onChange: up('last') }),
@@ -364,12 +366,13 @@ export function makeCardDesigner(React, api) {
         h(Input, { id: 'nc-activity', label: 'Activité', value: f.activity, max: 60, onChange: up('activity'), placeholder: 'Restaurant, Barbier…' }),
         h(Input, { id: 'nc-address', label: 'Adresse', value: f.address, max: 200, onChange: up('address') }),
         h(Input, { id: 'nc-slug', label: 'Lien public', required: true, value: f.slug, max: 24, onChange: up('slug'), error: err.slug, hint: 'dpa-cards.vercel.app/join/' + (f.slug || '…') }))),
-      h(Section, { title: 'Programme de fidélité' }, h('div', { style: grid },
+      h('label', { style: { display: 'flex', gap: 10, alignItems: 'center', minHeight: 44 } }, h('input', { type: 'checkbox', checked: deferCard, onChange: e => setDeferCard(e.target.checked) }), 'Le commerçant terminera lui-même sa carte'),
+      !deferCard ? h(Section, { title: 'Programme de fidélité' }, h('div', { style: grid },
         h(Input, { id: 'nc-program', label: 'Nom du programme', value: f.program, max: 80, onChange: up('program'), placeholder: 'Club ' + (f.business || '…') }),
         h(Select, { label: 'Mode', value: f.mode, options: [['passages', 'Passages'], ['points', 'Points']], onChange: up('mode') }),
         h('div', null, h(Num, { label: 'Objectif', value: f.goal, min: f.mode === 'points' ? 50 : 3, max: f.mode === 'points' ? 1000 : 20, onChange: up('goal') }), err.goal ? h('div', { role: 'alert', style: { marginTop: 6, color: '#B42318', fontSize: 14 } }, err.goal) : null),
         h(Input, { id: 'nc-reward', label: 'Récompense', required: true, value: f.reward, max: 120, onChange: up('reward'), error: err.reward, placeholder: '1 dessert offert' })),
-        h(Input, { id: 'nc-conditions', label: 'Conditions (facultatif)', value: f.conditions, max: 600, onChange: up('conditions'), multi: true })),
+        h(Input, { id: 'nc-conditions', label: 'Conditions (facultatif)', value: f.conditions, max: 600, onChange: up('conditions'), multi: true })) : null,
       h(Section, { title: 'Compte' },
         h('div', { style: { fontSize: 15 } }, 'E-mail de connexion : ', h('strong', null, f.email.trim() || '—')),
         h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45 } }, 'Aucun mot de passe à saisir : le commerçant choisira le sien grâce au lien « Envoyer l’accès au commerçant », quand vous le déciderez.')),

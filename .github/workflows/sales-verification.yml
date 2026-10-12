@@ -1,0 +1,34 @@
+name: Sales verification
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/sales.js'
+      - 'src/card-designer.js'
+      - 'supabase/**'
+      - 'tests/**'
+      - 'package*.json'
+jobs:
+  isolated-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:sales
+      - run: npm run test:billing-ledger
+      - run: npm run test:sales-ui
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:sales-browser
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sales-browser-screenshots
+          path: |
+            /tmp/dpa-sales-*.png
+            /tmp/dpa-create-*.png
+          if-no-files-found: ignore

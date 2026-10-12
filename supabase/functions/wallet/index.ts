@@ -798,7 +798,7 @@ const monthStart = (v: unknown) => (typeof v === 'string' && MONTH_RE.test(v) ? 
 function salesError(error: { message?: string; code?: string }, where: string): never {
   const msg = error.message ?? '';
   for (const code of ['not_director', 'merchant_not_found', 'rep_not_found', 'rule_not_found', 'not_cancellable', 'reason_required',
-    'nothing_to_pay', 'selection_changed', 'total_changed', 'invalid_paid_on']) {
+    'duplicate_reference', 'reference_required', 'idempotency_conflict', 'positive_payout_required', 'mixed_payment_modes', 'nothing_to_pay', 'selection_changed', 'total_changed', 'invalid_paid_on']) {
     if (msg.includes(code)) throw new HttpError(code === 'not_director' ? 403 : code.endsWith('not_found') ? 404 : 409, code);
   }
   if (error.code === '23514' || error.code === '22023' || error.code === '22P02') throw new HttpError(422, 'invalid_request');
@@ -810,7 +810,7 @@ async function adminSales(req: Request): Promise<Response> {
   await requireDirector(req);
   const b = await req.json().catch(() => ({}));
   const from = monthStart(b?.from), to = monthStart(b?.to);
-  const { data, error } = await admin.rpc('sales_dashboard', { p_from: from, p_to: to });
+  const { data, error } = await admin.rpc('sales_dashboard_mode', { p_from: from, p_to: to, p_live: b?.mode !== 'test' });
   if (error) salesError(error, 'sales_dashboard');
   return json(req, 200, data);
 }
@@ -1167,8 +1167,9 @@ async function adminMerchantCreate(req: Request): Promise<Response> {
   const o = b?.owner ?? {}, biz = b?.business ?? {}, pr = b?.program ?? {};
   const first = str(o.first, 80), last = str(o.last, 80), email = str(o.email, 254).toLowerCase(), phone = str(o.phone, 40);
   const business = str(biz.name, 120), activity = str(biz.activity, 60), address = str(biz.address, 200), slug = str(biz.slug, 60).toLowerCase();
-  const mode = pr.mode === 'points' ? 'points' : 'passages', goal = Math.round(Number(pr.goal));
-  const reward = str(pr.reward, 120), programName = str(pr.name, 80) || `Club ${business}`.slice(0, 80), conditions = multiline(pr.conditions, 600);
+  const deferred = b?.defer_card === true;
+  const mode = !deferred && pr.mode === 'points' ? 'points' : 'passages', goal = deferred ? 10 : Math.round(Number(pr.goal));
+  const reward = deferred ? 'À définir par le commerçant' : str(pr.reward, 120), programName = str(pr.name, 80) || `Club ${business}`.slice(0, 80), conditions = multiline(pr.conditions, 600);
   const bad = (field: string) => json(req, 422, { error: 'invalid_' + field });
   if (!first) return bad('first');
   if (!EMAIL_RE.test(email)) return bad('email');
@@ -1177,6 +1178,18 @@ async function adminMerchantCreate(req: Request): Promise<Response> {
   if (mode === 'passages' ? !(goal >= 3 && goal <= 20) : !(goal >= 50 && goal <= 1000)) return bad('goal');
   if (!reward) return bad('reward');
 
+  const key = str(b?.request_id, 40);
+  if (!UUID_RE.test(key)) return bad('request_id');
+  const fingerprint = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify({first,last,email,phone,business,activity,address,slug,mode,goal,reward,programName,conditions}))))).map(x => x.toString(16).padStart(2,'0')).join('');
+  const { data: saved, error: savedError } = await admin.from('sales_creation_requests').select('actor,fingerprint,result').eq('request_id',key).maybeSingle();
+  if (savedError) throw new Error('db_creation_request');
+  const response = (data: any, attached: boolean) => json(req, 200, {
+    ...data, owner: { email, attached }, public_url: `${PUBLIC_SITE}/join/${data.merchant.slug}`, subscription: null,
+  });
+  if (saved) {
+    if (saved.actor !== user.dpaEmail || saved.fingerprint !== fingerprint) throw new HttpError(409,'idempotency_conflict');
+    return response(saved.result, true);
+  }
   // Duplicates: never two shops on one slug, one login, or silently on the same name.
   const { data: taken } = await admin.from('merchants').select('id').eq('slug', slug).maybeSingle();
   if (taken) return json(req, 409, { error: 'slug_taken' });
@@ -1187,36 +1200,33 @@ async function adminMerchantCreate(req: Request): Promise<Response> {
   const existing = (found ?? [])[0];
   if (existing?.has_merchant) return json(req, 409, { error: 'email_has_merchant' });
   // An existing login without a shop (it signed up, or is an admin) can own the new shop, on explicit request only.
-  if (existing && b?.attach_existing !== true) return json(req, 409, { error: 'email_exists' });
+  let recovering = false;
+  if (existing) {
+    const prior = (await admin.auth.admin.getUserById(existing.user_id)).data.user;
+    recovering = prior?.app_metadata?.dpa_creation_key === key && prior?.app_metadata?.dpa_creation_actor === user.dpaEmail;
+    if (!recovering && b?.attach_existing !== true) return json(req, 409, { error: 'email_exists' });
+  }
 
   let userId = existing?.user_id as string | undefined, created = false;
   if (!userId) {
-    const { data: u, error } = await admin.auth.admin.createUser({ email, email_confirm: true, user_metadata: { first_name: first, last_name: last, business_name: business } });
+    const { data: u, error } = await admin.auth.admin.createUser({ email, email_confirm: true, app_metadata: { dpa_creation_key: key, dpa_creation_actor: user.dpaEmail }, user_metadata: { first_name: first, last_name: last, business_name: business } });
     if (error || !u?.user) return json(req, 409, { error: 'email_exists' });
     userId = u.user.id; created = true;
   }
-  const { data, error } = await admin.rpc('admin_create_merchant', {
+  const { data, error } = await admin.rpc('sales_create_merchant', {
+    p_actor: user.dpaEmail, p_key: key, p_fingerprint: fingerprint,
     p_user: userId, p_business: business, p_first: first, p_last: last, p_activity: activity, p_slug: slug,
     p_program: { name: programName, mode, goal, reward, conditions, logo: initialsOf(business) }, p_phone: phone, p_address: address,
   });
   if (error) {
-    if (created) await admin.auth.admin.deleteUser(userId).catch(() => undefined);
+    // Do not delete the Auth user on an uncertain RPC result: a timeout may follow a committed transaction.
+    // Its protected app_metadata allows this same request to resume safely.
     if (/user_has_merchant|merchants_one_per_creator|merchant_members_one_merchant_per_user/.test(error.message)) return json(req, 409, { error: 'email_has_merchant' });
     if (/merchants_slug_key/.test(error.message)) return json(req, 409, { error: 'slug_taken' });
     console.error('wallet error', 'admin-merchant-create', error.code);
     throw new Error('db_admin_create_merchant');
   }
-  const m = data.merchant, p = data.program;
-  // The rep is the admin of this verified session (never a value sent by the browser). The shop
-  // still belongs to its owner; a failure here never undoes the creation (the director can attribute it).
-  const { data: att, error: ae } = await admin.rpc('sales_attribute', { p_merchant: m.id, p_rep: null, p_actor: user.dpaEmail, p_source: 'admin_creation', p_reason: null });
-  if (ae) console.error('wallet error', 'admin-merchant-create attribution', ae.code);
-  return json(req, 200, {
-    merchant: { id: m.id, business_name: m.business_name, activity: m.activity, address: m.address, phone: m.phone, slug: m.slug, first_name: m.first_name, last_name: m.last_name },
-    program: { id: p.id, name: p.name, mode: p.mode, goal: p.goal, reward: p.reward, conditions: p.conditions },
-    owner: { email, attached: !created }, public_url: `${PUBLIC_SITE}/join/${m.slug}`, subscription: null,
-    sales_attribution: ae ? { attributed: false, reason: 'error' } : att,
-  });
+  return response(data, !created);
 }
 
 // "Envoyer l'accès au commerçant": the standard password link (same e-mail as « Mot de passe oublié »),
