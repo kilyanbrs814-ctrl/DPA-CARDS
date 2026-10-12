@@ -1,0 +1,7 @@
+<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;margin:0;background:#f6f5f1;padding:16px}.material-symbols-rounded{display:none!important}button,input,select{font:inherit}#root{max-width:1450px;margin:auto}</style><div id="root"></div><script type="module">
+import React from 'react';import{createRoot}from'react-dom/client';import{makeSales}from'../src/sales.js';import{makeCardDesigner}from'../src/card-designer.js';
+const h=React.createElement,fixture=await(await fetch('/test-fixture')).json();window.calls=[];
+const api={sales:async body=>{window.calls.push(body);return fixture},validate:async ids=>{fixture.commissions.forEach(c=>{if(ids.includes(c.id))c.status='to_pay'})},payout:async body=>{window.payout=body},testList:async()=>({tests:[]}),createMerchant:async body=>{window.creation=body;throw new Error('captured-ui-only')}};
+const{SalesDashboard}=makeSales(React,api),{CardDesigner}=makeCardDesigner(React,api);
+createRoot(document.getElementById('root')).render(new URLSearchParams(location.search).has('create')?h(CardDesigner,{width:innerWidth,merchants:[],target:null,onTarget:()=>{},toast:()=>{}}):h(SalesDashboard,{width:innerWidth,toast:()=>{},onOpenMerchant:id=>{window.opened=id}}));
+</script></html>

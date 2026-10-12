@@ -181,6 +181,10 @@ async function syncSubscription(sub: Stripe.Subscription, extra: Record<string, 
 // attempt) is recorded: the 0 € invoice that opens the trial is skipped. Commissions are then
 // derived in the database from these rows, never from the subscription status.
 async function recordInvoice(inv: any, failed: boolean) {
+  // Re-read the authoritative object so delayed failed events cannot regress a paid invoice.
+  inv = await requireStripe().invoices.retrieve(inv.id);
+  if (inv.livemode !== /^(sk|rk)_live_/.test(STRIPE_KEY)) throw new Error('stripe_mode_mismatch');
+  failed = inv.status !== 'paid';
   const amount = failed ? inv.amount_due : inv.amount_paid;
   if (!amount || amount <= 0 || inv.currency !== 'eur') return;
   const subId = (typeof inv.subscription === 'string' ? inv.subscription : inv.subscription?.id) ?? inv.parent?.subscription_details?.subscription ?? null;
@@ -202,12 +206,18 @@ async function recordInvoice(inv: any, failed: boolean) {
     period = { start: data?.access_start ?? null, end: data?.access_end ?? null };
   }
   const { error } = await admin.rpc('sales_record_payment', { p: {
-    provider: 'stripe', provider_payment_id: inv.id, merchant_id: merchantId, kind, status: failed ? 'failed' : 'paid',
+    provider: 'stripe', livemode: inv.livemode, provider_payment_id: inv.id, merchant_id: merchantId, kind, status: failed ? 'failed' : 'paid',
     amount_cents: amount, currency: inv.currency, plan_type: plan, provider_subscription_id: subId, provider_charge_ref: pi,
     period_start: period.start, period_end: period.end,
     paid_at: failed ? null : iso(inv.status_transitions?.paid_at) ?? new Date().toISOString(), failed_at: failed ? new Date().toISOString() : null,
   } });
   if (error) { console.error('billing error', 'sales_record_payment', error.code); throw new Error('db_sales_payment'); }
+  if (pi) {
+    const charges = await requireStripe().charges.list({ payment_intent: pi, limit: 100 });
+    const refunded = charges.data.reduce((sum, ch) => sum + ch.amount_refunded, 0);
+    const { error: refundError } = await admin.rpc('sales_record_refund', { p_provider: 'stripe', p_charge_ref: pi, p_refunded: refunded, p_live: inv.livemode });
+    if (refundError) throw new Error('db_sales_refund');
+  }
 }
 
 // After a paid Checkout session: the subscription with a 15-day trial, prorated to the next 1st.
@@ -694,6 +704,7 @@ async function confirmDesign(session: Stripe.Checkout.Session) {
   const pi = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
   const { data, error } = await admin.rpc('design_mark_paid', { p_request: requestId, p_session: session.id, p_payment_intent: pi, p_amount: session.amount_total, p_currency: session.currency });
   if (error) throw new Error('db_design_mark_paid');
+  if (session.invoice) await recordInvoice(typeof session.invoice === 'string' ? await s.invoices.retrieve(session.invoice) : session.invoice, false);
   const { data: claimed } = await admin.from('design_requests').update({ notified_at: new Date().toISOString() })
     .eq('id', requestId).eq('payment_status', 'paid').is('notified_at', null).select().maybeSingle();
   if (claimed) {
@@ -726,6 +737,8 @@ async function webhook(req: Request): Promise<Response> {
   let event: Stripe.Event;
   try { event = await s.webhooks.constructEventAsync(raw, signature, secret, undefined, cryptoProvider); }
   catch { throw new HttpError(400, 'invalid_signature'); }
+
+  if (event.livemode !== /^(sk|rk)_live_/.test(STRIPE_KEY)) throw new HttpError(400, 'stripe_mode_mismatch');
 
   const subOfInvoice = (inv: any): string | null =>
     (typeof inv.subscription === 'string' ? inv.subscription : inv.subscription?.id) ?? inv.parent?.subscription_details?.subscription ?? null;
@@ -769,10 +782,10 @@ async function webhook(req: Request): Promise<Response> {
     }
     case 'charge.refunded': {
       // Cumulative refunded amount, matched to the invoice through its payment intent.
-      const ch = event.data.object as Stripe.Charge;
+      const ch = await s.charges.retrieve((event.data.object as Stripe.Charge).id);
       const pi = typeof ch.payment_intent === 'string' ? ch.payment_intent : ch.payment_intent?.id ?? null;
       if (pi) {
-        const { error } = await admin.rpc('sales_record_refund', { p_provider: 'stripe', p_charge_ref: pi, p_refunded: ch.amount_refunded });
+        const { error } = await admin.rpc('sales_record_refund', { p_provider: 'stripe', p_charge_ref: pi, p_refunded: ch.amount_refunded, p_live: event.livemode });
         if (error) { console.error('billing error', 'sales_record_refund', error.code); throw new Error('db_sales_refund'); }
         // Prepaid commitment: full refund ends the paid period, a partial one is recorded.
         const { error: pe } = await admin.rpc('prepaid_refund', { p_payment_intent: pi, p_refunded: ch.amount_refunded });
@@ -781,12 +794,19 @@ async function webhook(req: Request): Promise<Response> {
       break;
     }
     case 'charge.dispute.created':
-    case 'charge.dispute.closed': {
+    case 'charge.dispute.closed':
+    case 'charge.dispute.updated':
+    case 'charge.dispute.funds_withdrawn':
+    case 'charge.dispute.funds_reinstated': {
       // Prepaid commitment only (monthly payments keep their existing handling): lost = the period ends.
-      const d = event.data.object as Stripe.Dispute;
+      const d = await s.disputes.retrieve((event.data.object as Stripe.Dispute).id);
       const pi = typeof d.payment_intent === 'string' ? d.payment_intent : d.payment_intent?.id ?? null;
-      const st = event.type === 'charge.dispute.created' ? 'open' : d.status === 'lost' ? 'lost' : d.status === 'won' ? 'won' : null;
+      const st = d.status === 'lost' ? 'lost' : d.status === 'won' ? 'won' : 'open';
       if (pi && st) {
+        // Principal actually withdrawn/reinstated, excluding dispute fees. Warning inquiries may withdraw nothing.
+        const withheld = Math.max(0, -(d.balance_transactions ?? []).reduce((sum, tx) => sum + tx.amount, 0));
+        const { error: salesError } = await admin.rpc('sales_record_dispute', { p_provider: 'stripe', p_charge_ref: pi, p_amount: withheld, p_live: event.livemode, p_event_at: event.created });
+        if (salesError) throw new Error('db_sales_dispute');
         const { error } = await admin.rpc('prepaid_dispute', { p_payment_intent: pi, p_status: st });
         if (error) { console.error('billing error', 'prepaid_dispute', error.code); throw new Error('db_prepaid_dispute'); }
       }

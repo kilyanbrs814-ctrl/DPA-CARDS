@@ -22,19 +22,17 @@ const PAYKIND = { setup: 'Mise en place', subscription: 'Mensualité', prepaid: 
 // A commitment paid in one go shows as such (never as a monthly subscription), until its period ends.
 const subKey = m => (m.billing_mode === 'prepaid' && m.subscription_status === 'active' ? (m.period_end && new Date(m.period_end) <= new Date() ? 'expired' : 'prepaid')
   : m.subscription_status === 'canceled' || m.cancel_at_period_end ? 'canceled' : m.subscription_status || 'none');
-// No commission rule covers a one-go payment yet: tracked, no amount computed.
-const RULE_TODO = ['Règle de commission à définir', C.amberBg, C.amber];
 const periodText = p => (p.period_start && p.period_end ? 'Période couverte : ' + day(p.period_start) + ' → ' + day(p.period_end) : '');
-const commKind = c => (c.reverses_id ? 'Régularisation' : c.kind === 'initial' ? 'Initiale' : 'Récurrente');
+const commKind = c => (c.reverses_id ? 'Régularisation' : c.kind === 'initial' ? (PAYKIND[c.payment?.kind || c.rule?.payment_kind] || 'Hors mensualités') : 'Récurrente');
 const PLAN = { no_commitment: 'Sans engagement', commitment: 'Engagement 12 mois' };
 function ruleText(r, repName) {
   const v = r.calc === 'fixed' ? eur(r.amount_cents) : String(r.percent).replace('.', ',') + ' %';
-  const parts = [r.kind === 'initial' ? 'Commission initiale' : 'Commission récurrente', v + (r.calc === 'percent' ? ' du montant encaissé' : ' par paiement'),
+  const parts = [r.kind === 'initial' ? 'Commission hors mensualités' : 'Commission récurrente', v + (r.calc === 'percent' ? ' du montant encaissé' : ' par paiement'),
     r.sales_rep_id ? repName(r.sales_rep_id) : 'tous les commerciaux', r.plan_type ? PLAN[r.plan_type] : 'toutes les offres'];
   if (r.kind === 'recurring') parts.push(r.duration_months ? `pendant ${r.duration_months} mois` : 'sans limite de durée');
   return parts.join(' · ');
 }
-const ERRORS = { not_director: 'Action réservée au compte de direction.', selection_changed: 'Les commissions ont changé depuis l’affichage : actualisez puis recommencez.',
+const ERRORS = { duplicate_reference: 'Cette référence de virement est déjà enregistrée.', reference_required: 'Indiquez la référence du virement.', idempotency_conflict: 'Cette demande a déjà été utilisée avec des informations différentes.', mixed_payment_modes: 'Ne mélangez pas TEST et LIVE dans un versement.', not_director: 'Action réservée au compte de direction.', selection_changed: 'Les commissions ont changé depuis l’affichage : actualisez puis recommencez.',
   total_changed: 'Le total a changé depuis l’affichage : actualisez puis recommencez.', nothing_to_pay: 'Aucune commission à payer.', invalid_paid_on: 'Date de versement invalide.',
   invalid_rule: 'Règle incomplète ou invalide.', reason_required: 'Indiquez un motif.', not_cancellable: 'Cette commission ne peut plus être annulée.',
   not_authenticated: 'Session expirée. Reconnectez-vous.' };
@@ -88,6 +86,7 @@ export function makeSales(React, api) {
   function SalesDashboard({ width, toast, onOpenMerchant }) {
     const isDesk = (width || 1200) >= 1024;
     const [period, setPeriod] = useState(ymOf(new Date()));
+    const [mode, setMode] = useState('live');
     const [rep, setRep] = useState('all');
     const [subSt, setSubSt] = useState('all');
     const [commSt, setCommSt] = useState('all');
@@ -100,10 +99,10 @@ export function makeSales(React, api) {
 
     const load = async () => {
       const n = ++seq.current; setError(null);
-      try { const d = await api.sales(period === 'all' ? {} : { from: period, to: period }); if (n === seq.current) setData(d); }
+      try { const d = await api.sales({ ...(period === 'all' ? {} : { from: period, to: period }), mode }); if (n === seq.current) setData(d); }
       catch (e) { if (n === seq.current) setError(errText(e)); }
     };
-    useEffect(() => { setData(null); load(); }, [period]);
+    useEffect(() => { setData(null); load(); }, [period, mode]);
     const act = async (fn, okMsg) => { if (busy) return false; setBusy(true);
       try { await fn(); if (okMsg) toast(okMsg); setModal(null); await load(); return true; } catch (e) { toast(errText(e)); return false; } finally { setBusy(false); } };
 
@@ -111,7 +110,7 @@ export function makeSales(React, api) {
       for (let i = 0; i < 18; i++) { out.push([ymOf(d), monthLabel(ymOf(d))]); d.setMonth(d.getMonth() - 1); } return out; }, []);
     const reps = data ? data.reps : [];
     const repName = id => (reps.find(r => r.id === id) || {}).name || '—';
-    const shownReps = rep === 'all' || rep === 'none' ? reps : reps.filter(r => r.id === rep);
+    const shownReps = rep === 'all' ? reps : rep === 'none' ? [] : reps.filter(r => r.id === rep);
     const rules = data ? data.rules : [];
     const inForce = data ? data.rules_in_force : { initial: false, recurring: false };
 
@@ -121,9 +120,12 @@ export function makeSales(React, api) {
         h('div', { style: { marginTop: 6, color: C.muted, fontSize: 15 } }, 'Suivi des ventes, des encaissements et des commissions de Kilyan, Zak et Maël.')),
       btn('Actualiser', () => { setData(null); load(); }, { ico: 'refresh' }));
 
+    const scopeTabs = h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
+      [['all','Global'], ...reps.map(r => [r.id,r.name === 'Kilyan' ? 'Mes ventes' : r.name])].map(([id,label]) => React.cloneElement(btn(label, () => setRep(id), { kind: rep === id ? 'primary' : 'secondary' }), { key: id })),
+      field('Environnement', select(mode,setMode,[['live','LIVE — ventes réelles'],['test','TEST — simulation uniquement']], 'Environnement')));
     const filters = h('div', { style: { display: 'grid', gridTemplateColumns: isDesk ? 'repeat(4, minmax(0, 1fr))' : 'repeat(2, minmax(0, 1fr))', gap: 10 } },
       field('Période', select(period, setPeriod, periods, 'Période')),
-      field('Commercial', select(rep, setRep, [['all', 'Tous'], ...reps.map(r => [r.id, r.name]), ['none', 'Non attribués']], 'Commercial')),
+      field('Commercial', select(rep, setRep, [['all', 'Global'], ...reps.map(r => [r.id, r.name === 'Kilyan' ? 'Mes ventes' : r.name]), ['none', 'Anomalies historiques']], 'Commercial')),
       field('Abonnement', select(subSt, setSubSt, [['all', 'Tous'], ['active', 'Actif'], ['trialing', 'Essai'], ['prepaid', 'Payé en une fois'], ['expired', 'Offre terminée'], ['canceled', 'Résilié'], ['past_due', 'Paiement en retard'], ['none', 'Sans abonnement']], 'Statut d’abonnement')),
       field('Commission', select(commSt, setCommSt, [['all', 'Toutes'], ['to_validate', 'À valider'], ['to_pay', 'À payer'], ['paid', 'Payées'], ['cancelled', 'Annulées']], 'Statut de commission')));
 
@@ -137,7 +139,7 @@ export function makeSales(React, api) {
     const notConfigured = data && (!inForce.initial || !inForce.recurring)
       ? h('div', { role: 'status', style: { display: 'flex', gap: 10, alignItems: 'flex-start', padding: '14px 16px', borderRadius: 14, background: C.amberBg, color: C.amber, fontSize: 15, lineHeight: 1.45 } },
         icon('info', 22),
-        h('div', null, h('strong', null, !inForce.initial && !inForce.recurring ? 'Commissions non configurées. ' : !inForce.initial ? 'Commission initiale non configurée. ' : 'Commission récurrente non configurée. '),
+        h('div', null, h('strong', null, !inForce.initial && !inForce.recurring ? 'Commissions non configurées. ' : !inForce.initial ? 'Commission hors mensualités non configurée. ' : 'Commission récurrente non configurée. '),
           'Aucun montant n’est calculé ni payable tant qu’une règle n’est pas définie. ',
           h('button', { type: 'button', onClick: () => setView('rules'), style: { border: 0, background: 'transparent', color: C.blueInk, fontWeight: 700, padding: 0, textDecoration: 'underline' } }, 'Définir les règles')))
       : null;
@@ -156,7 +158,7 @@ export function makeSales(React, api) {
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 12 } },
           h('div', { style: { width: 44, height: 44, borderRadius: 12, background: C.ink, color: '#FFFFFF', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 17 } }, r.name.slice(0, 1)),
           h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { style: { fontWeight: 800, fontSize: 19 } }, r.name), h('div', { style: { fontSize: 13, color: C.muted, overflowWrap: 'anywhere' } }, r.email)),
-          h('div', { style: { textAlign: 'right' } }, h('div', { style: { fontSize: 12, color: C.muted } }, 'Reste à payer'), h('div', { style: { fontWeight: 800, fontSize: 22, color: (r.comm_to_validate_cents + r.comm_to_pay_cents) ? C.blueInk : C.ink, fontVariantNumeric: 'tabular-nums' } }, eur(r.comm_to_validate_cents + r.comm_to_pay_cents)))),
+          h('div', { style: { textAlign: 'right' } }, h('div', { style: { fontSize: 12, color: C.muted } }, 'Solde cumulé (reports compris)'), h('div', { style: { fontWeight: 800, fontSize: 22, color: (r.comm_to_validate_cents + r.comm_to_pay_cents) ? C.blueInk : C.ink, fontVariantNumeric: 'tabular-nums' } }, eur(r.balance_cents)))),
         h('div', { style: { fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted } }, 'Activité commerciale'),
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 } },
           metric('Comptes créés', nf(r.merchants)), metric('Cartes créées', nf(r.cards)), metric('Ventes payées', nf(r.sales_paid)),
@@ -168,30 +170,30 @@ export function makeSales(React, api) {
           r.refunds ? badge([`${r.refunds} remboursement${r.refunds > 1 ? 's' : ''}`, C.redBg, C.red]) : null) : null,
         h('div', { style: { fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted } }, 'Chiffre d’affaires encaissé'),
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 } }, metric('Initial (mise en place)', eur(r.revenue_initial_cents)), metric('Mensuel (abonnements)', eur(r.revenue_monthly_cents)),
-          ...(r.revenue_prepaid_cents || r.prepaid_sales ? [metric('Engagement payé en une fois', eur(r.revenue_prepaid_cents))] : [])),
-        r.prepaid_sales ? h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: 13, color: C.muted } }, badge(RULE_TODO),
-          `${r.prepaid_sales} paiement${r.prepaid_sales > 1 ? 's' : ''} en une fois : aucune commission calculée`) : null,
+          metric('Engagement payé en une fois', eur(r.revenue_prepaid_cents)), metric('Création de carte', eur(r.revenue_design_cents)), metric('Autres prestations', eur(r.revenue_other_cents)), metric('CA total', eur(r.revenue_total_cents))),
         h('div', { style: { fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted } }, 'Commissions'),
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 } },
-          metric('Initiales dues', eur(r.comm_initial_cents)), metric('Récurrentes dues', eur(r.comm_recurring_cents)),
-          metric('Déjà versées', eur(r.comm_paid_cents), '#1F6B45'), metric('Restant à payer', eur(r.comm_to_validate_cents + r.comm_to_pay_cents), C.blueInk)));
+          metric('Hors mensualités acquis', eur(r.comm_initial_cents)), metric('Récurrentes dues', eur(r.comm_recurring_cents)),
+          metric('Déjà versées', eur(r.comm_paid_cents), '#1F6B45'), metric('Restant sur la période', eur(r.comm_to_validate_cents + r.comm_to_pay_cents), C.blueInk)));
       const cols = [{ label: 'Commercial' }, { label: 'Comptes', num: 1 }, { label: 'Cartes', num: 1 }, { label: 'Ventes payées', num: 1 }, { label: 'Actifs', num: 1 }, { label: 'Essai', num: 1 }, { label: 'Résiliés', num: 1 },
-        { label: 'CA initial', num: 1 }, { label: 'CA mensuel', num: 1 }, { label: 'CA payé en une fois', num: 1 }, { label: 'Comm. dues', num: 1 }, { label: 'Versées', num: 1 }, { label: 'Reste', num: 1 }];
+        { label: 'CA initial', num: 1 }, { label: 'CA mensuel', num: 1 }, { label: 'CA payé en une fois', num: 1 }, { label: 'CA création', num: 1 }, { label: 'CA autres', num: 1 }, { label: 'CA total', num: 1 }, { label: 'Comm. dues', num: 1 }, { label: 'Versées', num: 1 }, { label: 'Reste', num: 1 }];
       const totals = k => shownReps.reduce((s, r) => s + (+r[k] || 0), 0);
       const rowOf = (r, bold) => h('tr', { key: r.id || 'total', style: bold ? { fontWeight: 800, background: '#F8F7F4' } : null },
         h('td', { style: { ...td, fontWeight: 700 } }, r.name), ...['merchants', 'cards', 'sales_paid', 'active', 'trialing', 'canceled'].map(k => h('td', { key: k, style: { ...td, ...num } }, nf(r[k]))),
-        ...['revenue_initial_cents', 'revenue_monthly_cents', 'revenue_prepaid_cents'].map(k => h('td', { key: k, style: { ...td, ...num } }, eur(r[k]))),
+        ...['revenue_initial_cents', 'revenue_monthly_cents', 'revenue_prepaid_cents', 'revenue_design_cents', 'revenue_other_cents', 'revenue_total_cents'].map(k => h('td', { key: k, style: { ...td, ...num } }, eur(r[k]))),
         h('td', { style: { ...td, ...num } }, eur(r.comm_initial_cents + r.comm_recurring_cents)), h('td', { style: { ...td, ...num, color: C.green } }, eur(r.comm_paid_cents)),
         h('td', { style: { ...td, ...num, color: C.blueInk, fontWeight: 700 } }, eur(r.comm_to_validate_cents + r.comm_to_pay_cents)));
-      const sum = { name: 'Total' }; ['merchants', 'cards', 'sales_paid', 'active', 'trialing', 'canceled', 'revenue_initial_cents', 'revenue_monthly_cents', 'revenue_prepaid_cents', 'comm_initial_cents', 'comm_recurring_cents', 'comm_paid_cents', 'comm_to_validate_cents', 'comm_to_pay_cents'].forEach(k => { sum[k] = totals(k); });
+      const sum = { name: 'Total' }; ['merchants', 'cards', 'sales_paid', 'active', 'trialing', 'canceled', 'revenue_initial_cents', 'revenue_monthly_cents', 'revenue_prepaid_cents', 'revenue_design_cents', 'revenue_other_cents', 'revenue_total_cents', 'comm_initial_cents', 'comm_recurring_cents', 'comm_paid_cents', 'comm_to_validate_cents', 'comm_to_pay_cents'].forEach(k => { sum[k] = totals(k); });
       return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } },
+        metric(rep === 'all' ? 'CA global · Kilyan + Zak + Maël' : 'CA total de la sélection', eur(totals('revenue_total_cents'))),
+        data.anomalies && (data.anomalies.unattributed_merchants || data.anomalies.unknown_mode_payments || data.anomalies.unattributed_revenue_cents) ? h('div', { role: 'status', style: { padding: 14, borderRadius: 12, background: C.amberBg } }, `${data.anomalies.unattributed_merchants} commerce(s) historique(s) à attribuer · ${eur(data.anomalies.unattributed_revenue_cents)} non attribués · ${data.anomalies.unknown_mode_payments} paiement(s) à vérifier (TEST/LIVE). Hors total global.`) : null,
         isDesk ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } },
           h('h2', { style: { margin: 0, fontSize: 20, fontWeight: 800 } }, 'Tableau des performances · ' + monthLabel(period === 'all' ? null : period)),
           table(cols, [...shownReps.map(r => rowOf(r)), shownReps.length > 1 ? rowOf(sum, true) : null].filter(Boolean), 'Aucun commercial.')) : null,
         h('div', { style: { display: 'grid', gridTemplateColumns: isDesk ? 'repeat(3, minmax(0, 1fr))' : '1fr', gap: 14 } }, shownReps.map(r => h(React.Fragment, { key: r.id }, repCard(r)))),
         h('p', { style: { margin: 0, color: C.muted, fontSize: 13, lineHeight: 1.5 } },
           'Comptes, cartes, ventes, chiffre d’affaires et commissions : sur la période choisie. Actifs, essais et résiliés : situation actuelle des commerces apportés. ',
-          'Le chiffre d’affaires et les commissions reposent uniquement sur les paiements réellement encaissés (remboursements déduits).'));
+          'Les commissions sont de 70 % des encaissements des commerces de Zak et Maël, sans déduction des frais. Les 30 % restants ne sont pas un bénéfice net. Les remboursements corrigent le CA de la période du paiement initial. Le chiffre d’affaires et les commissions reposent uniquement sur les paiements réellement encaissés (remboursements déduits).'));
     }
 
     // ---------------------------------------------------------------- statement and payouts
@@ -292,7 +294,7 @@ export function makeSales(React, api) {
             h('td', { style: td }, p.merchant_id ? h('button', { type: 'button', onClick: () => onOpenMerchant(p.merchant_id), style: { border: 0, background: 'transparent', padding: 0, color: C.blueInk, fontWeight: 700, textAlign: 'left' } }, p.merchant_name) : p.merchant_name),
             h('td', { style: td }, p.sales_rep_id ? repName(p.sales_rep_id) : '—'), h('td', { style: td }, PAYKIND[p.kind] || p.kind,
               p.kind === 'prepaid' ? h('div', { style: { fontSize: 12, color: C.muted, marginTop: 2 } }, periodText(p), p.prepaid ? h('div', null, eur(p.prepaid.setup_cents) + ' de mise en place + ' + p.prepaid.months + ' × ' + eur(p.prepaid.monthly_cents)) : null) : null,
-              p.kind === 'prepaid' && p.sales_rep_id ? h('div', { style: { marginTop: 4 } }, badge(RULE_TODO)) : null,
+
               p.prepaid && p.prepaid.conflict ? h('div', { style: { marginTop: 4 } }, badge(['Offre déjà en cours : à rembourser', C.redBg, C.red])) : null,
               p.prepaid && p.prepaid.dispute_status ? h('div', { style: { marginTop: 4 } }, badge(['Litige ' + ({ open: 'en cours', won: 'gagné', lost: 'perdu' }[p.prepaid.dispute_status]), C.amberBg, C.amber])) : null),
             h('td', { style: td }, badge(PAY[p.status] || PAY.pending)),
@@ -338,7 +340,7 @@ export function makeSales(React, api) {
     if (modal && modal.type === 'attr') modalEl = h(AttributionModal, { modal, reps, busy, onClose: () => setModal(null),
       onSave: (repId, reason) => act(() => api.attribute(modal.m.id, repId || null, reason), 'Attribution enregistrée.') });
 
-    return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, header, filters, tabs, notConfigured, body, modalEl);
+    return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, header, scopeTabs, filters, tabs, notConfigured, body, modalEl);
   }
 
   // ------------------------------------------------------------------------------------------------
@@ -359,7 +361,7 @@ export function makeSales(React, api) {
         h('input', { type: 'checkbox', checked: sure, onChange: e => setSure(e.target.checked), style: { width: 20, height: 20, marginTop: 1 } }),
         `Je confirme avoir versé ${eur(modal.total)} à ${modal.rep.name}.`),
       h('div', { style: { display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' } }, btn('Annuler', onClose),
-        btn('Enregistrer le versement', () => onConfirm({ paid_on: paidOn, reference, note }), { kind: 'success', disabled: busy || !sure || !paidOn })));
+        btn('Enregistrer le versement', () => onConfirm({ paid_on: paidOn, reference, note }), { kind: 'success', disabled: busy || !sure || !paidOn || !reference.trim() })));
   }
 
   function AttributionModal({ modal, reps, busy, onClose, onSave }) {
@@ -368,11 +370,11 @@ export function makeSales(React, api) {
     const changed = repId !== (modal.m.sales_rep_id || '');
     return h(Modal, { title: 'Commercial responsable', onClose },
       h('p', { style: { margin: 0, color: C.muted, lineHeight: 1.5 } }, h('strong', { style: { color: C.ink } }, modal.m.business_name),
-        '. Les commissions non encore versées suivent le nouveau commercial ; celles déjà versées restent à leur bénéficiaire. Le commerçant reste propriétaire de son compte et de sa carte.'),
-      field('Commercial', select(repId, setRepId, [['', 'Aucun commercial'], ...reps.filter(r => r.active || r.id === repId).map(r => [r.id, r.name])], 'Commercial')),
+        '. Seuls les futurs encaissements suivent le nouveau commercial. Les anciens revenus, commissions et versements gardent leur bénéficiaire. Le commerçant reste propriétaire de son compte et de sa carte.'),
+      field('Commercial', select(repId, setRepId, [['', 'Choisir un commercial'], ...reps.filter(r => r.active || r.id === repId).map(r => [r.id, r.name])], 'Commercial')),
       field('Motif', h('input', { value: reason, maxLength: 300, placeholder: 'Ex. : commerce apporté par Zak avant la mise en place du suivi', onChange: e => setReason(e.target.value), style: inputStyle }), 'Conservé dans l’historique.'),
       h('div', { style: { display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' } }, btn('Annuler', onClose),
-        btn('Enregistrer', () => onSave(repId, reason.trim()), { kind: 'primary', disabled: busy || !changed || !reason.trim() })));
+        btn('Enregistrer', () => onSave(repId, reason.trim()), { kind: 'primary', disabled: busy || !changed || !reason.trim() || !repId })));
   }
 
   function RulesView({ rules, reps, repName, busy, onCreate, onDisable }) {
@@ -392,7 +394,7 @@ export function makeSales(React, api) {
         active.length ? active.map(ruleRow) : h('div', { style: { color: C.muted, fontSize: 15 } }, 'Aucune règle : aucune commission n’est calculée.')),
       card(null, h('h2', { style: { margin: 0, fontSize: 20, fontWeight: 800 } }, 'Nouvelle règle'),
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 } },
-          field('Commission', select(f.kind, up('kind'), [['initial', 'Initiale (premier paiement)'], ['recurring', 'Récurrente (mensualités)']], 'Type de commission')),
+          field('Commission', select(f.kind, up('kind'), [['initial', 'Hors mensualités (chaque paiement)'], ['recurring', 'Récurrente (mensualités)']], 'Type de commission')),
           field('Calcul', select(f.calc, up('calc'), [['fixed', 'Montant fixe (€)'], ['percent', 'Pourcentage (%)']], 'Calcul')),
           field(f.calc === 'fixed' ? 'Montant par paiement (€)' : 'Pourcentage du montant encaissé', h('input', { inputMode: 'decimal', value: f.value, placeholder: f.calc === 'fixed' ? 'Ex. : 20' : 'Ex. : 10', onChange: e => up('value')(e.target.value), style: inputStyle })),
           field('Commercial', select(f.sales_rep_id, up('sales_rep_id'), [['', 'Tous les commerciaux'], ...reps.map(r => [r.id, r.name])], 'Commercial')),
@@ -427,13 +429,13 @@ export function makeSales(React, api) {
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 } }, h('h3', { style: sub }, 'Suivi commercial'),
         btn(salesRep ? 'Modifier' : 'Attribuer', () => setModal(true), { small: true, ico: 'person_add' })),
       h('div', { style: { fontSize: 15 } }, 'Commercial : ', h('strong', null, salesRep ? salesRep.name : 'non attribué'),
-        salesRep ? h('span', { style: { color: C.muted, fontSize: 13 } }, ' · ' + (salesRep.source === 'admin_creation' ? 'créé depuis l’admin' : 'attribution manuelle') + ' le ' + day(salesRep.at)) : null),
+        salesRep ? h('span', { style: { color: C.muted, fontSize: 13 } }, ' · ' + (salesRep.source === 'admin_creation' ? 'créé depuis l’admin' : salesRep.source === 'direct_signup' ? 'inscription directe' : 'attribution manuelle') + ' le ' + day(salesRep.at)) : null),
       h('h4', { style: { ...sub, fontSize: 14, marginTop: 6 } }, 'Paiements'),
-      sales.payments.length ? sales.payments.map((p, i) => line('p' + i, h('span', null, (PAYKIND[p.kind] || p.kind) + ' · ' + day(p.paid_at || p.failed_at),
-          p.kind === 'prepaid' ? h('div', { style: { fontSize: 12, color: C.muted } }, periodText(p) + ' · règle de commission à définir') : null), eur(p.amount_cents), badge(PAY[p.status] || PAY.pending)))
+      sales.payments.length ? sales.payments.map((p, i) => line('p' + i, h('span', null, (p.livemode === false ? '[TEST] ' : p.livemode === null ? '[MODE À VÉRIFIER] ' : '') + (PAYKIND[p.kind] || p.kind) + ' · ' + day(p.paid_at || p.failed_at),
+          p.kind === 'prepaid' ? h('div', { style: { fontSize: 12, color: C.muted } }, periodText(p)) : null), eur(Math.max(0,p.amount_cents-(p.refunded_cents || 0)-(p.disputed_cents || 0))), badge(PAY[p.status] || PAY.pending)))
         : h('div', { style: { fontSize: 14, color: C.muted } }, 'Aucun paiement encaissé.'),
       h('h4', { style: { ...sub, fontSize: 14, marginTop: 6 } }, 'Commissions'),
-      sales.commissions.length ? sales.commissions.map(c => line(c.id, h('span', null, commKind(c) + ' · ' + repName(c.sales_rep_id) + ' · ' + monthLabel(c.period.slice(0, 7))), eur(c.amount_cents), badge(COMM[c.status])))
+      sales.commissions.length ? sales.commissions.map(c => line(c.id, h('span', null, (c.livemode === false ? '[TEST] ' : c.livemode === null ? '[MODE À VÉRIFIER] ' : '') + commKind(c) + ' · ' + repName(c.sales_rep_id) + ' · ' + monthLabel(c.period.slice(0, 7))), eur(c.amount_cents), badge(COMM[c.status])))
         : h('div', { style: { fontSize: 14, color: C.muted } }, 'Aucune commission.'),
       h('h4', { style: { ...sub, fontSize: 14, marginTop: 6 } }, 'Historique'),
       sales.history.length ? sales.history.map((l, i) => line('h' + i, h('span', null, histText(l), h('div', { style: { fontSize: 12, color: C.muted } }, l.actor)), day(l.at)))
