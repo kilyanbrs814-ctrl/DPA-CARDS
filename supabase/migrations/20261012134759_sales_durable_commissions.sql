@@ -209,7 +209,10 @@ begin
   perform pg_advisory_xact_lock(hashtextextended((p->>'provider')||coalesce(p->>'provider_charge_ref','')||(p->>'livemode'),0));
   if v_status not in ('pending', 'paid', 'failed') then raise exception 'invalid_status' using errcode = '22023'; end if;
   select m.business_name into v_name from public.merchants m where m.id = v_merchant;
-  if v_name is null then return null; end if;   -- unknown shop: nothing to attribute
+  if v_name is null then
+    -- Keep a known provider receipt as an explicit anomaly if its merchant was removed.
+    v_name := 'Commerce introuvable'; v_merchant := null;
+  end if;
   insert into public.sales_payments as s (provider, provider_payment_id, merchant_id, merchant_name, kind, status, amount_cents, currency,
     plan_type, provider_subscription_id, provider_charge_ref, period_start, period_end, paid_at, failed_at, livemode)
   values (p ->> 'provider', p ->> 'provider_payment_id', v_merchant, v_name, p ->> 'kind', v_status, (p ->> 'amount_cents')::integer,

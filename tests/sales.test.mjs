@@ -64,6 +64,9 @@ await test('Historical repair requires exact preview, is idempotent and preserve
 await test('Unknown historical Stripe mode is quarantined and cannot be blindly reconciled',async()=>{
  const p=await pay(z,'other',200);await db.query('delete from commissions where payment_id=$1',[p.row.id]);await db.query('update sales_payments set livemode=null where id=$1',[p.row.id]);const preview=(await val('select sales_reconcile_preview($1,$2) p',[director,[p.row.id]])).p;await assert.rejects(()=>val('select sales_reconcile_history($1,$2,$3,$4)',[director,[p.row.id],preview,'No evidence']),/historical_evidence_required/);assert.equal((await val('select sales_dashboard(null,null) d')).d.anomalies.unknown_mode_payments,1);
 });
+await test('Receipt for removed merchant remains visible as unassigned revenue anomaly',async()=>{
+ const p=await pay({id:uuid()},'other',1000);assert.equal(p.row.merchant_id,null);assert.equal(await comm(p),undefined);assert.equal((await val('select sales_dashboard(null,null) d')).d.anomalies.unattributed_revenue_cents,1000);
+});
 await test('Financial tables use RLS and privileged new RPCs are not executable by clients',async()=>{
  for(const t of ['sales_creation_requests','sales_charge_adjustments','sales_payments','commissions'])assert.equal((await val('select relrowsecurity r from pg_class where oid=$1::regclass',[t])).r,true);
  assert.equal((await val("select has_function_privilege('authenticated','public.sales_create_merchant(text,uuid,text,uuid,text,text,text,text,text,jsonb,text,text)','execute') b")).b,false);

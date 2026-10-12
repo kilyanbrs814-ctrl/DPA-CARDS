@@ -3,7 +3,7 @@
 ## État de livraison
 
 Code préparé sur `codex/durable-sales-commissions`, depuis `88eac9c`.
-Aucune migration appliquée au projet distant et aucune fonction Edge publiée par cette reprise.
+Aucune migration appliquée au projet distant et aucune fonction Edge publiée par cette reprise. Le push de la branche a déclenché automatiquement une preview Vercel (build réussi) ; ce n’est pas une validation fonctionnelle contre une base migrée. La production reste inchangée.
 Ne pas fusionner pour publication avant la validation intégrée décrite ci-dessous.
 
 ## Audit et reprise
@@ -41,12 +41,12 @@ Les rapports de période rattachent le remboursement au paiement initial, tandis
 
 ## Vérifications et limites
 
-- `npm run test:sales` : 21 groupes réussis sur PostgreSQL embarqué PGlite, en appliquant toutes les migrations. Auth, Storage et les extensions externes sont remplacés par un socle local explicite ; aucun appel réseau, compte réel ou e-mail.
+- `npm run test:sales` : 22 groupes réussis sur PostgreSQL embarqué PGlite, en appliquant toutes les migrations. Auth, Storage et les extensions externes sont remplacés par un socle local explicite ; aucun appel réseau, compte réel ou e-mail.
 - `npm run test:billing-ledger` : exécute la fonction `recordInvoice` réelle avec transport Stripe simulé et vraie base isolée. Cinq catégories, 70 %, réexécution, événements tardifs, remboursement et rejet du mauvais mode. Ce n'est pas un paiement Stripe externe.
 - `npm run test:sales-ui` : interactions React/JSDOM des variantes 375 et 1440 px, filtres, modes, formulaire différé, clé stable de nouvelle tentative. Aucune affirmation de rendu pixel.
 - `npm run build` : réussi ; `git diff --check` : propre.
 - TypeScript des deux fonctions Edge : vérifié localement avec TypeScript 5.9.3, Stripe 17.7.0 et Supabase JS 2.117.2, imports npm adaptés dans une copie temporaire et déclaration Deno minimale. Le `deno check` natif n'a pas abouti à cause de l'accès réseau au registre.
-- `npm run test:sales-browser` : scénario Playwright fourni. Le lancement Chromium local était bloqué par `socket() failed: Operation not permitted`. Les screenshots et le test visuel ne sont pas validés localement. Le workflow GitHub le relance dans un runner dédié.
+- `npm run test:sales-browser` : scénario Playwright fourni. Le lancement Chromium local était bloqué par `socket() failed: Operation not permitted`. Le workflow GitHub Actions a ensuite réussi les scénarios Chromium à 375 et 1440 px (run 38299192898, commit 9b23fe7), incluant les interactions et l’absence de débordement horizontal. Il utilise les composants réels avec une API de test, pas la production. Les captures sont conservées comme artefacts dans les exécutions suivantes.
 - Parcours Auth → application isolée → vrai Stripe Checkout TEST → webhook signé → dashboard : reste à exécuter. Aucun paiement Stripe, TEST ou LIVE, n'a été créé pendant cette reprise. Les factures Stripe existantes ont seulement été lues.
 
 ## Opérations restantes avant publication
