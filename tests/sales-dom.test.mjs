@@ -12,6 +12,9 @@ for(const width of [1440,375]){
  const{SalesDashboard}=makeSales(React,api),{CardDesigner}=makeCardDesigner(React,api);
  let root=createRoot(document.getElementById('root'));await React.act(async()=>root.render(h(SalesDashboard,{width,toast:()=>{},onOpenMerchant:()=>{}})));
  for(const label of ['Mes ventes','Zak','Maël','Global'])await click(label);
+ await click('Commerçants');await click(width>=1000?'Modifier':'Modifier le commercial');
+ const repSelect=document.querySelector('[role="dialog"] select[aria-label="Commercial"]');assert.ok(repSelect);for(const name of ['Kilyan','Maël','Zak'])assert.ok([...repSelect.options].some(o=>o.textContent===name));await click('Annuler');
+ await click('Paiements');assert.ok(document.body.textContent.includes('Retenu (litige)'));assert.ok(document.body.textContent.includes('Net encaissé'));
  for(const label of ['Relevé et versements','Commerçants','Paiements','Vue d’ensemble'])await click(label);
  const select=document.querySelector('select[aria-label="Environnement"]');await React.act(async()=>{select.value='test';select.dispatchEvent(new Event('change',{bubbles:true}));});assert.equal(calls.at(-1).mode,'test');assert.ok(document.body.textContent.includes('Solde cumulé (reports compris)'));assert.ok(document.body.textContent.includes('CA total'));
  await React.act(async()=>root.unmount());root=createRoot(document.getElementById('root'));await React.act(async()=>root.render(h(CardDesigner,{width,merchants:[],target:null,onTarget:()=>{},toast:()=>{}})));

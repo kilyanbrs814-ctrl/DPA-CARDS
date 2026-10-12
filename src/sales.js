@@ -288,8 +288,8 @@ export function makeSales(React, api) {
     function Payments() {
       const list = data.payments.filter(p => rep === 'all' || (rep === 'none' ? !p.sales_rep_id : p.sales_rep_id === rep));
       return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
-        h('p', { style: { margin: 0, color: C.muted, fontSize: 14, lineHeight: 1.5 } }, 'Paiements reçus de Stripe : mises en place, mensualités, engagements payés en une fois, échecs et remboursements. Un paiement reçu plusieurs fois par Stripe n’apparaît qu’une fois. Un paiement en une fois est compté une seule fois, à sa date, jamais comme des mensualités.'),
-        table(['Date', 'Commerce', 'Commercial', 'Type', 'Statut', { label: 'Montant', num: 1 }, { label: 'Remboursé', num: 1 }, 'Référence'],
+        h('p', { style: { margin: 0, color: C.muted, fontSize: 14, lineHeight: 1.5 } }, 'Paiements reçus de Stripe : mises en place, mensualités, créations de carte, engagements payés en une fois, autres prestations, échecs, remboursements et retenues de litiges. Un paiement reçu plusieurs fois par Stripe n’apparaît qu’une fois. Un paiement en une fois est compté une seule fois, à sa date, jamais comme des mensualités.'),
+        table(['Date', 'Commerce', 'Commercial', 'Type', 'Statut', { label: 'Montant', num: 1 }, { label: 'Remboursé', num: 1 }, { label: 'Retenu (litige)', num: 1 }, { label: 'Net encaissé', num: 1 }, 'Référence'],
           list.map(p => h('tr', { key: p.id }, h('td', { style: td }, day(p.paid_at || p.failed_at)),
             h('td', { style: td }, p.merchant_id ? h('button', { type: 'button', onClick: () => onOpenMerchant(p.merchant_id), style: { border: 0, background: 'transparent', padding: 0, color: C.blueInk, fontWeight: 700, textAlign: 'left' } }, p.merchant_name) : p.merchant_name),
             h('td', { style: td }, p.sales_rep_id ? repName(p.sales_rep_id) : '—'), h('td', { style: td }, PAYKIND[p.kind] || p.kind,
@@ -299,6 +299,8 @@ export function makeSales(React, api) {
               p.prepaid && p.prepaid.dispute_status ? h('div', { style: { marginTop: 4 } }, badge(['Litige ' + ({ open: 'en cours', won: 'gagné', lost: 'perdu' }[p.prepaid.dispute_status]), C.amberBg, C.amber])) : null),
             h('td', { style: td }, badge(PAY[p.status] || PAY.pending)),
             h('td', { style: { ...td, ...num, fontWeight: 700 } }, eur(p.amount_cents)), h('td', { style: { ...td, ...num, color: p.refunded_cents ? C.red : C.muted } }, p.refunded_cents ? eur(p.refunded_cents) : '—'),
+            h('td', { style: { ...td, ...num, color: p.disputed_cents ? C.red : C.muted } }, p.disputed_cents ? eur(p.disputed_cents) : '—'),
+            h('td', { style: { ...td, ...num, fontWeight: 700 } }, eur(p.paid_at ? Math.max(0, p.amount_cents - (p.refunded_cents || 0) - (p.disputed_cents || 0)) : 0)),
             h('td', { style: { ...td, fontSize: 12, color: C.muted, fontFamily: "'IBM Plex Mono',monospace" } }, p.ref))), 'Aucun paiement sur cette période.'));
     }
 
@@ -371,7 +373,7 @@ export function makeSales(React, api) {
     return h(Modal, { title: 'Commercial responsable', onClose },
       h('p', { style: { margin: 0, color: C.muted, lineHeight: 1.5 } }, h('strong', { style: { color: C.ink } }, modal.m.business_name),
         '. Seuls les futurs encaissements suivent le nouveau commercial. Les anciens revenus, commissions et versements gardent leur bénéficiaire. Le commerçant reste propriétaire de son compte et de sa carte.'),
-      field('Commercial', select(repId, setRepId, [['', 'Choisir un commercial'], ...reps.filter(r => r.active || r.id === repId).map(r => [r.id, r.name])], 'Commercial')),
+      field('Commercial', select(repId, setRepId, [['', 'Choisir un commercial'], ...reps.filter(r => (r.rep_active ?? r.active) || r.id === repId).map(r => [r.id, r.name])], 'Commercial')),
       field('Motif', h('input', { value: reason, maxLength: 300, placeholder: 'Ex. : commerce apporté par Zak avant la mise en place du suivi', onChange: e => setReason(e.target.value), style: inputStyle }), 'Conservé dans l’historique.'),
       h('div', { style: { display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' } }, btn('Annuler', onClose),
         btn('Enregistrer', () => onSave(repId, reason.trim()), { kind: 'primary', disabled: busy || !changed || !reason.trim() || !repId })));

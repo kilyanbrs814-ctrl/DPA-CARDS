@@ -325,7 +325,7 @@ as $$
       'recurring', exists (select 1 from public.commission_rules r where r.kind = 'recurring' and r.disabled_at is null),
       'prepaid', true),
     'reps', coalesce((select jsonb_agg(jsonb_build_object(
-      'id', r.id, 'name', r.display_name, 'email', r.email, 'active', r.active,
+      'id', r.id, 'name', r.display_name, 'email', r.email, 'rep_active', r.active,
       'merchants', (select count(*) from att a join public.merchants m on m.id = a.merchant_id where a.sales_rep_id = r.id and app_private.sales_in(m.created_at, p_from, p_to)),
       'cards', (select count(*) from att a join public.programs p on p.merchant_id = a.merchant_id and p.is_active
                 where a.sales_rep_id = r.id and app_private.sales_in(p.card_design_validated_at, p_from, p_to)),
