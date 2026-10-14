@@ -63,7 +63,7 @@ test('demo pass renders blue gradient + exactly the configured 3 yellow tampons'
   const x=[217,249,281,313,345],y=[50,97];
   for(let i=0;i<10;i++){
     // Sample left of each center to avoid the checkmark in a filled stamp.
-    const p=rgbaAt(img,x[i%5]-8,y[Math.floor(i/5)]);
+    const p=rgbaAt(img,x[i%5]-12,y[Math.floor(i/5)]);
     if(i<3) assert.ok(p[0]>=200 && p[1]>=150 && p[2]<=130,'filled stamp '+i);
     else assert.ok(p[0]>=180,'white outline '+i);
   }
