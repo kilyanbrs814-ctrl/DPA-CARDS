@@ -1950,8 +1950,9 @@ function initials(t){ return (t||'').replace(/[^A-Za-zÀ-ÿ ]/g,' ').trim().spli
 function slugify(t){ return (t||'commerce').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'').slice(0,24)||'commerce'; }
 // /join/<slug> opens the public sign-up page, without any merchant session.
 const JOIN_SLUG=(()=>{ try{ const r=/^\/join\/([^\/]+)\/?$/.exec(window.location.pathname); return r?decodeURIComponent(r[1]).toLowerCase():null; }catch(e){ return null; } })();
-// Printed QR codes must point at the production site; local dev keeps its own origin for testing.
-const PUBLIC_SITE=/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)?window.location.origin:'https://dpa-cards.vercel.app';
+// Printed QR codes point to the canonical production domain on any deployed preview.
+// Local dev keeps its own origin for testing; no link depends on Vercel.
+const PUBLIC_SITE=/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)?window.location.origin:'https://cards.digitalprojectagency.fr';
 function joinUrl(slug){ return PUBLIC_SITE+'/join/'+slug; }
 // Return from Stripe Checkout: /subscription/success?session_id=… or /subscription/cancel.
 const SUB_RETURN=(()=>{ try{ const r=/^\/subscription\/(success|cancel)\/?$/.exec(window.location.pathname); return r?r[1]:null; }catch(e){ return null; } })();
