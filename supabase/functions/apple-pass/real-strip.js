@@ -84,3 +84,148 @@ export async function makeRealStrip(brand, balance, goal, scale = 1) {
     chunk('IEND', new Uint8Array()),
   ]);
 }
+
+
+// DEMONSTRATION PASSES ONLY. These graphics are generated directly from the
+// card designer's saved config (not the default DPA logo). Native PassKit lays
+// the progress primary field *over* the strip, so stamps sit on the right half.
+async function demoPng(width, height, pixels) {
+  const scan = new Uint8Array(height * (1 + width * 4));
+  for (let y = 0; y < height; y++) {
+    const row = y * (1 + width * 4);
+    scan[row] = 0;
+    scan.set(pixels.subarray(y * width * 4, (y + 1) * width * 4), row + 1);
+  }
+  const compressed = new Uint8Array(await new Response(
+    new Blob([scan]).stream().pipeThrough(new CompressionStream('deflate'))
+  ).arrayBuffer());
+  return concat([
+    new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]),
+    chunk('IHDR', concat([u32(width), u32(height), new Uint8Array([8, 6, 0, 0, 0])])),
+    chunk('IDAT', compressed), chunk('IEND', new Uint8Array()),
+  ]);
+}
+const colorFromDemo = (config, key, fallback) =>
+  rgb(config?.apple?.colors?.[key] || config?.colors?.[key], fallback);
+const paint = (pixels, width, height, x, y, color) => {
+  if (x < 0 || y < 0 || x >= width || y >= height) return;
+  pixel(pixels, width, x, y, color);
+};
+function line(pixels, width, height, x1, y1, x2, y2, thickness, color) {
+  const length = Math.hypot(x2 - x1, y2 - y1);
+  for (let step = 0; step <= Math.ceil(length * 2); step++) {
+    const t = step / Math.max(1, Math.ceil(length * 2));
+    const x = Math.round(x1 + (x2 - x1) * t), y = Math.round(y1 + (y2 - y1) * t);
+    circle(pixels, width, height, x, y, thickness, color);
+  }
+}
+// Same two rows of 5 as the test designer where goal is 10.
+export async function makeDemoStrip(config, scale = 1) {
+  if (![1, 2].includes(scale)) throw new Error('invalid_demo_strip_scale');
+  const width = 375 * scale, height = 144 * scale;
+  const pixels = new Uint8Array(width * height * 4);
+  const primary = colorFromDemo(config, 'primary', '#1C1F24');
+  const secondary = colorFromDemo(config, 'secondary', '#2448F0');
+  const filled = rgb(config?.stamps?.filled, '#F2C94C');
+  const empty = rgb(config?.stamps?.empty, '#FFFFFF');
+  const preview = config?.preview || {};
+  const goal = Math.max(1, Math.round(Number(preview.goal) || 10));
+  const done = clamp(Math.round(Number(preview.progress) || 0), 0, goal);
+  // Gentle left-blue to right-dark gradient, like the Apple preview in DPA Cards.
+  for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+    const t = clamp((x / width) * .90 + (y / height) * .12, 0, 1);
+    paint(pixels, width, height, x, y, secondary.map((v,i) => Math.round(v * (1-t) + primary[i] * t)));
+  }
+  if (preview.mode === 'points' || goal > 30) {
+    const frac = Math.min(1, done / goal), x1 = 190 * scale, barW = 165 * scale, yy = 70 * scale;
+    for(let y=yy-7*scale;y<yy+7*scale;y++) for(let x=x1;x<x1+barW;x++)
+      paint(pixels,width,height,x,y,x-x1 < barW*frac ? filled : empty);
+    return demoPng(width,height,pixels);
+  }
+  // Keep primary-field text readable on the left (Apple places it over strip).
+  const visible = Math.min(goal, 15);
+  const rows = visible <= 6 ? 1 : visible <= 14 ? 2 : 3;
+  const columns = Math.ceil(visible / rows);
+  const size = Math.min(11, 73 / Math.max(1, columns * 2 - 1));
+  const gapX = columns > 1 ? Math.min(32, 160 / (columns - 1)) : 0;
+  const gapY = rows === 1 ? 0 : rows === 2 ? 47 : 35;
+  const centerX = 281, centerY = 73;
+  const light = rgb(config?.colors?.text, '#FFFFFF');
+  for (let i = 0; i < visible; i++) {
+    const row = Math.floor(i / columns), col = i % columns;
+    const nCols = Math.min(columns, visible - row * columns);
+    const cx = Math.round((centerX + (col - (nCols - 1)/2)*gapX)*scale);
+    const cy = Math.round((centerY + (row - (rows - 1)/2)*gapY)*scale);
+    const rr = Math.max(5, size) * scale;
+    if (i < done) {
+      circle(pixels,width,height,cx,cy,rr,filled);
+      if (config?.stamps?.icon === 'check') {
+        line(pixels,width,height,cx-5*scale,cy,cx-1*scale,cy+4*scale,1.3*scale,primary);
+        line(pixels,width,height,cx-1*scale,cy+4*scale,cx+6*scale,cy-5*scale,1.3*scale,primary);
+      }
+    } else {
+      circle(pixels,width,height,cx,cy,rr,empty);
+      circle(pixels,width,height,cx,cy,rr-2.4*scale,primary);
+    }
+  }
+  return demoPng(width,height,pixels);
+}
+// Bitmap font for a discreet identity fallback in Apple Wallet. The sample
+// test card has no uploaded logo and is expected to show a yellow CT tile.
+const glyphs = {
+  A:['01110','10001','10001','11111','10001','10001','10001'],
+  B:['11110','10001','10001','11110','10001','10001','11110'],
+  C:['01111','10000','10000','10000','10000','10000','01111'],
+  D:['11110','10001','10001','10001','10001','10001','11110'],
+  E:['11111','10000','10000','11110','10000','10000','11111'],
+  F:['11111','10000','10000','11110','10000','10000','10000'],
+  G:['01111','10000','10000','10111','10001','10001','01111'],
+  H:['10001','10001','10001','11111','10001','10001','10001'],
+  I:['11111','00100','00100','00100','00100','00100','11111'],
+  J:['00111','00010','00010','00010','10010','10010','01100'],
+  K:['10001','10010','10100','11000','10100','10010','10001'],
+  L:['10000','10000','10000','10000','10000','10000','11111'],
+  M:['10001','11011','10101','10101','10001','10001','10001'],
+  N:['10001','11001','10101','10011','10001','10001','10001'],
+  O:['01110','10001','10001','10001','10001','10001','01110'],
+  P:['11110','10001','10001','11110','10000','10000','10000'],
+  Q:['01110','10001','10001','10001','10101','10010','01101'],
+  R:['11110','10001','10001','11110','10100','10010','10001'],
+  S:['01111','10000','10000','01110','00001','00001','11110'],
+  T:['11111','00100','00100','00100','00100','00100','00100'],
+  U:['10001','10001','10001','10001','10001','10001','01110'],
+  V:['10001','10001','10001','10001','10001','01010','00100'],
+  W:['10001','10001','10001','10101','10101','10101','01010'],
+  X:['10001','10001','01010','00100','01010','10001','10001'],
+  Y:['10001','10001','01010','00100','00100','00100','00100'],
+  Z:['11111','00001','00010','00100','01000','10000','11111'],
+  '0':['01110','10001','10011','10101','11001','10001','01110'],
+  '1':['00100','01100','00100','00100','00100','00100','01110'],
+  '2':['01110','10001','00001','00010','00100','01000','11111'],
+  '3':['11110','00001','00001','01110','00001','00001','11110'],
+  '4':['00010','00110','01010','10010','11111','00010','00010'],
+  '5':['11111','10000','10000','11110','00001','00001','11110'],
+};
+export async function makeDemoLogo(name, accent='#F2C94C', scale=1, kind='logo') {
+  if (![1,2].includes(scale) || !['logo','icon'].includes(kind)) throw new Error('invalid_demo_logo');
+  const width=(kind==='icon'?29:160)*scale, height=(kind==='icon'?29:50)*scale;
+  const pixels=new Uint8Array(width*height*4);
+  const bg=rgb(accent,'#F2C94C'), fg=rgb('#1C1F24','#1C1F24');
+  const words=String(name||'DPA').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  const letters=(words.length>1?words.map(w=>w[0]).join(''):words[0]||'DPA').slice(0,kind==='icon'?2:3);
+  const side=(kind==='icon'?29:48)*scale, radius=8*scale;
+  for(let y=0;y<side;y++)for(let x=0;x<side;x++){
+    const dx=Math.max(radius-x,x-(side-radius-1),0),dy=Math.max(radius-y,y-(side-radius-1),0);
+    if(dx*dx+dy*dy <= radius*radius) paint(pixels,width,height,x,y,bg);
+  }
+  const step=(kind==='icon'?2:4)*scale, count=letters.length;
+  const startX=Math.round((side-(count*5+(count-1))*step)/2);
+  const startY=Math.round((side-7*step)/2);
+  for(let n=0;n<count;n++){
+    const g=glyphs[letters[n]]||glyphs.C;
+    for(let y=0;y<7;y++)for(let x=0;x<5;x++)if(g[y][x]==='1')
+      for(let yy=0;yy<step;yy++)for(let xx=0;xx<step;xx++)
+        paint(pixels,width,height,startX+n*6*step+x*step+xx,startY+y*step+yy,fg);
+  }
+  return demoPng(width,height,pixels);
+}
