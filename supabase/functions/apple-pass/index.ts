@@ -6,6 +6,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
+import { Image } from 'npm:imagescript@1.3.1';
+import { realApplePassData, hex } from './real-card.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 function serviceKey() { try { const k = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}'); if (k.default) return k.default; } catch {} return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''; }
@@ -106,6 +108,95 @@ async function createDemoPass(testId, signerKey, signerCert) {
   return { pkpass: await pass.getAsBuffer(), cardId: null, merchantId: null };
 }
 
+// Artwork for REAL passes only. All paths are restricted to this card's own program
+// by realAppleBrand(); the service key is never used with a browser-provided path.
+const rgbaNum = (color, alpha = 255) => parseInt(hex(color, '#2448F0').slice(1), 16) * 256 + alpha;
+async function storedImage(path) {
+  if (!path) return null;
+  try {
+    const { data, error } = await supabase.storage.from('program-assets').download(path);
+    if (error || !data || data.size > 2_500_000) return null;
+    const original = await Image.decode(new Uint8Array(await data.arrayBuffer()));
+    if (!original.width || !original.height || original.width * original.height > 12_000_000) return null;
+    return original;
+  } catch {
+    // An absent/bad logo or cover must never prevent a customer's valid pass.
+    return null;
+  }
+}
+async function realCardImages(brand, balance, goal) {
+  const images = {};
+  const source = await storedImage(brand.logo);
+  if (source) {
+    try {
+      for (const scale of [1, 2]) {
+        const width = 160 * scale, height = 50 * scale;
+        const logo = new Image(width, height);
+        logo.fill(0x00000000);
+        const fit = source.clone().contain(width - 16 * scale, height - 8 * scale);
+        logo.composite(fit, Math.floor((width - fit.width) / 2), Math.floor((height - fit.height) / 2));
+        images[scale === 1 ? 'logo.png' : 'logo@2x.png'] = Buffer.from(await logo.encode());
+      }
+      // The lock screen icon belongs to this commerce, not to the DPA test brand.
+      for (const scale of [1, 2]) {
+        const side = 29 * scale;
+        const icon = new Image(side, side);
+        icon.fill(rgbaNum(brand.primary));
+        const mark = source.clone().contain(side - 8 * scale, side - 8 * scale);
+        icon.composite(mark, Math.floor((side - mark.width) / 2), Math.floor((side - mark.height) / 2));
+        images[scale === 1 ? 'icon.png' : 'icon@2x.png'] = Buffer.from(await icon.encode());
+      }
+    } catch {
+      // Keep the fallback DPA icon only when the conversion truly fails.
+      delete images['logo.png']; delete images['logo@2x.png'];
+    }
+  }
+  // Apple store cards use a strip, not a freely positioned full-size background.
+  // iOS decides where to put native fields and may not show strip artwork on recent versions.
+  try {
+    const cover = await storedImage(brand.artwork);
+    const W = 750, H = 246;
+    const banner = new Image(W, H);
+    banner.fill(rgbaNum(brand.primary));
+    if (cover) {
+      const ratio = Math.max(W / cover.width, H / cover.height);
+      const scaled = cover.resize(Math.ceil(cover.width * ratio), Math.ceil(cover.height * ratio));
+      const left = Math.max(0, Math.floor((scaled.width - W) / 2));
+      const top = Math.max(0, Math.floor((scaled.height - H) * brand.heroFocus / 100));
+      banner.composite(scaled.crop(left, top, W, H), 0, 0);
+      // Native progress fields are drawn over the left part of the strip.
+      const shade = new Image(370, H);
+      shade.fill(rgbaNum(brand.primary, 235));
+      banner.composite(shade, 0, 0);
+    } else {
+      const right = new Image(370, H);
+      right.fill(rgbaNum(brand.secondary));
+      banner.composite(right, 380, 0);
+      // Stamp-style decoration, derived from the client's REAL progress, no fake demo data.
+      const count = Math.max(1, Math.min(10, Math.round(goal)));
+      const complete = Math.max(0, Math.min(count, Math.floor(balance / goal * count)));
+      const columns = count > 5 ? 5 : count;
+      const rows = Math.ceil(count / columns);
+      for (let i = 0; i < count; i++) {
+        const row = Math.floor(i / columns), col = i % columns;
+        const x = Math.round(420 + (columns === 1 ? 130 : col * 63));
+        const y = rows === 1 ? 126 : 76 + row * 94;
+        if (i < complete) {
+          banner.drawCircle(x, y, 23, rgbaNum(brand.stamps?.filled, 255) || rgbaNum(brand.accent));
+        } else {
+          banner.drawCircle(x, y, 23, rgbaNum(brand.stamps?.empty, 170));
+          banner.drawCircle(x, y, 18, rgbaNum(brand.secondary));
+        }
+      }
+    }
+    images['strip@2x.png'] = Buffer.from(await banner.encode());
+    images['strip.png'] = Buffer.from(await banner.clone().resize(375, 123).encode());
+  } catch {
+    // Native text and barcode still make this pass usable.
+  }
+  return images;
+}
+
 async function createPass(token) {
   if (!/^[A-Za-z0-9_-]{24,160}$/.test(token)) throw new SafeError(401, 'invalid_link');
   const keyPem = Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM') || '';
@@ -142,41 +233,16 @@ async function createPass(token) {
   if (programResult.error || merchantResult.error || customerResult.error || eventResult.error) throw new Error('db_pass');
   const program = programResult.data;
   if (!program || program.design_status !== 'validated') throw new SafeError(409, 'design_pending');
-  const balance = Math.max(0, eventResult.data?.[0]?.balance_after || 0);
-  const goal = Math.max(1, program.goal || 10);
-  const bg = program.card_design?.apple?.colors?.primary ||
-    program.card_design?.colors?.primary || program.bg || '#2448F0';
-  const issuer = String(merchantResult.data.business_name || 'DPA Cards').slice(0, 40);
-  const first = String(customerResult.data.first_name || '').slice(0, 80);
-  const lastname = String(customerResult.data.last_name || '').slice(0, 80);
-  const clientName = (first + ' ' + lastname).trim() || 'Client';
-  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: card.card_number };
-  const json = {
-    formatVersion: 1,
-    passTypeIdentifier: PASS_TYPE_ID,
-    teamIdentifier: TEAM_ID,
-    serialNumber: card.id,
-    organizationName: issuer,
-    description: 'Carte de fidélité ' + issuer,
-    logoText: issuer,
-    backgroundColor: rgb(bg),
-    foregroundColor: textColor(bg),
-    labelColor: textColor(bg),
-    storeCard: {
-      primaryFields: [{ key: 'progress', label: program.mode === 'points' ? 'POINTS' : 'PASSAGES', value: balance + ' / ' + goal }],
-      secondaryFields: [{ key: 'client', label: 'CLIENT', value: clientName }],
-      auxiliaryFields: [
-        { key: 'reward', label: 'RÉCOMPENSE', value: String(program.reward).slice(0, 100) },
-        { key: 'card', label: 'N° DE CARTE', value: card.card_number },
-      ],
-      backFields: [{ key: 'info', label: 'Fidélité', value: 'Carte de fidélité gérée par DPA Cards.' }],
-    },
-    barcode, barcodes: [barcode],
-  };
+  // Read the merchant's approved Apple design, never the designer's DEMO preview.
+  const { brand, json, balance, goal } = realApplePassData({
+    program, merchant: merchantResult.data, customer: customerResult.data,
+    card, balance: eventResult.data?.[0]?.balance_after || 0,
+  });
   const fallback = Buffer.from(ICON_B64, 'base64');
-  const logo = await brandedLogo(program) || fallback;
+  const imageFiles = await realCardImages(brand, balance, goal);
   const pass = new PKPass({
-    'icon.png': fallback, 'icon@2x.png': fallback, 'logo.png': logo,
+    'icon.png': fallback, 'icon@2x.png': fallback,
+    ...imageFiles,
     'pass.json': Buffer.from(JSON.stringify(json), 'utf8'),
   }, {
     wwdr: await wwdrCert(),
