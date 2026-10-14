@@ -30,7 +30,7 @@ for (const [from, to] of expected) {
 // Rewriting /cgv to /cgv.html risks conflicting with automatic HTML URL normalization.
 for (const name of ['cgv', 'mentions-legales', 'confidentialite']) {
   const route = '/' + name;
-  assert.ok(!redirects.split(/\\r?\\n/).some(line => line.trim().startsWith(route + ' ')),
+  assert.ok(!redirects.split(/\r?\n/).some(line => line.trim().startsWith(route + ' ')),
     'Legal route must use Cloudflare clean URL handling: ' + route);
   const html = readFileSync(join(dist, name + '.html'), 'utf8');
   assert.ok(html.includes('<html') && html.includes('<main'), 'Invalid legal HTML page: ' + name);
