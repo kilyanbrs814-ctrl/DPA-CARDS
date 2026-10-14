@@ -150,7 +150,6 @@ export async function makeDemoStrip(config, scale = 1) {
   const gapX = columns > 1 ? Math.min(32, 160 / (columns - 1)) : 0;
   const gapY = rows === 1 ? 0 : rows === 2 ? 47 : 35;
   const centerX = 281, centerY = 73;
-  const light = rgb(config?.colors?.text, '#FFFFFF');
   for (let i = 0; i < visible; i++) {
     const row = Math.floor(i / columns), col = i % columns;
     const nCols = Math.min(columns, visible - row * columns);
@@ -212,7 +211,7 @@ export async function makeDemoLogo(name, accent='#F2C94C', scale=1, kind='logo')
   const pixels=new Uint8Array(width*height*4);
   const bg=rgb(accent,'#F2C94C'), fg=rgb('#1C1F24','#1C1F24');
   const words=String(name||'DPA').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
-  const letters=(words.length>1?words.map(w=>w[0]).join(''):words[0]||'DPA').slice(0,kind==='icon'?2:3);
+  const letters=(words.length>1?words.map(w=>w[0]).join(''):words[0]||'DPA').slice(0,2);
   const side=(kind==='icon'?29:48)*scale, radius=8*scale;
   for(let y=0;y<side;y++)for(let x=0;x<side;x++){
     const dx=Math.max(radius-x,x-(side-radius-1),0),dy=Math.max(radius-y,y-(side-radius-1),0);
