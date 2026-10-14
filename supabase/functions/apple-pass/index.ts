@@ -182,7 +182,7 @@ async function realCardImages(brand, balance, goal) {
         const x = Math.round(420 + (columns === 1 ? 130 : col * 63));
         const y = rows === 1 ? 126 : 76 + row * 94;
         if (i < complete) {
-          banner.drawCircle(x, y, 23, rgbaNum(brand.stamps?.filled, 255) || rgbaNum(brand.accent));
+          banner.drawCircle(x, y, 23, rgbaNum(brand.stamps?.filled || brand.accent));
         } else {
           banner.drawCircle(x, y, 23, rgbaNum(brand.stamps?.empty, 170));
           banner.drawCircle(x, y, 18, rgbaNum(brand.secondary));
