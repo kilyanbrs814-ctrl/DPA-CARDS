@@ -146,7 +146,7 @@ export async function makeDemoStrip(config, scale = 1) {
   const visible = Math.min(goal, 15);
   const rows = visible <= 6 ? 1 : visible <= 14 ? 2 : 3;
   const columns = Math.ceil(visible / rows);
-  const size = Math.min(11, 73 / Math.max(1, columns * 2 - 1));
+  const size = Math.min(13, 73 / Math.max(1, columns));
   const gapX = columns > 1 ? Math.min(32, 160 / (columns - 1)) : 0;
   const gapY = rows === 1 ? 0 : rows === 2 ? 47 : 35;
   const centerX = 281, centerY = 73;
