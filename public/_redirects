@@ -5,6 +5,6 @@
 /subscription/cancel /index.html 200
 /design/success /index.html 200
 /design/cancel /index.html 200
-/mentions-legales /mentions-legales.html 200
-/confidentialite /confidentialite.html 200
-/cgv /cgv.html 200
+# Cloudflare Pages automatically serves /cgv, /mentions-legales and /confidentialite
+# from their matching .html files. Do not rewrite these routes to *.html:
+# Cloudflare normalizes HTML URLs to their extensionless paths.
