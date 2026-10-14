@@ -387,6 +387,38 @@ async function saveLink(req: Request): Promise<Response> {
   return json(req, 200, { url, sync: pass });
 }
 
+// An Apple installation link is a short-lived, unguessable bearer capability.
+// Only authorized enrollment and merchant operations can issue one. The opaque
+// token (not the QR code or card id) is the only value sent to the Apple endpoint.
+async function appleDownloadLink(cardId: string): Promise<string> {
+  if (!Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM') || !Deno.env.get('APPLE_PASS_CERT_PEM')) {
+    throw new HttpError(503, 'apple_wallet_not_configured');
+  }
+  const token = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)));
+  const tokenHash = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  const { error } = await admin.from('apple_wallet_links').upsert({
+    card_id: cardId, token_hash: tokenHash,
+    expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+  }, { onConflict: 'card_id' });
+  if (error) throw new Error('db_apple_link');
+  return SUPABASE_URL + '/functions/v1/apple-pass?token=' + encodeURIComponent(token);
+}
+
+async function appleLink(req: Request): Promise<Response> {
+  const { user, userClient } = await authUser(req);
+  const body = await req.json().catch(() => ({}));
+  const cardId = String(body?.card_id ?? '');
+  if (!UUID_RE.test(cardId)) throw new HttpError(400, 'invalid_card');
+  const { data: card } = await userClient.from('cards').select('id, merchant_id').eq('id', cardId).maybeSingle();
+  if (!card) throw new HttpError(404, 'card_not_found');
+  const { data: member } = await admin.from('merchant_members').select('role')
+    .eq('merchant_id', card.merchant_id).eq('user_id', user.id).maybeSingle();
+  if (!member) throw new HttpError(403, 'forbidden');
+  await requireAccess(card.merchant_id);
+  return json(req, 200, { url: await appleDownloadLink(card.id) });
+}
+
 // ---------------------------------------------------------------- public sign-up (/join/<slug>)
 // No session. The slug is the only thing the browser names; merchant and program are
 // resolved here, and only fields already shown on the public page are returned.
@@ -448,9 +480,12 @@ async function publicJoin(req: Request): Promise<Response> {
     if (!(e instanceof HttpError)) console.error('wallet error', 'join', (e as Error).message);
     wallet = { error: e instanceof HttpError ? e.code : 'wallet_unavailable' };
   }
+  let apple: { url?: string; error?: string };
+  try { apple = { url: await appleDownloadLink(data.card.id) }; }
+  catch (e) { apple = { error: e instanceof HttpError ? e.code : 'apple_wallet_unavailable' }; }
   return json(req, 200, {
     first: data.customer.first_name, card_number: data.card.card_number, qr_value: `DPA1:${data.card.qr_token}`,
-    joined: data.card.created_at, wallet,
+    joined: data.card.created_at, wallet, apple,
   });
 }
 
@@ -1420,6 +1455,7 @@ Deno.serve(async (req) => {
       });
     }
     if (req.method === 'POST' && path.endsWith('/save-link')) return await saveLink(req);
+    if (req.method === 'POST' && path.endsWith('/apple-link')) return await appleLink(req);
     if (req.method === 'POST' && path.endsWith('/public-program')) return await publicProgram(req);
     if (req.method === 'POST' && path.endsWith('/join')) return await publicJoin(req);
     if (req.method === 'POST' && path.endsWith('/notify')) return await notify(req);
