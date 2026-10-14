@@ -3,6 +3,19 @@
 Import local du projet Claude Design **DPA Cards**
 (`7fa48349-c620-424d-b2fb-d9a614015ecf`, fichier `DPA Cards.dc.html`).
 
+## Migration d'hébergement (préparation, pas encore en production)
+
+DPA Cards doit être hébergé sur **Cloudflare Pages**, indépendamment de Vercel,
+à l'adresse canonique `https://cards.digitalprojectagency.fr`. L'interface
+reste un site Vite statique ; les données, les paiements et les intégrations
+Wallet continuent de passer par Supabase.
+
+**Étapes de bascule, DNS Infomaniak, variables d'environnement et tests** :
+[`docs/migration-cloudflare-pages.md`](docs/migration-cloudflare-pages.md).
+
+Ne pas déployer les fonctions Supabase modifiées ni modifier les DNS avant que
+le nouvel hébergement, Supabase Auth et les secrets nécessaires soient prêts.
+
 ## Démarrer
 
 ```
@@ -143,7 +156,7 @@ commerçant**. L'inscription publique passe par une vraie URL, voir ci-dessous.
 
 ## Inscription publique (`/join/<slug>`)
 
-URL permanente par commerce : `https://dpa-cards.vercel.app/join/<slug>`, où
+URL permanente par commerce : `https://cards.digitalprojectagency.fr/join/<slug>`, où
 `<slug>` est `merchants.slug` (unique, non modifiable par le commerçant). Les
 nouveaux commerces reçoivent le nom en minuscules sans séparateur
 (BASH → `bash`, Napolit'Hein → `napolithein`, 24 caractères max, suffixe
@@ -152,7 +165,7 @@ nouveaux commerces reçoivent le nom en minuscules sans séparateur
 - « Inviter mes clients » : le QR code, « Copier le lien », « Voir la page
   d'inscription » et « Télécharger le QR code » utilisent la même chaîne
   `<origine du site>/join/<slug>`.
-- Routage : `vercel.json` réécrit uniquement `/join/:slug` vers `index.html` (même
+- Routage Cloudflare Pages : `public/_redirects` réécrit `/join/*` vers `index.html` (même
   règle dans `vite.config.js` pour `vite` / `vite preview`). `admin.html` et le
   reste du site ne sont pas concernés. Sous `/join/`, `window.__resources` pointe le
   composant carte vers `/LoyaltyCard.dc.html`.
@@ -350,7 +363,7 @@ Migration `20261006204044_test_card_designs`.
 ## Pages légales et données personnelles
 
 - Pages publiques `/mentions-legales` et `/confidentialite` (`mentions-legales.html`, `confidentialite.html`),
-  réécrites par `vercel.json` et `vite.config.js` (règles ciblées, pas de réécriture globale).
+  réécrites par `public/_redirects` et `vite.config.js` (règles ciblées, pas de réécriture globale).
 - Informations légales : **uniquement** dans `src/legal-config.js` ; les valeurs « À RENSEIGNER » restent à fournir.
 - Liens légaux : pied de page connexion / inscription, page Paramètres, page `/join` (consentement + pied de page).
 - Aucun cookie ni traceur : seul le stockage local technique (session, « Se souvenir de moi », mode scanner) ; pas de bannière.

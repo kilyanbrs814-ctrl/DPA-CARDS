@@ -20,10 +20,11 @@ export const LEGAL = {
   CONTACT_EMAIL: 'contact@digitalprojectagency.fr', // contact public, aussi utilisé pour les demandes RGPD
   CONTACT_PHONE: '07 53 80 14 15',
 
-  SITE_URL: 'https://dpa-cards.vercel.app',
-  HOST_NAME: 'Vercel Inc.',
-  HOST_ADDRESS: '440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis',
-  HOST_URL: 'https://vercel.com',
+  SITE_URL: 'https://cards.digitalprojectagency.fr',
+  // Web front-end hosting on Cloudflare Pages; account and domain activation pending.
+  HOST_NAME: 'Cloudflare, Inc.',
+  HOST_ADDRESS: '101 Townsend Street, San Francisco, CA 94107, États-Unis',
+  HOST_URL: 'https://www.cloudflare.com',
 
   // Conditions générales de vente et d’abonnement (page publique /cgv). Le lien « Voir les conditions »
   // de la page d’abonnement pointe ici.
