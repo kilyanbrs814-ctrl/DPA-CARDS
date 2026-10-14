@@ -790,13 +790,20 @@ async function adminOverview(req: Request): Promise<Response> {
   const user = await requireAdmin(req);
   const { data, error } = await admin.rpc('admin_overview');
   if (error) throw new Error('db_admin_overview');
-  const [emails, reps, { data: modes }] = await Promise.all([ownerEmails((data.merchants as any[]).map(m => m.owner_id)), attributions(),
-    admin.from('subscriptions').select('merchant_id, billing_mode')]);
+  const [emails, reps, { data: modes }, { data: appleRows, error: appleError }] = await Promise.all([ownerEmails((data.merchants as any[]).map(m => m.owner_id)), attributions(),
+    admin.from('subscriptions').select('merchant_id, billing_mode'),
+    admin.rpc('admin_apple_wallet_counts')]);
+  if (appleError) throw new Error('db_admin_apple_wallet_counts');
+  const appleByMerchant = Object.fromEntries((appleRows ?? []).map((x: any) => [x.merchant_id, Number(x.apple_count) || 0]));
+  const appleTotal = (appleRows ?? []).reduce((n: number, x: any) => n + (Number(x.apple_count) || 0), 0);
+  const bothTotal = (appleRows ?? []).reduce((n: number, x: any) => n + (Number(x.both_count) || 0), 0);
   // Monthly or paid in one go (commitment offer), next to the subscription the dashboard already shows.
   const mode: Record<string, string> = Object.fromEntries((modes ?? []).map(x => [x.merchant_id, x.billing_mode]));
   const merchants = (data.merchants as any[]).map(({ owner_id, ...m }) => ({ ...m, owner_email: emails[owner_id] ?? null, sales_rep: reps[m.id] ?? null,
+    apple_wallet_downloads: appleByMerchant[m.id] ?? 0,
     subscription: m.subscription ? { ...m.subscription, billing_mode: mode[m.id] ?? 'monthly' } : null }));
-  return json(req, 200, { kpis: data.kpis, merchants, me: { email: user.dpaEmail, role: user.dpaRole } });
+  return json(req, 200, { kpis: { ...data.kpis, apple_wallet_downloads: appleTotal, wallet_both: bothTotal }, merchants,
+    me: { email: user.dpaEmail, role: user.dpaRole } });
 }
 
 async function adminMerchant(req: Request): Promise<Response> {
@@ -808,11 +815,13 @@ async function adminMerchant(req: Request): Promise<Response> {
   if (error) throw new Error('db_admin_merchant');
   if (!data) throw new HttpError(404, 'merchant_not_found');
   const { owner_id, ...merchant } = data.merchant;
-  const [emails, reps, { data: sub }, { data: prepaid }] = await Promise.all([ownerEmails([owner_id]), attributions([id]),
+  const [emails, reps, { data: sub }, { data: prepaid }, { count: appleCount, error: appleError }] = await Promise.all([ownerEmails([owner_id]), attributions([id]),
     admin.from('subscriptions').select('billing_mode').eq('merchant_id', id).maybeSingle(),
     // Commitment paid in one go: what was collected, the period it covers, refunds (pending attempts left out).
     admin.from('prepaid_purchases').select('id, months, monthly_cents, setup_cents, total_cents, status, conflict, dispute_status, access_start, access_end, paid_at, refunded_cents, refunded_at, access_revoked_at')
-      .eq('merchant_id', id).in('status', ['paid', 'refunded', 'partially_refunded']).order('paid_at', { ascending: false })]);
+      .eq('merchant_id', id).in('status', ['paid', 'refunded', 'partially_refunded']).order('paid_at', { ascending: false }),
+    admin.from('apple_wallet_downloads').select('card_id', { count: 'exact', head: true }).eq('merchant_id', id)]);
+  if (appleError) throw new Error('db_admin_apple_wallet_count');
   if (data.subscription) data.subscription.billing_mode = sub?.billing_mode ?? 'monthly';
   // Payments, commissions and attribution history: director only.
   let sales = null;
@@ -824,7 +833,8 @@ async function adminMerchant(req: Request): Promise<Response> {
     if (se || re) throw new Error('db_sales_merchant');
     sales = { ...s, reps };
   }
-  return json(req, 200, { ...data, merchant: { ...merchant, owner_email: emails[owner_id] ?? null }, sales_rep: reps[id] ?? null, prepaid: prepaid ?? [], sales });
+  return json(req, 200, { ...data, counts: { ...(data.counts ?? {}), apple_wallet_downloads: appleCount ?? 0 },
+    merchant: { ...merchant, owner_email: emails[owner_id] ?? null }, sales_rep: reps[id] ?? null, prepaid: prepaid ?? [], sales });
 }
 
 // ---------------------------------------------------------------- sales tracking (director only)
@@ -1386,6 +1396,25 @@ async function adminTestCardNewQr(req: Request): Promise<Response> {
 }
 
 // "Ajouter à Google Wallet" for a test card: a real demo pass in its own class, with the demo data.
+// Only administrators may create Apple download links for isolated demo cards.
+async function adminTestCardApple(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const t = await testRow(body?.id);
+  if (!Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM') || !Deno.env.get('APPLE_PASS_CERT_PEM')) {
+    throw new HttpError(503, 'apple_wallet_not_configured');
+  }
+  const token = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token))),
+    b => b.toString(16).padStart(2, '0')).join('');
+  const { error } = await admin.from('apple_wallet_test_links').upsert({
+    test_card_id: t.id, token_hash: hash,
+    expires_at: new Date(Date.now() + 15 * 60000).toISOString(),
+  }, { onConflict: 'test_card_id' });
+  if (error) throw new Error('db_apple_test_link');
+  return json(req, 200, { url: SUPABASE_URL + '/functions/v1/apple-pass?token=' + encodeURIComponent(token) });
+}
+
 async function adminTestCardWallet(req: Request): Promise<Response> {
   await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
@@ -1486,6 +1515,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-test-card-delete')) return await adminTestCardDelete(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-new-qr')) return await adminTestCardNewQr(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-wallet')) return await adminTestCardWallet(req);
+    if (req.method === 'POST' && path.endsWith('/admin-test-card-apple')) return await adminTestCardApple(req);
     if (req.method === 'POST' && path.endsWith('/finalize-design')) return await finalizeDesign(req);
     if (req.method === 'POST' && path.endsWith('/sync')) return await sync(req);
     return json(req, 404, { error: 'not_found' });
