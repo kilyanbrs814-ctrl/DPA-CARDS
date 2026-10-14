@@ -178,6 +178,7 @@ const designerApi = {
   testDelete: id => adminCall('admin-test-card-delete', { id }),
   testNewQr: id => adminCall('admin-test-card-new-qr', { id }),
   testWallet: id => adminCall('admin-test-card-wallet', { id }),
+  testApple: id => adminCall('admin-test-card-apple', { id }),
 };
 let designer = null;
 // Sales tracking (director only: every route re-checks admin_users.role = 'director' on the server).

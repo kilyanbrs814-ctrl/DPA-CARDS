@@ -128,6 +128,8 @@ const DB_ERRORS = {
   design_already_paid: 'Cette demande de design est déjà payée.',
   design_not_cancellable: 'Cette demande de design est déjà payée : elle ne peut plus être annulée.',
   program_unavailable: 'Les inscriptions à ce programme ne sont pas encore ouvertes.',
+  apple_wallet_not_configured: 'Apple Wallet est en cours de configuration. Votre carte DPA Cards reste disponible sur le site.',
+  apple_wallet_unavailable: 'Impossible de préparer la carte Apple Wallet pour le moment. Réessayez.',
 };
 
 function errorMessage(e) {
@@ -461,6 +463,16 @@ const api = {
     const qr = await QRCode.toDataURL(data.url, { margin: 1, width: 232, errorCorrectionLevel: 'L' });
     return { url: data.url, qr, sync: data.sync };
   },
+  // One real Apple Wallet installation link. Card ownership is checked server-side.
+  async appleWalletLink(cardId) {
+    const { data, error } = await sb.functions.invoke('wallet/apple-link', { body: { card_id: cardId } });
+    if (error) {
+      let code = '';
+      try { code = (await error.context.json()).error || ''; } catch (e) {}
+      throw Object.assign(new Error(code || error.message || 'apple_wallet_unavailable'), { code });
+    }
+    return data;
+  },
   // ---- public sign-up page /join/<slug> (no session). Only the slug is sent; the
   // Edge Function resolves merchant and program and returns public fields only.
   async publicProgram(slug) {
@@ -482,7 +494,7 @@ const api = {
       try { code = (await error.context.json()).error || ''; } catch (e) {}
       throw Object.assign(new Error(code || error.message || 'wallet_unavailable'), { code, name: code ? 'Error' : error.name });
     }
-    return { first: data.first, cardNumber: data.card_number, qrValue: data.qr_value, wallet: data.wallet || {} };
+    return { first: data.first, cardNumber: data.card_number, qrValue: data.qr_value, wallet: data.wallet || {}, apple: data.apple || {} };
   },
   // ---- personal data. Deletions go through the Edge Function (owner session, merchant and
   // customer derived on the server); the export reads with the merchant's own session (RLS).
