@@ -1,0 +1,157 @@
+// DPA Cards: creates a signed Apple Wallet pass from one real loyalty card.
+// GET /functions/v1/apple-pass?token=<opaque bearer token>
+// Signing material is never accessible in the browser or repository.
+// This is the first-install endpoint: live Wallet updates require a separate
+// Apple PassKit web service + APNs registration, not implemented here.
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import { PKPass } from 'npm:passkit-generator@3.6.1';
+import { Buffer } from 'node:buffer';
+
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const PASS_TYPE_ID = 'pass.fr.digitalprojectagency.cards';
+const TEAM_ID = 'HDK7R3283T';
+const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+const ICON_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAIAAADZ8fBYAAABnElEQVR4nGPkWtDEQAPARAtDR80dNXfUXKyABc4SZud6FFHMwMDw69/fDz9/nH37rOPioTNvnsHFGRgYPv76ceTlo4IT2559+8zAwJCnZdFu6srAwGC6cea1D6/wuff82+diSzsiD6xS5xfZ6RFvICwJF+de2Jx7fKu3rNoECy+IYJyqwYvvX/4zMMSrGqCZgyUcfv/7d+LVk/pz+ziYWZLVjJCldjy5zcDAoCsozsDAYCoirSkgOu36qX3P7kUp67ExMRMwFwLufnrHwMCgxCuILOgho8rAwHD5/UsGBoZ4VYM///8tvnNh3q1zQuycPnLqyCpZGHAAVT5hBgaGe5/fQ7iGwpJf42s//fq5/cntopPbuVhYQxV1WBiZ7ocVQRTEqxqse3ANn7msTExGwlL1Ro4///6de+scRPD82+c2W+bA1cSo6POwsgXuWb7r6R0GBoZ2E9ccLXMZbr4nXz9hDwdDYck3MZUrncJuf3zrtmPBhbfPsfomXtXw3///J14/hnCPv3rMxMgYq2IAV8A4Wl+Mmjtq7pA3FwDGM5K4BAgMHQAAAABJRU5ErkJggg==';
+
+class SafeError extends Error {
+  constructor(status, code) { super(code); this.status = status; this.code = code; }
+}
+const reply = (status, code) => new Response(JSON.stringify({ error: code }), {
+  status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+});
+function hexHash(bytes) { return [...new Uint8Array(bytes)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function rgb(hex) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex || '')) hex = '#2448F0';
+  const c = [1, 3, 5].map(i => parseInt(hex.substring(i, i + 2), 16));
+  return 'rgb(' + c.join(', ') + ')';
+}
+function textColor(hex) {
+  if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return 'rgb(255, 255, 255)';
+  const rgb = [1, 3, 5].map(i => parseInt(hex.substring(i, i + 2), 16));
+  const lightness = rgb.reduce((n, v, i) => n + (v / 255) * [0.2126, 0.7152, 0.0722][i], 0);
+  return lightness > 0.62 ? 'rgb(24, 28, 37)' : 'rgb(255, 255, 255)';
+}
+
+let wwdrPromise;
+async function wwdrCert() {
+  if (!wwdrPromise) wwdrPromise = (async () => {
+    const url = 'https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer';
+    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!response.ok) throw new Error('apple_intermediate_unavailable');
+    const base64 = Buffer.from(await response.arrayBuffer()).toString('base64');
+    return '-----BEGIN CERTIFICATE-----\n' + base64.match(/.{1,64}/g).join('\n') + '\n-----END CERTIFICATE-----\n';
+  })().catch(e => { wwdrPromise = null; throw e; });
+  return wwdrPromise;
+}
+async function brandedLogo(program) {
+  // Program-controlled paths are never used as a target hostname.
+  const path = program.logo_path;
+  let url = SUPABASE_URL + '/functions/v1/wallet/logo.png';
+  if (path && typeof path === 'string' && !path.includes('..')) {
+    url = SUPABASE_URL + '/storage/v1/object/public/program-assets/' +
+      path.split('/').map(encodeURIComponent).join('/');
+  }
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!response.ok) return null;
+    const mime = response.headers.get('content-type') || '';
+    const bytes = Buffer.from(await response.arrayBuffer());
+    return mime.includes('image/png') && bytes.length < 2_000_000 ? bytes : null;
+  } catch { return null; }
+}
+async function createPass(token) {
+  if (!/^[A-Za-z0-9_-]{24,160}$/.test(token)) throw new SafeError(401, 'invalid_link');
+  const keyPem = Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM') || '';
+  const certPem = Deno.env.get('APPLE_PASS_CERT_PEM') || '';
+  if (!keyPem.includes('PRIVATE KEY-----') || !certPem.includes('BEGIN CERTIFICATE-----')) {
+    throw new SafeError(503, 'apple_wallet_not_configured');
+  }
+
+  const tokenHash = hexHash(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token)));
+  const { data: link, error: linkError } = await supabase.from('apple_wallet_links')
+    .select('card_id, expires_at').eq('token_hash', tokenHash)
+    .gt('expires_at', new Date().toISOString()).maybeSingle();
+  if (linkError) throw new Error('db_link');
+  if (!link) throw new SafeError(404, 'link_expired');
+
+  const { data: card, error: cardError } = await supabase.from('cards')
+    .select('id, merchant_id, customer_id, program_id, card_number, qr_token').eq('id', link.card_id).maybeSingle();
+  if (cardError || !card) throw new SafeError(404, 'card_not_found');
+  const [access, programResult, merchantResult, customerResult, eventResult] = await Promise.all([
+    supabase.rpc('merchant_has_access', { p_merchant: card.merchant_id }),
+    supabase.from('programs').select('id, name, mode, goal, reward, bg, card_design, logo_path, design_status').eq('id', card.program_id).eq('merchant_id', card.merchant_id).single(),
+    supabase.from('merchants').select('business_name').eq('id', card.merchant_id).single(),
+    supabase.from('customers').select('first_name, last_name').eq('id', card.customer_id).eq('merchant_id', card.merchant_id).single(),
+    supabase.from('card_events').select('seq, balance_after').eq('card_id', card.id).order('seq', { ascending: false }).limit(1),
+  ]);
+  if (access.error || access.data !== true) throw new SafeError(403, 'program_unavailable');
+  if (programResult.error || merchantResult.error || customerResult.error || eventResult.error) throw new Error('db_pass');
+  const program = programResult.data;
+  if (!program || program.design_status !== 'validated') throw new SafeError(409, 'design_pending');
+  const balance = Math.max(0, eventResult.data?.[0]?.balance_after || 0);
+  const goal = Math.max(1, program.goal || 10);
+  const bg = program.card_design?.apple?.colors?.primary ||
+    program.card_design?.colors?.primary || program.bg || '#2448F0';
+  const issuer = String(merchantResult.data.business_name || 'DPA Cards').slice(0, 40);
+  const first = String(customerResult.data.first_name || '').slice(0, 80);
+  const lastname = String(customerResult.data.last_name || '').slice(0, 80);
+  const clientName = (first + ' ' + lastname).trim() || 'Client';
+  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: card.card_number };
+  const json = {
+    formatVersion: 1,
+    passTypeIdentifier: PASS_TYPE_ID,
+    teamIdentifier: TEAM_ID,
+    serialNumber: card.id,
+    organizationName: issuer,
+    description: 'Carte de fidélité ' + issuer,
+    logoText: issuer,
+    backgroundColor: rgb(bg),
+    foregroundColor: textColor(bg),
+    labelColor: textColor(bg),
+    storeCard: {
+      primaryFields: [{ key: 'progress', label: program.mode === 'points' ? 'POINTS' : 'PASSAGES', value: balance + ' / ' + goal }],
+      secondaryFields: [{ key: 'client', label: 'CLIENT', value: clientName }],
+      auxiliaryFields: [
+        { key: 'reward', label: 'RÉCOMPENSE', value: String(program.reward).slice(0, 100) },
+        { key: 'card', label: 'N° DE CARTE', value: card.card_number },
+      ],
+      backFields: [{ key: 'info', label: 'Fidélité', value: 'Carte de fidélité gérée par DPA Cards.' }],
+    },
+    barcode, barcodes: [barcode],
+  };
+  const fallback = Buffer.from(ICON_B64, 'base64');
+  const logo = await brandedLogo(program) || fallback;
+  const pass = new PKPass({
+    'icon.png': fallback, 'icon@2x.png': fallback, 'logo.png': logo,
+    'pass.json': Buffer.from(JSON.stringify(json), 'utf8'),
+  }, {
+    wwdr: await wwdrCert(),
+    signerCert: certPem.replace(/\\n/g, '\n'),
+    signerKey: keyPem.replace(/\\n/g, '\n'),
+  });
+  return pass.getAsBuffer();
+}
+Deno.serve(async req => {
+  if (req.method !== 'GET') return reply(405, 'method_not_allowed');
+  try {
+    const token = new URL(req.url).searchParams.get('token') || '';
+    const pkpass = await createPass(token);
+    return new Response(new Uint8Array(pkpass), {
+      status: 200,
+      headers: {
+        'content-type': 'application/vnd.apple.pkpass',
+        'content-disposition': 'attachment; filename="DPA-Cards.pkpass"',
+        'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff',
+        'referrer-policy': 'no-referrer',
+      },
+    });
+  } catch (e) {
+    if (e instanceof SafeError) return reply(e.status, e.code);
+    // No token, card data or signing key appears in API error responses or logs.
+    console.error('apple-pass generation failed', e instanceof Error ? e.name : 'unknown');
+    return reply(502, 'apple_wallet_unavailable');
+  }
+});
