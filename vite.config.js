@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
-// Same rules as vercel.json, for `vite` and `vite preview`: /join/<slug> and the Stripe return pages
+// Same rules as public/_redirects (Cloudflare Pages), for `vite` and `vite preview`: /join/<slug> and the Stripe return pages
 // (/subscription/success, /subscription/cancel) are served by index.html, the legal pages by their
 // own HTML file. Every other path keeps the MPA behaviour.
 const joinRoute = {
