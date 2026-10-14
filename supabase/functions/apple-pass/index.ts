@@ -6,8 +6,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
-import { Image } from 'npm:imagescript@1.3.1';
-import { realApplePassData, hex } from './real-card.js';
+import { realApplePassData } from './real-card.js';
+import { makeRealStrip } from './real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 function serviceKey() { try { const k = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}'); if (k.default) return k.default; } catch {} return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''; }
@@ -108,93 +108,18 @@ async function createDemoPass(testId, signerKey, signerCert) {
   return { pkpass: await pass.getAsBuffer(), cardId: null, merchantId: null };
 }
 
-// Artwork for REAL passes only. All paths are restricted to this card's own program
-// by realAppleBrand(); the service key is never used with a browser-provided path.
-const rgbaNum = (color, alpha = 255) => parseInt(hex(color, '#2448F0').slice(1), 16) * 256 + alpha;
-async function storedImage(path) {
+// Real cards only. Do not change how demo/test passes are signed and delivered.
+// Some merchants have a real PNG logo saved by the design tool; use its native
+// bytes. Never download arbitrary URLs or another merchant's assets.
+async function realLogo(path) {
   if (!path) return null;
   try {
     const { data, error } = await supabase.storage.from('program-assets').download(path);
-    if (error || !data || data.size > 2_500_000) return null;
-    const original = await Image.decode(new Uint8Array(await data.arrayBuffer()));
-    if (!original.width || !original.height || original.width * original.height > 12_000_000) return null;
-    return original;
-  } catch {
-    // An absent/bad logo or cover must never prevent a customer's valid pass.
-    return null;
-  }
-}
-async function realCardImages(brand, balance, goal) {
-  const images = {};
-  const source = await storedImage(brand.logo);
-  if (source) {
-    try {
-      for (const scale of [1, 2]) {
-        const width = 160 * scale, height = 50 * scale;
-        const logo = new Image(width, height);
-        logo.fill(0x00000000);
-        const fit = source.clone().contain(width - 16 * scale, height - 8 * scale);
-        logo.composite(fit, Math.floor((width - fit.width) / 2), Math.floor((height - fit.height) / 2));
-        images[scale === 1 ? 'logo.png' : 'logo@2x.png'] = Buffer.from(await logo.encode());
-      }
-      // The lock screen icon belongs to this commerce, not to the DPA test brand.
-      for (const scale of [1, 2]) {
-        const side = 29 * scale;
-        const icon = new Image(side, side);
-        icon.fill(rgbaNum(brand.primary));
-        const mark = source.clone().contain(side - 8 * scale, side - 8 * scale);
-        icon.composite(mark, Math.floor((side - mark.width) / 2), Math.floor((side - mark.height) / 2));
-        images[scale === 1 ? 'icon.png' : 'icon@2x.png'] = Buffer.from(await icon.encode());
-      }
-    } catch {
-      // Keep the fallback DPA icon only when the conversion truly fails.
-      delete images['logo.png']; delete images['logo@2x.png'];
-    }
-  }
-  // Apple store cards use a strip, not a freely positioned full-size background.
-  // iOS decides where to put native fields and may not show strip artwork on recent versions.
-  try {
-    const cover = await storedImage(brand.artwork);
-    const W = 750, H = 246;
-    const banner = new Image(W, H);
-    banner.fill(rgbaNum(brand.primary));
-    if (cover) {
-      const ratio = Math.max(W / cover.width, H / cover.height);
-      const scaled = cover.resize(Math.ceil(cover.width * ratio), Math.ceil(cover.height * ratio));
-      const left = Math.max(0, Math.floor((scaled.width - W) / 2));
-      const top = Math.max(0, Math.floor((scaled.height - H) * brand.heroFocus / 100));
-      banner.composite(scaled.crop(left, top, W, H), 0, 0);
-      // Native progress fields are drawn over the left part of the strip.
-      const shade = new Image(370, H);
-      shade.fill(rgbaNum(brand.primary, 235));
-      banner.composite(shade, 0, 0);
-    } else {
-      const right = new Image(370, H);
-      right.fill(rgbaNum(brand.secondary));
-      banner.composite(right, 380, 0);
-      // Stamp-style decoration, derived from the client's REAL progress, no fake demo data.
-      const count = Math.max(1, Math.min(10, Math.round(goal)));
-      const complete = Math.max(0, Math.min(count, Math.floor(balance / goal * count)));
-      const columns = count > 5 ? 5 : count;
-      const rows = Math.ceil(count / columns);
-      for (let i = 0; i < count; i++) {
-        const row = Math.floor(i / columns), col = i % columns;
-        const x = Math.round(420 + (columns === 1 ? 130 : col * 63));
-        const y = rows === 1 ? 126 : 76 + row * 94;
-        if (i < complete) {
-          banner.drawCircle(x, y, 23, rgbaNum(brand.stamps?.filled || brand.accent));
-        } else {
-          banner.drawCircle(x, y, 23, rgbaNum(brand.stamps?.empty, 170));
-          banner.drawCircle(x, y, 18, rgbaNum(brand.secondary));
-        }
-      }
-    }
-    images['strip@2x.png'] = Buffer.from(await banner.encode());
-    images['strip.png'] = Buffer.from(await banner.clone().resize(375, 123).encode());
-  } catch {
-    // Native text and barcode still make this pass usable.
-  }
-  return images;
+    if (error || !data || data.size > 700000) return null;
+    const bytes = new Uint8Array(await data.arrayBuffer());
+    const png = [137,80,78,71,13,10,26,10].every((x,i)=>bytes[i]===x);
+    return png ? Buffer.from(bytes) : null;
+  } catch { return null; }
 }
 
 async function createPass(token) {
@@ -233,17 +158,28 @@ async function createPass(token) {
   if (programResult.error || merchantResult.error || customerResult.error || eventResult.error) throw new Error('db_pass');
   const program = programResult.data;
   if (!program || program.design_status !== 'validated') throw new SafeError(409, 'design_pending');
-  // Read the merchant's approved Apple design, never the designer's DEMO preview.
+  // Native Store Card fields read only from the validated real program.
+  // No designer test-card values, third-party image libraries or WASM at startup.
   const { brand, json, balance, goal } = realApplePassData({
     program, merchant: merchantResult.data, customer: customerResult.data,
     card, balance: eventResult.data?.[0]?.balance_after || 0,
   });
   const fallback = Buffer.from(ICON_B64, 'base64');
-  const imageFiles = await realCardImages(brand, balance, goal);
-  const pass = new PKPass({
+  const logo = await realLogo(brand.logo);
+  const assets: Record<string, Uint8Array> = {
     'icon.png': fallback, 'icon@2x.png': fallback,
-    ...imageFiles,
-    'pass.json': Buffer.from(JSON.stringify(json), 'utf8'),
+    ...(logo ? { 'logo.png': logo, 'logo@2x.png': logo } : {}),
+  };
+  // Strip is optional: a rendering issue should not prevent a customer from
+  // receiving a valid pass containing all native fields and QR code.
+  try {
+    assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1));
+    assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2));
+  } catch {
+    console.error('apple-pass real strip unavailable');
+  }
+  const pass = new PKPass({
+    ...assets, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8'),
   }, {
     wwdr: await wwdrCert(),
     signerCert: certPem.replace(/\\n/g, '\n'),
