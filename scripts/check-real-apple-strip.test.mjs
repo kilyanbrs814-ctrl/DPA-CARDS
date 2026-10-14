@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
-import { makeRealStrip } from '../supabase/functions/apple-pass/real-strip.js';
+import { makeRealStrip, makeDemoStrip, makeDemoLogo } from '../supabase/functions/apple-pass/real-strip.js';
 
 const brand={primary:'#121820',secondary:'#3040C0',accent:'#F2C94C',stamps:{filled:'#F2C94C',empty:'#FFFFFF'}};
 const pngSignature=[137,80,78,71,13,10,26,10];
@@ -41,4 +41,57 @@ test('the Edge Function has no eager native image or WASM dependencies',()=>{
   assert.ok(!source.includes('sharp'));
   assert.ok(source.includes('async function createDemoPass'));
   assert.ok(source.includes('makeRealStrip(brand, balance, goal'));
+});
+
+
+const demoDesign={
+  identity:{name:'Commerce test',subtitle:'Démonstration'},
+  colors:{primary:'#1C1F24',secondary:'#2448F0',text:'#FFFFFF',accent:'#F2C94C'},
+  apple:{colors:{},showHero:true,showSubtitle:true,heroFocus:50,useBackground:false},
+  stamps:{icon:'check',filled:'#F2C94C',empty:'#FFFFFF',shape:'circle',style:'outline'},
+  preview:{goal:10,progress:3,mode:'passages',client:'Nicolas Moreau',reward:'1 dessert offert',available:1},
+};
+const rgbaAt = (img,x,y) => {
+  const z=y*(1+4*img.w)+1+4*x;
+  return [...img.raw.subarray(z,z+4)];
+};
+test('demo pass renders blue gradient + exactly the configured 3 yellow tampons',async()=>{
+  const img=parsePng(await makeDemoStrip(demoDesign,1));
+  assert.equal(img.w,375);assert.equal(img.h,144);
+  const blue=rgbaAt(img,10,60), dark=rgbaAt(img,355,60);
+  assert.ok(blue[2]>dark[2], 'strip should gradient blue toward dark');
+  const x=[217,249,281,313,345],y=[50,97];
+  for(let i=0;i<10;i++){
+    // Sample left of each center to avoid the checkmark in a filled stamp.
+    const p=rgbaAt(img,x[i%5]-8,y[Math.floor(i/5)]);
+    if(i<3) assert.ok(p[0]>=200 && p[1]>=150 && p[2]<=130,'filled stamp '+i);
+    else assert.ok(p[0]>=180,'white outline '+i);
+  }
+});
+test('demo strip reacts to saved preview progress and Apple primary color override',async()=>{
+  const empty=structuredClone(demoDesign);
+  empty.preview.progress=0;
+  const all=structuredClone(demoDesign);
+  all.preview.progress=10;
+  all.apple.colors.primary='#111111';
+  const p0=await makeDemoStrip(empty,1),p10=await makeDemoStrip(all,1);
+  assert.notDeepEqual(p0,p10);
+});
+test('native badge shows commerce initials on yellow, not a generic DPA logo',async()=>{
+  const logo=parsePng(await makeDemoLogo('Commerce test','#F2C94C',1,'logo'));
+  assert.equal(logo.w,160);assert.equal(logo.h,50);
+  const center=rgbaAt(logo,3,23);
+  assert.ok(center[0]>=200 && center[1]>=150,'commerce logo should use yellow tile');
+  const icon=parsePng(await makeDemoLogo('Commerce test','#F2C94C',2,'icon'));
+  assert.equal(icon.w,58);assert.equal(icon.h,58);
+});
+test('real pass still uses independent logo and strip path; demo remains excluded from metrics',()=>{
+  const source=readFileSync(new URL('../supabase/functions/apple-pass/index.ts',import.meta.url),'utf8');
+  const demo=source.split('async function createDemoPass(')[1].split('// Real cards only.')[0];
+  assert.ok(demo.includes('makeDemoStrip(d, 1)'));
+  assert.ok(demo.includes('makeDemoLogo(name, accent'));
+  assert.ok(demo.includes('DPA_TEST:'));
+  assert.ok(demo.includes('crypto.randomUUID()'));
+  assert.ok(demo.includes('cardId: null, merchantId: null'));
+  assert.ok(!demo.includes('apple_wallet_downloads'));
 });
