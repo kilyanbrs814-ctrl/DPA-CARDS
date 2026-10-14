@@ -80,7 +80,7 @@ test('demo strip reacts to saved preview progress and Apple primary color overri
 test('native badge shows commerce initials on yellow, not a generic DPA logo',async()=>{
   const logo=parsePng(await makeDemoLogo('Commerce test','#F2C94C',1,'logo'));
   assert.equal(logo.w,160);assert.equal(logo.h,50);
-  const center=rgbaAt(logo,3,23);
+  const center=rgbaAt(logo,20,5);
   assert.ok(center[0]>=200 && center[1]>=150,'commerce logo should use yellow tile');
   const icon=parsePng(await makeDemoLogo('Commerce test','#F2C94C',2,'icon'));
   assert.equal(icon.w,58);assert.equal(icon.h,58);
