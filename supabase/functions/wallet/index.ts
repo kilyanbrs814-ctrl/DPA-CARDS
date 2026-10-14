@@ -44,7 +44,7 @@ const ISSUER_ID = Deno.env.get('GOOGLE_WALLET_ISSUER_ID') ?? '';
 const WALLET_API = 'https://walletobjects.googleapis.com/walletobjects/v1';
 const LOGO_URL = `${SUPABASE_URL}/functions/v1/wallet/logo.png`;
 // The second host is the Vercel production alias: Supabase Auth's Site URL, where sign-in links land.
-const ALLOWED_ORIGINS = (Deno.env.get('WALLET_ALLOWED_ORIGINS') ?? 'https://dpa-cards.vercel.app,https://dpa-cards-kilyanbrs814-7703s-projects.vercel.app,http://localhost:5173,http://localhost:5174')
+const ALLOWED_ORIGINS = (Deno.env.get('WALLET_ALLOWED_ORIGINS') ?? 'https://cards.digitalprojectagency.fr,https://dpa-cards.vercel.app,http://localhost:5173,http://localhost:5174')
   .split(',').map(s => s.trim()).filter(Boolean);
 
 function envKey(jsonVar: string, legacyVar: string): string {
@@ -917,7 +917,7 @@ async function adminDesignStatus(req: Request): Promise<Response> {
       const { text, html } = simpleMail('Votre carte DPA Cards est prête.', [
         ['Commerce', m?.business_name],
         ['Message', 'Votre carte de fidélité créée par DPA Cards est prête. Connectez-vous à votre espace pour la découvrir.'],
-      ], [['Ouvrir DPA Cards', 'https://dpa-cards.vercel.app/']]);
+      ], [['Ouvrir DPA Cards', PUBLIC_SITE + '/']]);
       email = await sendEmail({ to, subject: 'Votre carte DPA Cards est prête', text, html });
       if (email.sent) await admin.from('design_requests').update({ merchant_notified_at: new Date().toISOString() }).eq('id', id);
     }
@@ -1156,7 +1156,9 @@ async function adminCardValidate(req: Request): Promise<Response> {
 // app signs in with a password): "Envoyer l'accès au commerçant" later sends the standard
 // "choose your password" link. No subscription is created, so the dashboard stays locked as usual.
 
-const PUBLIC_SITE = 'https://dpa-cards.vercel.app';
+// Configurable production address shared by admin invites and customer emails.
+// Set DPA_SITE_URL in Supabase secrets during the hosting cutover.
+const PUBLIC_SITE = (Deno.env.get('DPA_SITE_URL') ?? 'https://dpa-cards.vercel.app').replace(/\/$/, '');
 const SLUG_MAX = 24; // create_merchant keeps the first 24 characters
 const multiline = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ').trim().slice(0, max) : '');
 const initialsOf = (name: string) => name.normalize('NFD').replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 4).toUpperCase() || 'DPA';
