@@ -166,7 +166,7 @@ async function createPass(token) {
   });
   const fallback = Buffer.from(ICON_B64, 'base64');
   const logo = await realLogo(brand.logo);
-  const assets = {
+  const assets: Record<string, Uint8Array> = {
     'icon.png': fallback, 'icon@2x.png': fallback,
     ...(logo ? { 'logo.png': logo, 'logo@2x.png': logo } : {}),
   };
