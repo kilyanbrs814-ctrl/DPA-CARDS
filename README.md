@@ -180,8 +180,56 @@ démonstration : connecté, aucune fausse lecture ne peut créditer un passage. 
 retrouve la carte par son numéro (PC), par la recherche (mobile) ou depuis la
 fiche client.
 
-Pas encore intégrés : lecture réelle par caméra, notifications, Apple Wallet,
-import de logo.
+Non intégrés à cette version : les mises à jour automatiques Apple Wallet.\nVoir ci-dessous pour l'installation initiale Apple Wallet.
+
+## Apple Wallet — première installation (configuration requise)
+
+Pass Type ID : `pass.fr.digitalprojectagency.cards` ; Apple Team ID : `HDK7R3283T`.
+Le certificat validé sur iPhone correspond à **cet identifiant**, pas à l'ancien
+`pass.fr.digitalprojectagency.dpacards`.
+
+- Migration `20261014234000_apple_wallet_links.sql` : jetons de téléchargement
+  aléatoires, hachés SHA-256, expirant après 7 jours, accessibles uniquement
+  aux fonctions utilisant la clé `service_role` (aucun accès navigateur).
+- La fonction `wallet` émet les liens uniquement après inscription publique
+  autorisée (toujours idempotente) ou demande d'un commerçant authentifié
+  et membre du commerce (`POST /wallet/apple-link`).
+- `apple-pass` accepte un lien de téléchargement opaque en GET, revérifie
+  son expiration, l'abonnement et le programme, lit le solde à jour dans
+  `card_events`, puis signe un `.pkpass` avec le QR `DPA1:<qr_token>`.
+  Le numéro de série est l'UUID permanent de la carte.
+- Le site affiche les boutons après inscription et sur la fiche client.
+  Google Wallet reste inchangé.
+
+### Secrets requis dans Supabase → Edge Functions → Secrets
+
+- `APPLE_PASS_CERT_PEM` : certificat Apple délivré sous le Pass Type ID
+  ci-dessus, en PEM. Pour convertir le fichier `pass.cer` téléchargé :
+
+  ```powershell
+  & "C:\Program Files\OpenSSL-Win64\bin\openssl.exe" x509 -inform DER -in "$HOME\DPA-Wallet\pass.cer" -out "$HOME\DPA-Wallet\pass.pem"
+  ```
+
+- `APPLE_PASS_PRIVATE_KEY_PEM` : contenu de **`dpa-wallet.key`**, clé
+  privée liée au CSR ayant servi à créer `pass.cer`. **Ne jamais envoyer la
+  clé dans une conversation, la mettre dans GitHub ni dans une variable Vite.**
+  Coller son contenu uniquement dans les secrets Supabase.
+
+`apple-pass` récupère le certificat Apple WWDR G4 depuis le site Apple
+et le met en cache ; le projet doit garder un accès Internet sortant.
+
+Déployer d'abord la migration, puis `apple-pass` (fonction publique
+uniquement avec un jeton de téléchargement valide, `verify_jwt=false`),
+et `wallet` (routes d'inscription protégées côté code,
+`verify_jwt=false`). Configurer les secrets **avant** l'activation des
+boutons en production.
+
+**Limite de cette première livraison :** la carte téléchargée contient
+le solde réel au moment du téléchargement, mais les changements ultérieurs
+ne sont pas encore poussés automatiquement vers Wallet. Pour cela, il faudra
+implémenter `webServiceURL`, `authenticationToken`, les enregistrements
+de terminaux et les notifications APNs selon le protocole Apple Wallet.
+Ne pas annoncer une synchronisation automatique tant que cela n'est pas fait.
 
 ## Google Wallet
 
