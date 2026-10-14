@@ -2,9 +2,10 @@
 // Intentionally requires no network, secrets, or Cloudflare account.
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const dist = new URL('../dist/', import.meta.url).pathname;
+const dist = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const required = [
   'index.html', 'admin.html', '_redirects',
   'mentions-legales.html', 'confidentialite.html', 'cgv.html',
