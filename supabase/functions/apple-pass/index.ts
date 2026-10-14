@@ -63,6 +63,49 @@ async function brandedLogo(program) {
     return mime.includes('image/png') && bytes.length < 2_000_000 ? bytes : null;
   } catch { return null; }
 }
+
+async function createDemoPass(testId, signerKey, signerCert) {
+  const { data: t, error } = await supabase.from('test_card_designs')
+    .select('id, name, config, qr_token').eq('id', testId).maybeSingle();
+  if (error || !t) throw new SafeError(404, 'test_card_not_found');
+  const d = t.config || {}, pv = d.preview || {}, name = String(d.identity?.name || t.name || 'DPA Cards').slice(0, 40);
+  const primary = d.apple?.colors?.primary || d.colors?.primary || '#2448F0';
+  const mode = pv.mode === 'points' ? 'POINTS' : 'PASSAGES';
+  const balance = Math.max(0, Math.round(Number(pv.progress) || 0));
+  const goal = Math.max(1, Math.round(Number(pv.goal) || 10));
+  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA_TEST:' + t.qr_token, messageEncoding: 'iso-8859-1', altText: 'CARTE TEST' };
+  const json = {
+    formatVersion: 1, passTypeIdentifier: PASS_TYPE_ID, teamIdentifier: TEAM_ID,
+    serialNumber: 'test-' + t.id, organizationName: name,
+    description: 'Démonstration DPA Cards – sans valeur commerciale',
+    logoText: name, backgroundColor: rgb(primary), foregroundColor: textColor(primary),
+    labelColor: textColor(primary),
+    storeCard: {
+      primaryFields: [{ key: 'progress', label: mode, value: balance + ' / ' + goal }],
+      secondaryFields: [{ key: 'client', label: 'CARTE DE DÉMONSTRATION', value: String(pv.client || 'Client test').slice(0, 60) }],
+      auxiliaryFields: [
+        { key: 'reward', label: 'RÉCOMPENSE FICTIVE', value: String(pv.reward || 'Récompense test').slice(0, 80) },
+        { key: 'number', label: 'N°', value: 'TEST ' + t.id.slice(0, 8).toUpperCase() },
+      ],
+      backFields: [{ key: 'notice', label: 'DPA Cards – test',
+        value: "Cette carte est une démonstration. Aucun commerce, client, abonnement ou point de fidélité réel n'y est associé." }],
+    },
+    barcode, barcodes: [barcode],
+  };
+  const fallback = Buffer.from(ICON_B64, 'base64');
+  const logoPath = d.assets?.logo?.path;
+  const logo = await brandedLogo({ logo_path: typeof logoPath === 'string' && logoPath.startsWith('tests/' + testId + '/designer/') ? logoPath : null }) || fallback;
+  const pass = new PKPass({
+    'icon.png': fallback, 'icon@2x.png': fallback, 'logo.png': logo,
+    'pass.json': Buffer.from(JSON.stringify(json), 'utf8'),
+  }, {
+    wwdr: await wwdrCert(),
+    signerCert: signerCert.replace(/\\n/g, '\n'),
+    signerKey: signerKey.replace(/\\n/g, '\n'),
+  });
+  return { pkpass: await pass.getAsBuffer(), cardId: null, merchantId: null };
+}
+
 async function createPass(token) {
   if (!/^[A-Za-z0-9_-]{24,160}$/.test(token)) throw new SafeError(401, 'invalid_link');
   const keyPem = Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM') || '';
@@ -76,7 +119,14 @@ async function createPass(token) {
     .select('card_id, expires_at').eq('token_hash', tokenHash)
     .gt('expires_at', new Date().toISOString()).maybeSingle();
   if (linkError) throw new Error('db_link');
-  if (!link) throw new SafeError(404, 'link_expired');
+  if (!link) {
+    const { data: demoLink, error: demoError } = await supabase.from('apple_wallet_test_links')
+      .select('test_card_id').eq('token_hash', tokenHash)
+      .gt('expires_at', new Date().toISOString()).maybeSingle();
+    if (demoError) throw new Error('db_test_link');
+    if (!demoLink) throw new SafeError(404, 'link_expired');
+    return createDemoPass(demoLink.test_card_id, keyPem, certPem);
+  }
 
   const { data: card, error: cardError } = await supabase.from('cards')
     .select('id, merchant_id, customer_id, program_id, card_number, qr_token').eq('id', link.card_id).maybeSingle();
@@ -133,13 +183,20 @@ async function createPass(token) {
     signerCert: certPem.replace(/\\n/g, '\n'),
     signerKey: keyPem.replace(/\\n/g, '\n'),
   });
-  return pass.getAsBuffer();
+  return { pkpass: await pass.getAsBuffer(), cardId: card.id, merchantId: card.merchant_id };
 }
 Deno.serve(async req => {
   if (req.method !== 'GET') return reply(405, 'method_not_allowed');
   try {
     const token = new URL(req.url).searchParams.get('token') || '';
-    const pkpass = await createPass(token);
+    const { pkpass, cardId, merchantId } = await createPass(token);
+    if (cardId) {
+      // One real signed .pkpass delivered per distinct card; test passes never count.
+      // This is not proof that the user tapped Add in Apple Wallet.
+      const { error: statsError } = await supabase.from('apple_wallet_downloads')
+        .upsert({ card_id: cardId, merchant_id: merchantId }, { onConflict: 'card_id', ignoreDuplicates: true });
+      if (statsError) throw new Error('db_apple_downloads');
+    }
     return new Response(new Uint8Array(pkpass), {
       status: 200,
       headers: {
