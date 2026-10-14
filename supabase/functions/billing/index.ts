@@ -33,6 +33,8 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SITE_URL = (Deno.env.get('DPA_SITE_URL') ?? 'https://cards.digitalprojectagency.fr').replace(/\/$/, '');
 const ALLOWED_ORIGINS = (Deno.env.get('WALLET_ALLOWED_ORIGINS') ?? 'https://cards.digitalprojectagency.fr,http://localhost:5173,http://localhost:5174')
   .split(',').map(s => s.trim()).filter(Boolean);
+// Allow the new custom domain even if the production secret still contains an older origin.
+if (!ALLOWED_ORIGINS.includes('https://cards.digitalprojectagency.fr')) ALLOWED_ORIGINS.push('https://cards.digitalprojectagency.fr');
 const TRIAL_DAYS = 15;
 const ACCESS = ['trialing', 'active'];
 
