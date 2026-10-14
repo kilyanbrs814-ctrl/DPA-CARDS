@@ -6,3 +6,13 @@ supabase/.branches/
 supabase/functions/.env
 *.service-account.json
 supabase-email-backup-*.json
+
+# Do not publish signing keys, certificates, or local hosting secrets.
+.env
+.env.*
+!.env.example
+.dev.vars*
+*.pem
+*.p12
+*.p8
+*.key
