@@ -486,6 +486,20 @@ export function makeCardDesigner(React, api) {
         const r = await api.testWallet(project.test.id); window.open(r.url, '_blank', 'noopener'); toast('Carte de démonstration prête pour Google Wallet.'); }
       catch (e) { toast(e && e.code === 'wallet_not_configured' ? 'Google Wallet n’est pas configuré.' : errText(e)); } finally { setBusy(null); }
     };
+    const testApple = async () => {
+      if (busy) return; setBusy('apple');
+      try {
+        if (dirty) { const saved = await api.testSave(project.test.id, testName, design);
+          setProject(p => ({ ...p, test: saved.test })); setSaved(snap()); }
+        const result = await api.testApple(project.test.id);
+        if (!result.url) throw new Error('apple_wallet_unavailable');
+        window.location.assign(result.url);
+      } catch (e) {
+        toast(e && e.code === 'apple_wallet_not_configured'
+          ? 'Apple Wallet : configurez le certificat Apple dans les secrets Supabase.'
+          : errText(e));
+      } finally { setBusy(null); }
+    };
     const validate = async () => {
       if (busy) return; setBusy('validate');
       try { const snap = JSON.stringify(design); const r = await api.validate(project.program.id, requestId, design);
@@ -687,6 +701,7 @@ export function makeCardDesigner(React, api) {
       h('div', { style: { flex: 1 } }),
       h('button', { type: 'button', onClick: save, disabled: !!busy, style: { minHeight: 46, padding: '0 16px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('save', 20), busy === 'save' ? 'Enregistrement…' : isTest ? 'Enregistrer la carte test' : 'Enregistrer le brouillon'),
       isTest ? h('button', { type: 'button', onClick: testWallet, disabled: !!busy, 'data-test-wallet': true, style: { minHeight: 46, padding: '0 16px', border: 0, borderRadius: 12, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('account_balance_wallet', 20), busy === 'wallet' ? 'Préparation…' : 'Ajouter à Google Wallet') : null,
+      isTest ? h('button', { type: 'button', onClick: testApple, disabled: !!busy, 'data-test-apple': true, style: { minHeight: 46, padding: '0 16px', border: 0, borderRadius: 12, background: '#000000', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('phone_iphone', 20), busy === 'apple' ? 'Préparation…' : 'Ajouter à Apple Wallet') : null,
       !isTest && h('button', { type: 'button', onClick: () => setConfirm(true), disabled: !!busy, style: { minHeight: 46, padding: '0 16px', border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('verified', 20), 'Valider le design'));
 
     const modal = (body, onClose, label) => h('div', { onClick: onClose, style: { position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(20,22,28,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 } },
