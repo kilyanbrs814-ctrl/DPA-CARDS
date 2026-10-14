@@ -46,6 +46,8 @@ const LOGO_URL = `${SUPABASE_URL}/functions/v1/wallet/logo.png`;
 // Allow origins explicitly; keep this set in sync with the final custom domain.
 const ALLOWED_ORIGINS = (Deno.env.get('WALLET_ALLOWED_ORIGINS') ?? 'https://cards.digitalprojectagency.fr,http://localhost:5173,http://localhost:5174')
   .split(',').map(s => s.trim()).filter(Boolean);
+// Allow the new custom domain even if the production secret still contains an older origin.
+if (!ALLOWED_ORIGINS.includes('https://cards.digitalprojectagency.fr')) ALLOWED_ORIGINS.push('https://cards.digitalprojectagency.fr');
 
 function envKey(jsonVar: string, legacyVar: string): string {
   try {
