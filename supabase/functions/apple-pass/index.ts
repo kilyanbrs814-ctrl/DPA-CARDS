@@ -7,7 +7,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
 import { realApplePassData } from './real-card.js';
-import { makeRealStrip } from './real-strip.js';
+import { makeRealStrip, makeDemoStrip, makeDemoLogo } from './real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 function serviceKey() { try { const k = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}'); if (k.default) return k.default; } catch {} return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''; }
@@ -70,37 +70,77 @@ async function createDemoPass(testId, signerKey, signerCert) {
   const { data: t, error } = await supabase.from('test_card_designs')
     .select('id, name, config, qr_token').eq('id', testId).maybeSingle();
   if (error || !t) throw new SafeError(404, 'test_card_not_found');
-  const d = t.config || {}, pv = d.preview || {}, name = String(d.identity?.name || t.name || 'DPA Cards').slice(0, 40);
+  // Use this test card's own saved designer config, not DPA's default template.
+  const d = t.config || {}, pv = d.preview || {};
+  const name = String(d.identity?.name || t.name || 'DPA Cards').slice(0, 40);
   const primary = d.apple?.colors?.primary || d.colors?.primary || '#2448F0';
-  const mode = pv.mode === 'points' ? 'POINTS' : 'PASSAGES';
+  const accent = d.colors?.accent || '#F2C94C';
+  const label = String(d.apple?.label || d.label || (pv.mode === 'points' ? 'POINTS' : 'TAMPONS')).slice(0, 16);
   const balance = Math.max(0, Math.round(Number(pv.progress) || 0));
   const goal = Math.max(1, Math.round(Number(pv.goal) || 10));
-  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA_TEST:' + t.qr_token, messageEncoding: 'iso-8859-1', altText: 'CARTE TEST' };
+  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA_TEST:' + t.qr_token,
+    messageEncoding: 'iso-8859-1', altText: 'CARTE TEST' };
   const json = {
     formatVersion: 1, passTypeIdentifier: PASS_TYPE_ID, teamIdentifier: TEAM_ID,
-    serialNumber: 'test-' + t.id, organizationName: name,
+    // Each preview gets a fresh demo serial. Wallet otherwise reuses the old
+    // installed card with the same serial even when its design has changed.
+    serialNumber: 'test-' + t.id + '-' + crypto.randomUUID(),
+    organizationName: name,
     description: 'Démonstration DPA Cards – sans valeur commerciale',
     logoText: name, backgroundColor: rgb(primary), foregroundColor: textColor(primary),
     labelColor: textColor(primary),
     storeCard: {
-      primaryFields: [{ key: 'progress', label: mode, value: balance + ' / ' + goal }],
-      secondaryFields: [{ key: 'client', label: 'CARTE DE DÉMONSTRATION', value: String(pv.client || 'Client test').slice(0, 60) }],
-      auxiliaryFields: [
-        { key: 'reward', label: 'RÉCOMPENSE FICTIVE', value: String(pv.reward || 'Récompense test').slice(0, 80) },
-        { key: 'number', label: 'N°', value: 'TEST ' + t.id.slice(0, 8).toUpperCase() },
+      primaryFields: [{ key: 'progress', label: label.toUpperCase(), value: balance + '/' + goal }],
+      secondaryFields: [
+        { key: 'client', label: 'CLIENT', value: String(pv.client || 'Client test').slice(0, 60) },
+        { key: 'reward', label: 'RÉCOMPENSE', value: String(pv.reward || 'Récompense test').slice(0, 80) },
       ],
-      backFields: [{ key: 'notice', label: 'DPA Cards – test',
-        value: "Cette carte est une démonstration. Aucun commerce, client, abonnement ou point de fidélité réel n'y est associé." }],
+      auxiliaryFields: [
+        { key: 'available', label: 'DISPONIBLES', value: Math.max(0, Number(pv.available) || 0) },
+        { key: 'number', label: 'CARTE TEST', value: 'TEST ' + t.id.slice(0, 8).toUpperCase() },
+      ],
+      backFields: [
+        ...(d.apple?.showSubtitle !== false && d.identity?.subtitle ?
+          [{ key: 'subtitle', label: 'DÉMONSTRATION', value: String(d.identity.subtitle).slice(0, 80) }] : []),
+        { key: 'notice', label: 'DPA Cards – test', value:
+          "Cette carte est une démonstration. Aucun commerce, client, abonnement ou point de fidélité réel n'y est associé." },
+      ],
     },
     barcode, barcodes: [barcode],
   };
   const fallback = Buffer.from(ICON_B64, 'base64');
+  const images: Record<string, Uint8Array> = { 'icon.png': fallback, 'icon@2x.png': fallback };
+  try {
+    const icon = await makeDemoLogo(name, accent, 1, 'icon');
+    const icon2 = await makeDemoLogo(name, accent, 2, 'icon');
+    images['icon.png'] = Buffer.from(icon);
+    images['icon@2x.png'] = Buffer.from(icon2);
+  } catch { /* Keep the valid fallback icon. */ }
+
+  // Uploaded logos must belong to this isolated admin test (never another
+  // commerce or another test). Otherwise use initials on the designer's accent
+  // tile (e.g. CT on gold for "Commerce test"), not the generic DPA logo.
   const logoPath = d.assets?.logo?.path;
-  const logo = await brandedLogo({ logo_path: typeof logoPath === 'string' && logoPath.startsWith('tests/' + testId + '/designer/') ? logoPath : null }) || fallback;
-  const pass = new PKPass({
-    'icon.png': fallback, 'icon@2x.png': fallback, 'logo.png': logo,
-    'pass.json': Buffer.from(JSON.stringify(json), 'utf8'),
-  }, {
+  const allowedLogo = typeof logoPath === 'string' &&
+    new RegExp('^tests/' + testId + '/designer/logo-[0-9a-f-]{36}\\.png$', 'i').test(logoPath);
+  const uploaded = allowedLogo ? await realLogo(logoPath) : null;
+  if (uploaded) {
+    images['logo.png'] = uploaded;
+    images['logo@2x.png'] = uploaded;
+  } else {
+    try {
+      images['logo.png'] = Buffer.from(await makeDemoLogo(name, accent, 1));
+      images['logo@2x.png'] = Buffer.from(await makeDemoLogo(name, accent, 2));
+    } catch { images['logo.png'] = fallback; }
+  }
+  // Apple displays its native primary text on top of the strip image. It cannot
+  // use the exact HTML layout, but the two-row colored stamps and blue gradient
+  // now come from the same saved config as the Apple preview.
+  try {
+    images['strip.png'] = Buffer.from(await makeDemoStrip(d, 1));
+    images['strip@2x.png'] = Buffer.from(await makeDemoStrip(d, 2));
+  } catch { console.error('apple-pass demo strip unavailable'); }
+  const pass = new PKPass({ ...images, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8') }, {
     wwdr: await wwdrCert(),
     signerCert: signerCert.replace(/\\n/g, '\n'),
     signerKey: signerKey.replace(/\\n/g, '\n'),
