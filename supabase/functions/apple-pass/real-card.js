@@ -60,7 +60,7 @@ export function realAppleBrand(program, merchant, card) {
     issuer, subtitle, label, primary, secondary, accent, foreground,
     logo: assetPath(assets.logo, card, 'logo') || assetPath(program?.logo_path, card, 'logo'),
     artwork: backgroundImage || hero, heroFocus: Number.isFinite(+apple.heroFocus) ? Math.max(0, Math.min(100, +apple.heroFocus)) : 50,
-    stamps: d.stamps || {},
+    stamps: d.stamps || {}, mode: program?.mode === 'points' ? 'points' : 'passages',
     emoji: typeof d.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(d.stamps.emoji) ? d.stamps.emoji.slice(0,32) : '',
   };
 }
