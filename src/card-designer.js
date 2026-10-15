@@ -47,7 +47,7 @@ export function defaultDesign(project) {
     font: 'hanken', label: '',
     assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
-    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
+    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, showStampPanel: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
   };
@@ -264,7 +264,9 @@ export function makeCardDesigner(React, api) {
 
       // 2. RECTANGLE CENTRAL AVEC LES TAMPONS PNG
       h('div', {
+        'data-apple-stamp-panel': platform==='apple' ? (o.showStampPanel===false?'hidden':'visible') : undefined,
         style: {
+          visibility: platform==='apple' && o.showStampPanel===false ? 'hidden' : 'visible',
           margin: '0 16px',
           padding: '24px 12px',
           minHeight: 145,
@@ -330,6 +332,7 @@ export function makeCardDesigner(React, api) {
 
       // 4. QR CODE CENTRÉ EN BAS
       h('div', {
+        'data-field': 'qr',
         style: {
           display: 'flex',
           justifyContent: 'center',
@@ -907,6 +910,8 @@ export function makeCardDesigner(React, api) {
         h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Ces réglages ne s’appliquent qu’à la version ' + pName + '. Le reste du design est commun aux deux plateformes.'),
         h(Check, { label: 'Afficher l’image principale', checked: po.showHero, onChange: v => set(platform + '.showHero', v) }),
         h(Check, { label: 'Afficher le sous-titre', checked: po.showSubtitle, onChange: v => set(platform + '.showSubtitle', v) }),
+        platform==='apple' && h(Check, { label: 'Afficher le rectangle des tampons',
+          checked: po.showStampPanel!==false, onChange: v => set('apple.showStampPanel', v) }),
         h(Check, { label: 'Utiliser l’image de fond', checked: po.useBackground, onChange: v => set(platform + '.useBackground', v) }),
         h(Field, { label: 'Cadrage vertical de l’image principale : ' + po.heroFocus + ' %' },
           h('input', { type: 'range', min: 0, max: 100, value: po.heroFocus, 'aria-label': 'Cadrage vertical', onChange: e => set(platform + '.heroFocus', +e.target.value), style: { width: '100%', accentColor: '#2448F0' } })),
@@ -915,17 +920,17 @@ export function makeCardDesigner(React, api) {
           padding:'13px 14px',background:'#F6F5F1',borderRadius:12,
           display:'flex',flexDirection:'column',gap:10
         }},
-          h(Check,{label:'Afficher la récompense dans le bloc des tampons',checked:po.showReward===true,onChange:v=>set('apple.showReward',v)}),
-          po.showReward===true && h(Text,{label:'Texte de récompense',value:po.rewardText||'',max:64,
+          po.showStampPanel!==false && h(Check,{label:'Afficher la récompense dans le bloc des tampons',checked:po.showReward===true,onChange:v=>set('apple.showReward',v)}),
+          po.showStampPanel!==false && po.showReward===true && h(Text,{label:'Texte de récompense',value:po.rewardText||'',max:64,
             placeholder:'Débloque la coupe offerte !',onChange:v=>set('apple.rewardText',v)}),
-          po.showReward===true && h('div',null,
+          po.showStampPanel!==false && po.showReward===true && h('div',null,
             h(Color,{label:'Couleur du texte de récompense',value:po.rewardTextColor||rewardLabelColor(design),
               onChange:v=>set('apple.rewardTextColor',v)}),
             po.rewardTextColor && h('button',{type:'button',onClick:()=>set('apple.rewardTextColor',''),
               style:{marginTop:8,padding:'8px 10px',border:'1px solid #D4D1C9',borderRadius:8,background:'#FFFFFF',cursor:'pointer'}},
               'Revenir à la couleur automatique')),
           h('div',{style:{fontSize:13,color:'#5E636B',lineHeight:1.4}},
-            'Désactivé : design Apple Wallet actuel strictement inchangé. Activé : phrase centrée dans le rectangle des tampons, sans déplacer le header, les compteurs ni le QR.')
+            po.showStampPanel===false ? 'Rectangle et tampons masqués. La zone conserve sa hauteur, sans déplacer les compteurs ni le QR code.' : 'Récompense désactivée : design actuel inchangé. Activée : phrase centrée dans le rectangle des tampons.')
         ),
         h(Check, { label: 'Couleurs spécifiques à ' + pName, checked: Object.keys(po.colors || {}).length > 0, onChange: v => set(platform + '.colors', v ? { ...design.colors } : {}) }),
         Object.keys(po.colors || {}).length ? h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },

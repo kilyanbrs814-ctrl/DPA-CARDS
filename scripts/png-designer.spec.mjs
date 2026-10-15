@@ -178,3 +178,42 @@ test('opaque or blank name image is rejected while preserving original Apple hea
  expect(after.height).toBe(before.height);
  await expect(page.locator('[data-layout="apple"]').first().getByRole('img',{name:'Image du nom du commerce'})).toHaveCount(0);
 });
+
+test('Apple stamp rectangle can be toggled off and on without moving counters or QR; Google stays unchanged',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const apple=page.locator('[data-layout="apple"]').first();
+ const panel=apple.locator('[data-apple-stamp-panel]');
+ const checkbox=page.getByLabel('Afficher le rectangle des tampons');
+ await expect(checkbox).toBeChecked();
+ await expect(panel).toHaveAttribute('data-apple-stamp-panel','visible');
+ const before=await apple.boundingBox();
+ const countersBefore=await apple.locator('[data-field="completed-count"]').boundingBox();
+ const remainingBefore=await apple.locator('[data-field="remaining-count"]').boundingBox();
+ const qrBefore=await apple.locator('[data-field="qr"]').boundingBox();
+ await checkbox.uncheck();
+ await expect(panel).toHaveCSS('visibility','hidden');
+ await expect(panel).toHaveAttribute('data-apple-stamp-panel','hidden');
+ const after=await apple.boundingBox();
+ const countersAfter=await apple.locator('[data-field="completed-count"]').boundingBox();
+ const remainingAfter=await apple.locator('[data-field="remaining-count"]').boundingBox();
+ const qrAfter=await apple.locator('[data-field="qr"]').boundingBox();
+ expect(Math.abs(before.height-after.height)).toBeLessThan(1);
+ // Compare offsets inside the card: clicking the setting scrolls the page viewport.
+ expect(Math.abs((countersBefore.y-before.y)-(countersAfter.y-after.y))).toBeLessThan(1);
+ expect(Math.abs((remainingBefore.y-before.y)-(remainingAfter.y-after.y))).toBeLessThan(1);
+ expect(Math.abs((qrBefore.y-before.y)-(qrAfter.y-after.y))).toBeLessThan(1);
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ await page.reload();
+ await expect(checkbox).not.toBeChecked();
+ await expect(panel).toHaveCSS('visibility','hidden');
+ await page.getByRole('tab',{name:/Google Wallet/}).click();
+ await expect(page.locator('[data-layout="google"]').first().locator('[data-progress="stamps"]')).toBeVisible();
+ await page.getByRole('tab',{name:/Apple Wallet/}).click();
+ await checkbox.check();
+ await expect(panel).toHaveCSS('visibility','visible');
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await page.reload();
+ await expect(checkbox).toBeChecked();
+ await expect(panel).toHaveCSS('visibility','visible');
+});

@@ -41,6 +41,18 @@ function circle(pixels, width, height, cx, cy, r, color) {
       if ((x + .5 - cx) ** 2 + (y + .5 - cy) ** 2 <= r2)
         pixel(pixels, width, x, y, color);
 }
+// Preserve the native PassKit strip dimensions and all field positions when the
+// stamp panel is hidden. Matching the card's primary background makes it invisible.
+// This deliberately does not move native counters or the barcode on iPhone.
+export async function makeBlankAppleStrip(primary='#1C1F24',scale=1) {
+  if(![1,2].includes(scale))throw new Error('invalid_strip_scale');
+  const width=375*scale,height=144*scale,rgba=new Uint8Array(width*height*4);
+  const ink=rgb(primary,'#1C1F24');
+  for(let i=0;i<rgba.length;i+=4){
+    rgba[i]=ink[0];rgba[i+1]=ink[1];rgba[i+2]=ink[2];rgba[i+3]=255;
+  }
+  return demoPng(width,height,rgba);
+}
 // Small text overlay is prepared once by the browser and signed into each pass.
 // No font rendering or heavy image resizing is performed in the Edge Function.
 // An absent overlay is a strict no-op: existing PNGs remain byte-for-byte identical.
