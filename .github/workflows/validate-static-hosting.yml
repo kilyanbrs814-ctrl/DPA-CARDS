@@ -24,3 +24,4 @@ jobs:
       - run: npm run test:apple
       - run: npm run test:real-apple
       - run: npm run test:apple-strip
+      - run: npm run test:emoji
