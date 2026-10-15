@@ -266,7 +266,11 @@ async function loadAll(user) {
     .order('created_at', { ascending: false }).limit(1).maybeSingle();
   const { data: subscription, error: se } = await sb.from('subscriptions').select('*').eq('merchant_id', merchant.id).maybeSingle();
   if (se) throw se;
-  return { merchant, program: prog ? toProgram(prog) : null, clients, role: mem.role, designRequest: toRequest(req), notifications, subscription: subscription || null };
+  // Subscription billing and the merchant's actual entitlement are independent.
+  // This endpoint uses the exact server-side predicate used for customer access.
+  const access = await invokeFn('wallet/merchant-access', {});
+  return { merchant, program: prog ? toProgram(prog) : null, clients, role: mem.role, designRequest: toRequest(req), notifications, subscription: subscription || null,
+    hasAccess: access.has_access===true, accessSource: access.source||'none', manualExpiresAt: access.manual_expires_at||null };
 }
 
 // ---------------------------------------------------------------- notifications (Google Wallet)
@@ -340,6 +344,7 @@ const api = {
   signOut() { return sb.auth.signOut({ scope: 'local' }); },
 
   loadAll,
+  access: () => invokeFn('wallet/merchant-access', {}),
   async createMerchant({ business, first, last, activity, slug, program }) {
     const r = await rpc('create_merchant', {
       p_business: business, p_first: first, p_last: last, p_activity: activity, p_slug: slug, p_program: program,
