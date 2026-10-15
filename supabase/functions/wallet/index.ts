@@ -294,7 +294,7 @@ async function ensureObject(card: any, classId: string): Promise<string> {
       ...(hasStampEmoji(program) ? walletCounter(now.balance,program.goal,program.mode)
         : {loyaltyPoints:{label:unitLabel(program.mode),balance:{int:now.balance}}}),
       // Identifies the card at the counter. It authorises nothing on its own.
-      barcode: { type: 'QR_CODE', value: `DPA1:${card.qr_token}`, alternateText: card.card_number },
+      barcode: { type: 'QR_CODE', value: `DPA1:${card.qr_token}`, alternateText: hasStampEmoji(program) ? walletCardDigits(card.card_number) : card.card_number },
       ...(hasStampEmoji(program) ? {
         heroImage: { sourceUri: { uri: await stampBoardUrl(card.id,now.seq) } },
       } : {}),
