@@ -101,7 +101,7 @@ test('accessibility contrasts invalid same-colored foreground',()=>{
   assert.equal(onBackground('#FFFFFF','#FFFFFF'),'#1C1F24');
 });
 
-test('emoji design uses only card number, two counters and native QR on Apple front', () => {
+test('emoji design keeps card number at top, two counters, and branded QR footer on Apple front', () => {
   const p=structuredClone(program);
   p.card_design.stamps.emoji='🍔';
   const {brand,json}=realApplePassData({program:p,merchant,customer,card,balance:3});
@@ -117,7 +117,7 @@ test('emoji design uses only card number, two counters and native QR on Apple fr
   assert.equal(json.storeCard.secondaryFields[1].textAlignment,'PKTextAlignmentRight');
   assert.equal(json.storeCard.auxiliaryFields?.length||0,0);
   assert.equal(json.barcode.message,'DPA1:'+token);
-  assert.equal(json.barcode.altText,'0001');
+  assert.equal(json.barcode.altText,'Propulsé par DPA Cards');
   assert.equal(json.storeCard.backFields.find(f=>f.key==='full_card').value,card.card_number);
   assert.ok(!JSON.stringify(json.storeCard.secondaryFields).includes('Nicolas'));
   assert.ok(!JSON.stringify(json.storeCard.secondaryFields).includes('dessert'));
@@ -149,5 +149,5 @@ test('Apple header leaves room between merchant and last four digits',()=>{
   const {json}=realApplePassData({program:p,merchant,customer,card,balance:3});
   assert.ok(!Object.hasOwn(json,'logoText'));
   assert.equal(json.storeCard.headerFields[0].value,'0001');
-  assert.equal(json.barcode.altText,'0001');
+  assert.equal(json.barcode.altText,'Propulsé par DPA Cards');
 });
