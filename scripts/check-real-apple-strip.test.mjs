@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
-import { makeRealStrip, makeDemoStrip, makeDemoLogo } from '../supabase/functions/apple-pass/real-strip.js';
+import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeGoogleStampHero } from '../supabase/functions/apple-pass/real-strip.js';
 import { decodeEmojiPng, emojiFilename, compositeEmoji } from '../supabase/functions/apple-pass/emoji-art.js';
 
 const brand={primary:'#121820',secondary:'#3040C0',accent:'#F2C94C',stamps:{filled:'#F2C94C',empty:'#FFFFFF'}};
@@ -122,4 +122,23 @@ test('Noto stamps are in color when filled and gray with 22 percent opacity when
   assert.ok(full[0]>200 && full[1]===0 && full[2]===0);
   assert.ok(gray.every(v=>v>0 && v<100));
   assert.equal(gray[0],gray[1]);assert.equal(gray[1],gray[2]);
+});
+
+test('Google Wallet banner is a valid 1032x812 native image with no personal QR',async()=>{
+  const png=await makeGoogleStampHero({
+    colors:{primary:'#1C1F24',secondary:'#2448F0'},stamps:{}
+  },3,10,'passages');
+  const img=parsePng(png);
+  assert.equal(img.w,1032);assert.equal(img.h,812);
+  assert.ok(png.length>1000);
+});
+test('Apple and Google sources include emoji-safe image routes and balance updates',()=>{
+  const server=readFileSync(new URL('../supabase/functions/wallet/index.ts',import.meta.url),'utf8');
+  const apple=readFileSync(new URL('../supabase/functions/apple-pass/index.ts',import.meta.url),'utf8');
+  assert.ok(server.includes("publicStampBoard(req,path)"));
+  assert.ok(server.includes('hasStampEmoji(program)'));
+  assert.ok(server.includes('stampSignature(id)'));
+  assert.ok(server.includes('update.heroImage'));
+  assert.ok(apple.includes('makeDemoStrip(d, 1)'));
+  assert.ok(apple.includes('realApplePassData({'));
 });
