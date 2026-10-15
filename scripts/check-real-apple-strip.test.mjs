@@ -192,6 +192,15 @@ test('Apple header is transparent without a PNG, with no initials or bitmap name
     assert.ok(img.raw.every(v=>v===0));
   }
 });
+test('Apple compact header logo reserves space for system text at 1x and 2x',async()=>{
+  for(const scale of [1,2]){
+    const png=await makeAppleHeaderLogo('Napolithein','#F2C94C','#1C1F24',null,scale,true);
+    const img=parsePng(png);
+    assert.equal(img.w,52*scale);
+    assert.equal(img.h,40*scale);
+    assert.ok(img.raw.every(v=>v===0),'only native PassKit draws the business name');
+  }
+});
 test('Apple emojis are 50pt and 2x artwork doubles pixels rather than getting smaller',async()=>{
   const saved=globalThis.fetch;
   try {
@@ -216,11 +225,10 @@ test('Apple emojis are 50pt and 2x artwork doubles pixels rather than getting sm
   } finally {globalThis.fetch=saved;}
 });
 
-test('Apple signed demo and real passes omit logoText instead of sending invalid empty text',()=>{
+test('Apple header text uses native PassKit logoText only when the design opts in',()=>{
   const source=readFileSync(new URL('../supabase/functions/apple-pass/index.ts', import.meta.url),'utf8');
-  assert.ok(!/logoText\s*:/.test(source),'demo JSON never includes logoText');
+  assert.ok(source.includes("d.apple?.showBusinessName === true ? { logoText: name }"),'demo pass must use a native text field');
   assert.ok(!source.includes("json.logoText = ''"),'empty logoText is rejected by passkit-generator Joi schema');
-  const json={logoText:'Commerce',storeCard:{headerFields:[]}};
-  delete json.logoText;
-  assert.ok(!Object.hasOwn(JSON.parse(JSON.stringify(json)),'logoText'));
+  const json={organizationName:'Commerce',storeCard:{headerFields:[]}};
+  assert.equal(Object.hasOwn(json,'logoText'),false,'existing cards remain logo-only by default');
 });

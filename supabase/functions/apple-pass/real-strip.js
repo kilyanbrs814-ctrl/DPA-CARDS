@@ -314,16 +314,18 @@ export async function makeDemoLogo(name, accent='#F2C94C', scale=1, kind='logo')
 
 
 // Apple header: uploaded PNG only, contained inside the native 160 x 50pt area.
-// Native logoText is omitted. Missing logos leave a transparent header image.
+// When native logoText is enabled, reserve room to its right by limiting the PNG to 52 x 40pt.
+// Missing logos leave a transparent header image; text is drawn by PassKit, never in the bitmap.
 /** @param {string} _name
  * @param {string} _accent
  * @param {string} _background
  * @param {Uint8Array | null} logoBytes
  * @param {number} scale
+ * @param {boolean} compact
  */
-export async function makeAppleHeaderLogo(_name, _accent='#F2C94C', _background='#1C1F24', logoBytes=null, scale=1) {
+export async function makeAppleHeaderLogo(_name, _accent='#F2C94C', _background='#1C1F24', logoBytes=null, scale=1, compact=false) {
   if (![1,2].includes(scale)) throw new Error('invalid_header_scale');
-  const width=160*scale,height=50*scale,pixels=new Uint8Array(width*height*4);
+  const width=(compact?52:160)*scale,height=(compact?40:50)*scale,pixels=new Uint8Array(width*height*4);
   if(logoBytes) {
     const src=await decodePng(logoBytes);
     const ratio=Math.min(width/src.width,height/src.height);
@@ -334,7 +336,7 @@ export async function makeAppleHeaderLogo(_name, _accent='#F2C94C', _background=
       pixels.set(src.pixels.subarray((sy*src.width+sx)*4,(sy*src.width+sx)*4+4),((top+y)*width+x)*4);
     }
   }
-  // Transparent when absent: no initials, tile, merchant name, or empty logoText.
+  // Transparent when absent: no initials, tile or merchant name is baked into the PNG.
   return demoPng(width,height,pixels);
 }
 

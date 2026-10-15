@@ -45,7 +45,7 @@ export function defaultDesign(project) {
     font: 'hanken', label: '',
     assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
-    apple: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
+    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
   };
@@ -195,7 +195,7 @@ export function makeCardDesigner(React, api) {
         overflow: 'hidden',
         background: cardBg(d, o),
         color: c.text,
-        fontFamily: FONTS[d.font].css,
+        fontFamily: platform==='apple' ? '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif' : FONTS[d.font].css,
         boxShadow: '0 14px 36px rgba(20,22,28,.19)'
       }
     },
@@ -219,7 +219,11 @@ export function makeCardDesigner(React, api) {
             minWidth: 0
           }
         },
-          platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:145,height:45,objectFit:'contain',objectPosition:'left center'}}) : h(Logo, { d, size: 40, round: false }),
+          platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?52:145,height:o.showBusinessName?40:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
+          platform==='apple' && o.showBusinessName && h('div',{
+            'data-field':'apple-native-business-name',
+            style:{...ellipsis,minWidth:0,fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:15,fontWeight:600,lineHeight:1.2}
+          },d.identity.name||'Nom du commerce'),
           platform!=='apple' && h('div', {
             'data-field': 'business',
             style: {
@@ -381,7 +385,7 @@ export function makeCardDesigner(React, api) {
     return h('section', { style: { background: '#FFFFFF', border: '1px solid #E4E1DA', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 } },
       h('h3', { style: { margin: 0, fontWeight: 700, fontSize: 16 } }, title), children);
   }
-  function ImagePick({ label, asset, onPick, onRemove, busy, hint, testId }) {
+  function ImagePick({ label, asset, onPick, onRemove, busy, hint, testId, showBusinessName, onToggleBusinessName }) {
     const ref = useRef(null);
     return h(Field, { label, hint },
       h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
@@ -389,7 +393,10 @@ export function makeCardDesigner(React, api) {
         h('input', { ref, type: 'file', accept: ['logo','stamp'].includes(testId)?'image/png':'image/png,image/jpeg,image/webp', 'data-upload': testId, style: { display: 'none' }, onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPick(f); } }),
         h('button', { type: 'button', disabled: busy, onClick: () => ref.current && ref.current.click(), style: { minHeight: 44, padding: '0 14px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
           icon('upload', 18), busy ? 'Envoi…' : asset ? 'Remplacer' : 'Importer'),
-        asset ? h('button', { type: 'button', onClick: onRemove, style: { minHeight: 44, padding: '0 12px', border: 0, background: 'none', color: '#B42318', fontWeight: 600, fontSize: 14 } }, 'Retirer') : null));
+        asset ? h('button', { type: 'button', onClick: onRemove, style: { minHeight: 44, padding: '0 12px', border: 0, background: 'none', color: '#B42318', fontWeight: 600, fontSize: 14 } }, 'Retirer') : null,
+        testId==='logo' && h('button', { type:'button', 'data-show-apple-business-name':true, 'aria-pressed':!!showBusinessName,
+          onClick:onToggleBusinessName, style:{minHeight:44,padding:'0 12px',border:showBusinessName?'1.5px solid #2448F0':'1.5px solid #D4D1C9',background:showBusinessName?'#EEF1FF':'#FFFFFF',borderRadius:12,color:showBusinessName?'#2448F0':'#1C1F24',fontSize:14,fontWeight:700,display:'flex',alignItems:'center',gap:6} },
+          showBusinessName?icon('check_circle',18):icon('text_fields',18),'Afficher le nom du commerce')));
   }
 
   const CROPS = {
@@ -770,7 +777,7 @@ export function makeCardDesigner(React, api) {
       h(Section, { title: 'Identité' },
         h(Text, { label: 'Nom du commerce', value: design.identity.name, max: 40, onChange: v => set('identity.name', v) }),
         h(Text, { label: 'Activité / sous-titre (facultatif)', value: design.identity.subtitle, max: 40, onChange: v => set('identity.subtitle', v) }),
-        h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), hint: 'PNG transparent, 2 Mo maximum. Proportions conservées, sans recadrage.' })),
+        h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), showBusinessName: design.apple.showBusinessName === true, onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true), hint: 'PNG transparent, 2 Mo maximum. Proportions conservées, sans recadrage. Avec l’option nom, Apple Wallet écrit le texte à côté du logo (Google Wallet inchangé).' })),
       h(Section, { title: 'Couleurs' },
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           h(Color, { label: 'Couleur principale (fond)', value: design.colors.primary, onChange: v => set('colors.primary', v) }),
