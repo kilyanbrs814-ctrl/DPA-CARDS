@@ -1,5 +1,5 @@
 import { preparePngUpload } from './png-upload.js';
-import { createAppleWordmark } from './apple-wordmark.js';
+import { createAppleWordmark, resolveBusinessFont } from './apple-wordmark.js';
 import { createRewardLabel, rewardLabelColor } from './apple-reward-label.js';
 // Card designer (admin): one design project per program, rendered in two layouts —
 // Apple Wallet (full rectangle, rounded corners only) and Google Wallet (its own layout).
@@ -45,9 +45,9 @@ export function defaultDesign(project) {
     identity: { name: m.business_name || '', subtitle: m.activity || '' },
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
-    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleHeader: null, rewardLabel: null },
+    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleHeader: null, rewardLabel: null, businessFont: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
-    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, showReward: false, rewardText: 'Débloque la coupe offerte !', useBackground: false, heroFocus: 50, label: '' },
+    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
   };
@@ -71,7 +71,8 @@ export function prepareDesign(cardDesign, program, merchant, assetUrl) {
   d.assets = { logo: cardDesign.assets && Object.hasOwn(cardDesign.assets,'logo') ? withUrl(cardDesign.assets.logo,null) : base.assets.logo, hero: withUrl(cardDesign.assets && cardDesign.assets.hero, base.assets.hero),
     background: withUrl(cardDesign.assets && cardDesign.assets.background, null), stamp: withUrl(cardDesign.assets && cardDesign.assets.stamp, null),
     appleHeader: withUrl(cardDesign.assets && cardDesign.assets.appleHeader, null),
-    rewardLabel: withUrl(cardDesign.assets && cardDesign.assets.rewardLabel, null) };
+    rewardLabel: withUrl(cardDesign.assets && cardDesign.assets.rewardLabel, null),
+    businessFont: withUrl(cardDesign.assets && cardDesign.assets.businessFont, null) };
   if (!d.identity.name) d.identity.name = base.identity.name;
   if (d.stamps.icon === 'custom' && !d.assets.stamp) d.stamps.icon = 'check';
   return d;
@@ -109,7 +110,9 @@ export function makeCardDesigner(React, api) {
   }
 
   // ------------------------------------------------------------ stamps / points
-  function Stamp({ on, st, size, stampUrl }) {
+  function Stamp({ on, st, size, stampUrl, final=false }) {
+    if(final) return h('img',{src:'/assets/stamps/reward-star.png',alt:on?'Récompense débloquée':'Récompense à débloquer',
+      'data-stamp':on?'filled-final-star':'empty-final-star',style:{width:size,height:size,display:'block',objectFit:'contain',flex:'none',opacity:on?1:.22,filter:on?'none':'grayscale(1)'}});
     const libraryUrl = st?.icon === 'library' ? stampImageUrl(st.libraryId) : '';
     if (libraryUrl) return h('img', {
       src:libraryUrl, alt:on?'Tampon validé':'Tampon restant', 'data-stamp':on?'filled-library-png':'empty-library-png',
@@ -152,7 +155,7 @@ export function makeCardDesigner(React, api) {
     const stampUrl = d.assets.stamp && d.assets.stamp.url;
     const lines = Array.from({ length: rows }, (_, r) => Array.from({ length: Math.min(per, goal - r * per) }, (_, i) => r * per + i));
     return h('div', { 'data-progress': 'stamps', 'data-done': done, 'data-goal': goal, style: { display: 'flex', flexDirection: 'column', gap, alignItems: align === 'center' ? 'center' : 'flex-start' } },
-      lines.map((l, r) => h('div', { key: r, style: { display: 'flex', gap } }, l.map(i => h(Stamp, { key: i, on: i < done, st: d.stamps, size, stampUrl })))));
+      lines.map((l, r) => h('div', { key: r, style: { display: 'flex', gap } }, l.map(i => h(Stamp, { key: i, on: i < done, st: d.stamps, size, stampUrl, final:i===goal-1 })))));
   }
 
   // An image that cannot load falls back to the program's own image, then to `fallback` (never a broken icon).
@@ -583,9 +586,9 @@ export function makeCardDesigner(React, api) {
       ks.slice(0, -1).forEach(k => { o[k] = o[k] || {}; o = o[k]; });
       o[ks[ks.length - 1]] = value;
       // Never show or save stale baked lettering when the brand or Apple colors change.
-      if(path==='identity.name'||path==='assets.logo'||path==='apple.showBusinessName'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
+      if(path==='identity.name'||path==='assets.logo'||path==='assets.businessFont'||path==='apple.businessNameFont'||path==='apple.showBusinessName'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
         n.assets.appleHeader=null;
-      if(path==='apple.showReward'||path==='apple.rewardText'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
+      if(path==='apple.showReward'||path==='apple.rewardText'||path==='apple.rewardTextColor'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
         n.assets.rewardLabel=null;
       return n;
     });
@@ -609,6 +612,27 @@ export function makeCardDesigner(React, api) {
     };
     const savedMark=next=>JSON.stringify(next)+(isTest?'|'+testName:'');
     const pickFile = kind => async f => {
+      if(kind==='businessFont') {
+        setBusy('up-businessFont');
+        try{
+          const ext=f.name.split('.').pop()?.toLowerCase();
+          const types={ttf:'font/ttf',otf:'font/otf',woff2:'font/woff2'};
+          if(!types[ext])throw new Error('Format de police autorisé : .ttf, .otf ou .woff2.');
+          if(f.size>1048576)throw new Error('Police trop lourde : 1 Mo maximum.');
+          const bytes=await f.arrayBuffer(),sig=new Uint8Array(bytes.slice(0,4));
+          const magic=String.fromCharCode(...sig);
+          if(!(ext==='otf'&&magic==='OTTO'||ext==='woff2'&&magic==='wOF2'||ext==='ttf'&&sig[0]===0&&sig[1]===1&&sig[2]===0&&sig[3]===0))
+            throw new Error('Ce fichier ne contient pas une police valide.');
+          const blob=new Blob([bytes],{type:types[ext]});
+          const a=isTest?await api.testUpload(project.test.id,kind,blob):await api.upload(project.program.id,kind,blob);
+          const next={...design,assets:{...design.assets,businessFont:a},apple:{...design.apple,businessNameFont:'custom'}};
+          await resolveBusinessFont(next);
+          set('assets.businessFont',a);
+          set('apple.businessNameFont','custom');
+          toast('Police importée : utilisée pour le nom sur Apple Wallet.');
+        }catch(e){toast(e.message||errText(e));}finally{setBusy(null);}
+        return;
+      }
       if(kind==='logo' || kind==='stamp') {
         setBusy('up-'+kind);
         try {
@@ -827,6 +851,19 @@ export function makeCardDesigner(React, api) {
         h(Text, { label: 'Nom du commerce', value: design.identity.name, max: 40, onChange: v => set('identity.name', v) }),
         h(Text, { label: 'Activité / sous-titre (facultatif)', value: design.identity.subtitle, max: 40, onChange: v => set('identity.subtitle', v) }),
         h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), showBusinessName: design.apple.showBusinessName === true, onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true), hint: 'PNG transparent, 2 Mo maximum. Proportions conservées, sans recadrage. Avec l’option nom, DPA Cards crée un bandeau logo + nom plus grand, centré sur les 50 points déjà disponibles. Sans modifier le haut du rectangle des tampons ni Google Wallet.' })),
+      h(Section, { title: 'Nom du commerce sur Apple Wallet' },
+        h('div',{style:{fontSize:13,color:'#5E636B'}},'Le nom reste toujours sur une seule ligne. Le générateur ajuste la taille pour respecter le bandeau existant.'),
+        h(Select,{label:'Police du nom',value:design.apple.businessNameFont||'system',
+          options:[['system','Apple / système'],['hanken','Hanken Grotesk'],['space','Space Grotesk'],['playfair','Playfair Display'],
+            ...(design.assets.businessFont?.path?[['custom','Police importée']]:[])],
+          onChange:v=>set('apple.businessNameFont',v)}),
+        h(Field,{label:'Importer une police personnalisée (.ttf, .otf, .woff2)',
+          hint:design.assets.businessFont?.path?'Police enregistrée pour ce commerce. Importez une autre police pour la remplacer.':'1 Mo maximum. Importez une police dont vous possédez les droits.'},
+          h('input',{type:'file',accept:'.ttf,.otf,.woff2,font/ttf,font/otf,font/woff2',
+            'data-upload':'businessFont',disabled:busy==='up-businessFont',
+            onChange:e=>{const file=e.target.files?.[0];e.target.value='';if(file)pickFile('businessFont')(file);},
+            style:{...inputStyle,padding:'9px 10px',height:'auto'}}))
+      ),
       h(Section, { title: 'Couleurs' },
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           h(Color, { label: 'Couleur principale (fond)', value: design.colors.primary, onChange: v => set('colors.primary', v) }),
@@ -873,6 +910,12 @@ export function makeCardDesigner(React, api) {
           h(Check,{label:'Afficher la récompense dans le bloc des tampons',checked:po.showReward===true,onChange:v=>set('apple.showReward',v)}),
           po.showReward===true && h(Text,{label:'Texte de récompense',value:po.rewardText||'',max:64,
             placeholder:'Débloque la coupe offerte !',onChange:v=>set('apple.rewardText',v)}),
+          po.showReward===true && h('div',null,
+            h(Color,{label:'Couleur du texte de récompense',value:po.rewardTextColor||rewardLabelColor(design),
+              onChange:v=>set('apple.rewardTextColor',v)}),
+            po.rewardTextColor && h('button',{type:'button',onClick:()=>set('apple.rewardTextColor',''),
+              style:{marginTop:8,padding:'8px 10px',border:'1px solid #D4D1C9',borderRadius:8,background:'#FFFFFF',cursor:'pointer'}},
+              'Revenir à la couleur automatique')),
           h('div',{style:{fontSize:13,color:'#5E636B',lineHeight:1.4}},
             'Désactivé : design Apple Wallet actuel strictement inchangé. Activé : phrase centrée dans le rectangle des tampons, sans déplacer le header, les compteurs ni le QR.')
         ),

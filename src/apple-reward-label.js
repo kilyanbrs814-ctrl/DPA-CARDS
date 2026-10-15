@@ -11,6 +11,8 @@ function lightness(v){
 }
 function contrast(a,b){const x=lightness(a),y=lightness(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);}
 export function rewardLabelColor(design){
+  const manual=design.apple?.rewardTextColor;
+  if(/^#[0-9a-f]{6}$/i.test(manual||''))return manual;
   const bg=color(design.apple?.colors?.secondary||design.colors?.secondary||'#2448F0');
   const preferred=color(design.apple?.colors?.text||design.colors?.text||'#FFFFFF');
   return contrast(bg,preferred)>=4.5?preferred:

@@ -1,5 +1,6 @@
 import { decodePng } from '../_shared/png.js';
 import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
+import { loadRewardStar } from '../_shared/reward-star.js';
 // DPA Cards — Google Wallet Edge Function.
 //
 //   POST /wallet/save-link  merchant session → signed "Add to Google Wallet" link for one card
@@ -178,11 +179,9 @@ const walletCounter = (done: number, goal: number, mode: string) => {
     secondaryLoyaltyPoints:{label:isPoints?'Points restants':'Passages restants',balance:{int:left}}
   };
 };
-const hasSavedStampArt = (design: any) =>
-  (design?.stamps?.icon === 'library' && !!libraryStampId(design.stamps.libraryId)) ||
-  (!['library','custom'].includes(design?.stamps?.icon) && typeof design?.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(design.stamps.emoji));
+const hasSavedStampArt = (design: any) => !!(design?.stamps && typeof design.stamps === 'object');
 // Retain the existing Google Wallet layout and signed stamp-board route.
-const hasStampEmoji = (program: any) => hasSavedStampArt(program?.card_design);
+const hasStampEmoji = (program: any) => program?.mode !== 'points' && hasSavedStampArt(program?.card_design);
 async function stampBoardUrl(id: string, revision = 0, test = false) {
   const tag=(test?'test-':'')+id;
   return SUPABASE_URL+'/functions/v1/wallet/stamp-board/'+
@@ -199,7 +198,7 @@ async function publicStampBoard(req: Request, path: string) {
   const isTest=!!match[1],id=match[2],provided=match[3].toLowerCase();
   const expected=await stampSignature((isTest?'test-':'')+id);
   if(provided!==expected)return new Response('Not found',{status:404});
-  let design: any=null, progress=0, goal=10, mode='passages';
+  let design: any=null, progress=0, goal=10, mode='passages', owner='';
   if(isTest){
     const {data,error}=await admin.from('test_card_designs').select('config,test_balance').eq('id',id).maybeSingle();
     if(error||!data||!data.config)return new Response('Not found',{status:404});
@@ -207,19 +206,29 @@ async function publicStampBoard(req: Request, path: string) {
     goal=Number(design.preview?.goal)||10;mode=design.preview?.mode||'passages';
   }else{
     const {data,error}=await admin.from('cards')
-      .select('id,programs(goal,mode,card_design)').eq('id',id).maybeSingle();
+      .select('id,merchant_id,program_id,programs(goal,mode,card_design)').eq('id',id).maybeSingle();
     if(error||!data)return new Response('Not found',{status:404});
     const prog=(data as any).programs;
     if(!prog||!hasStampEmoji(prog))return new Response('Not found',{status:404});
     design=prog.card_design;goal=prog.goal;mode=prog.mode;
+    owner=(data as any).merchant_id+'/'+(data as any).program_id+'/designer';
     const now=await latest(id);
     progress=now.balance;
   }
   if(!hasSavedStampArt(design))return new Response('Not found',{status:404});
   const selectedLibrary=design.stamps?.icon==='library'?libraryStampId(design.stamps.libraryId):'';
-  const libraryImage=selectedLibrary?await loadLibraryStamp(selectedLibrary):null;
-  if(selectedLibrary && !libraryImage)return new Response('Image unavailable',{status:503});
-  const png=await makeGoogleStampHero(design,progress,goal,mode,libraryImage);
+  let icon=selectedLibrary?await loadLibraryStamp(selectedLibrary):null;
+  if(selectedLibrary && !icon)return new Response('Image unavailable',{status:503});
+  if(!icon && design.stamps?.icon==='custom'){
+    const path=design.assets?.stamp?.path;
+    const prefix=isTest?'tests/'+id+'/designer/':owner+'/';
+    if(typeof path==='string'&&path.startsWith(prefix)&&/\/stamp-[0-9a-f-]{36}\.png$/i.test(path)){
+      const {data}=await admin.storage.from('program-assets').download(path);
+      if(data && data.size<=2097152)icon=await decodePng(new Uint8Array(await data.arrayBuffer()));
+    }
+  }
+  const finalStar=await loadRewardStar();
+  const png=await makeGoogleStampHero(design,progress,goal,mode,icon,finalStar);
   return new Response(new Uint8Array(png),{
     status:200,headers:{'content-type':'image/png','cache-control':'public, max-age=300','x-content-type-options':'nosniff'}
   });
@@ -1160,7 +1169,7 @@ const savedEmoji = (value: unknown) => {
   return [...emoji].length <= 16 && /\p{Extended_Pictographic}/u.test(emoji) ? emoji : '';
 };
 
-const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'appleHeader', 'rewardLabel'] as const;
+const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'appleHeader', 'rewardLabel', 'businessFont'] as const;
 type AssetKind = typeof ASSET_KINDS[number];
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '');
@@ -1175,7 +1184,8 @@ const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(log
 function cleanDesign(raw: any, folder: string) {
   const r = raw && typeof raw === 'object' ? raw : {};
   const re = designerPath(folder);
-  const asset = (a: any, kind: AssetKind) => (a && typeof a.path === 'string' && re.test(a.path) && a.path.split('/').pop()!.startsWith(`${kind}-`) ? { path: a.path } : null);
+  const fontRe=new RegExp('^'+folder+'/designer/businessFont-[0-9a-f-]{36}\\.(?:ttf|otf|woff2)$');
+  const asset = (a: any, kind: AssetKind) => (a && typeof a.path === 'string' && (kind==='businessFont'?fontRe.test(a.path):re.test(a.path)) && a.path.split('/').pop()!.startsWith(`${kind}-`) ? { path: a.path } : null);
   const colors = (c: any, base: Record<string, string> | null) => {
     const o = c && typeof c === 'object' ? c : {};
     if (!base) return Object.fromEntries(['primary', 'secondary', 'text', 'accent'].filter(k => HEX_RE.test(o[k] ?? '')).map(k => [k, String(o[k]).toUpperCase()]));
@@ -1198,7 +1208,9 @@ function cleanDesign(raw: any, folder: string) {
     assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
     stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, savedEmoji(s.emoji) ? 'emoji' : 'library'), libraryId: libraryStampId(s.libraryId), emoji: s.icon==='library' ? '' : savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
       filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF') },
-    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64) },
+    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64),
+      rewardTextColor: HEX_RE.test(r.apple?.rewardTextColor??'')?String(r.apple.rewardTextColor).toUpperCase():'',
+      businessNameFont: pick(r.apple?.businessNameFont,['system','hanken','space','playfair','custom'] as const,'system') },
     google: platform(r.google),
     // Editor only (demo customer, demo progress): never copied to the program.
     preview: { mode: pick(pv.mode, ['passages', 'points'] as const, 'passages'), goal: int(pv.goal, 1, 1000, 10), progress: int(pv.progress, 0, 100000, 3),
@@ -1279,8 +1291,9 @@ async function adminCardUpload(req: Request): Promise<Response> {
   const program = await designProgram(body?.program_id);
   await assertAdminMerchant(user,program.merchant_id);
   const kind = String(body?.kind ?? '') as AssetKind, type = String(body?.type ?? '');
-  if (!ASSET_KINDS.includes(kind) || !['image/png', 'image/jpeg'].includes(type)) throw new HttpError(400, 'invalid_request');
-  const path = `${program.merchant_id}/${program.id}/designer/${kind}-${crypto.randomUUID()}.${type === 'image/png' ? 'png' : 'jpg'}`;
+  const extension=kind==='businessFont'?({'font/ttf':'ttf','font/otf':'otf','font/woff2':'woff2'} as Record<string,string>)[type]:null;
+  if(!ASSET_KINDS.includes(kind)||(kind==='businessFont'?!extension:!['image/png','image/jpeg'].includes(type)))throw new HttpError(400,'invalid_request');
+  const path = `${program.merchant_id}/${program.id}/designer/${kind}-${crypto.randomUUID()}.${extension || (type === 'image/png' ? 'png' : 'jpg')}`;
   const { data, error } = await admin.storage.from('program-assets').createSignedUploadUrl(path);
   if (error || !data) throw new Error('storage_signed_upload');
   return json(req, 200, { path, token: data.token, url: assetUrl(path) });
@@ -1289,6 +1302,14 @@ async function adminCardUpload(req: Request): Promise<Response> {
 // Validate actual bytes before persisting logo/stamp references, including drafts
 // and demo cards. Upload URLs authorize only unique, server-selected paths.
 async function validateDesignPng(config: any) {
+  const font=config.assets?.businessFont?.path;
+  if(font){
+    const {data,error}=await admin.storage.from('program-assets').download(font);
+    if(error||!data||data.size>1048576)throw new HttpError(422,'invalid_business_font');
+    const bytes=new Uint8Array(await data.slice(0,4).arrayBuffer()),magic=String.fromCharCode(...bytes),ext=font.split('.').pop();
+    const valid=ext==='otf'&&magic==='OTTO'||ext==='woff2'&&magic==='wOF2'||ext==='ttf'&&bytes[0]===0&&bytes[1]===1&&bytes[2]===0&&bytes[3]===0;
+    if(!valid)throw new HttpError(422,'invalid_business_font');
+  }
   for(const kind of ['logo','stamp','appleHeader','rewardLabel']) {
     const path=config.assets?.[kind]?.path;
     if(!path || !path.endsWith('.png'))continue; // legacy JPEG assets remain compatible
@@ -1560,8 +1581,9 @@ async function adminTestCardUpload(req: Request): Promise<Response> {
   const body = await req.json().catch(() => ({}));
   const t = await testRow(body?.id,user);
   const kind = String(body?.kind ?? '') as AssetKind, type = String(body?.type ?? '');
-  if (!ASSET_KINDS.includes(kind) || !['image/png', 'image/jpeg'].includes(type)) throw new HttpError(400, 'invalid_request');
-  const path = `${testFolder(t.id)}/designer/${kind}-${crypto.randomUUID()}.${type === 'image/png' ? 'png' : 'jpg'}`;
+  const extension=kind==='businessFont'?({'font/ttf':'ttf','font/otf':'otf','font/woff2':'woff2'} as Record<string,string>)[type]:null;
+  if(!ASSET_KINDS.includes(kind)||(kind==='businessFont'?!extension:!['image/png','image/jpeg'].includes(type)))throw new HttpError(400,'invalid_request');
+  const path = `${testFolder(t.id)}/designer/${kind}-${crypto.randomUUID()}.${extension || (type === 'image/png' ? 'png' : 'jpg')}`;
   const { data, error } = await admin.storage.from('program-assets').createSignedUploadUrl(path);
   if (error || !data) throw new Error('storage_signed_upload');
   return json(req, 200, { path, token: data.token, url: assetUrl(path) });
@@ -1574,7 +1596,7 @@ async function adminTestCardDuplicate(req: Request): Promise<Response> {
   const id = crypto.randomUUID(), cfg = JSON.parse(JSON.stringify(t.config ?? {}));
   for (const kind of ASSET_KINDS) {
     const a = cfg.assets?.[kind]; if (!a?.path) continue;
-    const to = `${testFolder(id)}/designer/${kind}-${crypto.randomUUID()}.${a.path.endsWith('.png') ? 'png' : 'jpg'}`;
+    const to = `${testFolder(id)}/designer/${kind}-${crypto.randomUUID()}.${a.path.split('.').pop()}`;
     const { error } = await admin.storage.from('program-assets').copy(a.path, to);
     cfg.assets[kind] = error ? null : { path: to };
   }

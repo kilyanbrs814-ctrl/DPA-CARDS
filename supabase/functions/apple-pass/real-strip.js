@@ -80,7 +80,7 @@ function overlayReward(pixels,width,height,scale,art,short=false){
 // logo, number, counters and QR remain native Wallet fields.
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon
  * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt */
-export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, scale=1, customIcon=null, rewardArt=null) {
+export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, scale=1, customIcon=null, rewardArt=null, finalStar=null) {
   if (![1,2].includes(scale)) throw new Error('invalid_strip_scale');
   const width=375*scale,height=144*scale,pixels=new Uint8Array(width*height*4);
   const primary=rgb(colors?.primary,'#1C1F24');
@@ -116,7 +116,8 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
       const row=Math.floor(i/per),col=i%per,rowCount=Math.min(per,n-row*per);
       const x=Math.round(cx+(col-(rowCount-1)/2)*(size+gap*scale));
       const y=Math.round(cy+(row-(rows-1)/2)*rowGap);
-      if(icon)compositeEmoji(pixels,width,height,x,y,size,icon,i<done);
+      const stamp=i===n-1&&finalStar?finalStar:icon;
+      if(stamp)compositeEmoji(pixels,width,height,x,y,size,stamp,i<done);
     }
   }
   overlayReward(pixels,width,height,scale,rewardArt);
@@ -125,9 +126,9 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
 
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon
  * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt */
-export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=null, rewardArt=null) {
+export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=null, rewardArt=null, finalStar=null) {
   if (![1, 2].includes(scale)) throw new Error('invalid_strip_scale');
-  if(brand.emoji || brand.stamp || brand.libraryId) return makeEmojiCardStrip(brand.stamps,brand,balance,goal,brand.mode||'passages',scale,customIcon,rewardArt);
+  if(brand.emoji || brand.stamp || brand.libraryId) return makeEmojiCardStrip(brand.stamps,brand,balance,goal,brand.mode||'passages',scale,customIcon,rewardArt,finalStar);
   const width = 375 * scale, height = 123 * scale;
   const pixels = new Uint8Array(width * height * 4);
   const primary = rgb(brand.primary, '#2448F0');
@@ -153,7 +154,9 @@ export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=
     const col = i % columns, row = Math.floor(i / columns);
     const x = Math.round(center + (col - (columns - 1) / 2) * dX);
     const y = Math.round(height / 2 - (rewardArt?14*scale:0) + (row - (rows - 1) / 2) * dY);
-    if (brand.emoji) {
+    if(i===maxStamps-1 && finalStar){
+      compositeEmoji(pixels,width,height,x,y,25*scale,finalStar,i<done);
+    }else if (brand.emoji) {
       // With an emoji choice, never fall back to round stamps. A missing
       // open-source asset leaves a clean strip and native text fields intact.
       if (bitmap) compositeEmoji(pixels,width,height,x,y,25*scale,bitmap,i<done);
@@ -218,14 +221,14 @@ function line(pixels, width, height, x1, y1, x2, y2, thickness, color) {
 // Same two rows of 5 as the test designer where goal is 10.
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon
  * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt */
-export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardArt=null) {
+export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardArt=null, finalStar=null) {
   if (![1, 2].includes(scale)) throw new Error('invalid_demo_strip_scale');
   if(config?.stamps?.emoji || customIcon) {
     const pv=config.preview||{};
     return makeEmojiCardStrip(config.stamps, {
       primary:config?.apple?.colors?.primary || config?.colors?.primary,
       secondary:config?.apple?.colors?.secondary || config?.colors?.secondary,
-    },pv.progress,pv.goal,pv.mode,scale,customIcon,rewardArt);
+    },pv.progress,pv.goal,pv.mode,scale,customIcon,rewardArt,finalStar);
   }
   const width = 375 * scale, height = 144 * scale;
   const pixels = new Uint8Array(width * height * 4);
@@ -262,7 +265,8 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
       const row=Math.floor(i/columns),col=i%columns,nCols=Math.min(columns,visible-row*columns);
       const x=Math.round((281+(col-(nCols-1)/2)*gapX)*scale);
       const y=Math.round(((rewardArt?61:73)+(row-(rows-1)/2)*gapY)*scale);
-      if(emojiImage)compositeEmoji(pixels,width,height,x,y,25*scale,emojiImage,i<done);
+      const stamp=i===visible-1&&finalStar?finalStar:emojiImage;
+      if(stamp)compositeEmoji(pixels,width,height,x,y,25*scale,stamp,i<done);
     }
     overlayReward(pixels,width,height,scale,rewardArt);
     return demoPng(width,height,pixels);
@@ -281,7 +285,8 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
     const cx = Math.round((centerX + (col - (nCols - 1)/2)*gapX)*scale);
     const cy = Math.round((centerY + (row - (rows - 1)/2)*gapY)*scale);
     const rr = Math.max(5, size) * scale;
-    if (i < done) {
+    if (i===visible-1&&finalStar)compositeEmoji(pixels,width,height,cx,cy,rr*2,finalStar,i<done);
+    else if (i < done) {
       circle(pixels,width,height,cx,cy,rr,filled);
       if (config?.stamps?.icon === 'check') {
         line(pixels,width,height,cx-5*scale,cy,cx-1*scale,cy+4*scale,1.3*scale,primary);
@@ -381,7 +386,7 @@ export async function makeAppleHeaderLogo(_name, _accent='#F2C94C', _background=
 // Google Wallet LoyaltyObject heroImage: open-license emoji stamps for THIS
 // card's current balance. Text, rewards and QR stay native Google Wallet fields.
 // Requires a 5:4 image (1032x812) and no PII inside the generated PNG.
-export async function makeGoogleStampHero(d, progress, goal, mode='passages', customIcon=null) {
+export async function makeGoogleStampHero(d, progress, goal, mode='passages', customIcon=null, finalStar=null) {
   const width=1032,height=812;
   const pixels=new Uint8Array(width*height*4);
   const primary=rgb(d?.google?.colors?.primary||d?.colors?.primary,'#1C1F24');
@@ -409,7 +414,13 @@ export async function makeGoogleStampHero(d, progress, goal, mode='passages', cu
     const x=Math.round(width/2+(col-(rowCount-1)/2)*spaceX);
     const spaceY=rows===1?0:rows===2?235:192;
     const y=Math.round(height/2+(row-(rows-1)/2)*spaceY);
-    if(bitmap)compositeEmoji(pixels,width,height,x,y,130,bitmap,i<done);
+    const stamp=i===n-1&&finalStar?finalStar:bitmap;
+    if(stamp)compositeEmoji(pixels,width,height,x,y,130,stamp,i<done);
+    else {
+      const ink=rgb(d?.stamps?.filled,'#F2C94C'),empty=rgb(d?.stamps?.empty,'#FFFFFF');
+      circle(pixels,width,height,x,y,52,i<done?ink:empty);
+      if(i>=done)circle(pixels,width,height,x,y,47,secondary);
+    }
   }
   return demoPng(width,height,pixels);
 }

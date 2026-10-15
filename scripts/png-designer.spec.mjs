@@ -8,7 +8,10 @@ test('upload PNG, preview both states, persist, replace, remove and reject inval
  await upload('stamp').setInputFiles({name:'stamp.png',mimeType:'image/png',buffer:png});
  const preview=page.locator('[data-layout="apple"]').first();
  await expect(preview.locator('[data-stamp="filled-png"]')).toHaveCount(3);
- await expect(preview.locator('[data-stamp="empty-png"]')).toHaveCount(7);
+ await expect(preview.locator('[data-stamp="empty-png"]')).toHaveCount(6);
+ await expect(preview.locator('[data-stamp="empty-final-star"]')).toHaveCount(1);
+ await expect(preview.locator('[data-stamp="empty-final-star"]')).toHaveCSS('filter','grayscale(1)');
+ await expect(preview.locator('[data-stamp="empty-final-star"]')).toHaveCSS('opacity','0.22');
  await expect(preview.locator('[data-stamp="empty-png"]').first()).toHaveCSS('opacity','0.22');
  await expect(preview.locator('[data-stamp="empty-png"]').first()).toHaveCSS('filter','grayscale(1)');
  await expect(preview.locator('[data-field="business"]')).toHaveCount(0);
@@ -64,4 +67,54 @@ test('Apple larger name and logo share one vertically centered bitmap without ad
  const afterOffset=stamp.y-afterCard.y;
  expect(Math.abs(beforeOffset-afterOffset)).toBeLessThan(1);
  expect(afterOffset).toBeGreaterThan(70);
+});
+
+test('last stamp is a gray reward star, label color can be edited, and the Apple name font is selectable',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const apple=page.locator('[data-layout="apple"]').first();
+ const google=page.locator('[data-layout="google"]').first();
+ await expect(apple.locator('[data-stamp="empty-final-star"]')).toHaveCount(1);
+ const star=apple.locator('[data-stamp="empty-final-star"]');
+ await expect(star).toHaveAttribute('src','/assets/stamps/reward-star.png');
+ await page.getByRole('tab',{name:/Google Wallet/}).click();
+ await expect(google.locator('[data-stamp="empty-final-star"]')).toHaveCount(1);
+ await page.getByRole('tab',{name:/Apple Wallet/}).click();
+ const nameFont=page.getByLabel('Police du nom');
+ await expect(nameFont).toHaveValue('system');
+ await nameFont.selectOption('playfair');
+ await expect(nameFont).toHaveValue('playfair');
+ const rewardSection=page.locator('[data-apple-reward-settings]');
+ await rewardSection.getByLabel('Afficher la récompense dans le bloc des tampons').check();
+ await expect(apple.locator('[data-apple-reward]')).toContainText('Débloque');
+ await expect(rewardSection.getByText('Couleur du texte de récompense')).toBeVisible();
+ await rewardSection.getByRole('button',{name:'Revenir à la couleur automatique'}).count().then(n=>expect(n).toBe(0));
+});
+
+test('long Apple merchant names stay on exactly one line and arbitrary reward hex colors are honored',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const result=await page.evaluate(async()=>{
+   const [{createAppleWordmark},{rewardLabelColor,createRewardLabel}]=await Promise.all([
+     import('/src/apple-wordmark.js'),import('/src/apple-reward-label.js')]);
+   const design={
+     identity:{name:'BARBER FACTORY PREMIUM EXPRESS'},
+     colors:{primary:'#173657',secondary:'#EABF35',text:'#FFFFFF'},
+     apple:{businessNameFont:'system',rewardText:'Débloque la coupe offerte !',rewardTextColor:'#FF00CC'},
+     assets:{logo:null}
+   };
+   const blob=await createAppleWordmark(design),img=await createImageBitmap(blob);
+   const cvs=document.createElement('canvas');cvs.width=img.width;cvs.height=img.height;
+   const ctx=cvs.getContext('2d');ctx.drawImage(img,0,0);
+   const pix=ctx.getImageData(0,0,img.width,img.height).data;
+   let top=img.height,bottom=0;
+   for(let y=0;y<img.height;y++)for(let x=0;x<img.width;x++)
+      if(pix[(y*img.width+x)*4+3]>60){top=Math.min(top,y);bottom=Math.max(bottom,y);}
+   const reward=await createRewardLabel(design);
+   return {width:img.width,height:img.height,textHeight:bottom-top+1,color:rewardLabelColor(design),rewardSize:reward.size};
+ });
+ expect(result.width).toBe(480);
+ expect(result.height).toBe(150);
+ expect(result.textHeight).toBeGreaterThan(10);
+ expect(result.textHeight).toBeLessThan(68);
+ expect(result.color).toBe('#FF00CC');
+ expect(result.rewardSize).toBeGreaterThan(1000);
 });

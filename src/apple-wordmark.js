@@ -3,7 +3,6 @@
 // The complete brand is centered vertically in Apple's existing 160x50pt logo slot.
 // No native logoText is emitted for these cards: native text size is not configurable.
 const WIDTH=160,HEIGHT=50,SCALE=3;
-const FONT='-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Arial, sans-serif';
 const hex=v=>/^#[0-9a-f]{6}$/i.test(v||'')?v:'#FFFFFF';
 const luminance=color=>{
   const n=hex(color).slice(1);
@@ -17,34 +16,41 @@ function foreground(d) {
   if(contrast(preferred)>=4.5)return preferred;
   return contrast('#FFFFFF')>contrast('#1C1F24')?'#FFFFFF':'#1C1F24';
 }
-function textLines(ctx,name,available){
-  const setFont=size=>{ctx.font=`700 ${size}px ${FONT}`};
-  // Single line is preferred; long two-word shop names get a readable, centered
-  // two-line header rather than shrinking to Apple's old tiny native logoText.
-  let size=23;setFont(size);
-  if(ctx.measureText(name).width<=available)return {lines:[name],size};
-  const words=name.split(/\s+/).filter(Boolean);
-  if(words.length>1){
-    let result=null;
-    for(let i=1;i<words.length;i++){
-      const pair=[words.slice(0,i).join(' '),words.slice(i).join(' ')];
-      for(let fs=21;fs>=16;fs--){
-        setFont(fs);
-        if(Math.max(...pair.map(x=>ctx.measureText(x).width))<=available){
-          if(!result||fs>result.size)result={lines:pair,size:fs};
-          break;
-        }
-      }
-    }
-    if(result)return result;
-  }
-  for(size=22;size>=15;size--){setFont(size);if(ctx.measureText(name).width<=available)return {lines:[name],size};}
-  // Never render text beneath the card number or outside the native logo slot.
-  setFont(15);
-  let cut=name;
-  while(cut.length>1&&ctx.measureText(cut+'…').width>available)cut=cut.slice(0,-1);
-  return {lines:[cut+'…'],size:15};
+// A single line is mandatory. Never split a merchant name across two lines.
+const PRESETS={
+  system:'-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Arial, sans-serif',
+  space:'"Space Grotesk", system-ui, sans-serif',
+  playfair:'"Playfair Display", Georgia, serif',
+  hanken:'"Hanken Grotesk", system-ui, sans-serif',
+};
+const loadedFonts=new Map();
+export async function resolveBusinessFont(design){
+  const choice=String(design?.apple?.businessNameFont||'system');
+  if(choice!=='custom')return PRESETS[choice]||PRESETS.system;
+  const url=design?.assets?.businessFont?.url;
+  if(!url)throw new Error('Importez une police pour le nom du commerce.');
+  if(!loadedFonts.has(url))loadedFonts.set(url,(async()=>{
+    const r=await fetch(url,{credentials:'omit',mode:'cors'});
+    if(!r.ok)throw new Error('Police inaccessible : veuillez la réimporter.');
+    const bytes=await r.arrayBuffer();
+    if(bytes.byteLength>1048576)throw new Error('Police trop lourde (1 Mo maximum).');
+    const family='DpaMerchant'+loadedFonts.size;
+    const face=new FontFace(family,bytes,{style:'normal',weight:'400 900'});
+    await face.load();
+    document.fonts.add(face);
+    return '"'+family+'"';
+  })().catch(e=>{loadedFonts.delete(url);throw e}));
+  return loadedFonts.get(url);
 }
+function singleLine(ctx,name,available,family){
+  const apply=size=>{ctx.font=`700 ${size}px ${family}`;};
+  for(let size=23;size>=11;size--){apply(size);if(ctx.measureText(name).width<=available)return {text:name,size};}
+  apply(11);
+  let shortened=name;
+  while(shortened.length>1&&ctx.measureText(shortened+'…').width>available)shortened=shortened.slice(0,-1).trimEnd();
+  return {text:shortened===name?name:shortened+'…',size:11};
+}
+
 async function imageFromUrl(url){
   if(!url)return null;
   const response=await fetch(url,{mode:'cors',credentials:'omit'});
@@ -92,15 +98,14 @@ export async function createAppleWordmark(design) {
     if(typeof img.close==='function')img.close();
   }
   const area=WIDTH-textLeft-2;
-  const {lines,size}=textLines(ctx,name,area);
-  ctx.font=`700 ${size}px ${FONT}`;
+  const family=await resolveBusinessFont(design);
+  // Wait for web presets as well: measureText must use the same font as the PNG.
+  if(design?.apple?.businessNameFont!=='custom' && document.fonts?.load)
+    await document.fonts.load('700 23px '+family);
+  const {text,size}=singleLine(ctx,name,area,family);
+  ctx.font=`700 ${size}px ${family}`;
   ctx.fillStyle=foreground(design);ctx.textAlign='left';ctx.textBaseline='middle';
-  const lineHeight=lines.length===2?Math.min(24,size+2):size+2;
-  const mid=HEIGHT/2;
-  lines.forEach((line,i)=>{
-    const y=mid+(i-(lines.length-1)/2)*lineHeight;
-    ctx.fillText(line,textLeft,y,area);
-  });
+  ctx.fillText(text,textLeft,HEIGHT/2,area);
   const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
   if(!blob||blob.size>2097152)throw new Error('Logo Apple Wallet trop lourd après préparation.');
   return blob;
