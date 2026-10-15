@@ -583,6 +583,7 @@ export function makeCardDesigner(React, api) {
     const createTest = async () => {
       if (busy) return; if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Continuer ?')) return; setBusy('test');
       try { const base = defaultDesign({ merchant: { business_name: 'Commerce test', activity: 'Démonstration' }, program: { bg: '#1C1F24', accent: '#2448F0', mode: 'passages', goal: 10, reward: DEMO.reward } });
+        base.preview.progress = 0;
         const r = await api.testSave(null, 'Nouvelle carte test', base); setAdding(false); setCreated(null); refreshTests(); onTarget({ testId: r.test.id }); toast('Carte test créée.'); }
       catch (e) { toast(errText(e)); } finally { setBusy(null); }
     };
@@ -595,6 +596,16 @@ export function makeCardDesigner(React, api) {
       if (busy) return; setBusy('del');
       try { await api.testDelete(id); setAskDelete(null); refreshTests(); if (project && project.test && project.test.id === id) { setSaved(''); setDesign(null); onTarget(null); } toast('Carte test supprimée.'); }
       catch (e) { setAskDelete(null); toast(errText(e)); } finally { setBusy(null); }
+    };
+    const refreshTest = async () => {
+      if(!isTest || busy) return;
+      if(dirty && !window.confirm('Des changements non enregistrés seront perdus. Actualiser ?'))return;
+      setBusy('refresh');
+      try{
+        const r=await api.testGet(project.test.id),cfg=normalize(r.test.config,testProject(r.test));
+        setProject(testProject(r.test));setDesign(cfg);setTestName(r.test.name);
+        setSaved(JSON.stringify(cfg)+'|'+r.test.name);toast('Progression test actualisée.');
+      }catch(e){toast(errText(e));}finally{setBusy(null);}
     };
     const newQr = async () => {
       if (busy) return; setBusy('qr');
@@ -728,8 +739,9 @@ export function makeCardDesigner(React, api) {
       h('span', { 'data-test-badge': true, style: { alignSelf: 'flex-start', padding: '4px 10px', borderRadius: 999, background: '#1A36C4', color: '#FFFFFF', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em' } }, 'CARTE TEST'),
       h(Text, { label: 'Nom de la carte test', value: testName, max: 80, placeholder: 'Démo Restaurant', onChange: setTestName }),
       h('div', { style: { fontSize: 14 } }, 'QR de test unique : ', h('code', { 'data-test-qr': project.test.qr_value, style: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, overflowWrap: 'anywhere' } }, project.test.qr_value)),
-      h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45 } }, 'Format DPA_TEST : le scanner l’affiche comme « Carte de démonstration » et n’enregistre jamais de passage. Il ne peut pas correspondre à une vraie carte (DPA1).'),
-      h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, smallBtn(busy === 'qr' ? 'Génération…' : 'Générer un nouveau QR', newQr), smallBtn('Dupliquer', () => duplicateTest(project.test.id)),
+      h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45 } }, 'Mode test : la carte commence à 0 passage. Scannez son QR depuis un scanner DPA Cards connecté, puis validez « Ajouter 1 passage test ». Les vrais clients ne sont jamais modifiés.'),
+      h('div', { style: { fontWeight: 800, fontSize: 16 } }, `Progression : ${project.test.progress || 0} / ${pv.goal} passages`),
+      h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, smallBtn('Actualiser les passages', refreshTest), smallBtn(busy === 'qr' ? 'Génération…' : 'Générer un nouveau QR', newQr), smallBtn('Dupliquer', () => duplicateTest(project.test.id)),
         smallBtn('Supprimer', () => setAskDelete(project.test), { style: { border: 0, background: 'none', color: '#B42318' } })),
       project.test.google_synced_at ? h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Carte Google Wallet de démonstration mise à jour le ' + fmtDate(project.test.google_synced_at)) : null) : null;
     const params = h('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
@@ -772,11 +784,12 @@ export function makeCardDesigner(React, api) {
         h(Select, { label: 'Type de fidélité', value: pv.mode, options: [['passages', 'Passages (tampons)'], ['points', 'Points']], onChange: v => set('preview.mode', v) }),
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           h(Num, { label: 'Objectif', value: pv.goal, min: 1, max: 1000, onChange: v => { set('preview.goal', v); if (pv.progress > v && pv.mode === 'passages') set('preview.progress', v); } }),
-          h(Num, { label: 'Progression de démonstration', value: pv.progress, min: 0, max: pv.mode === 'points' ? 100000 : pv.goal, onChange: v => set('preview.progress', v) }),
+          isTest ? h('div', { style: {padding:12,borderRadius:12,background:'#EEF1FF',fontSize:14,color:'#1A36C4'} }, `Progression réelle de la carte test : ${pv.progress} / ${pv.goal}. Utilisez le scanner pour ajouter un passage.`)
+            : h(Num, { label: 'Progression de démonstration', value: pv.progress, min: 0, max: pv.mode === 'points' ? 100000 : pv.goal, onChange: v => set('preview.progress', v) }),
           h(Num, { label: 'Récompenses disponibles', value: pv.available, min: 0, max: 99, onChange: v => set('preview.available', v) })),
         h(Text, { label: 'Récompense', value: pv.reward, max: 80, onChange: v => set('preview.reward', v) }),
         h(Text, { label: 'Libellé du type de fidélité', value: design.label, max: 16, placeholder: pv.mode === 'points' ? 'POINTS' : 'TAMPONS', onChange: v => set('label', v) }),
-        h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Ces valeurs servent uniquement à l’aperçu : la règle du programme n’est pas modifiée et chaque carte affiche les données de son client.')),
+        h('div', { style: { fontSize: 13, color: '#5E636B' } }, isTest ? 'Les passages test sont enregistrés séparément des vrais clients. Actualisez la carte pour voir les passages ajoutés depuis le scanner.' : 'Ces valeurs servent uniquement à l’aperçu : la règle du programme n’est pas modifiée et chaque carte affiche les données de son client.')),
       h(Section, { title: 'Client de démonstration' },
         h(Text, { label: 'Prénom et nom', value: pv.client, max: 60, onChange: v => set('preview.client', v) })),
       h(Section, { title: 'Tampons' },
