@@ -755,6 +755,19 @@ a:hover{color:#1A36C4}
         <p style="margin:0;color:#5E636B;font-size:16px;line-height:1.5">Le scan identifie la carte. Rien n’est crédité sans votre validation.</p>
       </div>
 
+      <sc-if value="{{ scanV.testFound }}" hint-placeholder-val="{{ false }}">
+<section data-test-scan-card="1" aria-label="Carte test scannée" style="width:100%;max-width:560px;margin:0 auto;background:#FFFFFF;color:#1C1F24;border:2px solid #B5C4FF;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:16px;text-align:left">
+  <span style="align-self:flex-start;background:#EEF1FF;color:#1A36C4;border-radius:20px;padding:6px 12px;font-weight:800;font-size:13px">MODE TEST · Aucun vrai client modifié</span>
+  <div style="font-size:22px;font-weight:800;overflow-wrap:anywhere">{{ scanV.testCard.name }}</div>
+  <div role="status" aria-live="polite" style="font-size:36px;font-weight:800;font-variant-numeric:tabular-nums">{{ scanV.testProgress }} / {{ scanV.testGoal }} <span style="font-size:15px;font-weight:600;color:#5E636B">passages test</span></div>
+  <div style="display:flex;gap:7px;flex-wrap:wrap" aria-label="Progression des tampons de test"><sc-for list="{{ scanV.testStamps }}" as="dt" hint-placeholder-count="10"><span style="width:42px;height:42px;display:grid;place-items:center;background:#F6F5F1;border-radius:9px"><sc-if value="{{ dt.img }}" hint-placeholder-val="{{ true }}"><img src="{{ dt.img }}" alt="" width="34" height="34" style="display:block;object-fit:contain;opacity:{{ dt.opacity }};filter:{{ dt.filter }}"></sc-if><sc-if value="{{ !dt.img }}" hint-placeholder-val="{{ false }}"><span style="width:25px;height:25px;border-radius:50%;background:{{ dt.filled ? '#2448F0' : '#CBD0DA' }}"></span></sc-if></span></sc-for></div>
+  <sc-if value="{{ scanV.testJustAdded }}" hint-placeholder-val="{{ false }}"><div role="status" style="padding:12px;border-radius:12px;background:#E4F3EB;color:#17583A;font-weight:700">{{ scanV.testMsg }}</div></sc-if>
+  <sc-if value="{{ scanV.testIsFull }}" hint-placeholder-val="{{ false }}"><div style="padding:12px;background:#EEF1FF;border-radius:12px;color:#1A36C4;font-weight:700">Objectif atteint : tous les tampons sont validés.</div></sc-if>
+  <div style="font-size:13px;color:#5E636B">Le scan seul n’ajoute rien. Sur Apple Wallet, retirez puis réajoutez la carte test pour voir les nouveaux tampons ; les mises à jour automatiques ne sont pas encore activées.</div>
+  <sc-if value="{{ scanV.testCanAdd }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ addTestPassage }}" disabled="{{ scanV.testBusy }}" data-add-test-passage="1" style="min-height:54px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-size:17px;font-weight:800">{{ scanV.testBusy ? 'Validation en cours…' : 'Ajouter 1 passage test' }}</button></sc-if>
+  <button type="button" onClick="{{ resetScan }}" disabled="{{ scanV.testBusy }}" style="min-height:48px;border:1px solid #D4D1C9;border-radius:12px;background:#FFFFFF;color:#1C1F24;font-weight:700">Scanner une autre carte</button>
+</section>
+</sc-if>
       <sc-if value="{{ scanV.found }}" hint-placeholder-val="{{ false }}">
         <section aria-labelledby="sc-name" style="width:100%;max-width:560px;margin:0 auto;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;padding:clamp(20px,4vw,28px);display:flex;flex-direction:column;gap:20px;box-shadow:0 12px 32px rgba(20,22,28,0.08);animation:dpaUp .25s ease-out">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -902,7 +915,21 @@ a:hover{color:#1A36C4}
         <h1 style="margin:0;font-weight:700;font-size:17px">Scanner une carte</h1>
         <div style="width:44px"></div>
       </div>
-      <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:16px 24px;text-align:center">
+      <div style="flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:16px 24px;text-align:center;overflow-y:auto">
+        <sc-if value="{{ scanV.testFound }}" hint-placeholder-val="{{ false }}">
+<section data-test-scan-card="1" aria-label="Carte test scannée" style="width:100%;max-width:560px;margin:0 auto;background:#FFFFFF;color:#1C1F24;border:2px solid #B5C4FF;border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:16px;text-align:left">
+  <span style="align-self:flex-start;background:#EEF1FF;color:#1A36C4;border-radius:20px;padding:6px 12px;font-weight:800;font-size:13px">MODE TEST · Aucun vrai client modifié</span>
+  <div style="font-size:22px;font-weight:800;overflow-wrap:anywhere">{{ scanV.testCard.name }}</div>
+  <div role="status" aria-live="polite" style="font-size:36px;font-weight:800;font-variant-numeric:tabular-nums">{{ scanV.testProgress }} / {{ scanV.testGoal }} <span style="font-size:15px;font-weight:600;color:#5E636B">passages test</span></div>
+  <div style="display:flex;gap:7px;flex-wrap:wrap" aria-label="Progression des tampons de test"><sc-for list="{{ scanV.testStamps }}" as="dt" hint-placeholder-count="10"><span style="width:42px;height:42px;display:grid;place-items:center;background:#F6F5F1;border-radius:9px"><sc-if value="{{ dt.img }}" hint-placeholder-val="{{ true }}"><img src="{{ dt.img }}" alt="" width="34" height="34" style="display:block;object-fit:contain;opacity:{{ dt.opacity }};filter:{{ dt.filter }}"></sc-if><sc-if value="{{ !dt.img }}" hint-placeholder-val="{{ false }}"><span style="width:25px;height:25px;border-radius:50%;background:{{ dt.filled ? '#2448F0' : '#CBD0DA' }}"></span></sc-if></span></sc-for></div>
+  <sc-if value="{{ scanV.testJustAdded }}" hint-placeholder-val="{{ false }}"><div role="status" style="padding:12px;border-radius:12px;background:#E4F3EB;color:#17583A;font-weight:700">{{ scanV.testMsg }}</div></sc-if>
+  <sc-if value="{{ scanV.testIsFull }}" hint-placeholder-val="{{ false }}"><div style="padding:12px;background:#EEF1FF;border-radius:12px;color:#1A36C4;font-weight:700">Objectif atteint : tous les tampons sont validés.</div></sc-if>
+  <div style="font-size:13px;color:#5E636B">Le scan seul n’ajoute rien. Sur Apple Wallet, retirez puis réajoutez la carte test pour voir les nouveaux tampons ; les mises à jour automatiques ne sont pas encore activées.</div>
+  <sc-if value="{{ scanV.testCanAdd }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ addTestPassage }}" disabled="{{ scanV.testBusy }}" data-add-test-passage="1" style="min-height:54px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-size:17px;font-weight:800">{{ scanV.testBusy ? 'Validation en cours…' : 'Ajouter 1 passage test' }}</button></sc-if>
+  <button type="button" onClick="{{ resetScan }}" disabled="{{ scanV.testBusy }}" style="min-height:48px;border:1px solid #D4D1C9;border-radius:12px;background:#FFFFFF;color:#1C1F24;font-weight:700">Scanner une autre carte</button>
+</section>
+</sc-if>
+        <sc-if value="{{ scanV.notTestFound }}" hint-placeholder-val="{{ true }}">
         <sc-if value="{{ scanPos }}" hint-placeholder-val="{{ false }}">
 <section aria-label="Scanner une carte au comptoir" onClick="{{ pos.wake }}" style="width:100%;background:#FFFFFF;color:#1C1F24;border:1px solid #E4E1DA;border-radius:24px;padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:22px;text-align:left">
           <div style="display:flex;flex-direction:column;gap:14px">
@@ -964,7 +991,9 @@ a:hover{color:#1A36C4}
           <div style="font-weight:600;font-size:17px;line-height:1.4;max-width:300px">Placez le QR code du client dans le cadre</div>
           
         </sc-if>
+        </sc-if>
       </div>
+      <sc-if value="{{ scanV.notTestFound }}" hint-placeholder-val="{{ true }}">
       <div style="flex:none;width:100%;max-width:520px;margin:0 auto;padding:8px 16px 16px;display:flex;flex-direction:column;gap:10px">
         <sc-if value="{{ scanV.unknown }}" hint-placeholder-val="{{ false }}">
           <div role="alert" style="display:flex;gap:12px;align-items:center;padding:12px 12px 12px 14px;border-radius:16px;background:#FCEBEA;color:#7A1A13;animation:dpaUp .2s ease-out">
@@ -992,6 +1021,7 @@ a:hover{color:#1A36C4}
         <button type="button" onClick="{{ openSearch }}" style="min-height:56px;border:0;border-radius:16px;background:#FFFFFF;color:#1C1F24;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-active="background:#E4E1DA"><span class="material-symbols-rounded" style="font-size:22px">search</span>Rechercher un client</button>
         <div style="text-align:center;font-size:13px;color:#A9ADB5">Par nom ou numéro de carte</div></sc-if>
       </div>
+      </sc-if>
     </div>
     <sc-if value="{{ scanV.found }}" hint-placeholder-val="{{ false }}">
     <div style="position:fixed;inset:0;z-index:41;background:#F6F5F1;color:#1C1F24;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);animation:dpaUp .22s ease-out">
@@ -2100,8 +2130,9 @@ class Component extends DCLogic {
   // One lookup for the USB reader, the camera and the keyboard: QR → card id → client.
   async lookupScan(raw,source){ const api=this.api; if(!api) return;
     const cands=(Array.isArray(raw)?raw:[raw]).filter(Boolean), parsed=cands.map(c=>api.scanner.parseCode(c));
-    // Test card from the admin designer (DPA_TEST:): shown as a demo card, no lookup, no change to any real card.
-    if(parsed.some(x=>x.kind==='demo')) return this.scanFail('demo',source);
+    // DPA_TEST cards have a dedicated safe lookup: never touch real customer events.
+    const testCode=parsed.find(x=>x.kind==='demo');
+    if(testCode) return this.state.demo?this.scanFail('demo',source):this.lookupTestScan(testCode.code,source);
     const p=parsed.find(x=>x.kind==='qr')||parsed.find(x=>x.kind==='number'||x.kind==='suffix')||parsed.find(x=>x.kind==='incomplete')||{kind:'invalid'};
     if(source==='camera') console.log('[DPA scanner] lookupScan', {raw:cands,parsed:p});
     if(p.kind==='invalid'||p.kind==='incomplete') return this.scanFail(p.kind,source);
@@ -2118,6 +2149,33 @@ class Component extends DCLogic {
       if(source==='manual') this.setState(x=>({pos:{loading:false,err:null,merr:null},err:{...x.err,manualNo:msg}}));
       else if(source==='keyboard') this.setState(x=>({pos:{loading:false,err:null,merr:msg}}));
       else this.setState(x=>({pos:{loading:false,err:msg,merr:null},scan:{...x.scan,st:source==='camera'?'ready':(x.scan.st==='found'?'found':'ready')}})); } }
+  async lookupTestScan(code,source){
+    clearTimeout(this._autoReady); this._scanSeq=(this._scanSeq||0)+1;const seq=this._scanSeq;
+    this.setState(x=>({scan:{...x.scan,st:source==='camera'?'scanning':x.scan.st},pos:{loading:true,err:null,merr:null,src:source}}));
+    try{
+      const result=await this.api.testScanLookup(code);
+      if(seq!==this._scanSeq)return;
+      if(!result?.test?.is_test) throw new Error('invalid_test_qr');
+      this.setState(x=>({screen:'scanner',modal:null,f:{...x.f,manualNo:'',readerNo:''},pos:{loading:false,err:null,merr:null},scan:{st:'test-found',test:result.test,id:null,added:false,used:false,msg:''}}));
+    }catch(e){if(seq!==this._scanSeq)return;
+      const msg=e.code==='test_card_not_found'?'Cette carte test n’existe plus ou son QR a été remplacé.':this.api.errorMessage(e);
+      this.setState(x=>({pos:{loading:false,err:source==='reader'?msg:null,merr:source==='keyboard'?msg:null},scan:{st:source==='camera'?'unknown':'ready',id:null,added:false,used:false,msg:''}}));
+      if(source==='manual')this.setState(x=>({err:{...x.err,manualNo:msg}}));
+    }
+  }
+  addTestPassage=async()=>{
+    const st=this.state.scan,t=st.test;if(this.state.busy||st.st!=='test-found'||!t||st.added||t.progress>=t.goal)return;
+    this.setState({busy:true});
+    try{
+      const r=await this.api.testScanAdd(t.code,t.progress);
+      this.setState(x=>({busy:false,scan:{...x.scan,test:r.test,added:true,msg:'1 passage test ajouté !'}}));
+    }catch(e){this.setState({busy:false});
+      if(e.code==='test_progress_changed'||e.code==='test_goal_reached'){
+        try{const fresh=await this.api.testScanLookup(t.code);this.setState(x=>({scan:{...x.scan,test:fresh.test}}));}catch(_){}
+        this.showToast('La progression a changé. Vérifiez le nouveau solde avant de valider de nouveau.','info');
+      }else this.showToast(this.api.errorMessage(e),'error');
+    }
+  };
   demoLookup(p){ if(p.kind==='qr') return []; const cl=this.state.clients, d=p.code;
     return cl.filter(c=>{ const n=c.card.replace(/\D/g,''); return p.kind==='number'?n===d:n.endsWith(d); }).map(c=>c.id); }
   scanFail(kind,source){ const M={invalid:'Ce code n’est pas une carte DPA Cards.',incomplete:'Numéro incomplet : saisissez au moins les 4 derniers chiffres de la carte.',
@@ -2442,7 +2500,7 @@ class Component extends DCLogic {
     setTimeout(()=>{ this.setState(s=>{ const clients=s.clients.map(c=>{ if(c.id!==corr.client) return c; const e=c.history.find(h=>h.id===corr.entry); if(!e) return c;
         return {...c,balance:Math.max(0,c.balance-e.delta),history:[{id:'h'+(UID++),type:'correction',date:TODAY,time:nowTime(),delta:-e.delta,label:'Correction · '+corr.motif,note:f.corrNote.trim()},...c.history.map(h=>h.id===e.id?{...h,corrected:true}:h)]}; });
       return {clients,busy:false,modal:null,toast:{msg:'Opération corrigée. Trace ajoutée à l’historique.',kind:'ok'}}; }); this.armToast(); },800); };
-  resetScan=()=>{ clearTimeout(this._autoReady); if(this.scanMode()==='camera'&&this._lastCamCode) this._camCooldown={code:this._lastCamCode,until:Infinity}; this.setState(s=>({pos:{loading:false,err:null},scan:{st:(s.cam==='denied'||s.cam==='unavail')&&this.scanMode()!=='pos'?'denied':'ready',id:null,added:false,used:false,msg:''}})); };
+  resetScan=()=>{ this._scanSeq=(this._scanSeq||0)+1;clearTimeout(this._autoReady); if(this.scanMode()==='camera'&&this._lastCamCode) this._camCooldown={code:this._lastCamCode,until:Infinity}; this.setState(s=>({pos:{loading:false,err:null},scan:{st:(s.cam==='denied'||s.cam==='unavail')&&this.scanMode()!=='pos'?'denied':'ready',id:null,added:false,used:false,msg:''}})); };
   submitManual=e=>{ e&&e.preventDefault(); if(this.state.live) return this.lookupScan(this.state.f.manualNo,'manual'); const d=this.state.f.manualNo.replace(/\D/g,'');
     if(d.length<4){ this.setState({err:{manualNo:'Saisissez au moins les 4 derniers chiffres de la carte.'}}); return; }
     const c=this.state.clients.find(x=>x.card.replace(/\D/g,'').endsWith(d));
@@ -2943,10 +3001,16 @@ class Component extends DCLogic {
       wake:e=>{ if(!document.hasFocus()) window.focus(); this.setState({winFocus:true}); const tg=e&&e.target; if(!tg||!/^(INPUT|BUTTON|TEXTAREA|A|LABEL)$/.test(tg.tagName)) this.focusReader(); }};
     const st=s.scan.st;
     const CAMT={denied:'Caméra refusée',notfound:'Aucune caméra',busy:'Caméra déjà utilisée',nomedia:'Caméra non disponible',error:'Erreur caméra'}, CAMX={denied:'L’accès à la caméra a été refusé. Autorisez-la dans les réglages du navigateur puis touchez Réessayer, ou saisissez le numéro de carte.',notfound:'Aucune caméra n’a été trouvée. Saisissez le numéro de carte.',busy:'La caméra est déjà utilisée par une autre application. Fermez-la puis touchez Réessayer, ou saisissez le numéro de carte.',nomedia:'Votre navigateur ne permet pas l’accès à la caméra.'+(window.isSecureContext?'':' La page doit être ouverte en HTTPS.')+' Saisissez le numéro de carte.',error:'Impossible d’ouvrir la caméra ('+(s.camErrName||'erreur inconnue')+'). Touchez Réessayer ou saisissez le numéro de carte.'};
-    const scanV={camTitle:CAMT[ce]||'Caméra indisponible',
+    const testCard=st==='test-found'?s.scan.test:null;
+    const testProgress=testCard?Math.max(0,Number(testCard.progress)||0):0;
+    const testGoal=testCard?Math.max(1,Number(testCard.goal)||10):10;
+    const testImage=testCard&&/^[a-z0-9-]+$/.test(testCard.stamp_id||'')?'/assets/stamps/'+testCard.stamp_id+'.png':'';
+    const testStamps=Array.from({length:Math.min(20,testGoal)},(_,i)=>({id:i,filled:i<testProgress,opacity:i<testProgress?1:0.22,filter:i<testProgress?'none':'grayscale(1)',img:testImage}));
+    const scanV={testFound:!!testCard,notTestFound:!testCard,testCard,testProgress,testGoal,testStamps,testCanAdd:!!testCard&&!s.scan.added&&testProgress<testGoal,testIsFull:!!testCard&&testProgress>=testGoal,testJustAdded:!!testCard&&!!s.scan.added,testBusy:!!s.busy,testMsg:s.scan.msg,
+      camTitle:CAMT[ce]||'Caméra indisponible',
       camText:CAMX[ce]?CAMX[ce]:ce==='denied'?'L’accès à la caméra a été refusé. Autorisez-le dans les réglages du navigateur, ou saisissez le numéro de carte.':(ce==='unavailable'?'Aucune caméra utilisable n’a été trouvée sur cet appareil (la page doit aussi être ouverte en HTTPS). Saisissez le numéro de carte.':'L’accès a été refusé ou aucune caméra n’est détectée. Autorisez-la dans les réglages du navigateur, ou saisissez le numéro de carte.'),
       camTextMob:CAMX[ce]?CAMX[ce]:ce==='denied'?'L’accès à la caméra a été refusé. Autorisez-le dans les réglages du navigateur, ou saisissez le numéro de carte.':(ce==='unavailable'?'Aucune caméra utilisable n’a été trouvée sur cet appareil (la page doit aussi être ouverte en HTTPS). Saisissez le numéro de carte.':'L’accès a été refusé ou aucune caméra n’est détectée. Autorisez-la dans les réglages du navigateur, ou recherchez le client.'),
-      perm:st==='permission',denied:st==='denied',view:['ready','scanning','unknown','other','demo'].includes(st),scanning:st==='scanning',ready:st==='ready',unknown:st==='unknown',other:st==='other',demo:st==='demo',found:st==='found'&&!!sc,notFound:!(st==='found'&&sc),added:s.scan.added&&!s.scan.used,used:s.scan.used,msg:s.scan.msg,canSim:st!=='scanning'};
+      perm:st==='permission',denied:st==='denied',view:['ready','scanning','unknown','other','demo'].includes(st),scanning:st==='scanning',ready:st==='ready',unknown:st==='unknown',other:st==='other',demo:st==='demo',found:st==='found'&&!!sc,notFound:!(st==='found'&&sc)&&st!=='test-found',added:s.scan.added&&!s.scan.used,used:s.scan.used,msg:s.scan.msg,canSim:st!=='scanning'};
 
     const d=s.draft, dirty=JSON.stringify({...d,goal:+d.goal})!==JSON.stringify({...P,goal:+P.goal});
     const D={}; ['name','reward','conditions','logo'].forEach(k=>D[k]=this.dh(k));
@@ -3108,7 +3172,7 @@ class Component extends DCLogic {
       sel, hasSel:!!sel, selActs, selCard,
       scanPos, scanCam, scanCamLive:camLive, scanCamPerm:scanCam&&st==='permission', scanVc:{denied:scanCam&&st==='denied',view:scanCam&&['ready','scanning','unknown','other'].includes(st)},
       camWaiting:camOn&&!s.camStream, camEl, camAria:'Zone de scan de la caméra', pos:posV,
-      sc, scanV, scanActs, allowCam:()=>{ if(smode!=='camera') return; this.startCamera(); }, denyCam:()=>this.setState({cam:'denied',scan:{st:'denied',id:null,added:false,used:false,msg:''}}),
+      sc, scanV, scanActs, addTestPassage:this.addTestPassage, allowCam:()=>{ if(smode!=='camera') return; this.startCamera(); }, denyCam:()=>this.setState({cam:'denied',scan:{st:'denied',id:null,added:false,used:false,msg:''}}),
       retryCam:()=>camLive?this.startCamera():this.setState({cam:null,scan:{st:'permission',id:null,added:false,used:false,msg:''}}), openManual:()=>this.setState({modal:'manual',err:{}}), submitManual:this.submitManual, resetScan:this.resetScan,
       d, D, dirty, notDirty:!dirty, draftCard, tabs, tabApple:s.tab==='apple', tabGoogle:s.tab==='google', tabGoogleClassic:s.tab==='google'&&!cdOn, tabGoogleCD:s.tab==='google'&&cdOn, dMode:mkMode('draft'), dGoalDown:stepGoal('draft',-1), dGoalUp:stepGoal('draft',1), dUnit:d.mode==='points'?'points':'passages',
       dBg:mkSw(BGS,'bg','draft'), dAccent:mkSw(ACCENTS,'accent','draft'), dPat:mkPat('draft'), saveCard:this.saveCard, saveLabel:s.busy?'Enregistrement…':'Enregistrer les modifications',

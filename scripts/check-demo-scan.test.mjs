@@ -1,0 +1,50 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {readFileSync} from 'node:fs';
+import {parseCode} from '../src/scanner.js';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const db=read('supabase/migrations/20261015_test_card_scan_progress.sql');
+const wallet=read('supabase/functions/wallet/index.ts');
+const apple=read('supabase/functions/apple-pass/index.ts');
+const ui=read('index.html');
+const designer=read('src/card-designer.js');
+const client=read('src/backend.js');
+const sample='DPA_TEST:12345678-1234-4234-8234-123456789abc';
+test('the scanner recognizes genuine demo codes but never mistakes real cards for test cards',()=>{
+  assert.equal(parseCode(sample).kind,'demo');
+  assert.equal(parseCode('DPA1:12345678-1234-4234-8234-123456789abc').kind,'qr');
+  assert.equal(parseCode('DPA_TEST:not-a-uuid').kind,'invalid');
+});
+test('new test cards and duplicates reset to zero while admin saves cannot set balance',()=>{
+  assert.match(wallet,/config\.preview\.progress = 0/);
+  assert.match(wallet,/clean\.preview\.progress = 0/);
+  assert.match(wallet,/test_balance/);
+  assert.match(wallet,/testConfig\s*=.*test_balance/);
+  assert.match(apple,/t\.test_balance/);
+  assert.match(designer,/base\.preview\.progress = 0/);
+  assert.match(designer,/Actualiser les passages/);
+});
+test('wallet demo passage increase is authorized and isolated from real customers',()=>{
+  assert.match(wallet,/async function scanTestRow\(req: Request, code: unknown\)/);
+  assert.match(wallet,/await authUser\(req\)/);
+  assert.match(wallet,/DPA_TEST:/);
+  assert.match(wallet,/admin\.rpc\('wallet_test_increment'/);
+  assert.match(wallet,/test_goal_reached/);
+  assert.match(wallet,/test_progress_changed/);
+  assert.match(db,/WHERE t\.qr_token = p_token/);
+  assert.match(db,/AND t\.test_balance = p_expected/);
+  assert.match(db,/REVOKE ALL ON FUNCTION public\.wallet_test_increment\(uuid,integer\) FROM PUBLIC, anon, authenticated/);
+  assert.match(db,/GRANT EXECUTE ON FUNCTION public\.wallet_test_increment\(uuid,integer\) TO service_role/);
+  const body=wallet.slice(wallet.indexOf('async function testScanAdd('),wallet.indexOf('// "Ajouter à Google Wallet"'));
+  assert.ok(!/admin\.from\('(cards|card_events|customers|merchants)'\)/.test(body),'demo scans cannot mutate real customer data');
+});
+test('scanner waits for explicit confirmation and previews gray/color PNG stamps',()=>{
+  assert.match(client,/testScanLookup\(code\)/);
+  assert.match(client,/testScanAdd\(code, expectedProgress\)/);
+  assert.match(ui,/lookupTestScan\(testCode\.code,source\)/);
+  assert.match(ui,/const testStamps=Array\.from/);
+  assert.match(ui,/grayscale\(1\)/);
+  assert.match(ui,/data-add-test-passage="1"/);
+  assert.match(ui,/onClick="{{ addTestPassage }}"/);
+  assert.match(ui,/if\(this\.state\.busy\|\|st\.st!=='test-found'\|\|!t\|\|st\.added/);
+});

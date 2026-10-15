@@ -201,9 +201,9 @@ async function publicStampBoard(req: Request, path: string) {
   if(provided!==expected)return new Response('Not found',{status:404});
   let design: any=null, progress=0, goal=10, mode='passages';
   if(isTest){
-    const {data,error}=await admin.from('test_card_designs').select('config').eq('id',id).maybeSingle();
+    const {data,error}=await admin.from('test_card_designs').select('config,test_balance').eq('id',id).maybeSingle();
     if(error||!data||!data.config)return new Response('Not found',{status:404});
-    design=data.config;progress=Number(design.preview?.progress)||0;
+    design=data.config;progress=Number(data.test_balance)||0;
     goal=Number(design.preview?.goal)||10;mode=design.preview?.mode||'passages';
   }else{
     const {data,error}=await admin.from('cards')
@@ -1415,9 +1415,11 @@ async function adminMerchantAccess(req: Request): Promise<Response> {
 // scanner shows as « Carte de démonstration » and lookup_card can never match (real cards are DPA1:).
 // Google Wallet: own class / object ids (…dpa-test-class-<id>, …dpa-test-<id>), never a real program's.
 
-const TEST_SELECT = 'id, name, config, qr_token, google_class_id, google_object_id, google_synced_at, created_at, updated_at';
+const TEST_SELECT = 'id, name, config, test_balance, qr_token, google_class_id, google_object_id, google_synced_at, created_at, updated_at';
 const testFolder = (id: string) => `tests/${id}`;
-const testView = (t: any) => ({ ...t, config: withUrls(t.config), qr_value: `DPA_TEST:${t.qr_token}`, card_number: `TEST ${String(t.id).slice(0, 4).toUpperCase()} ${String(t.qr_token).slice(0, 4).toUpperCase()}` });
+// Stamp progress is server-owned. Admin saves never overwrite the real scan counter.
+const testConfig = (t: any) => ({ ...t.config, preview: { ...(t.config?.preview ?? {}), progress: Number(t.test_balance) || 0 } });
+const testView = (t: any) => ({ ...t, progress: Number(t.test_balance) || 0, config: withUrls(testConfig(t)), qr_value: `DPA_TEST:${t.qr_token}`, card_number: `TEST ${String(t.id).slice(0, 4).toUpperCase()} ${String(t.qr_token).slice(0, 4).toUpperCase()}` });
 async function testRow(id: unknown) {
   const tid = String(id ?? '');
   if (!UUID_RE.test(tid)) throw new HttpError(400, 'invalid_request');
@@ -1460,7 +1462,10 @@ async function adminTestCardSave(req: Request): Promise<Response> {
     return json(req, 200, { test: testView(data) });
   }
   const id = crypto.randomUUID();
-  const { data, error } = await admin.from('test_card_designs').insert({ id, name, config: cleanDesign(body?.config ?? {}, testFolder(id)), created_by: user.id }).select(TEST_SELECT).single();
+  const config = cleanDesign(body?.config ?? {}, testFolder(id));
+  config.preview.progress = 0;
+  config.preview.mode = 'passages';
+  const { data, error } = await admin.from('test_card_designs').insert({ id, name, config, created_by: user.id }).select(TEST_SELECT).single();
   if (error) throw new Error('db_test_cards');
   return json(req, 200, { test: testView(data) });
 }
@@ -1488,7 +1493,8 @@ async function adminTestCardDuplicate(req: Request): Promise<Response> {
     cfg.assets[kind] = error ? null : { path: to };
   }
   const name = `Copie de ${t.name}`.slice(0, 80);
-  const { data, error } = await admin.from('test_card_designs').insert({ id, name, config: cleanDesign(cfg, testFolder(id)), created_by: user.id }).select(TEST_SELECT).single();
+  const clean = cleanDesign(cfg, testFolder(id)); clean.preview.progress = 0;
+  const { data, error } = await admin.from('test_card_designs').insert({ id, name, config: clean, created_by: user.id }).select(TEST_SELECT).single();
   if (error) throw new Error('db_test_cards');
   return json(req, 200, { test: testView(data) });
 }
@@ -1512,6 +1518,61 @@ async function adminTestCardNewQr(req: Request): Promise<Response> {
   const { data, error } = await admin.from('test_card_designs').update({ qr_token: crypto.randomUUID() }).eq('id', t.id).select(TEST_SELECT).single();
   if (error) throw new Error('db_test_cards');
   return json(req, 200, { test: testView(data) });
+}
+
+// Authenticated scanners can operate only on a disposable test-card QR.
+// No merchant_id, real card, customer, balance or card_events are referenced.
+const TEST_QR_RE = /^DPA_TEST:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+async function scanTestRow(req: Request, code: unknown) {
+  await authUser(req);
+  const match = TEST_QR_RE.exec(String(code ?? '').trim());
+  if (!match) throw new HttpError(400, 'invalid_test_qr');
+  const { data, error } = await admin.from('test_card_designs').select(TEST_SELECT).eq('qr_token',match[1].toLowerCase()).maybeSingle();
+  if (error) throw new Error('db_test_cards');
+  if (!data) throw new HttpError(404, 'test_card_not_found');
+  return data;
+}
+const scannerTestView = (t: any) => ({
+  name: String(t.name || 'Carte test'), progress: Number(t.test_balance)||0,
+  goal: Math.max(1,Math.min(1000,Number(t.config?.preview?.goal)||10)),
+  mode: t.config?.preview?.mode === 'points' ? 'points' : 'passages',
+  stamp_id: t.config?.stamps?.icon === 'library' ? libraryStampId(t.config?.stamps?.libraryId) : '',
+  code: `DPA_TEST:${t.qr_token}`, is_test: true,
+});
+async function testScanLookup(req: Request): Promise<Response> {
+  const body = await req.json().catch(() => ({}));
+  const t = await scanTestRow(req,body?.code);
+  return json(req,200,{test:scannerTestView(t)});
+}
+async function testScanAdd(req: Request): Promise<Response> {
+  const body = await req.json().catch(() => ({}));
+  const t = await scanTestRow(req,body?.code);
+  const expected = body?.expected_progress;
+  if (!Number.isInteger(expected) || expected<0) throw new HttpError(400,'invalid_test_progress');
+  const current = Number(t.test_balance)||0;
+  const goal = Math.max(1,Math.min(1000,Number(t.config?.preview?.goal)||10));
+  if (current>=goal) throw new HttpError(409,'test_goal_reached');
+  if (expected!==current) throw new HttpError(409,'test_progress_changed');
+  const {data: next,error} = await admin.rpc('wallet_test_increment',{p_token:t.qr_token,p_expected:expected});
+  if(error) throw new Error('db_test_scan');
+  if(next===null) throw new HttpError(409,'test_progress_changed');
+  // Google Wallet test passes can refresh. Apple passes must be re-added manually
+  // until the PassKit update web service/APNs are deployed.
+  let googleSynced = false;
+  if(t.google_object_id) {
+    try {
+      const currentGoogle=await google('GET',`/loyaltyObject/${encodeURIComponent(t.google_object_id)}`);
+      if(currentGoogle.status===200){
+        const mode=t.config?.preview?.mode==='points'?'points':'passages';
+        const patch:any={...currentGoogle.data,
+          ...walletCounter(next,goal,mode),
+          ...(hasSavedStampArt(t.config)?{heroImage:{sourceUri:{uri:await stampBoardUrl(t.id,Date.now(),true)}}}:{})};
+        const updated=await google('PUT',`/loyaltyObject/${encodeURIComponent(t.google_object_id)}`,patch);
+        googleSynced=updated.status===200;
+      }
+    } catch { /* The successful test scan must not be rolled back for a remote outage. */ }
+  }
+  return json(req,200,{test:{...scannerTestView(t),progress:next},google_synced:googleSynced});
 }
 
 // "Ajouter à Google Wallet" for a test card: a real demo pass in its own class, with the demo data.
@@ -1572,7 +1633,7 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
     ...(hasSavedStampArt(d) ? {
       heroImage:{sourceUri:{uri:await stampBoardUrl(t.id,Date.now(),true)}},
     } : {}),
-    ...(hasSavedStampArt(d) ? walletCounter(pv.progress||0,pv.goal||10,mode)
+    ...(hasSavedStampArt(d) ? walletCounter(t.test_balance||0,pv.goal||10,mode)
       : {loyaltyPoints:{label:unitLabel(mode),balance:{int:Math.max(0,Math.round(Number(pv.progress)||0))}}}),
     barcode: { type: 'QR_CODE', value: view.qr_value, alternateText: 'CARTE TEST' },
     textModulesData: hasSavedStampArt(d) ? [] : [
@@ -1638,6 +1699,8 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-sales-validate')) return await adminSalesValidate(req);
     if (req.method === 'POST' && path.endsWith('/admin-sales-cancel')) return await adminSalesCancel(req);
     if (req.method === 'POST' && path.endsWith('/admin-sales-payout')) return await adminSalesPayout(req);
+    if (req.method === 'POST' && path.endsWith('/test-scan-lookup')) return await testScanLookup(req);
+    if (req.method === 'POST' && path.endsWith('/test-scan-add')) return await testScanAdd(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-cards')) return await adminTestCards(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-get')) return await adminTestCardGet(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-save')) return await adminTestCardSave(req);

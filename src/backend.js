@@ -418,6 +418,9 @@ const api = {
   // ---- scanner: QR (USB reader or camera) and keyboard share one server lookup.
   scanner: { device: scanDevice(), canUseCamera, cameraPermission, decodeKeys, parseCode, qrPath, requestCamera, cameraErrorKind, CameraView: makeCameraView(window.React) },
   // RLS + explicit merchant filter on the server: another business's card is simply not found.
+  // Demo QR flows touch only isolated test cards, never lookup_card/card_events.
+  async testScanLookup(code) { return invokeFn('wallet/test-scan-lookup', { code }); },
+  async testScanAdd(code, expectedProgress) { return invokeFn('wallet/test-scan-add', { code, expected_progress: expectedProgress }); },
   async lookupCard(code) {
     const data = await rpc('lookup_card', { p_code: code });
     return (data || []).map(r => r.card_id);

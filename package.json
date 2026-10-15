@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:static": "node scripts/check-static-hosting.mjs",
-    "test:apple": "node scripts/check-apple-integration.mjs",
+    "test:apple": "node scripts/check-apple-integration.mjs && node --test scripts/check-demo-scan.test.mjs",
     "test:real-apple": "node --test scripts/check-real-apple-pass.test.mjs",
     "test:apple-strip": "node --test scripts/check-real-apple-strip.test.mjs",
     "test:emoji": "node --test scripts/check-emoji-designer.test.mjs scripts/check-stamp-library.test.mjs",

@@ -29,7 +29,7 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    rpc:async()=>({data:true}),
    storage:{from:()=>({download:async path=>{reads.push(path);assert.ok(path.startsWith(base()+'/'));return {data:new Blob([fixture()])};}})},
    from:table=>{
-    const rows={apple_wallet_links:demo?null:{card_id:id,expires_at:'2099-01-01'},apple_wallet_test_links:{test_card_id:id},test_card_designs:{id,name:'PNG test',config:config(),qr_token:id},cards:{id,merchant_id:mid,program_id:pid,customer_id:id,qr_token:pid,card_number:'DPA-9876'},programs:{id:pid,merchant_id:mid,mode:'passages',goal:10,reward:'Reward',design_status:'validated',card_design:config()},merchants:{business_name:'Own shop'},customers:{first_name:'Customer'},card_events:[{seq:2,balance_after:6}]};
+    const rows={apple_wallet_links:demo?null:{card_id:id,expires_at:'2099-01-01'},apple_wallet_test_links:{test_card_id:id},test_card_designs:{id,name:'PNG test',config:config(),test_balance:3,qr_token:id},cards:{id,merchant_id:mid,program_id:pid,customer_id:id,qr_token:pid,card_number:'DPA-9876'},programs:{id:pid,merchant_id:mid,mode:'passages',goal:10,reward:'Reward',design_status:'validated',card_design:config()},merchants:{business_name:'Own shop'},customers:{first_name:'Customer'},card_events:[{seq:2,balance_after:6}]};
     const q={};for(const m of ['select','eq','gt','order','limit','upsert'])q[m]=()=>q;
     q.single=q.maybeSingle=async()=>({data:rows[table]});q.then=resolve=>Promise.resolve({data:rows[table]}).then(resolve);return q;
    }
