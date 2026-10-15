@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
-import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeGoogleStampHero, makeEmojiCardStrip, makeAppleHeaderLogo, makeBlankAppleStrip } from '../supabase/functions/apple-pass/real-strip.js';
+import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeGoogleStampHero, makeEmojiCardStrip, makeAppleHeaderLogo } from '../supabase/functions/apple-pass/real-strip.js';
 import { decodeEmojiPng, emojiFilename, compositeEmoji, twemojiFilename } from '../supabase/functions/apple-pass/emoji-art.js';
 
 const brand={primary:'#121820',secondary:'#3040C0',accent:'#F2C94C',stamps:{filled:'#F2C94C',empty:'#FFFFFF'}};
@@ -43,17 +43,36 @@ test('the same final reward-star is gray until the target and gold when earned o
   const google=await makeGoogleStampHero(config,0,10,'passages',null,star);
   assert.equal(parsePng(google).w,1032);
 });
-test('hidden Apple panel remains a blank strip of exactly the same size and color as the card',async()=>{
-  const expected=[18,24,32,255];
+test('hiding the Apple rectangle preserves stamps, progress, reward and fixed dimensions',async()=>{
+  const icon={width:8,height:8,pixels:new Uint8Array(8*8*4)};
+  for(let p=0;p<icon.pixels.length;p+=4)icon.pixels.set([240,80,40,255],p);
+  const reward={width:630,height:52,pixels:new Uint8Array(630*52*4)};
+  for(let p=0;p<reward.pixels.length;p+=4)reward.pixels.set([255,255,255,255],p);
+  const config={colors:{primary:'#121820',secondary:'#3040C0'},stamps:{icon:'custom'},
+    preview:{mode:'passages',goal:10,progress:3}};
+  const signedBrand={...brand,stamp:'custom.png',mode:'passages'};
   for(const scale of [1,2]){
-    const image=parsePng(await makeBlankAppleStrip('#121820',scale));
-    assert.equal(image.w,375*scale);
-    assert.equal(image.h,144*scale);
-    for(const [x,y] of [[0,0],[20,25],[187,70],[374,143]]){
-      assert.deepEqual(rgbaAt(image,x*scale,y*scale),expected,'no stamps or colored rectangle remain');
+    for(const render of [
+      show=>makeDemoStrip({...config,apple:{showStampPanel:show}},scale,icon,reward,icon),
+      show=>makeRealStrip({...signedBrand,showStampPanel:show},3,10,scale,icon,reward,icon),
+    ]){
+      const shown=parsePng(await render(true)),hidden=parsePng(await render(false));
+      assert.equal(hidden.w,shown.w);assert.equal(hidden.h,shown.h);
+      assert.equal(hidden.w,375*scale);assert.equal(hidden.h,144*scale);
+      assert.deepEqual(rgbaAt(shown,20*scale,25*scale),[48,64,192,255]);
+      assert.deepEqual(rgbaAt(hidden,20*scale,25*scale),[18,24,32,255],'only rectangle background disappears');
+      assert.deepEqual(rgbaAt(hidden,70*scale,35*scale),[240,80,40,255],'filled stamp survives');
+      assert.deepEqual(rgbaAt(hidden,187*scale,125*scale),[255,255,255,255],'reward survives');
+      for(const x of [245,303])assert.notDeepEqual(rgbaAt(hidden,x*scale,35*scale),[18,24,32,255],'remaining stamps survive');
     }
-    const normal=parsePng(await makeDemoStrip(demoDesign,scale));
-    assert.notDeepEqual(normal.raw,image.raw,'the default rendered rectangle stays unchanged');
+    for(const mode of ['passages','points']){
+      const fallback=parsePng(await makeDemoStrip({...config,stamps:{icon:'none'},apple:{showStampPanel:false},preview:{...config.preview,mode}},scale));
+      assert.deepEqual(rgbaAt(fallback,20*scale,25*scale),[18,24,32,255]);
+      assert.ok(fallback.raw.some((v,i)=>i%(1+fallback.w*4)>0&&v===242),'fallback progress survives');
+    }
+    const legacy=parsePng(await makeRealStrip({...brand,showStampPanel:false},3,10,scale));
+    assert.deepEqual(rgbaAt(legacy,200*scale,10*scale),[18,24,32,255]);
+    assert.deepEqual(rgbaAt(legacy,223*scale,40*scale),[242,201,76,255],'legacy filled stamp survives');
   }
 });
 test('safe native PNG strip encodes true dimensions at 1x and 2x',async()=>{

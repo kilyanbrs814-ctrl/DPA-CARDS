@@ -41,18 +41,6 @@ function circle(pixels, width, height, cx, cy, r, color) {
       if ((x + .5 - cx) ** 2 + (y + .5 - cy) ** 2 <= r2)
         pixel(pixels, width, x, y, color);
 }
-// Preserve the native PassKit strip dimensions and all field positions when the
-// stamp panel is hidden. Matching the card's primary background makes it invisible.
-// This deliberately does not move native counters or the barcode on iPhone.
-export async function makeBlankAppleStrip(primary='#1C1F24',scale=1) {
-  if(![1,2].includes(scale))throw new Error('invalid_strip_scale');
-  const width=375*scale,height=144*scale,rgba=new Uint8Array(width*height*4);
-  const ink=rgb(primary,'#1C1F24');
-  for(let i=0;i<rgba.length;i+=4){
-    rgba[i]=ink[0];rgba[i+1]=ink[1];rgba[i+2]=ink[2];rgba[i+3]=255;
-  }
-  return demoPng(width,height,rgba);
-}
 // Small text overlay is prepared once by the browser and signed into each pass.
 // No font rendering or heavy image resizing is performed in the Edge Function.
 // An absent overlay is a strict no-op: existing PNGs remain byte-for-byte identical.
@@ -102,7 +90,7 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
   // Softly rounded rectangle with margin as in the admin preview.
   const margin=16*scale,top=3*scale,radius=15*scale;
   const right=width-margin,bottom=height-3*scale;
-  for(let y=top;y<bottom;y++)for(let x=margin;x<right;x++) {
+  for(let y=top;colors?.showStampPanel!==false && y<bottom;y++)for(let x=margin;x<right;x++) {
     const cornerX=x<margin+radius?margin+radius:x>=right-radius?right-radius:x;
     const cornerY=y<top+radius?top+radius:y>=bottom-radius?bottom-radius:y;
     if((x-cornerX)**2+(y-cornerY)**2 <= radius*radius)pixel(pixels,width,x,y,secondary);
@@ -150,7 +138,7 @@ export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=
   // A restrained branded two-tone band. Native Wallet fields remain legible.
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const isRight = x >= width * .5;
+      const isRight = brand.showStampPanel!==false && x >= width * .5;
       const v = isRight ? secondary : primary;
       pixel(pixels, width, x, y, v);
     }
@@ -174,7 +162,7 @@ export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=
       if (bitmap) compositeEmoji(pixels,width,height,x,y,25*scale,bitmap,i<done);
     } else {
       circle(pixels, width, height, x, y, 12 * scale, i < done ? accent : empty);
-      if (i >= done) circle(pixels, width, height, x, y, 9 * scale, secondary);
+      if (i >= done) circle(pixels, width, height, x, y, 9 * scale, brand.showStampPanel===false ? primary : secondary);
     }
   }
   overlayReward(pixels,width,height,scale,rewardArt,true);
@@ -240,6 +228,7 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
     return makeEmojiCardStrip(config.stamps, {
       primary:config?.apple?.colors?.primary || config?.colors?.primary,
       secondary:config?.apple?.colors?.secondary || config?.colors?.secondary,
+      showStampPanel:config?.apple?.showStampPanel,
     },pv.progress,pv.goal,pv.mode,scale,customIcon,rewardArt,finalStar);
   }
   const width = 375 * scale, height = 144 * scale;
@@ -254,7 +243,7 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
   // Gentle left-blue to right-dark gradient, like the Apple preview in DPA Cards.
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
     const t = clamp((x / width) * .90 + (y / height) * .12, 0, 1);
-    paint(pixels, width, height, x, y, secondary.map((v,i) => Math.round(v * (1-t) + primary[i] * t)));
+    paint(pixels, width, height, x, y, config?.apple?.showStampPanel===false ? primary : secondary.map((v,i) => Math.round(v * (1-t) + primary[i] * t)));
   }
   if (preview.mode === 'points' || goal > 30) {
     const frac = Math.min(1, done / goal), x1 = 190 * scale, barW = 165 * scale, yy = 70 * scale;

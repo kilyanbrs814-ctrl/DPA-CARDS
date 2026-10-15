@@ -266,13 +266,12 @@ export function makeCardDesigner(React, api) {
       h('div', {
         'data-apple-stamp-panel': platform==='apple' ? (o.showStampPanel===false?'hidden':'visible') : undefined,
         style: {
-          visibility: platform==='apple' && o.showStampPanel===false ? 'hidden' : 'visible',
           margin: '0 16px',
           padding: '24px 12px',
           minHeight: 145,
           position: 'relative',
           borderRadius: 15,
-          background: c.secondary,
+          background: platform==='apple' && o.showStampPanel===false ? 'transparent' : c.secondary,
           display: 'grid',
           placeItems: 'center',
           boxSizing: 'border-box'
@@ -920,17 +919,17 @@ export function makeCardDesigner(React, api) {
           padding:'13px 14px',background:'#F6F5F1',borderRadius:12,
           display:'flex',flexDirection:'column',gap:10
         }},
-          po.showStampPanel!==false && h(Check,{label:'Afficher la récompense dans le bloc des tampons',checked:po.showReward===true,onChange:v=>set('apple.showReward',v)}),
-          po.showStampPanel!==false && po.showReward===true && h(Text,{label:'Texte de récompense',value:po.rewardText||'',max:64,
+          h(Check,{label:'Afficher la récompense dans le bloc des tampons',checked:po.showReward===true,onChange:v=>set('apple.showReward',v)}),
+          po.showReward===true && h(Text,{label:'Texte de récompense',value:po.rewardText||'',max:64,
             placeholder:'Débloque la coupe offerte !',onChange:v=>set('apple.rewardText',v)}),
-          po.showStampPanel!==false && po.showReward===true && h('div',null,
+          po.showReward===true && h('div',null,
             h(Color,{label:'Couleur du texte de récompense',value:po.rewardTextColor||rewardLabelColor(design),
               onChange:v=>set('apple.rewardTextColor',v)}),
             po.rewardTextColor && h('button',{type:'button',onClick:()=>set('apple.rewardTextColor',''),
               style:{marginTop:8,padding:'8px 10px',border:'1px solid #D4D1C9',borderRadius:8,background:'#FFFFFF',cursor:'pointer'}},
               'Revenir à la couleur automatique')),
           h('div',{style:{fontSize:13,color:'#5E636B',lineHeight:1.4}},
-            po.showStampPanel===false ? 'Rectangle et tampons masqués. La zone conserve sa hauteur, sans déplacer les compteurs ni le QR code.' : 'Récompense désactivée : design actuel inchangé. Activée : phrase centrée dans le rectangle des tampons.')
+            po.showStampPanel===false ? 'Seul le fond du rectangle est masqué. Les tampons et la récompense restent visibles, sans déplacer les compteurs ni le QR code.' : 'Récompense désactivée : design actuel inchangé. Activée : phrase centrée dans le rectangle des tampons.')
         ),
         h(Check, { label: 'Couleurs spécifiques à ' + pName, checked: Object.keys(po.colors || {}).length > 0, onChange: v => set(platform + '.colors', v ? { ...design.colors } : {}) }),
         Object.keys(po.colors || {}).length ? h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
