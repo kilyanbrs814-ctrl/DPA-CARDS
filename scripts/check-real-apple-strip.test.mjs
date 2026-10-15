@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
-import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeGoogleStampHero } from '../supabase/functions/apple-pass/real-strip.js';
+import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeGoogleStampHero, makeEmojiCardStrip } from '../supabase/functions/apple-pass/real-strip.js';
 import { decodeEmojiPng, emojiFilename, compositeEmoji } from '../supabase/functions/apple-pass/emoji-art.js';
 
 const brand={primary:'#121820',secondary:'#3040C0',accent:'#F2C94C',stamps:{filled:'#F2C94C',empty:'#FFFFFF'}};
@@ -141,4 +141,26 @@ test('Apple and Google sources include emoji-safe image routes and balance updat
   assert.ok(server.includes('update.heroImage'));
   assert.ok(apple.includes('makeDemoStrip(d, 1)'));
   assert.ok(apple.includes('realApplePassData({'));
+});
+
+test('new real and demo Apple emoji strips use the same centered 375x144 rectangular layout',async()=>{
+  const base={primary:'#21252C',secondary:'#305ACA'};
+  const stamps={emoji:'🦊',filled:'#F2C94C'};
+  // Deterministic local asset: no remote download or dependency on CDN reachability.
+  const original=globalThis.fetch;
+  const image=await makeDemoLogo('Test','#F2C94C',1,'logo');
+  try{
+    globalThis.fetch=async url=> {
+      if(String(url).startsWith('https://raw.githubusercontent.com/googlefonts/noto-emoji/'))
+        return new Response(image,{status:200,headers:{'content-length':String(image.length)}});
+      return original(url);
+    };
+    const real=await makeRealStrip({...base,stamps,emoji:'🦊',mode:'passages'},3,10,1);
+    const demo=await makeDemoStrip({colors:base,stamps,preview:{goal:10,progress:3,mode:'passages'}},1);
+    const a=parsePng(real),z=parsePng(demo);
+    assert.deepEqual([a.w,a.h],[375,144]);
+    assert.deepEqual(Array.from(real),Array.from(demo),'real/test art must match for identical config');
+    const empty=await makeEmojiCardStrip(stamps,base,0,10,'passages',1);
+    assert.notDeepEqual(Array.from(real),Array.from(empty),'stamped balance affects visible panel');
+  } finally {globalThis.fetch=original;}
 });

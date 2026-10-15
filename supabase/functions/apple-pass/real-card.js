@@ -2,6 +2,12 @@
 // The Apple Wallet preview in the editor is illustrative: PassKit owns native layout.
 // Keep this module free of Supabase, Deno and signing secrets so it can be unit tested.
 const HEX = /^#[0-9a-fA-F]{6}$/;
+// Keep the actual DB card number for scanning. The number on the pass is
+// display-only, while the full number stays available on the back for support.
+export const visibleCardNumber = value => {
+  const raw=String(value || '').trim();
+  return raw.replace(/\D/g, '') || raw || '—';
+};
 const txt = (value, limit = 60) => typeof value === 'string' ? value.replace(/[\x00-\x1F\x7F]/g, ' ').trim().slice(0, limit) : '';
 export const hex = (value, fallback) => HEX.test(value || '') ? value.toUpperCase() : fallback;
 export const toRgb = (value) => {
@@ -54,7 +60,7 @@ export function realAppleBrand(program, merchant, card) {
     issuer, subtitle, label, primary, secondary, accent, foreground,
     logo: assetPath(assets.logo, card, 'logo') || assetPath(program?.logo_path, card, 'logo'),
     artwork: backgroundImage || hero, heroFocus: Number.isFinite(+apple.heroFocus) ? Math.max(0, Math.min(100, +apple.heroFocus)) : 50,
-    stamps: d.stamps || {},
+    stamps: d.stamps || {}, mode: program?.mode === 'points' ? 'points' : 'passages',
     emoji: typeof d.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(d.stamps.emoji) ? d.stamps.emoji.slice(0,32) : '',
   };
 }
@@ -64,7 +70,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
   const goal = Math.max(1, Math.floor(Number(program.goal) || 10));
   const modePoints = program.mode === 'points';
   const client = [txt(customer?.first_name, 80), txt(customer?.last_name, 80)].filter(Boolean).join(' ') || 'Client';
-  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: card.card_number };
+  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: brand.emoji ? visibleCardNumber(card.card_number) : card.card_number };
   return { brand, goal, balance: b, json: {
     formatVersion: 1,
     passTypeIdentifier: 'pass.fr.digitalprojectagency.cards',
@@ -76,13 +82,29 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     backgroundColor: toRgb(brand.primary),
     foregroundColor: toRgb(brand.foreground),
     labelColor: toRgb(brand.foreground),
-    storeCard: {
+    storeCard: brand.emoji ? {
+      // Apple controls native StoreCard placement. A tiny neutral primary
+      // field reserves the strip artwork; no progress text obscures emojis.
+      headerFields: [{key:'number',label:'',value:visibleCardNumber(card.card_number)}],
+      primaryFields: [{key:'artwork',label:'',value:'\u00a0'}],
+      secondaryFields: [
+        {key:'done',label:'',value:(modePoints?'Points gagnés ':'Passages effectués ')+String(b)},
+        {key:'remaining',label:'',value:(modePoints?'Points restants ':'Passages restants ')+String(Math.max(0,goal-b))},
+      ],
+      backFields: [
+        {key:'full_card',label:'NUMÉRO COMPLET',value:txt(card.card_number,42)},
+        {key:'client',label:'CLIENT',value:client},
+        {key:'reward',label:'RÉCOMPENSE',value:txt(program.reward,90)||'Récompense fidélité'},
+        ...(brand.subtitle?[{key:'subtitle',label:'LE COMMERCE',value:brand.subtitle}]:[]),
+        {key:'rule',label:'CONDITIONS',value:modePoints?goal+' points pour '+txt(program.reward,90):goal+' passages pour '+txt(program.reward,90)},
+        {key:'info',label:'DPA Cards',value:'Présentez votre QR code en caisse. Le solde correspond à la dernière génération du pass ; les mises à jour automatiques ne sont pas encore activées.'},
+      ],
+    } : {
       headerFields: [{ key: 'program', label: 'PROGRAMME', value: txt(program.name, 22) || 'Fidélité' }],
       primaryFields: [{ key: 'progress', label: brand.label, value: modePoints ? b + ' / ' + goal + ' pts' : b + ' / ' + goal }],
       secondaryFields: [
         { key: 'client', label: 'CLIENT', value: client },
         { key: 'reward', label: 'RÉCOMPENSE', value: txt(program.reward, 60) || 'Récompense fidélité' },
-        ...(brand.emoji ? [{ key: 'native_stamp', label: 'TAMPONS VALIDÉS', value: brand.emoji.repeat(Math.min(10, b)) || '0' }] : []),
       ],
       auxiliaryFields: [{ key: 'card', label: 'CARTE', value: txt(card.card_number, 42) }],
       backFields: [

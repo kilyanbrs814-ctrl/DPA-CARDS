@@ -1,6 +1,7 @@
+import { parseCode } from '../src/scanner.js';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { realAppleBrand, realApplePassData, assetPath, onBackground } from '../supabase/functions/apple-pass/real-card.js';
+import { realAppleBrand, realApplePassData, assetPath, onBackground, visibleCardNumber } from '../supabase/functions/apple-pass/real-card.js';
 
 const MID = '11111111-1111-4111-8111-111111111111';
 const PID = '22222222-2222-4222-8222-222222222222';
@@ -75,4 +76,39 @@ test('cross-program paths and path traversal are rejected with service-role stor
 test('accessibility contrasts invalid same-colored foreground',()=>{
   assert.equal(onBackground('#000000','#000000'),'#FFFFFF');
   assert.equal(onBackground('#FFFFFF','#FFFFFF'),'#1C1F24');
+});
+
+test('emoji design uses only card number, two counters and native QR on Apple front', () => {
+  const p=structuredClone(program);
+  p.card_design.stamps.emoji='🍔';
+  const {brand,json}=realApplePassData({program:p,merchant,customer,card,balance:3});
+  assert.equal(brand.emoji,'🍔');
+  assert.equal(json.storeCard.headerFields[0].value,'0001');
+  assert.equal(json.storeCard.primaryFields[0].value,'\u00a0');
+  assert.equal(json.storeCard.secondaryFields.length,2);
+  assert.equal(json.storeCard.secondaryFields[0].value,'Passages effectués 3');
+  assert.equal(json.storeCard.secondaryFields[1].value,'Passages restants 7');
+  assert.equal(json.storeCard.auxiliaryFields?.length||0,0);
+  assert.equal(json.barcode.message,'DPA1:'+token);
+  assert.equal(json.barcode.altText,'0001');
+  assert.equal(json.storeCard.backFields.find(f=>f.key==='full_card').value,card.card_number);
+  assert.ok(!JSON.stringify(json.storeCard.secondaryFields).includes('Nicolas'));
+  assert.ok(!JSON.stringify(json.storeCard.secondaryFields).includes('dessert'));
+  assert.equal(visibleCardNumber('DPA-DEMO-0003'),'0003');
+  assert.equal(visibleCardNumber('ABC'),'ABC','do not invent an unusable numeric ID');
+});
+test('points-mode real pass retains actual running balance and remaining target', () => {
+  const p=structuredClone(program);
+  p.mode='points';p.goal=100;
+  p.card_design.stamps.emoji='⭐';
+  const {json}=realApplePassData({program:p,merchant,customer,card,balance:37});
+  assert.equal(json.storeCard.secondaryFields[0].value,'Points gagnés 37');
+  assert.equal(json.storeCard.secondaryFields[1].value,'Points restants 63');
+});
+
+test('number printed on real pass works with manual scanner fallback', () => {
+  const value=visibleCardNumber('DPA-00001234');
+  assert.equal(value,'00001234');
+  assert.deepEqual(parseCode(value),{kind:'number',code:'00001234'});
+  assert.deepEqual(parseCode(value.slice(-4)),{kind:'suffix',code:'1234'});
 });
