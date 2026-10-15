@@ -155,8 +155,8 @@ a:hover{color:#1A36C4}
 
     <section aria-label="Liste des commerçants" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;overflow:hidden">
       <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
-        <div aria-hidden="true" style="display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.6fr) minmax(0,1.3fr) 80px 80px 90px 140px 110px 24px;gap:12px;padding:12px 20px;background:#F8F7F4;border-bottom:1px solid #E4E1DA;font-size:12px;font-weight:700;letter-spacing:0.06em;color:#5E636B;text-transform:uppercase">
-          <div>Commerce</div><div>Propriétaire</div><div>Programme</div><div style="text-align:right">Clients</div><div style="text-align:right">Cartes</div><div style="text-align:right">Passages</div><div>Abonnement</div><div>Créé le</div><div></div>
+        <div aria-hidden="true" style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.4fr) minmax(0,1.1fr) minmax(0,0.8fr) 70px 70px 80px 145px 100px 24px;gap:12px;padding:12px 20px;background:#F8F7F4;border-bottom:1px solid #E4E1DA;font-size:12px;font-weight:700;letter-spacing:0.06em;color:#5E636B;text-transform:uppercase">
+          <div>Commerce</div><div>Propriétaire</div><div>Programme</div><div>Commercial</div><div style="text-align:right">Clients</div><div style="text-align:right">Cartes</div><div style="text-align:right">Passages</div><div>Abonnement</div><div>Créé le</div><div></div>
         </div>
       </sc-if>
       <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
@@ -179,6 +179,7 @@ a:hover{color:#1A36C4}
                 </div>
                 <div style="min-width:0"><div style="font-size:14px;color:#1C1F24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.owner }}</div><div style="font-size:13px;color:#5E636B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.email }}</div></div>
                 <div style="font-size:14px;color:#3E424A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.program }}</div>
+                <div style="font-size:14px;font-weight:700;color:#2448F0;overflow:hidden;text-overflow:ellipsis">{{ r.rep }}</div>
                 <div style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">{{ r.clients }}</div>
                 <div style="text-align:right;font-variant-numeric:tabular-nums">{{ r.cards }}</div>
                 <div style="text-align:right;font-variant-numeric:tabular-nums">{{ r.visits }}</div>
@@ -194,6 +195,7 @@ a:hover{color:#1A36C4}
                   <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px">{{ r.name }}</div><div style="font-size:14px;color:#5E636B;overflow-wrap:anywhere">{{ r.owner }} · {{ r.email }}</div></div>
                   <span style="padding:4px 10px;border-radius:999px;background:{{ r.stBg }};color:{{ r.stFg }};font-size:12px;font-weight:700;white-space:nowrap">{{ r.status }}</span>
                 </div>
+                <div style="font-size:13px;color:#2448F0;font-weight:700">Commercial : {{ r.rep }}</div>
                 <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%">
                   <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Clients</div><div style="font-weight:700;font-size:16px">{{ r.clients }}</div></div>
                   <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Cartes</div><div style="font-weight:700;font-size:16px">{{ r.cards }}</div></div>
@@ -277,6 +279,24 @@ a:hover{color:#1A36C4}
             </dl>
           </section>
 
+          <sc-if value="{{ isDirector }}" hint-placeholder-val="{{ false }}">
+            <section data-director-access="1" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px">
+              <h3 style="margin:0;font-weight:800;font-size:16px">Gestion de l’accès DPA Cards · Direction</h3>
+              <p style="margin:0;color:#5E636B;font-size:13px;line-height:1.5">L’accès manuel est indépendant d’un abonnement Stripe. Il ne crée aucune facture, ne modifie aucun prélèvement et ne résilie pas un abonnement payant existant.</p>
+              <label style="display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px">Durée d’accès
+                <select value="{{ accessDays }}" onChange="{{ changeAccessDays }}" style="min-height:44px;border:1px solid #D4D1C9;border-radius:10px;background:#FFFFFF;padding:0 12px">
+                  <option value="7">7 jours</option><option value="30">30 jours</option><option value="90">90 jours</option><option value="365">365 jours</option>
+                </select>
+              </label>
+              <label style="display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px">Motif obligatoire
+                <input type="text" maxlength="300" value="{{ accessReason }}" onChange="{{ changeAccessReason }}" placeholder="Ex. : accès offert pour essai" style="width:100%;min-height:44px;box-sizing:border-box;border:1px solid #D4D1C9;border-radius:10px;padding:0 12px;font-size:14px">
+              </label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <button type="button" onClick="{{ grantAccess }}" disabled="{{ accessBusy }}" style="min-height:46px;flex:1;border:0;border-radius:11px;background:#1F7A4F;color:#FFFFFF;font-weight:700;padding:0 14px">Accorder l’accès</button>
+                <button type="button" onClick="{{ revokeAccess }}" disabled="{{ accessBusy }}" style="min-height:46px;flex:1;border:1px solid #C53838;border-radius:11px;background:#FFFFFF;color:#A11D14;font-weight:700;padding:0 14px">Suspendre l’accès</button>
+              </div>
+            </section>
+          </sc-if>
           <dl style="margin:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:16px;padding:4px 16px;display:grid;grid-template-columns:auto 1fr;column-gap:16px;font-size:15px">
             <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Propriétaire</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.owner }}</dd>
             <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">E-mail</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8;overflow-wrap:anywhere">{{ sel.email }}</dd>
@@ -337,7 +357,14 @@ const SUBST={trialing:['Essai gratuit','#E8EDFF','#1A36C4'],active:['Actif','#E4
   unpaid:['Impayé','#FCEBEA','#A11D14'],canceled:['Résilié','#FCEBEA','#A11D14'],incomplete:['Paiement non finalisé','#FFF3DC','#6B4E00'],
   incomplete_expired:['Expiré','#EFEDE8','#3E424A'],paused:['Suspendu','#FCEBEA','#A11D14'],expired:['Offre terminée','#EFEDE8','#3E424A'],none:['Sans abonnement','#EFEDE8','#3E424A']};
 const PPST={paid:'Payé',partially_refunded:'Remboursé en partie',refunded:'Remboursé'};
-const subKey=m=>(m.subscription&&m.subscription.status)||'none';
+const subKey=m=>{
+  const a=m.manual_access;
+  if(a?.enabled===false) return 'blocked';
+  if(a?.enabled&&a.expires_at&&new Date(a.expires_at)>new Date()) return 'manual';
+  return (m.subscription&&m.subscription.status)||'none';
+};
+SUBST.manual=['Accès manuel actif','#E4F3EB','#1F6B45'];
+SUBST.blocked=['Accès suspendu','#FCEBEA','#A11D14'];
 const eurC=c=>c==null?'—':(c/100).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
 const DESIGN={validated:'validé',draft:'brouillon',pending_dpa:'en cours de création par DPA Cards'};
 function lum(hex){ const h=(hex||'#FFFFFF').replace('#',''); const v=[0,2,4].map(i=>{const c=parseInt(h.substr(i,2),16)/255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}); return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]; }
@@ -355,7 +382,7 @@ function writeHash(tab,g){ const h=tab==='sales'?'#commerciaux':tab!=='gen'?'':'
 const ERR={not_admin:'Accès refusé : ce compte n’est pas administrateur.',not_director:'Rubrique réservée au compte de direction.',not_authenticated:'Session expirée. Reconnectez-vous.'};
 
 class Component extends DCLogic {
-  state={w:typeof window!=='undefined'?window.innerWidth:1200,...readHash(),loading:true,error:null,kpis:null,data:[],me:null,designs:[],designBusy:null,q:'',status:'all',sort:'recent',sel:null,detail:null,detailLoading:false,toast:null};
+  state={w:typeof window!=='undefined'?window.innerWidth:1200,...readHash(),loading:true,error:null,kpis:null,data:[],me:null,designs:[],designBusy:null,q:'',status:'all',sort:'recent',sel:null,detail:null,detailLoading:false,toast:null,accessDays:'30',accessReason:'',accessBusy:false};
   componentDidMount(){ this._r=()=>this.setState({w:window.innerWidth}); window.addEventListener('resize',this._r);
     this._k=e=>{ if(e.key==='Escape') this.setState({sel:null,detail:null}); }; window.addEventListener('keydown',this._k);
     this._h=()=>this.setState(readHash()); window.addEventListener('hashchange',this._h);
@@ -373,6 +400,21 @@ class Component extends DCLogic {
   async open(id){ this.setState({sel:id,detail:null,detailLoading:true});
     try{ const d=await this.api.merchant(id); if(this.state.sel===id) this.setState({detail:d,detailLoading:false}); }
     catch(e){ if(this.state.sel===id) this.setState({detailLoading:false}); this.toast(this.errText(e)); } }
+  async setMerchantAccess(enabled){
+    const s=this.state,m=s.data.find(x=>x.id===s.sel);
+    if(!m||s.me?.role!=='director'||s.accessBusy)return;
+    const reason=s.accessReason.trim();
+    if(reason.length<3)return this.toast('Indique un motif (au moins 3 caractères).');
+    const paid=m.subscription&&['active','trialing','past_due'].includes(m.subscription.status);
+    const msg=enabled?`Accorder un accès gratuit pendant ${s.accessDays} jours à ${m.business_name} ? Cela ne crée aucun abonnement ou paiement Stripe.`:
+      `Suspendre l’accès de ${m.business_name} ? ${paid?'Attention : le prélèvement Stripe reste actif et doit être géré séparément.':'Les données et les cartes restent conservées.'}`;
+    if(!window.confirm(msg))return;
+    this.setState({accessBusy:true});
+    try{await this.api.manualAccess(m.id,enabled,Number(s.accessDays),reason);
+      this.toast(enabled?'Accès DPA Cards accordé. Aucun paiement Stripe créé.':'Accès DPA Cards suspendu. Facturation Stripe inchangée.');
+      this.setState({accessBusy:false,accessReason:''});await this.open(m.id);this._busy=false;await this.load();
+    }catch(e){this.setState({accessBusy:false});this.toast(this.errText(e));}
+  }
   // submitted → in_progress → delivered (server checks the transition and the admin session).
   async setDesign(id,status){ if(this.state.designBusy) return; this.setState({designBusy:id});
     try{ const r=await this.api.setDesignStatus(id,status);
@@ -382,7 +424,7 @@ class Component extends DCLogic {
   view(m){ const sk=SUBST[subKey(m)]||SUBST.none, st={label:sk[0],bg:sk[1],fg:sk[2]}, p=m.program, bg=p?p.bg:'#ECEAE4';
     return {id:m.id,name:m.business_name,activity:m.activity||'Activité non renseignée',owner:m.owner_name||'—',email:m.owner_email||'—',
       program:p?p.name:'Aucun programme',clients:nf(m.customers),cards:nf(m.cards),visits:nf(m.visits),joined:fmt(m.created_at),
-      status:st.label,stBg:st.bg,stFg:st.fg,bg,accent:p?p.accent:'#FFFFFF',logo:(p&&p.logo)||(m.business_name||'?').slice(0,3).toUpperCase(),logoFg:lum(bg)<0.4?'#FFFFFF':'#1E1418',
+      status:st.label,stBg:st.bg,stFg:st.fg,rep:m.sales_rep?.name||'Non attribué',bg,accent:p?p.accent:'#FFFFFF',logo:(p&&p.logo)||(m.business_name||'?').slice(0,3).toUpperCase(),logoFg:lum(bg)<0.4?'#FFFFFF':'#1E1418',
       open:()=>this.open(m.id)}; }
   exportCsv(){ const D=this.state.data; if(!D.length) return this.toast('Aucun commerce à exporter.');
     const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
@@ -409,7 +451,7 @@ class Component extends DCLogic {
     const googleOnly=Math.max(0,google-both), appleOnly=Math.max(0,apple-both);
     const none=Math.max(0,cards-googleOnly-appleOnly-both);
     const q=s.q.trim().toLowerCase();
-    let list=D.filter(m=>(s.status==='all'||statusOf(m)===s.status)&&(!q||[m.business_name,m.owner_name,m.owner_email].join(' ').toLowerCase().includes(q)));
+    let list=D.filter(m=>(s.status==='all'||statusOf(m)===s.status)&&(!q||[m.business_name,m.owner_name,m.owner_email,m.sales_rep?.name||'Non attribué'].join(' ').toLowerCase().includes(q)));
     list=[...list].sort((a,b)=>s.sort==='name'?a.business_name.localeCompare(b.business_name,'fr'):s.sort==='cards'?b.cards-a.cards:String(b.created_at).localeCompare(String(a.created_at)));
     const cnt=k=>k==='all'?D.length:D.filter(m=>statusOf(m)===k).length;
     const chip=(on)=>({bg:on?'#1C1F24':'#FFFFFF',fg:on?'#FFFFFF':'#1C1F24',border:on?'#1C1F24':'#D4D1C9',pressed:on});
@@ -417,20 +459,23 @@ class Component extends DCLogic {
     const selM=D.find(m=>m.id===s.sel), det=s.detail;
     let sel=null;
     if(selM){ const v=this.view(selM), p=(det&&det.program)||selM.program, c=(det&&det.counts)||{};
+      const access=det?.manual_access!==undefined?det.manual_access:selM.manual_access;
       sel={...v,passes:nf(det?c.wallet_passes:selM.wallet_passes),applePasses:nf(det?c.apple_wallet_downloads:selM.apple_wallet_downloads),visits:nf(det?c.visits:selM.visits),rewards:det?nf(c.rewards):'…',last:fmt(selM.last_activity),
         hasProgram:!!p,noProgram:!p,program:p?p.name:'',rule:p?`${p.goal} ${unitOf(p)} = ${p.reward}`:'',design:p?(DESIGN[p.design_status]||p.design_status):'',
         hasEmail:!!selM.owner_email,mailto:selM.owner_email?'mailto:'+selM.owner_email:'',
         rep:(()=>{ const r=(det&&det.sales_rep!==undefined)?det.sales_rep:selM.sales_rep; return r&&r.name?r.name:'Non attribué'; })(),
-        subRows:(()=>{ const sb=(det&&det.subscription)||selM.subscription; if(!sb) return [{k:'Statut',v:'Sans abonnement'}];
+        subRows:(()=>{ const sb=(det&&det.subscription)||selM.subscription;
+          const override=access?[{k:'Accès manuel',v:access.enabled?'Accordé jusqu’au '+fmt(access.expires_at):'Suspendu'}, {k:'Motif',v:access.reason||'—'}]:[];
+          if(!sb) return [...override,{k:'Facturation Stripe',v:'Aucun abonnement'}];
           // Commitment paid in one go: one payment for the whole period, never a monthly revenue.
           if(sb.billing_mode==='prepaid'){ const pp=(det&&det.prepaid||[])[0];
-            return [{k:'Offre',v:'Engagement 12 mois — payé en une fois'},{k:'Statut',v:(SUBST[sb.status]||SUBST.none)[0]},
+            return [...override,{k:'Offre',v:'Engagement 12 mois — payé en une fois'},{k:'Statut',v:(SUBST[sb.status]||SUBST.none)[0]},
               {k:'Encaissé',v:pp?eurC(pp.total_cents)+' · '+fmt(pp.paid_at):(det?'—':'…')},
               {k:'Détail',v:pp?eurC(pp.setup_cents)+' de mise en place + '+pp.months+' × '+eurC(pp.monthly_cents):(det?'—':'…')},
               {k:'Période couverte',v:fmt(sb.current_period_start)+' → '+fmt(sb.current_period_end)},
               {k:'Paiement',v:pp?(PPST[pp.status]||pp.status)+(pp.refunded_cents?' ('+eurC(pp.refunded_cents)+' remboursés)':'')+(pp.dispute_status?' · litige '+({open:'en cours',won:'gagné',lost:'perdu'}[pp.dispute_status]):''):(det?'—':'…')},
               {k:'Renouvellement',v:'Aucun (pas de prélèvement à l’échéance)'}]; }
-          return [{k:'Offre',v:sb.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement'},{k:'Statut',v:(SUBST[sb.status]||SUBST.none)[0]+(sb.cancel_at_period_end?' · résiliation programmée':'')},
+          return [...override,{k:'Offre',v:sb.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement'},{k:'Statut',v:(SUBST[sb.status]||SUBST.none)[0]+(sb.cancel_at_period_end?' · résiliation programmée':'')},
             {k:'Prix mensuel',v:eurC(sb.monthly_amount_cents)},{k:'Fin de l’essai',v:fmt(sb.trial_end)},
             {k:'Prochaine facture',v:sb.status==='trialing'?fmt(sb.trial_end):fmt(sb.current_period_end)},
             {k:'Engagement',v:sb.plan_type==='commitment'?'jusqu’au '+fmt(sb.commitment_end):'Aucun'},
@@ -458,6 +503,9 @@ class Component extends DCLogic {
       q:s.q,setQ:e=>this.setState({q:e.target.value}),sort:s.sort,setSort:e=>this.setState({sort:e.target.value}),
       statusFilters,rows:s.loading?[]:list.map(m=>this.view(m)),emptyAll:!s.loading&&!s.error&&D.length===0,emptyFiltered:!s.loading&&D.length>0&&list.length===0,
       sel,hasSel:!!sel,close:()=>this.setState({sel:null,detail:null}),stop:e=>e.stopPropagation(),
+      isDirector:director, accessDays:s.accessDays,accessReason:s.accessReason,accessBusy:s.accessBusy,
+      changeAccessDays:e=>this.setState({accessDays:e.target.value}),changeAccessReason:e=>this.setState({accessReason:e.target.value}),
+      grantAccess:()=>this.setMerchantAccess(true),revokeAccess:()=>this.setMerchantAccess(false),
       detailLoading:s.detailLoading,detailReady:!!det,selClients,selActivity,noClients:!!det&&!selClients.length,noActivity:!!det&&!selActivity.length,
       exportCsv:()=>this.exportCsv(),toast:s.toast,
       ...(()=>{ const DST={submitted:['À traiter','#FFF3DC','#8A5A00'],in_progress:['En cours','#E8EDFF','#1A36C4'],delivered:['Livré','#E4F3EB','#1F6B45'],cancelled:['Annulé','#EFEDE8','#3E424A']};
