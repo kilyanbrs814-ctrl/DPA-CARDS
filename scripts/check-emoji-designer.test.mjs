@@ -70,3 +70,16 @@ test('native Google Wallet emits real completed/remaining counters without chang
   assert.ok(src.includes('accountId: hasStampEmoji(program) ? walletCardDigits(card.card_number)'));
   assert.ok(src.includes('textModulesData: hasSavedStampArt(d) ? []'));
 });
+
+test('previously saved two-line Apple header must be regenerated and the preview stays one line',()=>{
+  const src=read('src/card-designer.js');
+  const wordmark=read('src/apple-wordmark.js');
+  const api=read('supabase/functions/wallet/index.ts');
+  assert.ok(wordmark.includes('export const APPLE_WORDMARK_VERSION=2'));
+  assert.ok(wordmark.includes('function singleLine('));
+  assert.ok(!wordmark.includes('function textLines('),'never break the shop name into two rows');
+  assert.ok(src.includes('next.apple?.headerArtworkVersion!==APPLE_WORDMARK_VERSION'),'existing raster designs rebuilt');
+  assert.ok(src.includes('design.apple?.headerArtworkVersion!==APPLE_WORDMARK_VERSION'),'Apple test install must refresh saved designs automatically');
+  assert.ok(src.includes('o.headerArtworkVersion===APPLE_WORDMARK_VERSION && d.assets.appleHeader?.url'),'old two-line image hidden in preview');
+  assert.ok(api.includes('headerArtworkVersion: int(r.apple?.headerArtworkVersion,0,2,0)'),'the server keeps the version flag');
+});

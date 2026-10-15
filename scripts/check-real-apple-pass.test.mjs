@@ -58,7 +58,7 @@ test('Apple native business name is opt-in and uses saved commerce text', () => 
   p.card_design.apple.showBusinessName=true;
   const {brand,json}=realApplePassData({program:p,merchant,customer,card,balance:2});
   assert.equal(brand.showBusinessName,true);
-  assert.equal(json.logoText,'Boulangerie des Arts');
+  assert.equal(json.logoText,appleHeaderName('Boulangerie des Arts'),'legacy header must not wrap while awaiting fresh image');
   assert.equal(json.organizationName,'Boulangerie des Arts');
   assert.equal(json.storeCard.secondaryFields[0].value,'Nicolas Moreau','counter/customer data must be unchanged');
   p.card_design.apple.showBusinessName=false;
@@ -69,11 +69,27 @@ test('precomposed Apple header replaces native small text without changing numbe
   p.card_design.apple.showBusinessName=true;
   const path=folder+'/designer/appleHeader-'+token+'.png';
   p.card_design.assets.appleHeader={path};
+  p.card_design.apple.headerArtworkVersion=2;
   const {brand,json}=realApplePassData({program:p,merchant,customer,card,balance:2});
   assert.equal(brand.appleHeader,path);
   assert.equal(json.logoText,undefined);
   assert.equal(json.organizationName,'Boulangerie des Arts');
   assert.equal(json.barcode.message,'DPA1:'+token);
+});
+test('stale wrapped Apple merchant header is ignored until a single-line 2nd-generation PNG is saved',()=>{
+  const p=structuredClone(program);
+  p.card_design.apple.showBusinessName=true;
+  const path=folder+'/designer/appleHeader-'+token+'.png';
+  p.card_design.assets.appleHeader={path};
+  const stale=realApplePassData({program:p,merchant,customer,card,balance:3});
+  assert.equal(stale.brand.appleHeader,null,'do not serve an old two-line image');
+  assert.equal(stale.json.logoText,appleHeaderName('Boulangerie des Arts'));
+  p.card_design.apple.headerArtworkVersion=2;
+  const refreshed=realApplePassData({program:p,merchant,customer,card,balance:3});
+  assert.equal(refreshed.brand.appleHeader,path);
+  assert.equal(refreshed.json.logoText,undefined,'rendered 1-line PNG replaces native text');
+  assert.equal(refreshed.json.barcode.message,stale.json.barcode.message);
+  assert.equal(refreshed.json.storeCard.headerFields[0].value,stale.json.storeCard.headerFields[0].value);
 });
 test('branded background is preferred over hero when specifically selected', () => {
   const p=structuredClone(program);
@@ -117,7 +133,7 @@ test('emoji design keeps card number at top, two counters, and branded QR footer
   assert.equal(json.storeCard.secondaryFields[1].textAlignment,'PKTextAlignmentRight');
   assert.equal(json.storeCard.auxiliaryFields?.length||0,0);
   assert.equal(json.barcode.message,'DPA1:'+token);
-  assert.equal(json.barcode.altText,'Propulsé par DPA Cards');
+  assert.equal(json.barcode.altText,'Par DPA Cards');
   assert.equal(json.storeCard.backFields.find(f=>f.key==='full_card').value,card.card_number);
   assert.ok(!JSON.stringify(json.storeCard.secondaryFields).includes('Nicolas'));
   assert.ok(!JSON.stringify(json.storeCard.secondaryFields).includes('dessert'));
@@ -149,5 +165,5 @@ test('Apple header leaves room between merchant and last four digits',()=>{
   const {json}=realApplePassData({program:p,merchant,customer,card,balance:3});
   assert.ok(!Object.hasOwn(json,'logoText'));
   assert.equal(json.storeCard.headerFields[0].value,'0001');
-  assert.equal(json.barcode.altText,'Propulsé par DPA Cards');
+  assert.equal(json.barcode.altText,'Par DPA Cards');
 });

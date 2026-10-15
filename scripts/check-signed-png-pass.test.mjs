@@ -50,8 +50,8 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    assert.equal(contents.logoText,nativeName?'PNG test':undefined,'PassKit must own the optional native heading');
    assert.equal(contents.storeCard.secondaryFields[0].value,demo?'3':'6');
    assert.equal(contents.barcodes[0].message,demo?'DPA_TEST:'+id:'DPA1:'+pid);
-   assert.equal(contents.barcodes[0].altText,'Propulsé par DPA Cards');
-   if(contents.barcode)assert.equal(contents.barcode.altText,'Propulsé par DPA Cards');
+   assert.equal(contents.barcodes[0].altText,'Par DPA Cards');
+   if(contents.barcode)assert.equal(contents.barcode.altText,'Par DPA Cards');
    const message=contents.barcodes[0].message, qr=QRCode.create(message,{errorCorrectionLevel:'M'});
    const dim=(qr.modules.size+8)*6,rgba=new Uint8ClampedArray(dim*dim*4).fill(255);
    for(let y=0;y<qr.modules.size;y++)for(let x=0;x<qr.modules.size;x++)if(qr.modules.get(y,x))for(let yy=0;yy<6;yy++)for(let xx=0;xx<6;xx++){

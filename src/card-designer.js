@@ -1,5 +1,5 @@
 import { preparePngUpload } from './png-upload.js';
-import { createAppleWordmark, resolveBusinessFont } from './apple-wordmark.js';
+import { createAppleWordmark, resolveBusinessFont, APPLE_WORDMARK_VERSION } from './apple-wordmark.js';
 import { createRewardLabel, rewardLabelColor } from './apple-reward-label.js';
 // Card designer (admin): one design project per program, rendered in two layouts —
 // Apple Wallet (full rectangle, rounded corners only) and Google Wallet (its own layout).
@@ -47,7 +47,7 @@ export function defaultDesign(project) {
     font: 'hanken', label: '',
     assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleHeader: null, rewardLabel: null, businessFont: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
-    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
+    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
   };
@@ -230,10 +230,10 @@ export function makeCardDesigner(React, api) {
             minWidth: 0
           }
         },
-          platform==='apple' && o.showBusinessName && d.assets.appleHeader?.url
+          platform==='apple' && o.showBusinessName && o.headerArtworkVersion===APPLE_WORDMARK_VERSION && d.assets.appleHeader?.url
             ? h(Img,{asset:d.assets.appleHeader,alt:'Logo et nom du commerce',style:{width:160,height:50,objectFit:'contain',objectPosition:'left center',flexShrink:0}})
             : platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
-          platform==='apple' && o.showBusinessName && !d.assets.appleHeader?.url && h('div',{
+          platform==='apple' && o.showBusinessName && (o.headerArtworkVersion!==APPLE_WORDMARK_VERSION || !d.assets.appleHeader?.url) && h('div',{
             'data-field':'apple-native-business-name',
             style:{...ellipsis,minWidth:0,fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:21,fontWeight:700,lineHeight:1.1}
           },d.identity.name||'Nom du commerce'),
@@ -587,20 +587,21 @@ export function makeCardDesigner(React, api) {
       o[ks[ks.length - 1]] = value;
       // Never show or save stale baked lettering when the brand or Apple colors change.
       if(path==='identity.name'||path==='assets.logo'||path==='assets.businessFont'||path==='apple.businessNameFont'||path==='apple.showBusinessName'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
-        n.assets.appleHeader=null;
+        { n.assets.appleHeader=null; n.apple.headerArtworkVersion=0; }
       if(path==='apple.showReward'||path==='apple.rewardText'||path==='apple.rewardTextColor'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
         n.assets.rewardLabel=null;
       return n;
     });
     const forSave=async()=>{
       const next=JSON.parse(JSON.stringify(design));
-      if(next.apple?.showBusinessName===true&&!next.assets?.appleHeader?.path){
+      if(next.apple?.showBusinessName===true && (!next.assets?.appleHeader?.path || next.apple?.headerArtworkVersion!==APPLE_WORDMARK_VERSION)) {
         const artwork=await createAppleWordmark(next);
         const asset=isTest ? await api.testUpload(project.test.id,'appleHeader',artwork)
           : await api.upload(project.program.id,'appleHeader',artwork);
         next.assets.appleHeader=asset;
+        next.apple.headerArtworkVersion=APPLE_WORDMARK_VERSION;
       }
-      if(next.apple?.showBusinessName!==true)next.assets.appleHeader=null;
+      if(next.apple?.showBusinessName!==true){next.assets.appleHeader=null;next.apple.headerArtworkVersion=0;}
       if(next.apple?.showReward===true&&!next.assets?.rewardLabel?.path){
         const bitmap=await createRewardLabel(next);
         const asset=isTest ? await api.testUpload(project.test.id,'rewardLabel',bitmap)
@@ -701,7 +702,7 @@ export function makeCardDesigner(React, api) {
     const testApple = async () => {
       if (busy) return; setBusy('apple');
       try {
-        if (dirty || (design.apple?.showBusinessName && !design.assets?.appleHeader?.path) || (design.apple?.showReward && !design.assets?.rewardLabel?.path)) { const next=await forSave(); const saved = await api.testSave(project.test.id, testName, next);
+        if (dirty || (design.apple?.showBusinessName && (!design.assets?.appleHeader?.path || design.apple?.headerArtworkVersion!==APPLE_WORDMARK_VERSION)) || (design.apple?.showReward && !design.assets?.rewardLabel?.path)) { const next=await forSave(); const saved = await api.testSave(project.test.id, testName, next);
           setProject(p => ({ ...p, test: saved.test })); setDesign(next); setSaved(savedMark(next)); }
         const result = await api.testApple(project.test.id);
         if (!result.url) throw new Error('apple_wallet_unavailable');

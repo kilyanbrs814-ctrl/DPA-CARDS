@@ -9,7 +9,7 @@ import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
-import { realApplePassData, visibleCardNumber, testAssetPath } from './real-card.js';
+import { realApplePassData, visibleCardNumber, testAssetPath, appleHeaderName } from './real-card.js';
 import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeAppleHeaderLogo } from './real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -78,21 +78,21 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   // Use this test card's own saved designer config, not DPA's default template.
   const d = t.config || {}, pv = d.preview || {};
   const name = String(d.identity?.name || t.name || 'DPA Cards').slice(0, 40);
-  const composedPath=d.apple?.showBusinessName === true ? testAssetPath(d.assets?.appleHeader,testId,'appleHeader') : null;
+  const composedPath=d.apple?.showBusinessName === true && d.apple?.headerArtworkVersion===2 ? testAssetPath(d.assets?.appleHeader,testId,'appleHeader') : null;
   const primary = d.apple?.colors?.primary || d.colors?.primary || '#2448F0';
   const accent = d.colors?.accent || '#F2C94C';
   const label = String(d.apple?.label || d.label || (pv.mode === 'points' ? 'POINTS' : 'TAMPONS')).slice(0, 16);
   const balance = Math.max(0, Math.round(Number(t.test_balance) || 0));
   const goal = Math.max(1, Math.round(Number(pv.goal) || 10));
   const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA_TEST:' + t.qr_token,
-    messageEncoding: 'iso-8859-1', altText: 'Propulsé par DPA Cards' };
+    messageEncoding: 'iso-8859-1', altText: 'Par DPA Cards' };
   const json = {
     formatVersion: 1, passTypeIdentifier: PASS_TYPE_ID, teamIdentifier: TEAM_ID,
     // Each preview gets a fresh demo serial. Wallet otherwise reuses the old
     // installed card with the same serial even when its design has changed.
     serialNumber: 'test-' + t.id + '-' + crypto.randomUUID(),
     organizationName: name,
-    ...(d.apple?.showBusinessName === true && !composedPath ? { logoText: name } : {}),
+    ...(d.apple?.showBusinessName === true && !composedPath ? { logoText: appleHeaderName(name) } : {}),
     description: 'Démonstration DPA Cards – sans valeur commerciale',
     backgroundColor: rgb(primary), foregroundColor: textColor(primary),
     labelColor: textColor(primary),
