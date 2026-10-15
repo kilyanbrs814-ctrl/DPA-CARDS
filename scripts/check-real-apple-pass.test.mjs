@@ -1,7 +1,7 @@
 import { parseCode } from '../src/scanner.js';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { realAppleBrand, realApplePassData, assetPath, onBackground, visibleCardNumber } from '../supabase/functions/apple-pass/real-card.js';
+import { realAppleBrand, realApplePassData, assetPath, onBackground, visibleCardNumber, appleHeaderName } from '../supabase/functions/apple-pass/real-card.js';
 
 const MID = '11111111-1111-4111-8111-111111111111';
 const PID = '22222222-2222-4222-8222-222222222222';
@@ -108,7 +108,17 @@ test('points-mode real pass retains actual running balance and remaining target'
 
 test('number printed on real pass works with manual scanner fallback', () => {
   const value=visibleCardNumber('DPA-00001234');
-  assert.equal(value,'00001234');
-  assert.deepEqual(parseCode(value),{kind:'number',code:'00001234'});
-  assert.deepEqual(parseCode(value.slice(-4)),{kind:'suffix',code:'1234'});
+  assert.equal(value,'1234');
+  assert.deepEqual(parseCode(value),{kind:'suffix',code:'1234'});
+});
+
+test('Apple header leaves room between merchant and last four digits',()=>{
+  assert.equal(appleHeaderName('Commerce test'),'Commerce');
+  assert.equal(appleHeaderName('Barber'),'Barber');
+  assert.equal(visibleCardNumber('TEST 931f ae31'),'9313');
+  const p=structuredClone(program);p.card_design.stamps.emoji='💧';
+  const {json}=realApplePassData({program:p,merchant,customer,card,balance:3});
+  assert.equal(json.logoText,'Boulanger');
+  assert.equal(json.storeCard.headerFields[0].value,'0001');
+  assert.equal(json.barcode.altText,'0001');
 });
