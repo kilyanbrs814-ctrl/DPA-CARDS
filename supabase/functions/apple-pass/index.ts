@@ -6,7 +6,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
-import { realApplePassData, visibleCardNumber } from './real-card.js';
+import { realApplePassData, visibleCardNumber, appleHeaderName } from './real-card.js';
 import { makeRealStrip, makeDemoStrip, makeDemoLogo } from './real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -89,7 +89,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
     serialNumber: 'test-' + t.id + '-' + crypto.randomUUID(),
     organizationName: name,
     description: 'Démonstration DPA Cards – sans valeur commerciale',
-    logoText: name, backgroundColor: rgb(primary), foregroundColor: textColor(primary),
+    logoText: d.stamps?.emoji ? appleHeaderName(name) : name, backgroundColor: rgb(primary), foregroundColor: textColor(primary),
     labelColor: textColor(primary),
     storeCard: d.stamps?.emoji ? {
       // Same visible fields as the real saved loyalty pass. The test QR stays
@@ -103,6 +103,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
       backFields: [
         {key:'demo',label:'DÉMONSTRATION',value:'Cette carte ne possède aucune valeur commerciale.'},
         {key:'reward',label:'RÉCOMPENSE SIMULÉE',value:String(pv.reward || 'Récompense test').slice(0,80)},
+        {key:'emoji_credits',label:'ILLUSTRATIONS',value:'Noto Emoji (Google, Apache 2.0) ; Twemoji (Twitter, CC BY 4.0) — github.com/jdecked/twemoji'},
         ...(d.apple?.showSubtitle!==false && d.identity?.subtitle
           ? [{key:'subtitle',label:'LE COMMERCE',value:String(d.identity.subtitle).slice(0,80)}]:[]),
       ],

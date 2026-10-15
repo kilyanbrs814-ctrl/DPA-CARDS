@@ -6,7 +6,16 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 // display-only, while the full number stays available on the back for support.
 export const visibleCardNumber = value => {
   const raw=String(value || '').trim();
-  return raw.replace(/\D/g, '') || raw || '—';
+  const digits=raw.replace(/\D/g, '');
+  return digits ? digits.slice(-4) : (raw || '—');
+};
+// iOS gives logoText and the header card number a shared horizontal area.
+// Shorten ONLY the visible header; the full merchant name remains metadata.
+export const appleHeaderName = name => {
+  const full=String(name||'DPA Cards').trim();
+  if(full.length<=10)return full;
+  const words=full.slice(0,11).trim().split(/\s+/);
+  return words.length>1?words.slice(0,-1).join(' '):full.slice(0,10);
 };
 const txt = (value, limit = 60) => typeof value === 'string' ? value.replace(/[\x00-\x1F\x7F]/g, ' ').trim().slice(0, limit) : '';
 export const hex = (value, fallback) => HEX.test(value || '') ? value.toUpperCase() : fallback;
@@ -78,7 +87,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     serialNumber: card.id,
     organizationName: brand.issuer,
     description: 'Carte de fidélité ' + brand.issuer,
-    logoText: brand.issuer,
+    logoText: brand.emoji ? appleHeaderName(brand.issuer) : brand.issuer,
     backgroundColor: toRgb(brand.primary),
     foregroundColor: toRgb(brand.foreground),
     labelColor: toRgb(brand.foreground),
@@ -98,6 +107,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
         ...(brand.subtitle?[{key:'subtitle',label:'LE COMMERCE',value:brand.subtitle}]:[]),
         {key:'rule',label:'CONDITIONS',value:modePoints?goal+' points pour '+txt(program.reward,90):goal+' passages pour '+txt(program.reward,90)},
         {key:'info',label:'DPA Cards',value:'Présentez votre QR code en caisse. Le solde correspond à la dernière génération du pass ; les mises à jour automatiques ne sont pas encore activées.'},
+        {key:'emoji_credits',label:'ILLUSTRATIONS',value:'Noto Emoji (Google, Apache 2.0) ; Twemoji (Twitter, CC BY 4.0) — github.com/jdecked/twemoji'},
       ],
     } : {
       headerFields: [{ key: 'program', label: 'PROGRAMME', value: txt(program.name, 22) || 'Fidélité' }],

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
 import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeGoogleStampHero, makeEmojiCardStrip } from '../supabase/functions/apple-pass/real-strip.js';
-import { decodeEmojiPng, emojiFilename, compositeEmoji } from '../supabase/functions/apple-pass/emoji-art.js';
+import { decodeEmojiPng, emojiFilename, compositeEmoji, twemojiFilename } from '../supabase/functions/apple-pass/emoji-art.js';
 
 const brand={primary:'#121820',secondary:'#3040C0',accent:'#F2C94C',stamps:{filled:'#F2C94C',empty:'#FFFFFF'}};
 const pngSignature=[137,80,78,71,13,10,26,10];
@@ -163,4 +163,23 @@ test('new real and demo Apple emoji strips use the same centered 375x144 rectang
     const empty=await makeEmojiCardStrip(stamps,base,0,10,'passages',1);
     assert.notDeepEqual(Array.from(real),Array.from(empty),'stamped balance affects visible panel');
   } finally {globalThis.fetch=original;}
+});
+
+test('💧 Apple demo strip stays visible even when Noto and Twemoji are unavailable',async()=>{
+  assert.equal(twemojiFilename('💧'),'1f4a7.png');
+  const savedFetch=globalThis.fetch;
+  try{
+    globalThis.fetch=async()=>new Response('not found',{status:404});
+    const design=structuredClone(demoDesign);
+    design.stamps={icon:'emoji',emoji:'💧',filled:'#F2C94C',empty:'#FFFFFF'};
+    const made=parsePng(await makeDemoStrip(design,1));
+    assert.deepEqual([made.w,made.h],[375,144]);
+    const completed=rgbaAt(made,104,49),waiting=rgbaAt(made,230,49);
+    const panel=rgbaAt(made,80,49);
+    assert.notDeepEqual(completed,panel,'completed droplet must have visible pixels');
+    assert.notDeepEqual(waiting,panel,'remaining droplet must also be visible');
+    assert.notDeepEqual(completed,waiting,'completed and gray stamps must differ');
+    const real=await makeRealStrip({primary:'#1C1F24',secondary:'#2448F0',emoji:'💧',stamps:design.stamps},3,10,1);
+    assert.deepEqual(Array.from(real),Array.from(await makeDemoStrip(design,1)));
+  } finally { globalThis.fetch=savedFetch; }
 });

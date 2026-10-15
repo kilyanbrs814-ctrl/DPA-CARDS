@@ -34,8 +34,15 @@ migration de base de données n'est nécessaire.
 
 ## Propriété intellectuelle des emoji
 
-Les images des tampons sont fournies par le projet libre
-[Google Noto Emoji](https://github.com/googlefonts/noto-emoji). Les ressources
+Les images des tampons sont recherchées d'abord dans le projet libre
+[Google Noto Emoji](https://github.com/googlefonts/noto-emoji). Lorsqu'un
+pictogramme ne figure pas dans son catalogue PNG (notamment 💧), le serveur
+essaie [Twemoji, par Twitter et les contributeurs](https://github.com/jdecked/twemoji)
+sous [licence CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+La source de Twemoji doit être créditée lorsqu'elle est utilisée. Si les deux
+catalogues sont inaccessibles, une petite illustration locale de secours est
+créée : goutte 💧 dessinée localement, ou étoile générique pour d'autres emojis.
+Les ressources
 PNG ordinaires sont sous licence Apache-2.0 ; consultez
 [la licence et les exceptions](https://github.com/googlefonts/noto-emoji#license).
 Copyright Google LLC / contributeurs Noto Emoji.
@@ -50,7 +57,9 @@ Les assets Noto proviennent uniquement de l'URL codée en dur
 Le nom du fichier est limité à des codepoints Unicode emoji validés ; les
 images PNG sont décodées dans le serveur sans bibliothèque native ni WASM.
 Si le téléchargement échoue, les champs de fidélité et QR continuent à être
-générés ; le visuel peut ne pas contenir les pictogrammes.
+générés, et les emplacements de tampons ne restent plus vides. Le rendu
+d'un emoji dessiné en secours peut être légèrement différent de son aperçu
+dans le navigateur.
 
 ## Sécurité et flux de données
 

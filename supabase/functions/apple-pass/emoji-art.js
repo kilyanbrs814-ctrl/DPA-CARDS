@@ -74,17 +74,71 @@ export function emojiFilename(value) {
   if(!parts.length||parts.length>12)return null;
   return 'emoji_u'+parts.map(n=>n.toString(16)).join('_')+'.png';
 }
+// Not every Noto emoji ships as a PNG: for example 💧 (U+1F4A7) is a
+// valid Unicode emoji, but the Noto png/128 directory has no matching PNG.
+// Fall back to the independent open Twemoji set (CC-BY 4.0), and finally
+// render a small built-in vector-like glyph so the stamp zone is NEVER blank.
+export function twemojiFilename(value) {
+  if (!emojiFilename(value)) return null;
+  const parts=Array.from(value).map(ch=>ch.codePointAt(0))
+    .filter(cp=>cp!==0xfe0f&&cp!==0xfe0e);
+  return parts.map(n=>n.toString(16)).join('-')+'.png';
+}
+async function emojiImage(url) {
+  try {
+    const res=await fetch(url,{signal:AbortSignal.timeout(4000),redirect:'error'});
+    if(!res.ok||Number(res.headers.get('content-length')||0)>350000)return null;
+    const buf=new Uint8Array(await res.arrayBuffer());
+    if(buf.length>350000)return null;
+    return await decodeEmojiPng(buf);
+  } catch { return null; }
+}
+// Small local safety net; 💧 is important for cafés, car washes and water
+// businesses. All other unavailable emojis use a neutral gold star instead of
+// an empty blue panel. The full emoji still appears when a source is reachable.
+export function fallbackEmoji(value) {
+  const n=64, pixels=new Uint8Array(n*n*4);
+  const droplet=value.includes('💧');
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){
+    const X=x+.5-32,Y=y+.5;
+    let inside=false;
+    if(droplet){
+      const extent=Y<38?Math.max(0,(Y-6)*.65):Math.sqrt(Math.max(0,20*20-(Y-38)**2));
+      inside=Y>=6 && Y<58 && Math.abs(X)<extent;
+    }else {
+      const angle=Math.atan2(Y-32,X);
+      const radius=Math.hypot(X,Y-32);
+      const wave=.5+.5*Math.cos(5*(angle+Math.PI/2));
+      inside=radius<11+14*wave;
+    }
+    if(!inside)continue;
+    const i=(y*n+x)*4;
+    if(droplet){
+      pixels[i]=x<32?24:53;
+      pixels[i+1]=x<32?121:162;
+      pixels[i+2]=235;
+    }else {
+      pixels[i]=245;pixels[i+1]=194;pixels[i+2]=59;
+    }
+    pixels[i+3]=255;
+  }
+  return {width:n,height:n,pixels};
+}
 const memo=new Map();
 export async function notoEmoji(value) {
   const name=emojiFilename(value);if(!name)return null;
   if(!memo.has(name)){
-    const path='https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/'+name;
     memo.set(name,(async()=>{
-      try{
-        const res=await fetch(path,{signal:AbortSignal.timeout(5000),redirect:'error'});
-        if(!res.ok||Number(res.headers.get('content-length')||0)>350000)return null;
-        return await decodeEmojiPng(new Uint8Array(await res.arrayBuffer()));
-      }catch{return null;}
+      const noto='https://raw.githubusercontent.com/googlefonts/noto-emoji/main/png/128/'+name;
+      const first=await emojiImage(noto);
+      if(first)return first;
+      const twitterFile=twemojiFilename(value);
+      if(twitterFile){
+        const twemoji='https://raw.githubusercontent.com/jdecked/twemoji/main/assets/72x72/'+twitterFile;
+        const second=await emojiImage(twemoji);
+        if(second)return second;
+      }
+      return fallbackEmoji(value);
     })());
   }
   return memo.get(name);
