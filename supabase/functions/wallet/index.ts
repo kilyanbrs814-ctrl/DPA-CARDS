@@ -734,6 +734,20 @@ async function deactivateObjects(objectIds: string[], budgetMs = 20000): Promise
 }
 
 // Dashboard actions need a valid subscription (trialing or active), checked on the server.
+// The merchant dashboard gets its entitlement from the same DB function that RLS
+// and server-side paid features use. The caller cannot choose another merchant.
+async function merchantAccess(req: Request): Promise<Response> {
+  const {member}=await ownerOf(req);
+  if(!member)throw new HttpError(403,'no_merchant');
+  const {data:allowed,error}=await admin.rpc('merchant_has_access',{p_merchant:member.merchant_id});
+  if(error)throw new Error('db_access');
+  const {data:manual,error:me}=await admin.from('merchant_manual_access')
+    .select('enabled,expires_at').eq('merchant_id',member.merchant_id).maybeSingle();
+  if(me)throw new Error('db_manual_access');
+  const manualActive=manual?.enabled===true && !!manual.expires_at && new Date(manual.expires_at)>new Date();
+  return json(req,200,{has_access:allowed===true,source:allowed===true&&manualActive?'manual':allowed===true?'stripe':'none',manual_expires_at:manualActive?manual.expires_at:null});
+}
+
 async function requireAccess(merchantId: string) {
   const { data, error } = await admin.rpc('merchant_has_access', { p_merchant: merchantId });
   if (error) throw new Error('db_access');
@@ -1754,6 +1768,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/notify')) return await notify(req);
     if (req.method === 'POST' && path.endsWith('/delete-customer')) return await deleteCustomer(req);
     if (req.method === 'POST' && path.endsWith('/delete-account')) return await deleteAccount(req);
+    if (req.method === 'POST' && path.endsWith('/merchant-access')) return await merchantAccess(req);
     if (req.method === 'POST' && path.endsWith('/admin-overview')) return await adminOverview(req);
     if (req.method === 'POST' && path.endsWith('/admin-merchant')) return await adminMerchant(req);
     if (req.method === 'POST' && path.endsWith('/admin-manual-access')) return await adminManualAccess(req);
