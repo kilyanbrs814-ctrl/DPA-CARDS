@@ -174,7 +174,7 @@ test('💧 Apple demo strip stays visible even when Noto and Twemoji are unavail
     design.stamps={icon:'emoji',emoji:'💧',filled:'#F2C94C',empty:'#FFFFFF'};
     const made=parsePng(await makeDemoStrip(design,1));
     assert.deepEqual([made.w,made.h],[375,144]);
-    const completed=rgbaAt(made,104,49),waiting=rgbaAt(made,146,49);
+    const completed=rgbaAt(made,104,49),waiting=rgbaAt(made,230,49);
     const panel=rgbaAt(made,80,49);
     assert.notDeepEqual(completed,panel,'completed droplet must have visible pixels');
     assert.notDeepEqual(waiting,panel,'remaining droplet must also be visible');
