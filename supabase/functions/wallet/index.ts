@@ -1,4 +1,5 @@
 import { decodePng } from '../_shared/png.js';
+import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 // DPA Cards — Google Wallet Edge Function.
 //
 //   POST /wallet/save-link  merchant session → signed "Add to Google Wallet" link for one card
@@ -177,9 +178,11 @@ const walletCounter = (done: number, goal: number, mode: string) => {
     secondaryLoyaltyPoints:{label:isPoints?'Points restants':'Passages restants',balance:{int:left}}
   };
 };
-const hasStampEmoji = (program: any) =>
-  typeof program?.card_design?.stamps?.emoji === 'string' &&
-  /\p{Extended_Pictographic}/u.test(program.card_design.stamps.emoji);
+const hasSavedStampArt = (design: any) =>
+  (design?.stamps?.icon === 'library' && !!libraryStampId(design.stamps.libraryId)) ||
+  (design?.stamps?.icon === 'emoji' && typeof design.stamps.emoji === 'string' && /\p{Extended_Pictographic}/u.test(design.stamps.emoji));
+// Retain the existing Google Wallet layout and signed stamp-board route.
+const hasStampEmoji = (program: any) => hasSavedStampArt(program?.card_design);
 async function stampBoardUrl(id: string, revision = 0, test = false) {
   const tag=(test?'test-':'')+id;
   return SUPABASE_URL+'/functions/v1/wallet/stamp-board/'+
@@ -212,8 +215,11 @@ async function publicStampBoard(req: Request, path: string) {
     const now=await latest(id);
     progress=now.balance;
   }
-  if(typeof design?.stamps?.emoji!=='string')return new Response('Not found',{status:404});
-  const png=await makeGoogleStampHero(design,progress,goal,mode);
+  if(!hasSavedStampArt(design))return new Response('Not found',{status:404});
+  const selectedLibrary=design.stamps?.icon==='library'?libraryStampId(design.stamps.libraryId):'';
+  const libraryImage=selectedLibrary?await loadLibraryStamp(selectedLibrary):null;
+  if(selectedLibrary && !libraryImage)return new Response('Image unavailable',{status:503});
+  const png=await makeGoogleStampHero(design,progress,goal,mode,libraryImage);
   return new Response(new Uint8Array(png),{
     status:200,headers:{'content-type':'image/png','cache-control':'public, max-age=300','x-content-type-options':'nosniff'}
   });
@@ -1070,7 +1076,7 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 const DESIGN_FONTS = ['hanken', 'space', 'playfair'];
 const STAMP_SHAPES = ['circle', 'rounded', 'square'];
 const STAMP_STYLES = ['outline', 'soft'];
-const STAMP_ICONS = ['emoji', 'none', 'check', 'star', 'favorite', 'local_cafe', 'local_pizza', 'content_cut', 'restaurant', 'cake', 'spa', 'local_bar', 'icecream', 'bakery_dining', 'custom'];
+const STAMP_ICONS = ['library', 'emoji', 'none', 'check', 'star', 'favorite', 'local_cafe', 'local_pizza', 'content_cut', 'restaurant', 'cake', 'spa', 'local_bar', 'icecream', 'bakery_dining', 'custom'];
 const savedEmoji = (value: unknown) => {
   if (typeof value !== 'string') return '';
   const emoji = value.trim();
@@ -1113,7 +1119,7 @@ function cleanDesign(raw: any, folder: string) {
     font: pick(r.font, DESIGN_FONTS, 'hanken'),
     label: str(r.label, 16),
     assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
-    stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, 'check'), emoji: savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
+    stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, 'library'), libraryId: libraryStampId(s.libraryId), emoji: s.icon==='library' ? '' : savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
       filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF') },
     apple: platform(r.apple),
     google: platform(r.google),
@@ -1547,7 +1553,7 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   const issuer = String(d.identity?.name || 'Carte test DPA Cards').slice(0, 40);
   const classId = `${ISSUER_ID}.dpa-test-class-${t.id}`, objectId = `${ISSUER_ID}.dpa-test-${t.id}`;
   const branding = {
-    issuerName: issuer, programName: d.stamps?.emoji ? issuer : 'Carte de démonstration',
+    issuerName: issuer, programName: hasSavedStampArt(d) ? issuer : 'Carte de démonstration',
     programLogo: { sourceUri: { uri: logo ? assetUrl(logo) : LOGO_URL }, contentDescription: text(issuer) },
     ...(hero && d.google?.showHero !== false ? { heroImage: { sourceUri: { uri: assetUrl(hero) }, contentDescription: text(issuer) } } : {}),
     hexBackgroundColor: HEX_RE.test(colors.primary ?? '') ? colors.primary : '#1C1F24',
@@ -1561,15 +1567,15 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   const mode = pv.mode === 'points' ? 'points' : 'passages', view = testView(t);
   const object = {
     id: objectId, classId, state: 'ACTIVE',
-    accountId: d.stamps?.emoji ? walletCardDigits(view.card_number) : view.card_number,
-    ...(d.stamps?.emoji ? {} : {accountName:String(pv.client || 'Client test').slice(0,60)}),
-    ...(typeof d.stamps?.emoji==='string' && d.stamps.emoji ? {
+    accountId: hasSavedStampArt(d) ? walletCardDigits(view.card_number) : view.card_number,
+    ...(hasSavedStampArt(d) ? {} : {accountName:String(pv.client || 'Client test').slice(0,60)}),
+    ...(hasSavedStampArt(d) ? {
       heroImage:{sourceUri:{uri:await stampBoardUrl(t.id,Date.now(),true)}},
     } : {}),
-    ...(d.stamps?.emoji ? walletCounter(pv.progress||0,pv.goal||10,mode)
+    ...(hasSavedStampArt(d) ? walletCounter(pv.progress||0,pv.goal||10,mode)
       : {loyaltyPoints:{label:unitLabel(mode),balance:{int:Math.max(0,Math.round(Number(pv.progress)||0))}}}),
     barcode: { type: 'QR_CODE', value: view.qr_value, alternateText: 'CARTE TEST' },
-    textModulesData: d.stamps?.emoji ? [] : [
+    textModulesData: hasSavedStampArt(d) ? [] : [
       { id: 'reward', header: 'Récompense', body: `${pv.goal ?? 10} ${mode} = ${pv.reward || 'Récompense'}` },
       { id: 'demo', header: 'Carte de démonstration', body: 'Carte de test DPA Cards : elle n’appartient à aucun commerce et n’a aucune valeur.' },
     ],
@@ -1578,7 +1584,7 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   if (og.status === 404) { const r = await google('POST', '/loyaltyObject', object); if (r.status !== 200 && r.status !== 409) throw gErr('test_object_insert', r); }
   else if (og.status === 200) {
     const next:any={...og.data,...object};
-    if(d.stamps?.emoji) delete next.accountName; // an old saved demo may have the former Client field
+    if(hasSavedStampArt(d)) delete next.accountName; // an old saved demo may have the former Client field
     const r=await google('PUT',`/loyaltyObject/${encodeURIComponent(objectId)}`,next);
     if(r.status!==200)throw gErr('test_object_update',r);
   }
