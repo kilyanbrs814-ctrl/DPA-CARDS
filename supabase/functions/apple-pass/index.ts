@@ -10,7 +10,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
 import { realApplePassData, visibleCardNumber, testAssetPath, appleHeaderName } from './real-card.js';
-import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeAppleHeaderLogo } from './real-strip.js';
+import { decodePanelArt, makeRealStrip, makeDemoStrip, makeDemoLogo, makeAppleHeaderLogo } from './real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 function serviceKey() { try { const k = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}'); if (k.default) return k.default; } catch {} return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''; }
@@ -157,14 +157,15 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   const rewardBytes=rewardPath ? await realLogo(rewardPath) : null;
   if(rewardPath && !rewardBytes)throw new SafeError(422,'invalid_reward_label');
   const rewardArt=rewardBytes ? await decodePng(rewardBytes) : null;
+  const panelArt=await loadPanelArt(testAsset('appleStrip'));
   const finalStar=await loadRewardStar();
   if(rewardArt && (rewardArt.width!==630||rewardArt.height!==52))throw new SafeError(422,'invalid_reward_label');
   // Apple displays its native primary text on top of the strip image. It cannot
   // use the exact HTML layout, but the two-row colored stamps and blue gradient
   // now come from the same saved config as the Apple preview.
   try {
-    images['strip.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt, finalStar));
-    images['strip@2x.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 2, stamp, rewardArt, finalStar));
+    images['strip.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt, finalStar, panelArt));
+    images['strip@2x.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 2, stamp, rewardArt, finalStar, panelArt));
   } catch { console.error('apple-pass demo strip unavailable'); }
   const pass = new PKPass({ ...images, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8') }, {
     wwdr: await wwdrCert(),
@@ -186,6 +187,15 @@ async function realLogo(path: string | null) {
     await decodePng(bytes);
     return Buffer.from(bytes);
   } catch { return null; }
+}
+
+async function loadPanelArt(path: string | null) {
+  if (!path) return null;
+  try {
+    const { data, error } = await supabase.storage.from('program-assets').download(path);
+    if (error || !data || data.size > 2097152) throw new Error('invalid_asset');
+    return await decodePanelArt(new Uint8Array(await data.arrayBuffer()));
+  } catch { throw new SafeError(422, 'invalid_apple_strip'); }
 }
 
 async function createPass(token: string) {
@@ -248,13 +258,14 @@ async function createPass(token: string) {
   const rewardBytes=brand.rewardLabel ? await realLogo(brand.rewardLabel) : null;
   if(brand.rewardLabel && !rewardBytes)throw new SafeError(422,'invalid_reward_label');
   const rewardArt=rewardBytes ? await decodePng(rewardBytes) : null;
+  const panelArt=await loadPanelArt(brand.appleStrip);
   const finalStar=await loadRewardStar();
   if(rewardArt && (rewardArt.width!==630||rewardArt.height!==52))throw new SafeError(422,'invalid_reward_label');
   // Strip is optional: a rendering issue should not prevent a customer from
   // receiving a valid pass containing all native fields and QR code.
   try {
-    assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1, stamp, rewardArt, finalStar));
-    assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2, stamp, rewardArt, finalStar));
+    assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1, stamp, rewardArt, finalStar, panelArt));
+    assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2, stamp, rewardArt, finalStar, panelArt));
   } catch {
     console.error('apple-pass real strip unavailable');
   }

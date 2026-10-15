@@ -166,7 +166,7 @@ test('native badge shows commerce initials on yellow, not a generic DPA logo',as
 test('real pass still uses independent logo and strip path; demo remains excluded from metrics',()=>{
   const source=readFileSync(new URL('../supabase/functions/apple-pass/index.ts',import.meta.url),'utf8');
   const demo=source.split('async function createDemoPass(')[1].split('// Real cards only.')[0];
-  assert.ok(demo.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt, finalStar)'));
+  assert.ok(demo.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt, finalStar, panelArt)'));
   assert.ok(demo.includes('makeDemoLogo(name, accent'));
   assert.ok(demo.includes('DPA_TEST:'));
   assert.ok(demo.includes('crypto.randomUUID()'));
@@ -216,7 +216,7 @@ test('Apple and Google sources include emoji-safe image routes and balance updat
   assert.ok(server.includes('hasStampEmoji(program)'));
   assert.ok(server.includes('async function stampSignature(id: string)'));
   assert.ok(server.includes('update.heroImage'));
-  assert.ok(apple.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt, finalStar)'));
+  assert.ok(apple.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt, finalStar, panelArt)'));
   assert.ok(apple.includes('realApplePassData({'));
 });
 
@@ -329,4 +329,64 @@ test('Apple header text uses native PassKit logoText only when the design opts i
   assert.ok(!source.includes("json.logoText = ''"),'empty logoText is rejected by passkit-generator Joi schema');
   const json={organizationName:'Commerce',storeCard:{headerFields:[]}};
   assert.equal(Object.hasOwn(json,'logoText'),false,'existing cards remain logo-only by default');
+});
+
+test('Apple strip artwork covers the panel, stays behind stamps and survives hiding them',async()=>{
+  const {decodePng}=await import('../supabase/functions/_shared/png.js');
+  const solid=(w,h,color)=>({width:w,height:h,pixels:new Uint8Array(Array.from({length:w*h},()=>color).flat())});
+  const art=solid(80,10,[20,180,80,255]),icon=solid(8,8,[240,40,20,255]);
+  const config={colors:brand,stamps:{icon:'custom'},preview:{goal:10,progress:3,mode:'passages'}};
+  const at=(im,x,y)=>Array.from(im.pixels.slice((y*im.width+x)*4,(y*im.width+x)*4+4));
+  for(const scale of [1,2]){
+    const hidden=await decodePng(await makeDemoStrip({...config,apple:{showStamps:false}},scale,icon,null,null,art));
+    assert.deepEqual(at(hidden,187*scale,43*scale),[20,180,80,255]);
+    assert.deepEqual(at(hidden,0,0),[18,24,32,255]);
+    assert.deepEqual(at(hidden,16*scale,3*scale),[18,24,32,255],'rounded corner');
+    const visible=await decodePng(await makeDemoStrip(config,scale,icon,null,null,art));
+    assert.deepEqual(at(visible,187*scale,43*scale),[240,40,20,255],'stamp over image');
+    const real=await makeRealStrip({...brand,stamp:'custom',showStamps:false},3,10,scale,icon,null,null,art);
+    assert.deepEqual(await decodePng(real),hidden);
+    const noRectangle=await makeDemoStrip({...config,apple:{showStampPanel:false,showStamps:false}},scale,icon,null,null,art);
+    assert.deepEqual(at(await decodePng(noRectangle),187*scale,43*scale),[20,180,80,255]);
+    for(const render of [
+      () => makeDemoStrip({...config,apple:{showStamps:false}},scale,null,null,null,art),
+      () => makeRealStrip({...brand,showStamps:false},3,10,scale,null,null,null,art)
+    ])assert.deepEqual(at(await decodePng(await render()),281*scale,70*scale),[20,180,80,255]);
+  }
+  const g=await makeGoogleStampHero(config,3,10,'passages',icon);
+  assert.deepEqual(await makeGoogleStampHero({...config,apple:{showStamps:false},assets:{appleStrip:{url:'unused'}}},3,10,'passages',icon),g);
+});
+
+test('Apple panel cover crops the center and keeps reward artwork when stamps are hidden',async()=>{
+  const {decodePng}=await import('../supabase/functions/_shared/png.js');
+  const pixels=new Uint8Array(100*10*4);
+  for(let y=0;y<10;y++)for(let x=0;x<100;x++)pixels.set(x>=35&&x<65?[0,255,0,255]:[255,0,0,255],(y*100+x)*4);
+  const panel={width:100,height:10,pixels};
+  const reward={width:1,height:1,pixels:new Uint8Array([255,255,255,255])};
+  const im=await decodePng(await makeEmojiCardStrip({}, {...brand,showStamps:false},3,10,'passages',1,null,reward,null,panel));
+  const at=(x,y)=>Array.from(im.pixels.slice((y*im.width+x)*4,(y*im.width+x)*4+4));
+  assert.deepEqual(at(25,72),[0,255,0,255]);
+  assert.deepEqual(at(350,72),[0,255,0,255]);
+  assert.deepEqual(at(187,120),[255,255,255,255]);
+});
+
+test('Apple panel settings survive reload and asset paths remain scoped to their owner',async()=>{
+  const {normalize,prepareDesign}=await import('../src/card-designer.js');
+  const {assetPath,testAssetPath,realAppleBrand}=await import('../supabase/functions/apple-pass/real-card.js');
+  const mid='11111111-1111-1111-1111-111111111111',pid='22222222-2222-2222-2222-222222222222';
+  const card={merchant_id:mid,program_id:pid};
+  assert.equal(normalize({},{}).apple.showStamps,true);
+  for(const ext of ['png','jpg']){
+    const path=`${mid}/${pid}/designer/appleStrip-${mid}.${ext}`;
+    const design={assets:{appleStrip:{path}},apple:{showStamps:false}};
+    const loaded=prepareDesign(JSON.parse(JSON.stringify(design)),{}, {},p=>'https://assets/'+p);
+    assert.equal(loaded.assets.appleStrip.url,'https://assets/'+path);
+    assert.equal(loaded.apple.showStamps,false);
+    const brand=realAppleBrand({card_design:design},{},card);
+    assert.equal(brand.appleStrip,path);assert.equal(brand.showStamps,false);
+    assert.equal(assetPath(path,{...card,merchant_id:pid},'appleStrip'),null);
+    const testPath=`tests/${mid}/designer/appleStrip-${pid}.${ext}`;
+    assert.equal(testAssetPath(testPath,mid,'appleStrip'),testPath);
+    assert.equal(testAssetPath(testPath,pid,'appleStrip'),null);
+  }
 });

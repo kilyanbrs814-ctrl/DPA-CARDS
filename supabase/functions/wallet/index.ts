@@ -41,7 +41,7 @@ import { loadRewardStar } from '../_shared/reward-star.js';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { LOGO_PNG_BASE64 } from './logo.ts';
 import { sendEmail, simpleMail } from '../_shared/email.ts';
-import { makeGoogleStampHero } from '../apple-pass/real-strip.js';
+import { decodePanelArt, makeGoogleStampHero } from '../apple-pass/real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ISSUER_ID = Deno.env.get('GOOGLE_WALLET_ISSUER_ID') ?? '';
@@ -1169,7 +1169,7 @@ const savedEmoji = (value: unknown) => {
   return [...emoji].length <= 16 && /\p{Extended_Pictographic}/u.test(emoji) ? emoji : '';
 };
 
-const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'appleHeader', 'rewardLabel', 'businessFont', 'businessNameImage'] as const;
+const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'appleStrip', 'appleHeader', 'rewardLabel', 'businessFont', 'businessNameImage'] as const;
 type AssetKind = typeof ASSET_KINDS[number];
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '');
@@ -1178,7 +1178,7 @@ const pick = <T extends string>(v: unknown, list: readonly T[], dflt: T): T => (
 const int = (v: unknown, min: number, max: number, dflt: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt; };
 // Images of the program's own folder: the designer's uploads, or the logo / cover the program already uses.
 // `folder` = "<merchant>/<program>" for a real program, "tests/<test id>" for a test card (designer/ only).
-const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\\.(png|jpg)$`);
+const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp|appleStrip|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\\.(png|jpg)$`);
 
 // Whitelist of the design document; anything else is dropped. Colours of a platform are optional overrides.
 function cleanDesign(raw: any, folder: string) {
@@ -1208,7 +1208,7 @@ function cleanDesign(raw: any, folder: string) {
     assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
     stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, savedEmoji(s.emoji) ? 'emoji' : 'library'), libraryId: libraryStampId(s.libraryId), emoji: s.icon==='library' ? '' : savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
       filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF') },
-    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showStampPanel: r.apple?.showStampPanel !== false, headerArtworkVersion: int(r.apple?.headerArtworkVersion,0,2,0), showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64),
+    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showStampPanel: r.apple?.showStampPanel !== false, showStamps: r.apple?.showStamps !== false, headerArtworkVersion: int(r.apple?.headerArtworkVersion,0,2,0), showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64),
       rewardTextColor: HEX_RE.test(r.apple?.rewardTextColor??'')?String(r.apple.rewardTextColor).toUpperCase():'',
       businessNameFont: pick(r.apple?.businessNameFont,['system','hanken','space','playfair','custom'] as const,'system') },
     google: platform(r.google),
@@ -1310,14 +1310,15 @@ async function validateDesignPng(config: any) {
     const valid=ext==='otf'&&magic==='OTTO'||ext==='woff2'&&magic==='wOF2'||ext==='ttf'&&bytes[0]===0&&bytes[1]===1&&bytes[2]===0&&bytes[3]===0;
     if(!valid)throw new HttpError(422,'invalid_business_font');
   }
-  for(const kind of ['logo','stamp','appleHeader','rewardLabel','businessNameImage']) {
+  for(const kind of ['logo','stamp','appleHeader','rewardLabel','businessNameImage','appleStrip']) {
     const path=config.assets?.[kind]?.path;
-    if(!path || !path.endsWith('.png'))continue; // legacy JPEG assets remain compatible
+    if(!path || (kind!=='appleStrip' && !path.endsWith('.png')))continue; // legacy JPEG assets remain compatible
     const {data,error}=await admin.storage.from('program-assets').download(path);
     if(error || !data)throw new HttpError(422,`missing_${kind}`);
     if(data.size>2097152)throw new HttpError(422,`invalid_${kind}`);
     try {
-      const img=await decodePng(new Uint8Array(await data.arrayBuffer()));
+      const bytes=new Uint8Array(await data.arrayBuffer());
+      const img=kind==='appleStrip' ? await decodePanelArt(bytes) : await decodePng(bytes);
       if(kind==='businessNameImage') {
         let ink=false,transparent=false;
         for(let i=3;i<img.pixels.length;i+=4){

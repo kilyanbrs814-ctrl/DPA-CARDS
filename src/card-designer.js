@@ -23,7 +23,7 @@ export const STAMP_ICONS = [
   ['icecream', 'Glace'], ['bakery_dining', 'Viennoiserie'], ['custom', 'Personnalisée'],
 ];
 const HEX = /^#[0-9A-Fa-f]{6}$/;
-const ASSET_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(designer\/)?(logo|hero|background|stamp|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\.(png|jpg)$/;
+const ASSET_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(designer\/)?(logo|hero|background|stamp|appleStrip|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\.(png|jpg)$/;
 // Demo data of the editor (the real card gets its own customer, balance and QR token).
 export const DEMO = { client: 'Nicolas Moreau', progress: 3, goal: 10, reward: '1 dessert offert', available: 1, qr: 'DPA1:DEMO-DPA-CARDS-PREVIEW', cardNumber: 'DPA-DEMO-0003' };
 
@@ -45,9 +45,9 @@ export function defaultDesign(project) {
     identity: { name: m.business_name || '', subtitle: m.activity || '' },
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
-    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null },
+    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
-    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, showStampPanel: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
+    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, showStampPanel: true, showStamps: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
   };
@@ -70,6 +70,7 @@ export function prepareDesign(cardDesign, program, merchant, assetUrl) {
   const withUrl = (a, fb) => (a && a.path ? { path: a.path, url: assetUrl(a.path), fallback: fb ? fb.url : null } : fb);
   d.assets = { logo: cardDesign.assets && Object.hasOwn(cardDesign.assets,'logo') ? withUrl(cardDesign.assets.logo,null) : base.assets.logo, hero: withUrl(cardDesign.assets && cardDesign.assets.hero, base.assets.hero),
     background: withUrl(cardDesign.assets && cardDesign.assets.background, null), stamp: withUrl(cardDesign.assets && cardDesign.assets.stamp, null),
+    appleStrip: withUrl(cardDesign.assets && cardDesign.assets.appleStrip, null),
     appleHeader: withUrl(cardDesign.assets && cardDesign.assets.appleHeader, null),
     rewardLabel: withUrl(cardDesign.assets && cardDesign.assets.rewardLabel, null),
     businessFont: withUrl(cardDesign.assets && cardDesign.assets.businessFont, null),
@@ -272,12 +273,15 @@ export function makeCardDesigner(React, api) {
           position: 'relative',
           borderRadius: 15,
           background: platform==='apple' && o.showStampPanel===false ? 'transparent' : c.secondary,
+          backgroundImage: platform==='apple' && d.assets.appleStrip?.url ? `url("${d.assets.appleStrip.url}")` : undefined,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
           display: 'grid',
           placeItems: 'center',
           boxSizing: 'border-box'
         }
       },
-        h('div',{style:platform==='apple' && o.showReward && o.rewardText?.trim()?
+        (platform!=='apple' || o.showStamps!==false) && h('div',{style:platform==='apple' && o.showReward && o.rewardText?.trim()?
           {transform:'translateY(-11px) scale(0.86)',transformOrigin:'center center'}:{}},
           h(Progress, {
             d,
@@ -429,6 +433,7 @@ export function makeCardDesigner(React, api) {
   const CROPS = {
     logo: { aspect: 1, outW: 660, outH: 660, mime: 'image/png', title: 'Recadrer le logo', hint: 'Format carré. Le logo n’est jamais déformé : il est affiché en entier sur la carte.' },
     hero: { aspect: 1032 / 812, outW: 1032, outH: 812, mime: 'image/jpeg', title: 'Recadrer l’image principale', hint: 'L’image est ensuite cadrée pour chaque plateforme (réglage « Cadrage vertical »).' },
+    appleStrip: { aspect: 343 / 138, outW: 1029, outH: 414, mime: 'image/png', title: 'Recadrer le bandeau Apple Wallet', hint: 'Image affichée derrière les tampons.' },
     background: { aspect: 340 / 560, outW: 680, outH: 1120, mime: 'image/jpeg', title: 'Recadrer l’image de fond', hint: 'Elle est assombrie par la couleur principale pour garder le texte lisible.' },
     stamp: { aspect: 1, outW: 256, outH: 256, mime: 'image/png', title: 'Recadrer l’icône de tampon', hint: 'Une image PNG à fond transparent donne le meilleur rendu.' },
   };
@@ -903,6 +908,13 @@ export function makeCardDesigner(React, api) {
           h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }), h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }),
           h(Stamp, { on: false, st: design.stamps, size: 34, stampUrl:design.assets.stamp?.url }), h('span', { style: { color: '#FFFFFF', fontSize: 13, opacity: 0.8 } }, 'Rempli · Rempli · Vide')),
         h(ImagePick, { label: 'Ou importer un tampon PNG personnalisé', testId: 'stamp', asset: design.assets.stamp, busy: busy === 'up-stamp', onPick: pickFile('stamp'), onRemove: () => { set('assets.stamp', null); if (design.stamps.icon === 'custom') { set('stamps.icon', 'library'); set('stamps.libraryId', 'cafe'); } }, hint: 'Un seul PNG transparent : passages effectués en couleur, restants grisés à 22 %. 2 Mo maximum.' })),
+      platform==='apple' && h(Section, { title: 'Apple Wallet' },
+        h(ImagePick, { label: 'Image du bandeau Apple Wallet (facultatif)', testId: 'appleStrip',
+          asset: design.assets.appleStrip, busy: busy==='up-appleStrip', onPick: pickFile('appleStrip'),
+          onRemove: () => set('assets.appleStrip', null),
+          hint: 'Image affichée derrière les tampons dans la zone jaune Apple Wallet.' }),
+        h(Check, { label: 'Afficher les tampons', checked: design.apple.showStamps!==false,
+          onChange: v => set('apple.showStamps', v) })),
       h(Section, { title: 'Typographie' },
         h(Select, { label: 'Police de la carte', value: design.font, options: Object.entries(FONTS).map(([k, f]) => [k, f.label]), onChange: v => set('font', v) })),
       h(Section, { title: 'Ajustements ' + pName },
@@ -929,7 +941,7 @@ export function makeCardDesigner(React, api) {
               style:{marginTop:8,padding:'8px 10px',border:'1px solid #D4D1C9',borderRadius:8,background:'#FFFFFF',cursor:'pointer'}},
               'Revenir à la couleur automatique')),
           h('div',{style:{fontSize:13,color:'#5E636B',lineHeight:1.4}},
-            po.showStampPanel===false ? 'Seul le fond du rectangle est masqué. Les tampons et la récompense restent visibles, sans déplacer les compteurs ni le QR code.' : 'Récompense désactivée : design actuel inchangé. Activée : phrase centrée dans le rectangle des tampons.')
+            po.showStampPanel===false ? 'Seul le fond du rectangle est masqué. L’image du bandeau, les tampons activés et la récompense restent visibles, sans déplacer les compteurs ni le QR code.' : 'Récompense désactivée : design actuel inchangé. Activée : phrase centrée dans le rectangle des tampons.')
         ),
         h(Check, { label: 'Couleurs spécifiques à ' + pName, checked: Object.keys(po.colors || {}).length > 0, onChange: v => set(platform + '.colors', v ? { ...design.colors } : {}) }),
         Object.keys(po.colors || {}).length ? h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },

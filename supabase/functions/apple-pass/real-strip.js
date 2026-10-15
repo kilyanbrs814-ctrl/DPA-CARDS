@@ -75,12 +75,38 @@ function overlayReward(pixels,width,height,scale,art,short=false){
     pixels[dest+3]=255;
   }
 }
+// Shared bounded decoding for the optional Apple panel. JPEG is loaded lazily;
+// existing PNG-only passes keep their lightweight rendering path.
+export async function decodePanelArt(bytes) {
+  if (bytes.length > 2097152) throw new Error('invalid_apple_strip');
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return decodePng(bytes);
+  const { default: jpeg } = await import('npm:jpeg-js@0.4.4');
+  const image = jpeg.decode(bytes, { useTArray: true, formatAsRGBA: true,
+    tolerantDecoding: false, maxResolutionInMP: 4.2, maxMemoryUsageInMB: 64 });
+  if (!image.width || !image.height || image.width > 2048 || image.height > 2048)
+    throw new Error('invalid_apple_strip');
+  return { width: image.width, height: image.height, pixels: image.data };
+}
+// Center-cover with alpha blending and the same rounded clipping as the panel.
+function overlayPanel(pixels, width, height, art, left, top, right, bottom, radius=0) {
+  if (!art?.pixels || art.width < 1 || art.height < 1) return;
+  const ratio=Math.max((right-left)/art.width,(bottom-top)/art.height);
+  const cropX=(art.width-(right-left)/ratio)/2,cropY=(art.height-(bottom-top)/ratio)/2;
+  for(let y=top;y<bottom;y++)for(let x=left;x<right;x++){
+    const cx=clamp(x,left+radius,right-radius),cy=clamp(y,top+radius,bottom-radius);
+    if((x-cx)**2+(y-cy)**2>radius*radius)continue;
+    const sx=clamp(Math.floor(cropX+(x-left+.5)/ratio),0,art.width-1);
+    const sy=clamp(Math.floor(cropY+(y-top+.5)/ratio),0,art.height-1);
+    const src=(sy*art.width+sx)*4,dest=(y*width+x)*4,a=art.pixels[src+3]/255;
+    for(let c=0;c<3;c++)pixels[dest+c]=Math.round(art.pixels[src+c]*a+pixels[dest+c]*(1-a));
+  }
+}
 // Minimal emoji banner used by BOTH signed Apple test and customer passes.
 // The strip is only the rectangular stamp region from the admin designer;
 // logo, number, counters and QR remain native Wallet fields.
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon
  * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt */
-export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, scale=1, customIcon=null, rewardArt=null, finalStar=null) {
+export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, scale=1, customIcon=null, rewardArt=null, finalStar=null, panelArt=null) {
   if (![1,2].includes(scale)) throw new Error('invalid_strip_scale');
   const width=375*scale,height=144*scale,pixels=new Uint8Array(width*height*4);
   const primary=rgb(colors?.primary,'#1C1F24');
@@ -94,6 +120,11 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
     const cornerX=x<margin+radius?margin+radius:x>=right-radius?right-radius:x;
     const cornerY=y<top+radius?top+radius:y>=bottom-radius?bottom-radius:y;
     if((x-cornerX)**2+(y-cornerY)**2 <= radius*radius)pixel(pixels,width,x,y,secondary);
+  }
+  overlayPanel(pixels,width,height,panelArt,margin,top,right,bottom,radius);
+  if(colors?.showStamps===false){
+    overlayReward(pixels,width,height,scale,rewardArt);
+    return demoPng(width,height,pixels);
   }
   if(mode==='points'||target>30) {
     const x0=70*scale,w=235*scale,y0=66*scale,h=14*scale;
@@ -126,9 +157,9 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
 
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon
  * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt */
-export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=null, rewardArt=null, finalStar=null) {
+export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=null, rewardArt=null, finalStar=null, panelArt=null) {
   if (![1, 2].includes(scale)) throw new Error('invalid_strip_scale');
-  if(brand.emoji || brand.stamp || brand.libraryId) return makeEmojiCardStrip(brand.stamps,brand,balance,goal,brand.mode||'passages',scale,customIcon,rewardArt,finalStar);
+  if(brand.emoji || brand.stamp || brand.libraryId) return makeEmojiCardStrip(brand.stamps,brand,balance,goal,brand.mode||'passages',scale,customIcon,rewardArt,finalStar,panelArt);
   const width = 375 * scale, height = 123 * scale;
   const pixels = new Uint8Array(width * height * 4);
   const primary = rgb(brand.primary, '#2448F0');
@@ -142,6 +173,11 @@ export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=
       const v = isRight ? secondary : primary;
       pixel(pixels, width, x, y, v);
     }
+  }
+  overlayPanel(pixels,width,height,panelArt,Math.ceil(width/2),0,width,height);
+  if(brand.showStamps===false){
+    overlayReward(pixels,width,height,scale,rewardArt,true);
+    return demoPng(width,height,pixels);
   }
   // Stamps on right half, driven by the REAL card's balance rather than editor demo data.
   const maxStamps = Math.max(1, Math.min(10, Math.floor(Number(goal) || 10)));
@@ -221,7 +257,7 @@ function line(pixels, width, height, x1, y1, x2, y2, thickness, color) {
 // Same two rows of 5 as the test designer where goal is 10.
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon
  * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt */
-export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardArt=null, finalStar=null) {
+export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardArt=null, finalStar=null, panelArt=null) {
   if (![1, 2].includes(scale)) throw new Error('invalid_demo_strip_scale');
   if(config?.stamps?.emoji || customIcon) {
     const pv=config.preview||{};
@@ -229,7 +265,8 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
       primary:config?.apple?.colors?.primary || config?.colors?.primary,
       secondary:config?.apple?.colors?.secondary || config?.colors?.secondary,
       showStampPanel:config?.apple?.showStampPanel,
-    },pv.progress,pv.goal,pv.mode,scale,customIcon,rewardArt,finalStar);
+      showStamps:config?.apple?.showStamps,
+    },pv.progress,pv.goal,pv.mode,scale,customIcon,rewardArt,finalStar,panelArt);
   }
   const width = 375 * scale, height = 144 * scale;
   const pixels = new Uint8Array(width * height * 4);
@@ -244,6 +281,11 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
   for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
     const t = clamp((x / width) * .90 + (y / height) * .12, 0, 1);
     paint(pixels, width, height, x, y, config?.apple?.showStampPanel===false ? primary : secondary.map((v,i) => Math.round(v * (1-t) + primary[i] * t)));
+  }
+  overlayPanel(pixels,width,height,panelArt,16*scale,3*scale,width-16*scale,height-3*scale,15*scale);
+  if(config?.apple?.showStamps===false){
+    overlayReward(pixels,width,height,scale,rewardArt);
+    return demoPng(width,height,pixels);
   }
   if (preview.mode === 'points' || goal > 30) {
     const frac = Math.min(1, done / goal), x1 = 190 * scale, barW = 165 * scale, yy = 70 * scale;
