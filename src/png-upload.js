@@ -13,3 +13,17 @@ export async function preparePngUpload(file) {
   if(!blob || blob.size>2097152)throw new Error('PNG trop lourd après préparation.');
   return blob;
 }
+
+/** Merchants upload text artwork only; reject a background rectangle or blank PNG. */
+export async function prepareBusinessNamePng(file) {
+  const png=await preparePngUpload(file);
+  const img=await decodePng(new Uint8Array(await png.arrayBuffer()));
+  let hasInk=false,hasTransparent=false;
+  for(let i=3;i<img.pixels.length;i+=4){
+    if(img.pixels[i]>=8)hasInk=true;
+    if(img.pixels[i]<255)hasTransparent=true;
+    if(hasInk&&hasTransparent)break;
+  }
+  if(!hasInk||!hasTransparent)throw new Error('Image du nom : PNG transparent avec du texte visible obligatoire (sans fond).');
+  return png;
+}
