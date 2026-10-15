@@ -46,14 +46,14 @@ const isUuid = s => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 // Only branded image files belonging to THIS program may be read with service role.
 export const assetPath = (value, card, kind) => {
   const path = typeof value === 'string' ? value : value?.path;
-  if (!isUuid(card?.merchant_id) || !isUuid(card?.program_id) || !['logo', 'hero', 'background', 'stamp', 'appleHeader'].includes(kind)) return null;
+  if (!isUuid(card?.merchant_id) || !isUuid(card?.program_id) || !['logo', 'hero', 'background', 'stamp', 'appleHeader', 'rewardLabel'].includes(kind)) return null;
   const prefix = card.merchant_id + '/' + card.program_id + '/';
   if (!path?.startsWith(prefix)) return null;
   const suffix = path.slice(prefix.length);
   return new RegExp('^(?:designer/)?' + kind + '-[0-9a-f-]{36}\\.(?:png|jpg)$', 'i').test(suffix) ? path : null;
 };
 export function testAssetPath(value, testId, kind) {
-  if(!isUuid(testId) || !['logo','stamp','appleHeader'].includes(kind))return null;
+  if(!isUuid(testId) || !['logo','stamp','appleHeader','rewardLabel'].includes(kind))return null;
   const path=typeof value==='string'?value:value?.path;
   return typeof path==='string' && new RegExp('^tests/'+testId+'/designer/'+kind+'-[0-9a-f-]{36}\\.png$','i').test(path)?path:null;
 }
@@ -75,6 +75,8 @@ export function realAppleBrand(program, merchant, card) {
     issuer, subtitle, label, primary, secondary, accent, foreground,
     showBusinessName: apple.showBusinessName === true,
     appleHeader: apple.showBusinessName === true ? assetPath(assets.appleHeader,card,'appleHeader') : null,
+    rewardEnabled: apple.showReward === true,
+    rewardLabel: apple.showReward === true ? assetPath(assets.rewardLabel,card,'rewardLabel') : null,
     logo: Object.hasOwn(assets,'logo') ? assetPath(assets.logo, card, 'logo') : assetPath(program?.logo_path, card, 'logo'),
     stamp: d.stamps?.icon === 'custom' && assets.stamp?.path?.endsWith('.png') ? assetPath(assets.stamp, card, 'stamp') : null,
     libraryId: d.stamps?.icon === 'library' ? libraryStampId(d.stamps.libraryId) : '',
