@@ -22,8 +22,8 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
   const rawCert=Buffer.from(cert.replace(/-----[^-]+-----/g,'').replace(/\s/g,''),'base64');
   globalThis.fetch=async()=>new Response(rawCert);
   globalThis.Deno={env:{get:n=>({SUPABASE_URL:'https://test.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'test',APPLE_PASS_CERT_PEM:cert,APPLE_PASS_PRIVATE_KEY_PEM:key}[n])},serve:fn=>{handler=fn;}};
-  let demo=true,reads=[];
-  const config=()=>({identity:{name:'PNG test'},assets:{logo:{path:base()+'/designer/logo-'+id+'.png'},stamp:{path:base()+'/designer/stamp-'+id+'.png'}},stamps:{icon:'custom',emoji:'🍔'},colors:{primary:'#000000',secondary:'#2448F0'},preview:{progress:3,goal:10}});
+  let demo=true,reads=[],showName=false;
+  const config=()=>({identity:{name:'PNG test'},assets:{logo:{path:base()+'/designer/logo-'+id+'.png'},stamp:{path:base()+'/designer/stamp-'+id+'.png'}},stamps:{icon:'custom',emoji:'🍔'},colors:{primary:'#000000',secondary:'#2448F0'},apple:{showBusinessName:showName},preview:{progress:3,goal:10}});
   const base=()=>demo?'tests/'+id:mid+'/'+pid;
   globalThis.__pngClient={
    rpc:async()=>({data:true}),
@@ -39,13 +39,16 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    .replace('npm:passkit-generator@3.6.1','passkit-generator');
   writeFileSync(mod,(await transform(code,{loader:'ts',format:'esm'})).code);
   await import(pathToFileURL(mod.pathname).href+'?test='+Date.now());
-  for(const isDemo of [true,false]){
+  for(const nativeName of [false,true]){
+   showName=nativeName;
+   for(const isDemo of [true,false]){
    demo=isDemo;reads=[];
    const res=await handler(new Request('https://test/functions/v1/apple-pass?token='+'a'.repeat(32)));
    assert.equal(res.status,200);assert.equal(res.headers.get('content-type'),'application/vnd.apple.pkpass');
    writeFileSync(join(dir,'pass.zip'),Buffer.from(await res.arrayBuffer()));
    const contents=JSON.parse(execFileSync('unzip',['-p',join(dir,'pass.zip'),'pass.json'],{encoding:'utf8'}));
-   assert.ok(!Object.hasOwn(contents,'logoText'));assert.equal(contents.storeCard.secondaryFields[0].value,demo?'3':'6');
+   assert.equal(contents.logoText,nativeName?'PNG test':undefined,'PassKit must own the optional native heading');
+   assert.equal(contents.storeCard.secondaryFields[0].value,demo?'3':'6');
    assert.equal(contents.barcodes[0].message,demo?'DPA_TEST:'+id:'DPA1:'+pid);
    const message=contents.barcodes[0].message, qr=QRCode.create(message,{errorCorrectionLevel:'M'});
    const dim=(qr.modules.size+8)*6,rgba=new Uint8ClampedArray(dim*dim*4).fill(255);
@@ -59,7 +62,11 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    execFileSync('unzip',['-o','-q',join(dir,'pass.zip'),'-d',join(dir,'unpacked')]);
    const manifest=JSON.parse(readFileSync(join(dir,'unpacked/manifest.json')));
    for(const name of ['icon.png','icon@2x.png','logo.png','logo@2x.png','strip.png','strip@2x.png','pass.json'])assert.ok(manifest[name]);
+   const logoFile=readFileSync(join(dir,'unpacked/logo.png'));
+   assert.equal(logoFile.readUInt32BE(16),nativeName?52:160,'logo width must leave room for native text');
+   assert.equal(logoFile.readUInt32BE(20),nativeName?40:50);
    execFileSync('openssl',['smime','-verify','-inform','DER','-in',join(dir,'unpacked/signature'),'-content',join(dir,'unpacked/manifest.json'),'-noverify'],{stdio:'ignore'});
+   }
   }
  } finally {globalThis.fetch=originalFetch;delete globalThis.Deno;delete globalThis.__pngClient;rmSync(mod,{force:true});rmSync(dir,{recursive:true,force:true});}
 });
