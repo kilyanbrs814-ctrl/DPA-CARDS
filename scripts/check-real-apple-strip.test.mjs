@@ -192,6 +192,15 @@ test('Apple header is transparent without a PNG, with no initials or bitmap name
     assert.ok(img.raw.every(v=>v===0));
   }
 });
+test('Apple compact header logo reserves space for system text at 1x and 2x',async()=>{
+  for(const scale of [1,2]){
+    const png=await makeAppleHeaderLogo('Napolithein','#F2C94C','#1C1F24',null,scale,true);
+    const img=parsePng(png);
+    assert.equal(img.w,52*scale);
+    assert.equal(img.h,40*scale);
+    assert.ok(img.raw.every(v=>v===0),'only native PassKit draws the business name');
+  }
+});
 test('Apple emojis are 50pt and 2x artwork doubles pixels rather than getting smaller',async()=>{
   const saved=globalThis.fetch;
   try {
