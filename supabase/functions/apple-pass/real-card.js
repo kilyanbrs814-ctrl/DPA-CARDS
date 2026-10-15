@@ -78,7 +78,7 @@ export function realAppleBrand(program, merchant, card) {
     libraryId: d.stamps?.icon === 'library' ? libraryStampId(d.stamps.libraryId) : '',
     artwork: backgroundImage || hero, heroFocus: Number.isFinite(+apple.heroFocus) ? Math.max(0, Math.min(100, +apple.heroFocus)) : 50,
     stamps: d.stamps || {}, mode: program?.mode === 'points' ? 'points' : 'passages',
-    emoji: d.stamps?.icon === 'emoji' && typeof d.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(d.stamps.emoji) ? d.stamps.emoji.slice(0,32) : '',
+    emoji: !['library','custom'].includes(d.stamps?.icon) && typeof d.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(d.stamps.emoji) ? d.stamps.emoji.slice(0,32) : '',
   };
 }
 export function realApplePassData({ program, merchant, customer, card, balance }) {
