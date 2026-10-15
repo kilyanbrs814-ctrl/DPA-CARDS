@@ -2,6 +2,8 @@
 // admin's browser, NOT during pass signing (Supabase Edge CPU is tightly limited).
 // The complete brand is centered vertically in Apple's existing 160x50pt logo slot.
 // No native logoText is emitted for these cards: native text size is not configurable.
+// Increment when saved rasterized headers must be rebuilt (legacy assets may wrap).
+export const APPLE_WORDMARK_VERSION=2;
 const WIDTH=160,HEIGHT=50,SCALE=3;
 const hex=v=>/^#[0-9a-f]{6}$/i.test(v||'')?v:'#FFFFFF';
 const luminance=color=>{
