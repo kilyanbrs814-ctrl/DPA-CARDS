@@ -152,12 +152,17 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   const selectedLibrary=d.stamps?.icon==='library'?libraryStampId(d.stamps.libraryId):'';
   const stamp=stampBytes ? await decodePng(stampBytes) : selectedLibrary ? await loadLibraryStamp(selectedLibrary) : null;
   if((d.stamps?.icon==='custom' && testAsset('stamp') || selectedLibrary) && !stamp) throw new SafeError(422,'invalid_stamp');
+  const rewardPath=d.apple?.showReward===true ? testAsset('rewardLabel') : null;
+  const rewardBytes=rewardPath ? await realLogo(rewardPath) : null;
+  if(rewardPath && !rewardBytes)throw new SafeError(422,'invalid_reward_label');
+  const rewardArt=rewardBytes ? await decodePng(rewardBytes) : null;
+  if(rewardArt && (rewardArt.width!==630||rewardArt.height!==52))throw new SafeError(422,'invalid_reward_label');
   // Apple displays its native primary text on top of the strip image. It cannot
   // use the exact HTML layout, but the two-row colored stamps and blue gradient
   // now come from the same saved config as the Apple preview.
   try {
-    images['strip.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp));
-    images['strip@2x.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 2, stamp));
+    images['strip.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt));
+    images['strip@2x.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 2, stamp, rewardArt));
   } catch { console.error('apple-pass demo strip unavailable'); }
   const pass = new PKPass({ ...images, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8') }, {
     wwdr: await wwdrCert(),
@@ -238,11 +243,15 @@ async function createPass(token: string) {
   const stampBytes=brand.stamp ? await realLogo(brand.stamp) : null;
   const stamp=stampBytes ? await decodePng(stampBytes) : brand.libraryId ? await loadLibraryStamp(brand.libraryId) : null;
   if((brand.stamp || brand.libraryId) && !stamp) throw new SafeError(422,'invalid_stamp');
+  const rewardBytes=brand.rewardLabel ? await realLogo(brand.rewardLabel) : null;
+  if(brand.rewardLabel && !rewardBytes)throw new SafeError(422,'invalid_reward_label');
+  const rewardArt=rewardBytes ? await decodePng(rewardBytes) : null;
+  if(rewardArt && (rewardArt.width!==630||rewardArt.height!==52))throw new SafeError(422,'invalid_reward_label');
   // Strip is optional: a rendering issue should not prevent a customer from
   // receiving a valid pass containing all native fields and QR code.
   try {
-    assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1, stamp));
-    assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2, stamp));
+    assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1, stamp, rewardArt));
+    assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2, stamp, rewardArt));
   } catch {
     console.error('apple-pass real strip unavailable');
   }
