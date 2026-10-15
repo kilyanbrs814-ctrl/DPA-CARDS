@@ -6,7 +6,7 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 // display-only, while the full number stays available on the back for support.
 export const visibleCardNumber = value => {
   const raw=String(value || '').trim();
-  return raw.replace(/\\D/g, '') || raw || '—';
+  return raw.replace(/\D/g, '') || raw || '—';
 };
 const txt = (value, limit = 60) => typeof value === 'string' ? value.replace(/[\x00-\x1F\x7F]/g, ' ').trim().slice(0, limit) : '';
 export const hex = (value, fallback) => HEX.test(value || '') ? value.toUpperCase() : fallback;
