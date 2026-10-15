@@ -393,7 +393,7 @@ class Component extends DCLogic {
   toast(msg){ clearTimeout(this._t); this.setState({toast:msg}); this._t=setTimeout(()=>this.setState({toast:null}),3000); }
   errText(e){ const c=e&&(e.code||e.message)||''; return ERR[c]||'Impossible de charger les données. Réessayez.'; }
   // Auth events can confirm access several times in a row: one request at a time.
-  async load(){ if(!this.api||this._busy) return; this._busy=true; this.setState({loading:true,error:null});
+  async load(){ if(!this.api||this._busy) return; this._busy=true; this.setState({loading:true,error:null,data:[],designs:[],me:null,kpis:null,sel:null,detail:null});
     try{ const [r,d]=await Promise.all([this.api.overview(),this.api.designs?this.api.designs():Promise.resolve({requests:[]})]); this.setState({loading:false,kpis:r.kpis,data:r.merchants||[],me:r.me||null,designs:d.requests||[]}); }
     catch(e){ this.setState({loading:false,error:this.errText(e)}); }
     finally{ this._busy=false; } }
