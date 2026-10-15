@@ -74,6 +74,7 @@ export function realAppleBrand(program, merchant, card) {
   return {
     issuer, subtitle, label, primary, secondary, accent, foreground,
     showBusinessName: apple.showBusinessName === true,
+    showStampPanel: apple.showStampPanel !== false,
     // Ignore legacy pre-single-line header PNGs; they must be rebuilt on next save.
     appleHeader: apple.showBusinessName === true && apple.headerArtworkVersion===2 ? assetPath(assets.appleHeader,card,'appleHeader') : null,
     rewardEnabled: apple.showReward === true,
