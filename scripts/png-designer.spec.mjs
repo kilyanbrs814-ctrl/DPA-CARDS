@@ -55,10 +55,13 @@ test('Apple larger name and logo share one vertically centered bitmap without ad
  expect(bitmap.opaque).toBeGreaterThan(45);
  expect(Math.abs(bitmap.centering-75)).toBeLessThan(9);
  const preview=page.locator('[data-layout="apple"]').first();
- const headerBefore=await preview.locator('[data-field="card-number"]').boundingBox();
+ const beforeCard=await preview.boundingBox();
+ const beforeStamp=await preview.locator('[data-progress="stamps"]').first().boundingBox();
+ const beforeOffset=beforeStamp.y-beforeCard.y;
  await page.getByRole('button',{name:/Afficher le nom du commerce/}).click();
- const headerAfter=await preview.locator('[data-field="card-number"]').boundingBox();
+ const afterCard=await preview.boundingBox();
  const stamp=await preview.locator('[data-progress="stamps"]').first().boundingBox();
- expect(Math.abs(headerBefore.y-headerAfter.y)).toBeLessThan(1);
- expect(stamp.y).toBeGreaterThan(headerAfter.y);
+ const afterOffset=stamp.y-afterCard.y;
+ expect(Math.abs(beforeOffset-afterOffset)).toBeLessThan(1);
+ expect(afterOffset).toBeGreaterThan(70);
 });
