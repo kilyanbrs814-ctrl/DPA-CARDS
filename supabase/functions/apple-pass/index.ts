@@ -90,6 +90,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
     // installed card with the same serial even when its design has changed.
     serialNumber: 'test-' + t.id + '-' + crypto.randomUUID(),
     organizationName: name,
+    ...(d.apple?.showBusinessName === true ? { logoText: name } : {}),
     description: 'Démonstration DPA Cards – sans valeur commerciale',
     backgroundColor: rgb(primary), foregroundColor: textColor(primary),
     labelColor: textColor(primary),
@@ -140,8 +141,8 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
 
   const testAsset = (kind: string) => testAssetPath(d.assets?.[kind],testId,kind);
   const uploaded=await realLogo(testAsset('logo'));
-  images['logo.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,uploaded,1));
-  images['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,uploaded,2));
+  images['logo.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,uploaded,1,d.apple?.showBusinessName === true));
+  images['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,uploaded,2,d.apple?.showBusinessName === true));
   const stampBytes=d.stamps?.icon==='custom' ? await realLogo(testAsset('stamp')) : null;
   const selectedLibrary=d.stamps?.icon==='library'?libraryStampId(d.stamps.libraryId):'';
   const stamp=stampBytes ? await decodePng(stampBytes) : selectedLibrary ? await loadLibraryStamp(selectedLibrary) : null;
@@ -223,8 +224,8 @@ async function createPass(token: string) {
     'icon.png': fallback, 'icon@2x.png': Buffer.from(await makeDemoLogo('DPA',brand.accent,2,'icon')),
     ...(logo ? { 'logo.png': logo, 'logo@2x.png': logo } : {}),
   };
-  assets['logo.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,logo,1));
-  assets['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,logo,2));
+  assets['logo.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,logo,1,brand.showBusinessName));
+  assets['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,logo,2,brand.showBusinessName));
   const stampBytes=brand.stamp ? await realLogo(brand.stamp) : null;
   const stamp=stampBytes ? await decodePng(stampBytes) : brand.libraryId ? await loadLibraryStamp(brand.libraryId) : null;
   if((brand.stamp || brand.libraryId) && !stamp) throw new SafeError(422,'invalid_stamp');
