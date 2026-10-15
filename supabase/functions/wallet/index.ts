@@ -1208,7 +1208,7 @@ function cleanDesign(raw: any, folder: string) {
     assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
     stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, savedEmoji(s.emoji) ? 'emoji' : 'library'), libraryId: libraryStampId(s.libraryId), emoji: s.icon==='library' ? '' : savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
       filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF') },
-    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64),
+    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, headerArtworkVersion: int(r.apple?.headerArtworkVersion,0,2,0), showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64),
       rewardTextColor: HEX_RE.test(r.apple?.rewardTextColor??'')?String(r.apple.rewardTextColor).toUpperCase():'',
       businessNameFont: pick(r.apple?.businessNameFont,['system','hanken','space','playfair','custom'] as const,'system') },
     google: platform(r.google),
