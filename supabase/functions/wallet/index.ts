@@ -962,6 +962,26 @@ async function adminMerchant(req: Request): Promise<Response> {
     merchant: { ...merchant, owner_email: emails[owner_id] ?? null }, sales_rep: reps[id] ?? null, manual_access:manualAccess??null, prepaid: prepaid ?? [], sales });
 }
 
+// Direction only: temporary entitlement grant/revoke. Never edits Stripe billing or payments.
+async function adminManualAccess(req: Request): Promise<Response> {
+  const user=await requireDirector(req);
+  const body=await req.json().catch(()=>({}));
+  const id=String(body?.merchant_id??'');
+  const reason=str(body?.reason,300);
+  if(!UUID_RE.test(id)||typeof body?.enabled!=='boolean'||reason.length<3) throw new HttpError(422,'invalid_request');
+  const {data: merchant}=await admin.from('merchants').select('id').eq('id',id).maybeSingle();
+  if(!merchant) throw new HttpError(404,'merchant_not_found');
+  const days=Number(body.days);
+  if(body.enabled && ![7,30,90,365].includes(days)) throw new HttpError(422,'invalid_duration');
+  const expires=body.enabled?new Date(Date.now()+days*86400000).toISOString():null;
+  const record={merchant_id:id,enabled:body.enabled,expires_at:expires,reason,updated_by:user.dpaEmail,updated_at:new Date().toISOString()};
+  const {data,error}=await admin.from('merchant_manual_access').upsert(record,{onConflict:'merchant_id'}).select().single();
+  if(error)throw new Error('db_manual_access');
+  const {error:auditErr}=await admin.from('merchant_manual_access_audit').insert({merchant_id:id,enabled:body.enabled,expires_at:expires,reason,actor:user.dpaEmail});
+  if(auditErr){ console.error('wallet manual access audit error',auditErr.code);throw new Error('db_manual_access_audit'); }
+  return json(req,200,{manual_access:data});
+}
+
 // ---------------------------------------------------------------- sales tracking (director only)
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -1455,17 +1475,18 @@ async function adminMerchantAccess(req: Request): Promise<Response> {
 // scanner shows as « Carte de démonstration » and lookup_card can never match (real cards are DPA1:).
 // Google Wallet: own class / object ids (…dpa-test-class-<id>, …dpa-test-<id>), never a real program's.
 
-const TEST_SELECT = 'id, name, config, test_balance, qr_token, google_class_id, google_object_id, google_synced_at, created_at, updated_at';
+const TEST_SELECT = 'id, created_by, name, config, test_balance, qr_token, google_class_id, google_object_id, google_synced_at, created_at, updated_at';
 const testFolder = (id: string) => `tests/${id}`;
 // Stamp progress is server-owned. Admin saves never overwrite the real scan counter.
 const testConfig = (t: any) => ({ ...t.config, preview: { ...(t.config?.preview ?? {}), progress: Number(t.test_balance) || 0 } });
 const testView = (t: any) => ({ ...t, progress: Number(t.test_balance) || 0, config: withUrls(testConfig(t)), qr_value: `DPA_TEST:${t.qr_token}`, card_number: `TEST ${String(t.id).slice(0, 4).toUpperCase()} ${String(t.qr_token).slice(0, 4).toUpperCase()}` });
-async function testRow(id: unknown) {
+async function testRow(id: unknown, user?: any) {
   const tid = String(id ?? '');
   if (!UUID_RE.test(tid)) throw new HttpError(400, 'invalid_request');
   const { data, error } = await admin.from('test_card_designs').select(TEST_SELECT).eq('id', tid).maybeSingle();
   if (error) throw new Error('db_test_cards');
   if (!data) throw new HttpError(404, 'test_card_not_found');
+  if(user?.dpaRole!=='director' && data.created_by!==user?.id) throw new HttpError(403,'test_card_forbidden');
   return data;
 }
 async function testFiles(id: string): Promise<string[]> {
@@ -1478,15 +1499,17 @@ async function testFiles(id: string): Promise<string[]> {
 }
 
 async function adminTestCards(req: Request): Promise<Response> {
-  await requireAdmin(req);
-  const { data, error } = await admin.from('test_card_designs').select(TEST_SELECT).order('updated_at', { ascending: false }).limit(200);
+  const user=await requireAdmin(req);
+  let q=admin.from('test_card_designs').select(TEST_SELECT).order('updated_at',{ascending:false}).limit(200);
+  if(user.dpaRole!=='director') q=q.eq('created_by',user.id);
+  const { data, error } = await q;
   if (error) throw new Error('db_test_cards');
   return json(req, 200, { tests: (data ?? []).map(testView) });
 }
 async function adminTestCardGet(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user=await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
-  return json(req, 200, { test: testView(await testRow(body?.id)) });
+  return json(req, 200, { test: testView(await testRow(body?.id,user)) });
 }
 // Creates (no id) or updates a test card. Its design goes through the same whitelist as a real one.
 async function adminTestCardSave(req: Request): Promise<Response> {
@@ -1494,7 +1517,7 @@ async function adminTestCardSave(req: Request): Promise<Response> {
   const body = await req.json().catch(() => ({}));
   const name = str(body?.name, 80) || 'Carte test';
   if (body?.id) {
-    const t = await testRow(body.id);
+    const t = await testRow(body.id,user);
     const config=cleanDesign(body?.config,testFolder(t.id));
     await validateDesignPng(config);
     const { data, error } = await admin.from('test_card_designs').update({ name, config }).eq('id', t.id).select(TEST_SELECT).single();
@@ -1510,9 +1533,9 @@ async function adminTestCardSave(req: Request): Promise<Response> {
   return json(req, 200, { test: testView(data) });
 }
 async function adminTestCardUpload(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user=await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
-  const t = await testRow(body?.id);
+  const t = await testRow(body?.id,user);
   const kind = String(body?.kind ?? '') as AssetKind, type = String(body?.type ?? '');
   if (!ASSET_KINDS.includes(kind) || !['image/png', 'image/jpeg'].includes(type)) throw new HttpError(400, 'invalid_request');
   const path = `${testFolder(t.id)}/designer/${kind}-${crypto.randomUUID()}.${type === 'image/png' ? 'png' : 'jpg'}`;
@@ -1524,7 +1547,7 @@ async function adminTestCardUpload(req: Request): Promise<Response> {
 async function adminTestCardDuplicate(req: Request): Promise<Response> {
   const user = await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
-  const t = await testRow(body?.id);
+  const t = await testRow(body?.id,user);
   const id = crypto.randomUUID(), cfg = JSON.parse(JSON.stringify(t.config ?? {}));
   for (const kind of ASSET_KINDS) {
     const a = cfg.assets?.[kind]; if (!a?.path) continue;
@@ -1540,9 +1563,9 @@ async function adminTestCardDuplicate(req: Request): Promise<Response> {
 }
 // Removes the test card, its images and deactivates its Google Wallet demo object. Nothing else is touched.
 async function adminTestCardDelete(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user=await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
-  const t = await testRow(body?.id);
+  const t = await testRow(body?.id,user);
   const files = await testFiles(t.id);
   if (files.length) await admin.storage.from('program-assets').remove(files);
   const wallet = t.google_object_id ? await deactivateObjects([t.google_object_id], 8000) : null;
@@ -1552,9 +1575,9 @@ async function adminTestCardDelete(req: Request): Promise<Response> {
 }
 // A new unique test QR (the old one stops matching this card).
 async function adminTestCardNewQr(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user=await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
-  const t = await testRow(body?.id);
+  const t = await testRow(body?.id,user);
   const { data, error } = await admin.from('test_card_designs').update({ qr_token: crypto.randomUUID() }).eq('id', t.id).select(TEST_SELECT).single();
   if (error) throw new Error('db_test_cards');
   return json(req, 200, { test: testView(data) });
@@ -1618,9 +1641,9 @@ async function testScanAdd(req: Request): Promise<Response> {
 // "Ajouter à Google Wallet" for a test card: a real demo pass in its own class, with the demo data.
 // Only administrators may create Apple download links for isolated demo cards.
 async function adminTestCardApple(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user=await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
-  const t = await testRow(body?.id);
+  const t = await testRow(body?.id,user);
   if (!Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM') || !Deno.env.get('APPLE_PASS_CERT_PEM')) {
     throw new HttpError(503, 'apple_wallet_not_configured');
   }
@@ -1636,9 +1659,9 @@ async function adminTestCardApple(req: Request): Promise<Response> {
 }
 
 async function adminTestCardWallet(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user=await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
-  const t = await testRow(body?.id);
+  const t = await testRow(body?.id,user);
   if (!ISSUER_ID) throw new HttpError(503, 'wallet_not_configured');
   try { sa(); } catch { throw new HttpError(503, 'wallet_not_configured'); }
   const d = t.config ?? {}, pv = d.preview ?? {}, colors = { ...(d.colors ?? {}), ...(d.google?.colors ?? {}) };
@@ -1724,6 +1747,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/delete-account')) return await deleteAccount(req);
     if (req.method === 'POST' && path.endsWith('/admin-overview')) return await adminOverview(req);
     if (req.method === 'POST' && path.endsWith('/admin-merchant')) return await adminMerchant(req);
+    if (req.method === 'POST' && path.endsWith('/admin-manual-access')) return await adminManualAccess(req);
     if (req.method === 'POST' && path.endsWith('/admin-designs')) return await adminDesigns(req);
     if (req.method === 'POST' && path.endsWith('/admin-design-status')) return await adminDesignStatus(req);
     if (req.method === 'POST' && path.endsWith('/admin-card-designer')) return await adminCardDesigner(req);
