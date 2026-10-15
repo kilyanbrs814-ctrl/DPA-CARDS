@@ -165,45 +165,163 @@ export function makeCardDesigner(React, api) {
   // OneCup-inspired card arrangement. Preview remains illustrative: iOS/Google
   // native Wallet apps control text placement and cannot guarantee pixel parity.
   function WalletCard({ design, data, platform }) {
-    const d = effective(design, platform), o=d.opt, c=d.colors, W=340;
-    const completed=Math.max(0,Math.min(data.progress,data.goal));
-    const remainder=Math.max(0,data.goal-completed);
-    const small={fontSize:10,fontWeight:650,opacity:.75,letterSpacing:'.065em'};
-    const hero=o.showHero && d.assets.hero?.url;
-    const modePoints=data.mode==='points' || data.goal>30;
-    const isApple=platform==='apple';
-    return h('div', { 'data-layout':platform, 'data-onecup-inspired':true,
-      style:{width:W,borderRadius:isApple?20:24,overflow:'hidden',color:c.text,
-        background:cardBg(d,o),fontFamily:FONTS[d.font].css,boxShadow:'0 14px 36px rgba(20,22,28,.19)'}},
-      h('div',{style:{display:'flex',alignItems:'center',gap:11,padding:'16px 17px 14px'}},
-        h(Logo,{d,size:39,round:false}),
-        h('div',{style:{flex:1,minWidth:0}},
-          h('div',{'data-field':'business',style:{fontSize:18,fontWeight:760,lineHeight:1.2,...ellipsis}},d.identity.name||'Nom du commerce'),
-          o.showSubtitle && d.identity.subtitle ? h('div',{style:{fontSize:11,opacity:.75,marginTop:2,...ellipsis}},d.identity.subtitle):null),
-        h('div',{style:{textAlign:'right',flex:'none'}},
-          h('div',{style:small},label(d,o,data)),
-          h('div',{'data-field':'progress',style:{fontWeight:750,fontSize:23,lineHeight:1.1,fontVariantNumeric:'tabular-nums'}},
-            data.mode==='points'?String(data.progress):completed+'/'+data.goal))),
-      h('div',{style:{margin:'0 14px 10px',padding:'18px 12px',borderRadius:14,minHeight:115,
-        position:'relative',overflow:'hidden',background:hero?'#333':c.secondary,display:'grid',placeItems:'center'}},
-        hero?h(Img,{asset:d.assets.hero,style:{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'50% '+o.heroFocus+'%'}}):null,
-        hero?h('div',{style:{position:'absolute',inset:0,background:'rgba(0,0,0,.28)'}}):null,
-        h('div',{style:{position:'relative',zIndex:1}},
-          h(Progress,{d,data,width:275,align:'center',dark:false}))),
-      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'start',gap:12,padding:'3px 18px 14px'}},
-        h('div',{style:{flex:1,minWidth:0}},
-          h('div',{style:small},modePoints?'POINTS':'TAMPONS'),
-          h('div',{style:{fontWeight:700,fontSize:15,marginTop:3}},modePoints?data.progress+' / '+data.goal:completed+' / '+data.goal),
-          h('div',{style:{...small,marginTop:8}},'RESTANTS'),
-          h('div',{style:{fontWeight:600,fontSize:15}},remainder),
-          h('div',{style:{...small,marginTop:8}},'RÉCOMPENSE'),
-          h('div',{'data-field':'reward',style:{fontWeight:700,fontSize:15,marginTop:3,overflowWrap:'anywhere'}},data.reward),
-          h('div',{style:{...small,marginTop:8}},'CLIENT'),
-          h('div',{'data-field':'client',style:{fontSize:12,opacity:.86,overflowWrap:'anywhere'}},data.client)),
-        h('div',{style:{background:'#FFFFFF',padding:8,borderRadius:12,color:'#1C1F24',flex:'none',display:'grid',justifyItems:'center',gap:4}},
-          h(Qr,{value:data.qr,size:106}),
-          h('div',{style:{fontSize:9,fontFamily:"'IBM Plex Mono',monospace"}},data.cardNumber))),
-      h('div',{style:{fontSize:10,opacity:.58,textAlign:'center',padding:'0 0 12px'}},'DPA Cards · Aperçu de disposition'));
+    const d = effective(design, platform);
+    const c = d.colors;
+    const o = d.opt;
+    const W = 340;
+
+    const goal = Math.max(1, Number(data.goal) || 10);
+    const done = Math.max(0, Math.min(goal, Number(data.progress) || 0));
+    const remaining = Math.max(0, goal - done);
+    const isPoints = data.mode === 'points';
+
+    return h('div', {
+      'data-layout': platform,
+      'data-onecup-inspired': true,
+      style: {
+        width: W,
+        borderRadius: 22,
+        overflow: 'hidden',
+        background: cardBg(d, o),
+        color: c.text,
+        fontFamily: FONTS[d.font].css,
+        boxShadow: '0 14px 36px rgba(20,22,28,.19)'
+      }
+    },
+
+      // 1. LOGO + NOM À GAUCHE / NUMÉRO À DROITE
+      h('div', {
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '20px 17px'
+        }
+      },
+        h('div', {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            flex: 1,
+            minWidth: 0
+          }
+        },
+          h(Logo, { d, size: 40, round: false }),
+          h('div', {
+            'data-field': 'business',
+            style: {
+              ...ellipsis,
+              fontSize: 20,
+              fontWeight: 750,
+              lineHeight: 1.2
+            }
+          }, d.identity.name || 'Nom du commerce')
+        ),
+
+        h('div', {
+          'data-field': 'card-number',
+          style: {
+            fontSize: 15,
+            fontWeight: 600,
+            opacity: 0.9,
+            flexShrink: 0,
+            fontVariantNumeric: 'tabular-nums'
+          }
+        }, String(data.cardNumber || '0256'))
+      ),
+
+      // 2. RECTANGLE CENTRAL AVEC LES EMOJIS
+      h('div', {
+        style: {
+          margin: '0 16px',
+          padding: '24px 12px',
+          minHeight: 145,
+          borderRadius: 15,
+          background: c.secondary,
+          display: 'grid',
+          placeItems: 'center',
+          boxSizing: 'border-box'
+        }
+      },
+        h(Progress, {
+          d,
+          data,
+          width: 275,
+          align: 'center',
+          dark: false
+        })
+      ),
+
+      // 3. PASSAGES EFFECTUÉS À GAUCHE / RESTANTS À DROITE
+      h('div', {
+        style: {
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '20px 18px 24px',
+          gap: 12
+        }
+      },
+
+        h('div', {
+          style: { textAlign: 'left' }
+        },
+          h('div', {
+            style: { fontSize: 13, opacity: 0.8 }
+          }, isPoints ? 'Points gagnés' : 'Passages effectués'),
+
+          h('div', {
+            style: {
+              fontSize: 22,
+              fontWeight: 750,
+              marginTop: 5
+            }
+          }, String(done))
+        ),
+
+        h('div', {
+          style: { textAlign: 'right' }
+        },
+          h('div', {
+            style: { fontSize: 13, opacity: 0.8 }
+          }, isPoints ? 'Points restants' : 'Passages restants'),
+
+          h('div', {
+            style: {
+              fontSize: 22,
+              fontWeight: 750,
+              marginTop: 5
+            }
+          }, String(remaining))
+        )
+      ),
+
+      // 4. QR CODE CENTRÉ EN BAS
+      h('div', {
+        style: {
+          display: 'flex',
+          justifyContent: 'center',
+          padding: '0 16px 25px'
+        }
+      },
+        h('div', {
+          style: {
+            background: '#FFFFFF',
+            padding: 12,
+            borderRadius: 14,
+            display: 'grid',
+            placeItems: 'center'
+          }
+        },
+          h(Qr, {
+            value: data.qr,
+            size: 125
+          })
+        )
+      )
+    );
   }
   function AppleCard({design,data}){return h(WalletCard,{design,data,platform:'apple'});}
   function GoogleCard({design,data}){return h(WalletCard,{design,data,platform:'google'});}
