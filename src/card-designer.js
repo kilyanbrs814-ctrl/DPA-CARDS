@@ -188,6 +188,8 @@ export function makeCardDesigner(React, api) {
     const d = effective(design, platform);
     const c = d.colors;
     const o = d.opt;
+    // The optional Apple artwork belongs to the entire native strip, not to the inset stamp panel.
+    const hasAppleStrip = platform === 'apple' && !!d.assets.appleStrip?.url;
     const W = 340;
 
     const goal = Math.max(1, Number(data.goal) || 10);
@@ -263,17 +265,17 @@ export function makeCardDesigner(React, api) {
         }, (String(data.cardNumber || '').replace(/\D/g, '') || '0000').slice(-4))
       ),
 
-      // 2. RECTANGLE CENTRAL AVEC LES TAMPONS PNG
+      // 2. RECTANGLE CENTRAL AVEC LES TAMPONS PNG (OU BANDEAU APPLE PLEINE LARGEUR)
       h('div', {
         'data-apple-stamp-panel': platform==='apple' ? (o.showStampPanel===false?'hidden':'visible') : undefined,
         style: {
-          margin: '0 16px',
+          margin: hasAppleStrip ? 0 : '0 16px',
           padding: '24px 12px',
           minHeight: 145,
           position: 'relative',
-          borderRadius: 15,
-          background: platform==='apple' && o.showStampPanel===false ? 'transparent' : c.secondary,
-          backgroundImage: platform==='apple' && d.assets.appleStrip?.url ? `url("${d.assets.appleStrip.url}")` : undefined,
+          borderRadius: hasAppleStrip ? 0 : 15,
+          background: hasAppleStrip ? c.primary : platform==='apple' && o.showStampPanel===false ? 'transparent' : c.secondary,
+          backgroundImage: hasAppleStrip ? `url("${d.assets.appleStrip.url}")` : undefined,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           display: 'grid',
@@ -433,7 +435,7 @@ export function makeCardDesigner(React, api) {
   const CROPS = {
     logo: { aspect: 1, outW: 660, outH: 660, mime: 'image/png', title: 'Recadrer le logo', hint: 'Format carré. Le logo n’est jamais déformé : il est affiché en entier sur la carte.' },
     hero: { aspect: 1032 / 812, outW: 1032, outH: 812, mime: 'image/jpeg', title: 'Recadrer l’image principale', hint: 'L’image est ensuite cadrée pour chaque plateforme (réglage « Cadrage vertical »).' },
-    appleStrip: { aspect: 343 / 138, outW: 1029, outH: 414, mime: 'image/png', title: 'Recadrer le bandeau Apple Wallet', hint: 'Image affichée derrière les tampons.' },
+    appleStrip: { aspect: 375 / 144, outW: 1125, outH: 432, mime: 'image/png', title: 'Recadrer le bandeau Apple Wallet', hint: 'Bandeau Apple Wallet pleine largeur (375 × 144), recadré au centre sans déformation.' },
     background: { aspect: 340 / 560, outW: 680, outH: 1120, mime: 'image/jpeg', title: 'Recadrer l’image de fond', hint: 'Elle est assombrie par la couleur principale pour garder le texte lisible.' },
     stamp: { aspect: 1, outW: 256, outH: 256, mime: 'image/png', title: 'Recadrer l’icône de tampon', hint: 'Une image PNG à fond transparent donne le meilleur rendu.' },
   };
@@ -912,7 +914,7 @@ export function makeCardDesigner(React, api) {
         h(ImagePick, { label: 'Image du bandeau Apple Wallet (facultatif)', testId: 'appleStrip',
           asset: design.assets.appleStrip, busy: busy==='up-appleStrip', onPick: pickFile('appleStrip'),
           onRemove: () => set('assets.appleStrip', null),
-          hint: 'Image affichée derrière les tampons dans la zone jaune Apple Wallet.' }),
+          hint: 'L’image couvre tout le bandeau Apple Wallet, bord à bord, derrière les tampons. Recadrage centré.' }),
         h(Check, { label: 'Afficher les tampons', checked: design.apple.showStamps!==false,
           onChange: v => set('apple.showStamps', v) })),
       h(Section, { title: 'Typographie' },

@@ -87,7 +87,7 @@ export async function decodePanelArt(bytes) {
     throw new Error('invalid_apple_strip');
   return { width: image.width, height: image.height, pixels: image.data };
 }
-// Center-cover with alpha blending and the same rounded clipping as the panel.
+// Center-cover with alpha blending. Full-width Apple strips are never clipped to the inset panel.
 function overlayPanel(pixels, width, height, art, left, top, right, bottom, radius=0) {
   if (!art?.pixels || art.width < 1 || art.height < 1) return;
   const ratio=Math.max((right-left)/art.width,(bottom-top)/art.height);
@@ -102,7 +102,7 @@ function overlayPanel(pixels, width, height, art, left, top, right, bottom, radi
   }
 }
 // Minimal emoji banner used by BOTH signed Apple test and customer passes.
-// The strip is only the rectangular stamp region from the admin designer;
+// The optional artwork fills the strip edge-to-edge; native Wallet controls its placement.
 // logo, number, counters and QR remain native Wallet fields.
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon
  * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt
@@ -114,15 +114,18 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
   const secondary=rgb(colors?.secondary,'#2448F0');
   const done=Math.max(0,Number(progress)||0),target=Math.max(1,Math.round(Number(goal)||10));
   for(let y=0;y<height;y++)for(let x=0;x<width;x++)pixel(pixels,width,x,y,primary);
-  // Softly rounded rectangle with margin as in the admin preview.
-  const margin=16*scale,top=3*scale,radius=15*scale;
-  const right=width-margin,bottom=height-3*scale;
-  for(let y=top;colors?.showStampPanel!==false && y<bottom;y++)for(let x=margin;x<right;x++) {
-    const cornerX=x<margin+radius?margin+radius:x>=right-radius?right-radius:x;
-    const cornerY=y<top+radius?top+radius:y>=bottom-radius?bottom-radius:y;
-    if((x-cornerX)**2+(y-cornerY)**2 <= radius*radius)pixel(pixels,width,x,y,secondary);
+  // Keep the original inset rounded rectangle byte-for-byte when no image is supplied.
+  // Artwork instead occupies every pixel, including all four edges.
+  if (!panelArt?.pixels) {
+    const margin=16*scale,top=3*scale,radius=15*scale;
+    const right=width-margin,bottom=height-3*scale;
+    for(let y=top;colors?.showStampPanel!==false && y<bottom;y++)for(let x=margin;x<right;x++) {
+      const cornerX=x<margin+radius?margin+radius:x>=right-radius?right-radius:x;
+      const cornerY=y<top+radius?top+radius:y>=bottom-radius?bottom-radius:y;
+      if((x-cornerX)**2+(y-cornerY)**2 <= radius*radius)pixel(pixels,width,x,y,secondary);
+    }
   }
-  overlayPanel(pixels,width,height,panelArt,margin,top,right,bottom,radius);
+  overlayPanel(pixels,width,height,panelArt,0,0,width,height);
   if(colors?.showStamps===false){
     overlayReward(pixels,width,height,scale,rewardArt);
     return demoPng(width,height,pixels);
@@ -171,12 +174,12 @@ export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=
   // A restrained branded two-tone band. Native Wallet fields remain legible.
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const isRight = brand.showStampPanel!==false && x >= width * .5;
+      const isRight = !panelArt?.pixels && brand.showStampPanel!==false && x >= width * .5;
       const v = isRight ? secondary : primary;
       pixel(pixels, width, x, y, v);
     }
   }
-  overlayPanel(pixels,width,height,panelArt,Math.ceil(width/2),0,width,height);
+  overlayPanel(pixels,width,height,panelArt,0,0,width,height);
   if(brand.showStamps===false){
     overlayReward(pixels,width,height,scale,rewardArt,true);
     return demoPng(width,height,pixels);
@@ -285,7 +288,7 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
     const t = clamp((x / width) * .90 + (y / height) * .12, 0, 1);
     paint(pixels, width, height, x, y, config?.apple?.showStampPanel===false ? primary : secondary.map((v,i) => Math.round(v * (1-t) + primary[i] * t)));
   }
-  overlayPanel(pixels,width,height,panelArt,16*scale,3*scale,width-16*scale,height-3*scale,15*scale);
+  overlayPanel(pixels,width,height,panelArt,0,0,width,height);
   if(config?.apple?.showStamps===false){
     overlayReward(pixels,width,height,scale,rewardArt);
     return demoPng(width,height,pixels);

@@ -331,45 +331,68 @@ test('Apple header text uses native PassKit logoText only when the design opts i
   assert.equal(Object.hasOwn(json,'logoText'),false,'existing cards remain logo-only by default');
 });
 
-test('Apple strip artwork covers the panel, stays behind stamps and survives hiding them',async()=>{
+test('Apple strip artwork fills every edge on real and demo passes at 1x and 2x',async()=>{
   const {decodePng}=await import('../supabase/functions/_shared/png.js');
-  const solid=(w,h,color)=>({width:w,height:h,pixels:new Uint8Array(Array.from({length:w*h},()=>color).flat())});
-  const art=solid(80,10,[20,180,80,255]),icon=solid(8,8,[240,40,20,255]);
+  const solid=(w,h,color)=>({width:w,height:h,pixels:Uint8Array.from({length:w*h*4},(_,i)=>color[i%4])});
+  const green=[20,180,80,255],red=[240,40,20,255];
+  const art=solid(80,10,green),icon=solid(8,8,red);
   const config={colors:brand,stamps:{icon:'custom'},preview:{goal:10,progress:3,mode:'passages'}};
-  const at=(im,x,y)=>Array.from(im.pixels.slice((y*im.width+x)*4,(y*im.width+x)*4+4));
-  for(const scale of [1,2]){
-    const hidden=await decodePng(await makeDemoStrip({...config,apple:{showStamps:false}},scale,icon,null,null,art));
-    assert.deepEqual(at(hidden,187*scale,43*scale),[20,180,80,255]);
-    assert.deepEqual(at(hidden,0,0),[18,24,32,255]);
-    assert.deepEqual(at(hidden,16*scale,3*scale),[18,24,32,255],'rounded corner');
-    const visible=await decodePng(await makeDemoStrip(config,scale,icon,null,null,art));
-    assert.deepEqual(at(visible,187*scale,43*scale),[240,40,20,255],'stamp over image');
-    const real=await makeRealStrip({...brand,stamp:'custom',showStamps:false},3,10,scale,icon,null,null,art);
-    assert.deepEqual(await decodePng(real),hidden);
-    const noRectangle=await makeDemoStrip({...config,apple:{showStampPanel:false,showStamps:false}},scale,icon,null,null,art);
-    assert.deepEqual(at(await decodePng(noRectangle),187*scale,43*scale),[20,180,80,255]);
-    for(const render of [
-      () => makeDemoStrip({...config,apple:{showStamps:false}},scale,null,null,null,art),
-      () => makeRealStrip({...brand,showStamps:false},3,10,scale,null,null,null,art)
-    ])assert.deepEqual(at(await decodePng(await render()),281*scale,70*scale),[20,180,80,255]);
+  const at=(im,x,y)=>Array.from(im.pixels.subarray((y*im.width+x)*4,(y*im.width+x)*4+4));
+  for(const scale of [1,2])for(const showStampPanel of [true,false]){
+    const opts={showStampPanel,showStamps:false};
+    const hidden=await decodePng(await makeDemoStrip({...config,apple:opts},scale,icon,null,null,art));
+    const real=await decodePng(await makeRealStrip({...brand,stamp:'custom',mode:'passages',...opts},3,10,scale,icon,null,null,art));
+    assert.deepEqual([hidden.width,hidden.height],[375*scale,144*scale]);
+    assert.deepEqual(real,hidden,'real and test PNGs use the same full-width band');
+    for(const [x,y] of [[0,0],[374,0],[0,143],[374,143],[3,72],[371,72],[187,72]])
+      assert.deepEqual(at(hidden,x*scale,y*scale),green,'no inset, rounded corner or uncovered edge: '+[x,y]);
+    const visible=await decodePng(await makeDemoStrip({...config,apple:{...opts,showStamps:true}},scale,icon,null,null,art));
+    assert.deepEqual(at(visible,187*scale,43*scale),red,'stamps overlay the artwork');
+    assert.deepEqual(at(visible,0,0),green,'stamps do not mask the full-width corners');
+    const withReward=await decodePng(await makeDemoStrip({...config,apple:opts},scale,icon,solid(630,52,[255,255,255,255]),null,art));
+    assert.deepEqual(at(withReward,187*scale,125*scale),[255,255,255,255],'reward remains with stamps hidden');
   }
-  const g=await makeGoogleStampHero(config,3,10,'passages',icon);
-  assert.deepEqual(await makeGoogleStampHero({...config,apple:{showStamps:false},assets:{appleStrip:{url:'unused'}}},3,10,'passages',icon),g);
 });
 
-test('Apple panel cover crops the center and keeps reward artwork when stamps are hidden',async()=>{
+test('legacy 375x123 Apple strip path also covers entire width without changing height',async()=>{
   const {decodePng}=await import('../supabase/functions/_shared/png.js');
-  const pixels=new Uint8Array(100*10*4);
-  for(let y=0;y<10;y++)for(let x=0;x<100;x++)pixels.set(x>=35&&x<65?[0,255,0,255]:[255,0,0,255],(y*100+x)*4);
-  const panel={width:100,height:10,pixels};
-  const reward={width:1,height:1,pixels:new Uint8Array([255,255,255,255])};
-  const im=await decodePng(await makeEmojiCardStrip({}, {...brand,showStamps:false},3,10,'passages',1,null,reward,null,panel));
-  const at=(x,y)=>Array.from(im.pixels.slice((y*im.width+x)*4,(y*im.width+x)*4+4));
-  assert.deepEqual(at(25,72),[0,255,0,255]);
-  assert.deepEqual(at(350,72),[0,255,0,255]);
-  assert.deepEqual(at(187,120),[255,255,255,255]);
+  const green=[20,180,80,255],art={width:20,height:20,pixels:Uint8Array.from({length:20*20*4},(_,i)=>green[i%4])};
+  const at=(im,x,y)=>Array.from(im.pixels.subarray((y*im.width+x)*4,(y*im.width+x)*4+4));
+  for(const scale of [1,2])for(const showStampPanel of [true,false]){
+    const hidden=await decodePng(await makeRealStrip({...brand,showStampPanel,showStamps:false},3,10,scale,null,null,null,art));
+    assert.deepEqual([hidden.width,hidden.height],[375*scale,123*scale]);
+    for(const [x,y] of [[0,0],[374,0],[0,122],[374,122],[187,61]])
+      assert.deepEqual(at(hidden,x*scale,y*scale),green,'legacy strip extends through corners and edges');
+    const visible=await decodePng(await makeRealStrip({...brand,showStampPanel,showStamps:true},3,10,scale,null,null,null,art));
+    assert.deepEqual(at(visible,285*scale,40*scale),[242,201,76,255],'native legacy stamps remain drawn');
+    const withoutArt=await decodePng(await makeRealStrip({...brand,showStampPanel,showStamps:false},3,10,scale));
+    assert.deepEqual(at(withoutArt,0,0),[18,24,32,255],'no artwork retains legacy fallback');
+  }
 });
 
+test('full Apple strip uses centered cover crop without squashing and leaves Google unchanged',async()=>{
+  const {decodePng}=await import('../supabase/functions/_shared/png.js');
+  const w=100,h=10,pixels=new Uint8Array(w*h*4);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)pixels.set(x>=35&&x<65?[0,255,0,255]:[255,0,0,255],(y*w+x)*4);
+  const art={width:w,height:h,pixels};
+  for(const scale of [1,2]){
+    const img=await decodePng(await makeEmojiCardStrip({}, {...brand,showStamps:false},3,10,'passages',scale,null,null,null,art));
+    const at=(x,y)=>Array.from(img.pixels.subarray((y*img.width+x)*4,(y*img.width+x)*4+4));
+    for(const [x,y] of [[0,0],[374,0],[0,143],[374,143],[187,72]])
+      assert.deepEqual(at(x*scale,y*scale),[0,255,0,255],'center crop covers full band without stretching');
+  }
+  const config={colors:brand,stamps:{icon:'check'}};
+  const google=await makeGoogleStampHero(config,3,10,'passages');
+  assert.deepEqual(await makeGoogleStampHero({...config,apple:{showStamps:false},assets:{appleStrip:{url:'unused'}}},3,10,'passages'),google);
+});
+
+test('the Apple editor uses a full-bleed strip only when artwork is selected',()=>{
+  const source=readFileSync(new URL('../src/card-designer.js',import.meta.url),'utf8');
+  assert.ok(source.includes("const hasAppleStrip = platform === 'apple' && !!d.assets.appleStrip?.url"));
+  assert.ok(source.includes("margin: hasAppleStrip ? 0 : '0 16px'"));
+  assert.ok(source.includes('borderRadius: hasAppleStrip ? 0 : 15'));
+  assert.ok(source.includes('appleStrip: { aspect: 375 / 144, outW: 1125, outH: 432'));
+});
 test('Apple panel settings survive reload and asset paths remain scoped to their owner',async()=>{
   const {normalize,prepareDesign}=await import('../src/card-designer.js');
   const {assetPath,testAssetPath,realAppleBrand}=await import('../supabase/functions/apple-pass/real-card.js');
