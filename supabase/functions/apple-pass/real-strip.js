@@ -1,4 +1,4 @@
-import { notoEmoji, compositeEmoji } from './emoji-art.js';
+import { notoEmoji, compositeEmoji, decodeEmojiPng } from './emoji-art.js';
 // Lightweight, dependency-free PNG for native Apple store-card strips.
 // Avoid native/WASM image dependencies in the Edge Function: the test-pass route
 // must be able to cold-start even if no real-card artwork is requested.
@@ -66,9 +66,13 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
   } else {
     const n=Math.min(target,20),rows=n<=6?1:n<=14?2:3,per=Math.ceil(n/rows);
     const icon=stamps?.emoji?await notoEmoji(stamps.emoji):null;
-    const fullWidth=310*scale,gap=8*scale;
-    const size=Math.max(12,Math.min(34,Math.floor((fullWidth-(per-1)*gap)/per)));
-    const rowGap=rows===3?37*scale:46*scale;
+    // OneCup-style 5 + 5 layout: visibly larger emojis. Compute in 1x
+    // logical pixels FIRST so strip@2x scales sprites instead of shrinking them.
+    const gap=rows<=2?11:7;
+    const maxSize=rows===1?54:rows===2?50:34;
+    const logicalSize=Math.max(12,Math.min(maxSize,Math.floor((315-(per-1)*gap)/per)));
+    const size=logicalSize*scale;
+    const rowGap=(rows===3?40:rows===2?58:0)*scale;
     const cx=width/2,cy=height/2;
     for(let i=0;i<n;i++){
       const row=Math.floor(i/per),col=i%per,rowCount=Math.min(per,n-row*per);
@@ -300,6 +304,80 @@ export async function makeDemoLogo(name, accent='#F2C94C', scale=1, kind='logo')
     for(let y=0;y<7;y++)for(let x=0;x<5;x++)if(g[y][x]==='1')
       for(let yy=0;yy<step;yy++)for(let xx=0;xx<step;xx++)
         paint(pixels,width,height,startX+n*6*step+x*step+xx,startY+y*step+yy,fg);
+  }
+  return demoPng(width,height,pixels);
+}
+
+
+// Native Apple Wallet places logo.png at the LEFT of the card header.
+// Rasterizing the commerce name inside the logo image keeps it directly next
+// to the logo, independent of Apple's right-aligned headerFields layout.
+// Native logoText must then be omitted to prevent a second centered name.
+// The logo image is transparent except for the merchant identity and its name.
+export async function makeAppleHeaderLogo(name, accent='#F2C94C', background='#1C1F24', logoBytes=null, scale=1) {
+  if (![1,2].includes(scale)) throw new Error('invalid_header_scale');
+  const width=160*scale,height=50*scale;
+  const pixels=new Uint8Array(width*height*4);
+  const base=rgb(background,'#1C1F24');
+  const light=.2126*base[0]+.7152*base[1]+.0722*base[2] > 155;
+  const ink=light?[24,27,33]:[255,255,255];
+  const accentRgb=rgb(accent,'#F2C94C');
+  const side=42*scale, startY=4*scale;
+  let src=null;
+  if(logoBytes) {
+    try {
+      src=await decodeEmojiPng(logoBytes,{maxBytes:800000,maxDimension:1024});
+    } catch { /* unsupported PNG format: safe initials tile instead */ }
+  }
+  if(src) {
+    const box=38*scale;
+    const ratio=Math.min(box/src.width,box/src.height);
+    const sw=Math.max(1,Math.round(src.width*ratio)),sh=Math.max(1,Math.round(src.height*ratio));
+    const left=Math.floor((side-sw)/2),top=Math.floor(startY+(side-sh)/2);
+    for(let y=0;y<sh;y++)for(let x=0;x<sw;x++) {
+      const sx=Math.min(src.width-1,Math.floor(x/ratio)),sy=Math.min(src.height-1,Math.floor(y/ratio));
+      const si=(sy*src.width+sx)*4,di=((top+y)*width+left+x)*4;
+      pixels[di]=src.pixels[si];pixels[di+1]=src.pixels[si+1];
+      pixels[di+2]=src.pixels[si+2];pixels[di+3]=src.pixels[si+3];
+    }
+  } else {
+    const radius=8*scale;
+    for(let y=startY;y<startY+side;y++)for(let x=0;x<side;x++){
+      const localY=y-startY;
+      const dx=Math.max(radius-x,x-(side-radius-1),0),dy=Math.max(radius-localY,localY-(side-radius-1),0);
+      if(dx*dx+dy*dy<=radius*radius)paint(pixels,width,height,x,y,accentRgb);
+    }
+    const words=String(name||'DPA').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+    const initials=(words.length>1?words.map(w=>w[0]).join(''):words[0]||'DPA').slice(0,2);
+    const step=3*scale;
+    const x0=Math.round((side-(initials.length*5+initials.length-1)*step)/2);
+    const y0=Math.round(startY+(side-7*step)/2);
+    const fg=[24,27,33];
+    for(let n=0;n<initials.length;n++){
+      const glyph=glyphs[initials[n]]||glyphs.C;
+      for(let gy=0;gy<7;gy++)for(let gx=0;gx<5;gx++)if(glyph[gy][gx]==='1')
+        for(let yy=0;yy<step;yy++)for(let xx=0;xx<step;xx++)
+          paint(pixels,width,height,x0+(n*6+gx)*step+xx,y0+gy*step+yy,fg);
+    }
+  }
+  // Uppercase slim bitmap lettering (scaled 2x vertically) is deliberate:
+  // fit a practical 40-char merchant name into Apple's narrow 160pt logo area.
+  const title=String(name||'DPA Cards').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toUpperCase().replace(/[^A-Z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+  const maxWidth=102,originX=52,yscale=2*scale;
+  const scaleX=Math.min(1.55,Math.max(.75,maxWidth/Math.max(1,title.length*6)));
+  const count=Math.min(title.length,Math.floor(maxWidth/(6*scaleX)));
+  const xstep=6*scaleX*scale,y0=Math.round((50-7*2)/2)*scale;
+  for(let n=0;n<count;n++){
+    if(title[n]===' ')continue;
+    const glyph=glyphs[title[n]]||glyphs.C;
+    for(let gy=0;gy<7;gy++)for(let gx=0;gx<5;gx++)if(glyph[gy][gx]==='1'){
+      const px=Math.round((originX+n*xstep/scale+gx*scaleX)*scale);
+      const py=y0+gy*yscale;
+      const right=Math.min(width,Math.round((originX+n*xstep/scale+(gx+1)*scaleX)*scale));
+      for(let y=py;y<py+yscale;y++)for(let x=px;x<right;x++)
+        if(x>=0&&x<width&&y>=0&&y<height)paint(pixels,width,height,x,y,ink);
+    }
   }
   return demoPng(width,height,pixels);
 }
