@@ -3,6 +3,7 @@ import {test} from 'node:test';
 import {readFileSync} from 'node:fs';
 import {STAMP_LIBRARY,stampById,stampImageUrl,filterStamps} from '../src/stamp-library.js';
 import {decodePng} from '../supabase/functions/_shared/png.js';
+import {compositeEmoji} from '../supabase/functions/apple-pass/emoji-art.js';
 import {makeRealStrip,makeDemoStrip,makeGoogleStampHero} from '../supabase/functions/apple-pass/real-strip.js';
 import {libraryStampId,LIBRARY_STAMP_IDS} from '../supabase/functions/_shared/stamp-library.js';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url));
@@ -33,16 +34,23 @@ test('Wallet strips display original colors for completed PNG and grayscale for 
   assert.deepEqual(a,b,'same renderer for real and test cards');
   const zero=await makeRealStrip({...colors,stamps,libraryId:'burger',mode:'passages'},0,10,1,icon);
   assert.notDeepEqual(a,zero);
-  const picture=await decodePng(a),pending=await decodePng(zero);
-  let colored=false,gray=false;
+  const picture=await decodePng(a);
+  let colored=false;
   for(let p=0;p<picture.pixels.length;p+=4){
     const r=picture.pixels[p],g=picture.pixels[p+1],bl=picture.pixels[p+2];
     if(r>120 && r>g*1.2 && g>bl*.6)colored=true;
-    const v=pending.pixels[p],w=pending.pixels[p+1],z=pending.pixels[p+2];
-    if(v>30 && Math.abs(v-w)<2 && Math.abs(w-z)<2)gray=true;
   }
   assert.ok(colored,'completed stamps preserve native image colors');
-  assert.ok(gray,'pending stamps are grayscale');
+  // A stamp composited over a colored card takes on the card background tint:
+  // verify true grayscale on a neutral backdrop instead of comparing final RGB channels.
+  const neutral=new Uint8Array(64*64*4);
+  for(let i=0;i<neutral.length;i+=4)neutral.set([20,20,20,255],i);
+  compositeEmoji(neutral,64,64,32,32,40,icon,false);
+  let gray=false;
+  for(let i=0;i<neutral.length;i+=4){
+    if(neutral[i]>20 && neutral[i]===neutral[i+1] && neutral[i+1]===neutral[i+2]){gray=true;break;}
+  }
+  assert.ok(gray,'pending icon is gray and faded at source before card composition');
   const google=await makeGoogleStampHero({colors,stamps},3,10,'passages',icon);
   const gp=await decodePng(google,{maxDimension:1200,maxBytes:5000000});
   assert.deepEqual([gp.width,gp.height],[1032,812]);
