@@ -84,7 +84,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   const balance = Math.max(0, Math.round(Number(t.test_balance) || 0));
   const goal = Math.max(1, Math.round(Number(pv.goal) || 10));
   const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA_TEST:' + t.qr_token,
-    messageEncoding: 'iso-8859-1', altText: (d.stamps?.emoji || d.stamps?.icon==='library') ? visibleCardNumber('TEST '+t.id.slice(0,4)+' '+t.qr_token.slice(0,4)) : 'CARTE TEST' };
+    messageEncoding: 'iso-8859-1', altText: 'Propulsé par DPA Cards' };
   const json = {
     formatVersion: 1, passTypeIdentifier: PASS_TYPE_ID, teamIdentifier: TEAM_ID,
     // Each preview gets a fresh demo serial. Wallet otherwise reuses the old
