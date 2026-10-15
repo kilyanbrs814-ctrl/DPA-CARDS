@@ -159,7 +159,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
     try {
       images['logo.png'] = Buffer.from(await makeAppleHeaderLogo(name, accent, primary, uploaded, 1));
       images['logo@2x.png'] = Buffer.from(await makeAppleHeaderLogo(name, accent, primary, uploaded, 2));
-      json.logoText = '';
+      delete (json as { logoText?: string }).logoText;
     } catch { console.error('apple-pass demo composite header unavailable'); }
   }
   // Apple displays its native primary text on top of the strip image. It cannot
@@ -246,7 +246,7 @@ async function createPass(token: string) {
     try {
       assets['logo.png'] = Buffer.from(await makeAppleHeaderLogo(brand.issuer, brand.accent, brand.primary, logo, 1));
       assets['logo@2x.png'] = Buffer.from(await makeAppleHeaderLogo(brand.issuer, brand.accent, brand.primary, logo, 2));
-      json.logoText = '';
+      delete (json as { logoText?: string }).logoText;
     } catch { console.error('apple-pass real composite header unavailable'); }
   }
   // Strip is optional: a rendering issue should not prevent a customer from
