@@ -1,6 +1,7 @@
 // Shared, pure mapping from a REAL, validated DPA Cards design to a native Apple store card.
 // The Apple Wallet preview in the editor is illustrative: PassKit owns native layout.
 // Keep this module free of Supabase, Deno and signing secrets so it can be unit tested.
+import { libraryStampId } from '../_shared/stamp-library.js';
 const HEX = /^#[0-9a-fA-F]{6}$/;
 // Keep the actual DB card number for scanning. The number on the pass is
 // display-only, while the full number stays available on the back for support.
@@ -74,9 +75,10 @@ export function realAppleBrand(program, merchant, card) {
     issuer, subtitle, label, primary, secondary, accent, foreground,
     logo: Object.hasOwn(assets,'logo') ? assetPath(assets.logo, card, 'logo') : assetPath(program?.logo_path, card, 'logo'),
     stamp: d.stamps?.icon === 'custom' && assets.stamp?.path?.endsWith('.png') ? assetPath(assets.stamp, card, 'stamp') : null,
+    libraryId: d.stamps?.icon === 'library' ? libraryStampId(d.stamps.libraryId) : '',
     artwork: backgroundImage || hero, heroFocus: Number.isFinite(+apple.heroFocus) ? Math.max(0, Math.min(100, +apple.heroFocus)) : 50,
     stamps: d.stamps || {}, mode: program?.mode === 'points' ? 'points' : 'passages',
-    emoji: typeof d.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(d.stamps.emoji) ? d.stamps.emoji.slice(0,32) : '',
+    emoji: d.stamps?.icon === 'emoji' && typeof d.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(d.stamps.emoji) ? d.stamps.emoji.slice(0,32) : '',
   };
 }
 export function realApplePassData({ program, merchant, customer, card, balance }) {
@@ -85,7 +87,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
   const goal = Math.max(1, Math.floor(Number(program.goal) || 10));
   const modePoints = program.mode === 'points';
   const client = [txt(customer?.first_name, 80), txt(customer?.last_name, 80)].filter(Boolean).join(' ') || 'Client';
-  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: (brand.emoji || brand.stamp) ? visibleCardNumber(card.card_number) : card.card_number };
+  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: (brand.emoji || brand.stamp || brand.libraryId) ? visibleCardNumber(card.card_number) : card.card_number };
   return { brand, goal, balance: b, json: {
     formatVersion: 1,
     passTypeIdentifier: 'pass.fr.digitalprojectagency.cards',
@@ -97,7 +99,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     backgroundColor: toRgb(brand.primary),
     foregroundColor: toRgb(brand.foreground),
     labelColor: toRgb(brand.foreground),
-    storeCard: (brand.emoji || brand.stamp) ? {
+    storeCard: (brand.emoji || brand.stamp || brand.libraryId) ? {
       // Apple controls native StoreCard placement. A tiny neutral primary
       // field reserves the strip artwork; no progress text obscures emojis.
       headerFields: [{key:'number',label:'',value:visibleCardNumber(card.card_number)}],
@@ -115,7 +117,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
         ...(brand.subtitle?[{key:'subtitle',label:'LE COMMERCE',value:brand.subtitle}]:[]),
         {key:'rule',label:'CONDITIONS',value:modePoints?goal+' points pour '+txt(program.reward,90):goal+' passages pour '+txt(program.reward,90)},
         {key:'info',label:'DPA Cards',value:'Présentez votre QR code en caisse. Le solde correspond à la dernière génération du pass ; les mises à jour automatiques ne sont pas encore activées.'},
-        {key:'emoji_credits',label:'ILLUSTRATIONS',value:'Noto Emoji (Google, Apache 2.0) ; Twemoji (Twitter, CC BY 4.0) — github.com/jdecked/twemoji'},
+        ...(brand.emoji ? [{key:'emoji_credits',label:'ILLUSTRATIONS',value:'Noto Emoji (Google, Apache 2.0) ; Twemoji (Twitter, CC BY 4.0) — github.com/jdecked/twemoji'}] : []),
       ],
     } : {
       headerFields: [{ key: 'program', label: 'PROGRAMME', value: txt(program.name, 22) || 'Fidélité' }],
