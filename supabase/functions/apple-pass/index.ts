@@ -7,7 +7,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
 import { realApplePassData, visibleCardNumber, appleHeaderName } from './real-card.js';
-import { makeRealStrip, makeDemoStrip, makeDemoLogo } from './real-strip.js';
+import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeAppleHeaderLogo } from './real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 function serviceKey() { try { const k = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}'); if (k.default) return k.default; } catch {} return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''; }
@@ -97,8 +97,8 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
       headerFields: [{key:'number',label:'',value:visibleCardNumber('TEST '+t.id.slice(0,4)+' '+t.qr_token.slice(0,4))}],
       primaryFields: [{key:'artwork',label:'',value:'\u00a0'}],
       secondaryFields: [
-        {key:'done',label:'',value:(pv.mode==='points'?'Points gagnés ':'Passages effectués ')+String(balance)},
-        {key:'remaining',label:'',value:(pv.mode==='points'?'Points restants ':'Passages restants ')+String(Math.max(0,goal-balance))},
+        {key:'done',label:pv.mode==='points'?'Points gagnés':'Passages effectués',value:String(balance),textAlignment:'PKTextAlignmentLeft'},
+        {key:'remaining',label:pv.mode==='points'?'Points restants':'Passages restants',value:String(Math.max(0,goal-balance)),textAlignment:'PKTextAlignmentRight'},
       ],
       backFields: [
         {key:'demo',label:'DÉMONSTRATION',value:'Cette carte ne possède aucune valeur commerciale.'},
@@ -151,6 +151,16 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
       images['logo.png'] = Buffer.from(await makeDemoLogo(name, accent, 1));
       images['logo@2x.png'] = Buffer.from(await makeDemoLogo(name, accent, 2));
     } catch { images['logo.png'] = fallback; }
+  }
+  // When using the minimal emoji design, put the merchant name immediately
+  // after its uploaded logo (or initials) INSIDE Apple logo.png. Otherwise
+  // iOS distributes native logoText between the logo and right-hand number.
+  if (d.stamps?.emoji) {
+    try {
+      images['logo.png'] = Buffer.from(await makeAppleHeaderLogo(name, accent, primary, uploaded, 1));
+      images['logo@2x.png'] = Buffer.from(await makeAppleHeaderLogo(name, accent, primary, uploaded, 2));
+      json.logoText = '';
+    } catch { console.error('apple-pass demo composite header unavailable'); }
   }
   // Apple displays its native primary text on top of the strip image. It cannot
   // use the exact HTML layout, but the two-row colored stamps and blue gradient
@@ -229,6 +239,16 @@ async function createPass(token: string) {
     'icon.png': fallback, 'icon@2x.png': fallback,
     ...(logo ? { 'logo.png': logo, 'logo@2x.png': logo } : {}),
   };
+  // Native Apple logoText floats toward right-side headerFields. Embed the
+  // full commerce name beside its real logo within transparent 160x50 artwork.
+  // Keep existing logo + logoText if compositing fails.
+  if (brand.emoji) {
+    try {
+      assets['logo.png'] = Buffer.from(await makeAppleHeaderLogo(brand.issuer, brand.accent, brand.primary, logo, 1));
+      assets['logo@2x.png'] = Buffer.from(await makeAppleHeaderLogo(brand.issuer, brand.accent, brand.primary, logo, 2));
+      json.logoText = '';
+    } catch { console.error('apple-pass real composite header unavailable'); }
+  }
   // Strip is optional: a rendering issue should not prevent a customer from
   // receiving a valid pass containing all native fields and QR code.
   try {
