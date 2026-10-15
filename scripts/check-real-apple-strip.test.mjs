@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { inflateSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
-import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeGoogleStampHero, makeEmojiCardStrip } from '../supabase/functions/apple-pass/real-strip.js';
+import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeGoogleStampHero, makeEmojiCardStrip, makeAppleHeaderLogo } from '../supabase/functions/apple-pass/real-strip.js';
 import { decodeEmojiPng, emojiFilename, compositeEmoji, twemojiFilename } from '../supabase/functions/apple-pass/emoji-art.js';
 
 const brand={primary:'#121820',secondary:'#3040C0',accent:'#F2C94C',stamps:{filled:'#F2C94C',empty:'#FFFFFF'}};
@@ -182,4 +182,43 @@ test('💧 Apple demo strip stays visible even when Noto and Twemoji are unavail
     const real=await makeRealStrip({primary:'#1C1F24',secondary:'#2448F0',emoji:'💧',stamps:design.stamps},3,10,1);
     assert.deepEqual(Array.from(real),Array.from(await makeDemoStrip(design,1)));
   } finally { globalThis.fetch=savedFetch; }
+});
+
+test('Apple Wallet logo art includes merchant name next to icon at 1x and 2x',async()=>{
+  for (const scale of [1,2]) {
+    const png=await makeAppleHeaderLogo('Commerce test','#F2C94C','#1C1F24',null,scale);
+    const img=parsePng(png);
+    assert.equal(img.w,160*scale);assert.equal(img.h,50*scale);
+    assert.ok(rgbaAt(img,10*scale,20*scale)[3]>0,'merchant initials tile is visible');
+    const rows=[10,20,30,40].flatMap(y=>[57,68,80,90,105,120,138,149].map(x=>rgbaAt(img,x*scale,y*scale)[3]));
+    assert.ok(rows.some(v=>v>0),'merchant name pixels must exist to the right of tile');
+  }
+  // PNG from uploaded logo replaces the initials, but not the adjacent name.
+  const raw=await makeDemoLogo('X Logo','#305ACA',1,'logo');
+  const img=parsePng(await makeAppleHeaderLogo('Commerce test','#F2C94C','#1C1F24',raw,1));
+  assert.equal(img.w,160);
+  assert.ok(rgbaAt(img,10,20)[3]>0);
+});
+test('Apple emojis are 50pt and 2x artwork doubles pixels rather than getting smaller',async()=>{
+  const saved=globalThis.fetch;
+  try {
+    globalThis.fetch=async()=>new Response('missing',{status:404});
+    const source={...demoDesign,stamps:{emoji:'💧',filled:'#F2C94C'},preview:{mode:'passages',goal:10,progress:3}};
+    const img1=parsePng(await makeDemoStrip(source,1));
+    const img2=parsePng(await makeDemoStrip(source,2));
+    assert.deepEqual([img1.w,img1.h],[375,144]);
+    assert.deepEqual([img2.w,img2.h],[750,288]);
+    const bg=rgbaAt(img1,190,44);
+    const widths=[img1,img2].map((img,index)=>{
+      const scale=index+1,cy=Math.round(44*scale);
+      let sum=0;
+      for(let x=65*scale;x<127*scale;x++){
+        const p=rgbaAt(img,x,cy);
+        if(p[0]!==bg[0]||p[1]!==bg[1]||p[2]!==bg[2])sum++;
+      }
+      return sum;
+    });
+    assert.ok(widths[0]>=19,'larger stamp must occupy visibly more than 19px');
+    assert.ok(widths[1]>=widths[0]*1.6,'high-res artwork must scale with device resolution');
+  } finally {globalThis.fetch=saved;}
 });
