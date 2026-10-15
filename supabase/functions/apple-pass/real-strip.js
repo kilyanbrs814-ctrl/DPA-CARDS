@@ -39,8 +39,50 @@ function circle(pixels, width, height, cx, cy, r, color) {
       if ((x + .5 - cx) ** 2 + (y + .5 - cy) ** 2 <= r2)
         pixel(pixels, width, x, y, color);
 }
+// Minimal emoji banner used by BOTH signed Apple test and customer passes.
+// The strip is only the rectangular stamp region from the admin designer;
+// logo, number, counters and QR remain native Wallet fields.
+export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, scale=1) {
+  if (![1,2].includes(scale)) throw new Error('invalid_strip_scale');
+  const width=375*scale,height=144*scale,pixels=new Uint8Array(width*height*4);
+  const primary=rgb(colors?.primary,'#1C1F24');
+  const secondary=rgb(colors?.secondary,'#2448F0');
+  const done=Math.max(0,Number(progress)||0),target=Math.max(1,Math.round(Number(goal)||10));
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++)pixel(pixels,width,x,y,primary);
+  // Softly rounded rectangle with margin as in the admin preview.
+  const margin=16*scale,top=3*scale,radius=15*scale;
+  const right=width-margin,bottom=height-3*scale;
+  for(let y=top;y<bottom;y++)for(let x=margin;x<right;x++) {
+    const cornerX=x<margin+radius?margin+radius:x>=right-radius?right-radius:x;
+    const cornerY=y<top+radius?top+radius:y>=bottom-radius?bottom-radius:y;
+    if((x-cornerX)**2+(y-cornerY)**2 <= radius*radius)pixel(pixels,width,x,y,secondary);
+  }
+  if(mode==='points'||target>30) {
+    const x0=70*scale,w=235*scale,y0=66*scale,h=14*scale;
+    const fraction=Math.min(1,done/target);
+    const ink=rgb(stamps?.filled,'#F2C94C'),empty=rgb(stamps?.empty,'#FFFFFF');
+    for(let y=y0;y<y0+h;y++)for(let x=x0;x<x0+w;x++)
+      pixel(pixels,width,x,y,x-x0<w*fraction?ink:empty);
+  } else {
+    const n=Math.min(target,20),rows=n<=6?1:n<=14?2:3,per=Math.ceil(n/rows);
+    const icon=stamps?.emoji?await notoEmoji(stamps.emoji):null;
+    const fullWidth=310*scale,gap=8*scale;
+    const size=Math.max(12,Math.min(34,Math.floor((fullWidth-(per-1)*gap)/per)));
+    const rowGap=rows===3?37*scale:46*scale;
+    const cx=width/2,cy=height/2;
+    for(let i=0;i<n;i++){
+      const row=Math.floor(i/per),col=i%per,rowCount=Math.min(per,n-row*per);
+      const x=Math.round(cx+(col-(rowCount-1)/2)*(size+gap));
+      const y=Math.round(cy+(row-(rows-1)/2)*rowGap);
+      if(icon)compositeEmoji(pixels,width,height,x,y,size,icon,i<done);
+    }
+  }
+  return demoPng(width,height,pixels);
+}
+
 export async function makeRealStrip(brand, balance, goal, scale = 1) {
   if (![1, 2].includes(scale)) throw new Error('invalid_strip_scale');
+  if(brand.emoji) return makeEmojiCardStrip(brand.stamps,brand,balance,goal,brand.mode||'passages',scale);
   const width = 375 * scale, height = 123 * scale;
   const pixels = new Uint8Array(width * height * 4);
   const primary = rgb(brand.primary, '#2448F0');
@@ -130,6 +172,13 @@ function line(pixels, width, height, x1, y1, x2, y2, thickness, color) {
 // Same two rows of 5 as the test designer where goal is 10.
 export async function makeDemoStrip(config, scale = 1) {
   if (![1, 2].includes(scale)) throw new Error('invalid_demo_strip_scale');
+  if(config?.stamps?.emoji) {
+    const pv=config.preview||{};
+    return makeEmojiCardStrip(config.stamps, {
+      primary:config?.apple?.colors?.primary || config?.colors?.primary,
+      secondary:config?.apple?.colors?.secondary || config?.colors?.secondary,
+    },pv.progress,pv.goal,pv.mode,scale);
+  }
   const width = 375 * scale, height = 144 * scale;
   const pixels = new Uint8Array(width * height * 4);
   const primary = colorFromDemo(config, 'primary', '#1C1F24');
