@@ -1,3 +1,4 @@
+import { parseCode } from '../src/scanner.js';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { realAppleBrand, realApplePassData, assetPath, onBackground, visibleCardNumber } from '../supabase/functions/apple-pass/real-card.js';
@@ -102,4 +103,11 @@ test('points-mode real pass retains actual running balance and remaining target'
   const {json}=realApplePassData({program:p,merchant,customer,card,balance:37});
   assert.equal(json.storeCard.secondaryFields[0].value,'Points gagnés 37');
   assert.equal(json.storeCard.secondaryFields[1].value,'Points restants 63');
+});
+
+test('number printed on real pass works with manual scanner fallback', () => {
+  const value=visibleCardNumber('DPA-00001234');
+  assert.equal(value,'00001234');
+  assert.deepEqual(parseCode(value),{kind:'number',code:'00001234'});
+  assert.deepEqual(parseCode(value.slice(-4)),{kind:'suffix',code:'1234'});
 });
