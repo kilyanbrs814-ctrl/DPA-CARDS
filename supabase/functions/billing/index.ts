@@ -569,10 +569,11 @@ async function customerFor(s: Stripe, merchantId: string, email?: string | null,
 
 async function designCheckout(req: Request): Promise<Response> {
   const { user, merchantId } = await member(req);
-  // The design is paid after the offer: no design checkout without a valid subscription
-  // (this only orders the steps; the two payments stay independent).
-  const sub = await rowOf(merchantId);
-  if (!sub || !ACCESS.includes(sub.status)) throw new HttpError(402, 'subscription_required');
+  // A director-granted manual entitlement also permits ordering the independent
+  // paid custom design. It does NOT waive the 29,90 € Stripe design charge.
+  const {data:hasAccess,error:accessError}=await admin.rpc('merchant_has_access',{p_merchant:merchantId});
+  if(accessError)throw new Error('db_merchant_access');
+  if(hasAccess!==true)throw new HttpError(402,'subscription_required');
   const s = requireStripe();
   const designPrice = (await priceIds()).custom_design;
   const body = await req.json().catch(() => ({}));
