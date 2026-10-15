@@ -416,6 +416,11 @@ export async function makeGoogleStampHero(d, progress, goal, mode='passages', cu
     const y=Math.round(height/2+(row-(rows-1)/2)*spaceY);
     const stamp=i===n-1&&finalStar?finalStar:bitmap;
     if(stamp)compositeEmoji(pixels,width,height,x,y,130,stamp,i<done);
+    else {
+      const ink=rgb(d?.stamps?.filled,'#F2C94C'),empty=rgb(d?.stamps?.empty,'#FFFFFF');
+      circle(pixels,width,height,x,y,52,i<done?ink:empty);
+      if(i>=done)circle(pixels,width,height,x,y,47,secondary);
+    }
   }
   return demoPng(width,height,pixels);
 }
