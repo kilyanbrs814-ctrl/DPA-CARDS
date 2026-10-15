@@ -33,13 +33,14 @@ export function resizeAppleLogo(source,frameW,frameH) {
         for(let u=0;u<samples;u++){
           const sx=minX+(x+(u+0.5)/samples)*cw/w-0.5;
           const fx=clamp(sx,0,sw-1),x0=Math.floor(fx),x1=Math.min(sw-1,x0+1),dx=fx-x0;
-          const positions=[(y0*sw+x0)*4,(y0*sw+x1)*4,(y1*sw+x0)*4,(y1*sw+x1)*4];
-          const weights=[(1-dx)*(1-dy),dx*(1-dy),(1-dx)*dy,dx*dy];
-          for(let p=0;p<4;p++){
-            const pos=positions[p],weight=weights[p]*inv,alpha=src[pos+3]/255;
-            const aw=weight*alpha;
-            aa+=aw;ar+=src[pos]*aw;ag+=src[pos+1]*aw;ab+=src[pos+2]*aw;
-          }
+          const a0=(y0*sw+x0)*4,b0=(y0*sw+x1)*4,c0=(y1*sw+x0)*4,d0=(y1*sw+x1)*4;
+          const w0=(1-dx)*(1-dy)*inv,w1=dx*(1-dy)*inv,w2=(1-dx)*dy*inv,w3=dx*dy*inv;
+          const aw0=w0*src[a0+3]/255,aw1=w1*src[b0+3]/255;
+          const aw2=w2*src[c0+3]/255,aw3=w3*src[d0+3]/255;
+          aa+=aw0+aw1+aw2+aw3;
+          ar+=src[a0]*aw0+src[b0]*aw1+src[c0]*aw2+src[d0]*aw3;
+          ag+=src[a0+1]*aw0+src[b0+1]*aw1+src[c0+1]*aw2+src[d0+1]*aw3;
+          ab+=src[a0+2]*aw0+src[b0+2]*aw1+src[c0+2]*aw2+src[d0+2]*aw3;
         }
       }
       const dest=((top+y)*frameW+left+x)*4;
