@@ -38,6 +38,7 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { LOGO_PNG_BASE64 } from './logo.ts';
 import { sendEmail, simpleMail } from '../_shared/email.ts';
+import { makeGoogleStampHero } from '../apple-pass/real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ISSUER_ID = Deno.env.get('GOOGLE_WALLET_ISSUER_ID') ?? '';
@@ -150,6 +151,60 @@ const unitLabel = (mode: string) => (mode === 'points' ? 'Points' : 'Passages');
 const assetUrl = (path: string) =>
   `${SUPABASE_URL}/storage/v1/object/public/program-assets/${path.split('/').map(encodeURIComponent).join('/')}`;
 
+// HMAC-signed, read-only image URLs consumed by Google Wallet. No customer
+// identities, QR tokens, private keys or URLs chosen by the browser are exposed.
+let stampKeyPromise: Promise<CryptoKey> | null = null;
+async function stampKey() {
+  if (!stampKeyPromise) stampKeyPromise = crypto.subtle.importKey(
+    'raw',new TextEncoder().encode(SECRET_KEY),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  return stampKeyPromise;
+}
+async function stampSignature(id: string) {
+  const raw = new Uint8Array(await crypto.subtle.sign('HMAC',await stampKey(),new TextEncoder().encode('dpa-wallet-stamp:'+id)));
+  return Array.from(raw.slice(0,12), b=>b.toString(16).padStart(2,'0')).join('');
+}
+const hasStampEmoji = (program: any) =>
+  typeof program?.card_design?.stamps?.emoji === 'string' &&
+  /\p{Extended_Pictographic}/u.test(program.card_design.stamps.emoji);
+async function stampBoardUrl(id: string, revision = 0, test = false) {
+  const tag=(test?'test-':'')+id;
+  return SUPABASE_URL+'/functions/v1/wallet/stamp-board/'+
+    tag+'/'+await stampSignature(tag)+'.png?v='+Number(revision || 0);
+}
+function googleEmojiText(emoji: string, progress: number, goal: number) {
+  const count=Math.max(1,Math.min(20,Number(goal)||10)), done=Math.max(0,Math.min(count,Number(progress)||0));
+  return Array(done).fill(emoji).join(' ') +
+    (done<count?' · '+(count-done)+' restant(s)':'');
+}
+async function publicStampBoard(req: Request, path: string) {
+  const match=path.match(/\/stamp-board\/(test-)?([0-9a-f-]{36})\/([0-9a-f]{24})\.png$/i);
+  if(!match) return new Response('Not found',{status:404});
+  const isTest=!!match[1],id=match[2],provided=match[3].toLowerCase();
+  const expected=await stampSignature((isTest?'test-':'')+id);
+  if(provided!==expected)return new Response('Not found',{status:404});
+  let design: any=null, progress=0, goal=10, mode='passages';
+  if(isTest){
+    const {data,error}=await admin.from('test_card_designs').select('config').eq('id',id).maybeSingle();
+    if(error||!data||!data.config)return new Response('Not found',{status:404});
+    design=data.config;progress=Number(design.preview?.progress)||0;
+    goal=Number(design.preview?.goal)||10;mode=design.preview?.mode||'passages';
+  }else{
+    const {data,error}=await admin.from('cards')
+      .select('id,programs(goal,mode,card_design)').eq('id',id).maybeSingle();
+    if(error||!data)return new Response('Not found',{status:404});
+    const prog=(data as any).programs;
+    if(!prog||!hasStampEmoji(prog))return new Response('Not found',{status:404});
+    design=prog.card_design;goal=prog.goal;mode=prog.mode;
+    const now=await latest(id);
+    progress=now.balance;
+  }
+  if(typeof design?.stamps?.emoji!=='string')return new Response('Not found',{status:404});
+  const png=await makeGoogleStampHero(design,progress,goal,mode);
+  return new Response(new Uint8Array(png),{
+    status:200,headers:{'content-type':'image/png','cache-control':'public, max-age=300','x-content-type-options':'nosniff'}
+  });
+}
+
 // Branding of the program's class. Google Wallet has a fixed layout: only what its API supports is
 // mapped — issuer and program names, logo, hero image, background colour and field labels. Stamps,
 // free layout and the Apple version stay in the DPA Cards previews. Customer data (name, balance,
@@ -224,7 +279,15 @@ async function ensureObject(card: any, classId: string): Promise<string> {
       loyaltyPoints: { label: unitLabel(program.mode), balance: { int: now.balance } },
       // Identifies the card at the counter. It authorises nothing on its own.
       barcode: { type: 'QR_CODE', value: `DPA1:${card.qr_token}`, alternateText: card.card_number },
-      textModulesData: [{ id: 'reward', header: 'Récompense', body: `${program.goal} ${program.mode === 'points' ? 'points' : 'passages'} = ${program.reward}` }],
+      ...(hasStampEmoji(program) ? {
+        heroImage: { sourceUri: { uri: await stampBoardUrl(card.id,now.seq) } },
+      } : {}),
+      textModulesData: [
+        { id: 'reward', header: 'Récompense', body: `${program.goal} ${program.mode === 'points' ? 'points' : 'passages'} = ${program.reward}` },
+        ...(hasStampEmoji(program) ? [{
+          id:'stamps',header:'Tampons',body:googleEmojiText(program.card_design.stamps.emoji,now.balance,program.goal)
+        }] : []),
+      ],
     });
     if (ins.status !== 200 && ins.status !== 409) throw gErr('object_insert', ins);
   } else if (got.status !== 200) {
@@ -243,9 +306,21 @@ async function runSync(limit = 20): Promise<{ synced: number; failed: number }> 
   let synced = 0, failed = 0;
   for (const r of rows ?? []) {
     try {
-      const res = await google('PATCH', `/loyaltyObject/${encodeURIComponent(r.google_object_id)}`, {
-        loyaltyPoints: { label: unitLabel(r.mode), balance: { int: r.balance } },
-      });
+      const update: any = { loyaltyPoints: { label: unitLabel(r.mode), balance: { int: r.balance } } };
+      // Keep the Google stamp image and native emoji fallback current when points change.
+      // A failed auxiliary lookup must not block the existing balance synchronization.
+      try {
+        const {data:row}=await admin.from('cards').select('id,programs(mode,goal,reward,card_design)').eq('id',r.card_id).maybeSingle();
+        const prog=(row as any)?.programs;
+        if(row && hasStampEmoji(prog)){
+          update.heroImage={sourceUri:{uri:await stampBoardUrl(r.card_id,r.seq)}};
+          update.textModulesData=[
+            {id:'reward',header:'Récompense',body:`${prog.goal} ${prog.mode==='points'?'points':'passages'} = ${prog.reward}`},
+            {id:'stamps',header:'Tampons',body:googleEmojiText(prog.card_design.stamps.emoji,r.balance,prog.goal)},
+          ];
+        }
+      } catch { console.error('wallet stamp sync auxiliary error'); }
+      const res = await google('PATCH', `/loyaltyObject/${encodeURIComponent(r.google_object_id)}`, update);
       if (res.status !== 200) throw gErr('object_patch', res);
       await admin.rpc('wallet_complete_sync', { p_card: r.card_id, p_lease: r.lease, p_seq: r.seq, p_balance: r.balance });
       synced++;
@@ -1454,11 +1529,15 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   const mode = pv.mode === 'points' ? 'points' : 'passages', view = testView(t);
   const object = {
     id: objectId, classId, state: 'ACTIVE', accountId: view.card_number, accountName: String(pv.client || 'Client test').slice(0, 60),
+    ...(typeof d.stamps?.emoji==='string' && d.stamps.emoji ? {
+      heroImage:{sourceUri:{uri:await stampBoardUrl(t.id,Date.now(),true)}},
+    } : {}),
     loyaltyPoints: { label: unitLabel(mode), balance: { int: Math.max(0, Math.round(Number(pv.progress) || 0)) } },
     barcode: { type: 'QR_CODE', value: view.qr_value, alternateText: 'CARTE TEST' },
     textModulesData: [
       { id: 'reward', header: 'Récompense', body: `${pv.goal ?? 10} ${mode} = ${pv.reward || 'Récompense'}` },
       { id: 'demo', header: 'Carte de démonstration', body: 'Carte de test DPA Cards : elle n’appartient à aucun commerce et n’a aucune valeur.' },
+      ...(d.stamps?.emoji?[{id:'stamps',header:'Tampons',body:googleEmojiText(d.stamps.emoji,pv.progress||0,pv.goal||10)}]:[]),
     ],
   };
   const og = await google('GET', `/loyaltyObject/${encodeURIComponent(objectId)}`);
@@ -1484,6 +1563,7 @@ Deno.serve(async (req) => {
   const path = new URL(req.url).pathname;
   try {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
+    if (req.method === 'GET' && path.includes('/stamp-board/')) return await publicStampBoard(req,path);
     if (req.method === 'GET' && path.endsWith('/logo.png')) {
       return new Response(Uint8Array.from(atob(LOGO_PNG_BASE64), c => c.charCodeAt(0)), {
         headers: { 'content-type': 'image/png', 'cache-control': 'public, max-age=86400' },
