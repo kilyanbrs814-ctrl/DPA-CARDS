@@ -89,7 +89,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
   const goal = Math.max(1, Math.floor(Number(program.goal) || 10));
   const modePoints = program.mode === 'points';
   const client = [txt(customer?.first_name, 80), txt(customer?.last_name, 80)].filter(Boolean).join(' ') || 'Client';
-  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: (brand.emoji || brand.stamp || brand.libraryId) ? visibleCardNumber(card.card_number) : card.card_number };
+  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: 'Propulsé par DPA Cards' };
   return { brand, goal, balance: b, json: {
     formatVersion: 1,
     passTypeIdentifier: 'pass.fr.digitalprojectagency.cards',
