@@ -74,7 +74,8 @@ export function realAppleBrand(program, merchant, card) {
   return {
     issuer, subtitle, label, primary, secondary, accent, foreground,
     showBusinessName: apple.showBusinessName === true,
-    appleHeader: apple.showBusinessName === true ? assetPath(assets.appleHeader,card,'appleHeader') : null,
+    // Ignore legacy pre-single-line header PNGs; they must be rebuilt on next save.
+    appleHeader: apple.showBusinessName === true && apple.headerArtworkVersion===2 ? assetPath(assets.appleHeader,card,'appleHeader') : null,
     rewardEnabled: apple.showReward === true,
     rewardLabel: apple.showReward === true ? assetPath(assets.rewardLabel,card,'rewardLabel') : null,
     logo: Object.hasOwn(assets,'logo') ? assetPath(assets.logo, card, 'logo') : assetPath(program?.logo_path, card, 'logo'),
@@ -91,7 +92,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
   const goal = Math.max(1, Math.floor(Number(program.goal) || 10));
   const modePoints = program.mode === 'points';
   const client = [txt(customer?.first_name, 80), txt(customer?.last_name, 80)].filter(Boolean).join(' ') || 'Client';
-  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: 'Propulsé par DPA Cards' };
+  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: 'Par DPA Cards' };
   return { brand, goal, balance: b, json: {
     formatVersion: 1,
     passTypeIdentifier: 'pass.fr.digitalprojectagency.cards',
@@ -101,7 +102,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     // Native PassKit text: iOS draws it in its system typography next to the logo.
     // Precomposed header permits larger type while keeping the 50pt Apple slot.
     // Legacy saved designs without it still use Apple's native text until re-saved.
-    ...(brand.showBusinessName && !brand.appleHeader ? { logoText: brand.issuer } : {}),
+    ...(brand.showBusinessName && !brand.appleHeader ? { logoText: appleHeaderName(brand.issuer) } : {}),
     description: 'Carte de fidélité ' + brand.issuer,
 
     backgroundColor: toRgb(brand.primary),
