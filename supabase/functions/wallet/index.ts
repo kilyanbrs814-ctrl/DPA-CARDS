@@ -1,5 +1,6 @@
 import { decodePng } from '../_shared/png.js';
 import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
+import { loadRewardStar } from '../_shared/reward-star.js';
 // DPA Cards — Google Wallet Edge Function.
 //
 //   POST /wallet/save-link  merchant session → signed "Add to Google Wallet" link for one card
@@ -178,11 +179,9 @@ const walletCounter = (done: number, goal: number, mode: string) => {
     secondaryLoyaltyPoints:{label:isPoints?'Points restants':'Passages restants',balance:{int:left}}
   };
 };
-const hasSavedStampArt = (design: any) =>
-  (design?.stamps?.icon === 'library' && !!libraryStampId(design.stamps.libraryId)) ||
-  (!['library','custom'].includes(design?.stamps?.icon) && typeof design?.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(design.stamps.emoji));
+const hasSavedStampArt = (design: any) => !!(design?.stamps && typeof design.stamps === 'object');
 // Retain the existing Google Wallet layout and signed stamp-board route.
-const hasStampEmoji = (program: any) => hasSavedStampArt(program?.card_design);
+const hasStampEmoji = (program: any) => program?.mode !== 'points' && hasSavedStampArt(program?.card_design);
 async function stampBoardUrl(id: string, revision = 0, test = false) {
   const tag=(test?'test-':'')+id;
   return SUPABASE_URL+'/functions/v1/wallet/stamp-board/'+
@@ -199,7 +198,7 @@ async function publicStampBoard(req: Request, path: string) {
   const isTest=!!match[1],id=match[2],provided=match[3].toLowerCase();
   const expected=await stampSignature((isTest?'test-':'')+id);
   if(provided!==expected)return new Response('Not found',{status:404});
-  let design: any=null, progress=0, goal=10, mode='passages';
+  let design: any=null, progress=0, goal=10, mode='passages', owner='';
   if(isTest){
     const {data,error}=await admin.from('test_card_designs').select('config,test_balance').eq('id',id).maybeSingle();
     if(error||!data||!data.config)return new Response('Not found',{status:404});
@@ -207,19 +206,29 @@ async function publicStampBoard(req: Request, path: string) {
     goal=Number(design.preview?.goal)||10;mode=design.preview?.mode||'passages';
   }else{
     const {data,error}=await admin.from('cards')
-      .select('id,programs(goal,mode,card_design)').eq('id',id).maybeSingle();
+      .select('id,merchant_id,program_id,programs(goal,mode,card_design)').eq('id',id).maybeSingle();
     if(error||!data)return new Response('Not found',{status:404});
     const prog=(data as any).programs;
     if(!prog||!hasStampEmoji(prog))return new Response('Not found',{status:404});
     design=prog.card_design;goal=prog.goal;mode=prog.mode;
+    owner=(data as any).merchant_id+'/'+(data as any).program_id+'/designer';
     const now=await latest(id);
     progress=now.balance;
   }
   if(!hasSavedStampArt(design))return new Response('Not found',{status:404});
   const selectedLibrary=design.stamps?.icon==='library'?libraryStampId(design.stamps.libraryId):'';
-  const libraryImage=selectedLibrary?await loadLibraryStamp(selectedLibrary):null;
-  if(selectedLibrary && !libraryImage)return new Response('Image unavailable',{status:503});
-  const png=await makeGoogleStampHero(design,progress,goal,mode,libraryImage);
+  let icon=selectedLibrary?await loadLibraryStamp(selectedLibrary):null;
+  if(selectedLibrary && !icon)return new Response('Image unavailable',{status:503});
+  if(!icon && design.stamps?.icon==='custom'){
+    const path=design.assets?.stamp?.path;
+    const prefix=isTest?'tests/'+id+'/designer/':owner+'/';
+    if(typeof path==='string'&&path.startsWith(prefix)&&/\/stamp-[0-9a-f-]{36}\.png$/i.test(path)){
+      const {data}=await admin.storage.from('program-assets').download(path);
+      if(data && data.size<=2097152)icon=await decodePng(new Uint8Array(await data.arrayBuffer()));
+    }
+  }
+  const finalStar=await loadRewardStar();
+  const png=await makeGoogleStampHero(design,progress,goal,mode,icon,finalStar);
   return new Response(new Uint8Array(png),{
     status:200,headers:{'content-type':'image/png','cache-control':'public, max-age=300','x-content-type-options':'nosniff'}
   });
@@ -1587,7 +1596,7 @@ async function adminTestCardDuplicate(req: Request): Promise<Response> {
   const id = crypto.randomUUID(), cfg = JSON.parse(JSON.stringify(t.config ?? {}));
   for (const kind of ASSET_KINDS) {
     const a = cfg.assets?.[kind]; if (!a?.path) continue;
-    const to = `${testFolder(id)}/designer/${kind}-${crypto.randomUUID()}.${a.path.endsWith('.png') ? 'png' : 'jpg'}`;
+    const to = `${testFolder(id)}/designer/${kind}-${crypto.randomUUID()}.${a.path.split('.').pop()}`;
     const { error } = await admin.storage.from('program-assets').copy(a.path, to);
     cfg.assets[kind] = error ? null : { path: to };
   }
