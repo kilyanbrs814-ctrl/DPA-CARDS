@@ -222,3 +222,13 @@ test('Apple emojis are 50pt and 2x artwork doubles pixels rather than getting sm
     assert.ok(widths[1]>=widths[0]*1.6,'high-res artwork must scale with device resolution');
   } finally {globalThis.fetch=saved;}
 });
+
+test('Apple signed demo and real passes omit logoText instead of sending invalid empty text',()=>{
+  const source=readFileSync(new URL('../supabase/functions/apple-pass/index.ts', import.meta.url),'utf8');
+  const removals=source.split('delete (json as { logoText?: string }).logoText;').length-1;
+  assert.equal(removals,2,'both demo and real pass must omit the optional native logoText');
+  assert.ok(!source.includes("json.logoText = ''"),'empty logoText is rejected by passkit-generator Joi schema');
+  const json={logoText:'Commerce',storeCard:{headerFields:[]}};
+  delete json.logoText;
+  assert.ok(!Object.hasOwn(JSON.parse(JSON.stringify(json)),'logoText'));
+});
