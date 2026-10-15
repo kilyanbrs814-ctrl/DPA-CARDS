@@ -97,8 +97,10 @@ export function realApplePassData({ program, merchant, customer, card, balance }
       headerFields: [{key:'number',label:'',value:visibleCardNumber(card.card_number)}],
       primaryFields: [{key:'artwork',label:'',value:'\u00a0'}],
       secondaryFields: [
-        {key:'done',label:'',value:(modePoints?'Points gagnés ':'Passages effectués ')+String(b)},
-        {key:'remaining',label:'',value:(modePoints?'Points restants ':'Passages restants ')+String(Math.max(0,goal-b))},
+        // Apple styles field VALUES more prominently than field labels.
+        // Keep counts native, accessible and synchronized with the actual balance.
+        {key:'done',label:modePoints?'Points gagnés':'Passages effectués',value:String(b),textAlignment:'PKTextAlignmentLeft'},
+        {key:'remaining',label:modePoints?'Points restants':'Passages restants',value:String(Math.max(0,goal-b)),textAlignment:'PKTextAlignmentRight'},
       ],
       backFields: [
         {key:'full_card',label:'NUMÉRO COMPLET',value:txt(card.card_number,42)},

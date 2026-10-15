@@ -86,8 +86,12 @@ test('emoji design uses only card number, two counters and native QR on Apple fr
   assert.equal(json.storeCard.headerFields[0].value,'0001');
   assert.equal(json.storeCard.primaryFields[0].value,'\u00a0');
   assert.equal(json.storeCard.secondaryFields.length,2);
-  assert.equal(json.storeCard.secondaryFields[0].value,'Passages effectués 3');
-  assert.equal(json.storeCard.secondaryFields[1].value,'Passages restants 7');
+  assert.equal(json.storeCard.secondaryFields[0].label,'Passages effectués');
+  assert.equal(json.storeCard.secondaryFields[0].value,'3');
+  assert.equal(json.storeCard.secondaryFields[0].textAlignment,'PKTextAlignmentLeft');
+  assert.equal(json.storeCard.secondaryFields[1].label,'Passages restants');
+  assert.equal(json.storeCard.secondaryFields[1].value,'7');
+  assert.equal(json.storeCard.secondaryFields[1].textAlignment,'PKTextAlignmentRight');
   assert.equal(json.storeCard.auxiliaryFields?.length||0,0);
   assert.equal(json.barcode.message,'DPA1:'+token);
   assert.equal(json.barcode.altText,'0001');
@@ -102,8 +106,10 @@ test('points-mode real pass retains actual running balance and remaining target'
   p.mode='points';p.goal=100;
   p.card_design.stamps.emoji='⭐';
   const {json}=realApplePassData({program:p,merchant,customer,card,balance:37});
-  assert.equal(json.storeCard.secondaryFields[0].value,'Points gagnés 37');
-  assert.equal(json.storeCard.secondaryFields[1].value,'Points restants 63');
+  assert.equal(json.storeCard.secondaryFields[0].label,'Points gagnés');
+  assert.equal(json.storeCard.secondaryFields[0].value,'37');
+  assert.equal(json.storeCard.secondaryFields[1].label,'Points restants');
+  assert.equal(json.storeCard.secondaryFields[1].value,'63');
 });
 
 test('number printed on real pass works with manual scanner fallback', () => {

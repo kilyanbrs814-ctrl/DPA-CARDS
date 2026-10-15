@@ -11,18 +11,22 @@ function concat(chunks) {
   for(const chunk of chunks){out.set(chunk,off);off+=chunk.length;}
   return out;
 }
-export async function decodeEmojiPng(source) {
+export async function decodeEmojiPng(source, limits = {}) {
+  // Local program logos may be larger than remote Noto images. Callers must
+  // explicitly raise limits; public emoji URLs still use strict defaults.
+  const maxBytes = limits.maxBytes ?? 350000;
+  const maxDimension = limits.maxDimension ?? 256;
   const bin = source instanceof Uint8Array ? source : new Uint8Array(source);
-  if(bin.length<60 || bin.length>350000 || sig.some((b,i)=>bin[i]!==b))throw new Error('emoji_png_invalid');
+  if(bin.length<60 || bin.length>maxBytes || sig.some((b,i)=>bin[i]!==b))throw new Error('emoji_png_invalid');
   let width=0,height=0,type=0,depth=0,interlace=0,palette=null,alpha=null;
   const idat=[];
   for(let off=8;off+12<=bin.length;){
     const len=readInt(bin,off), name=String.fromCharCode(...bin.subarray(off+4,off+8));
-    if(len>350000 || off+len+12>bin.length)throw new Error('emoji_png_chunk');
+    if(len>maxBytes || off+len+12>bin.length)throw new Error('emoji_png_chunk');
     const data=bin.subarray(off+8,off+8+len);
     if(name==='IHDR') {
       width=readInt(data,0);height=readInt(data,4);depth=data[8];type=data[9];interlace=data[12];
-      if(width<1||height<1||width>256||height>256||depth!==8||interlace!==0||![2,3,6].includes(type))throw new Error('emoji_png_format');
+      if(width<1||height<1||width>maxDimension||height>maxDimension||depth!==8||interlace!==0||![2,3,6].includes(type))throw new Error('emoji_png_format');
     }
     if(name==='PLTE')palette=data;
     if(name==='tRNS')alpha=data;
