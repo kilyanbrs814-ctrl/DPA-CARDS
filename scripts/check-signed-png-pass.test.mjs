@@ -22,8 +22,8 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
   const rawCert=Buffer.from(cert.replace(/-----[^-]+-----/g,'').replace(/\s/g,''),'base64');
   globalThis.fetch=async()=>new Response(rawCert);
   globalThis.Deno={env:{get:n=>({SUPABASE_URL:'https://test.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'test',APPLE_PASS_CERT_PEM:cert,APPLE_PASS_PRIVATE_KEY_PEM:key}[n])},serve:fn=>{handler=fn;}};
-  let demo=true,reads=[],showName=false;
-  const config=()=>({identity:{name:'PNG test'},assets:{logo:{path:base()+'/designer/logo-'+id+'.png'},stamp:{path:base()+'/designer/stamp-'+id+'.png'}},stamps:{icon:'custom',emoji:'🍔'},colors:{primary:'#000000',secondary:'#2448F0'},apple:{showBusinessName:showName},preview:{progress:3,goal:10}});
+  let demo=true,reads=[],showName=false,showPanel=true;
+  const config=()=>({identity:{name:'PNG test'},assets:{logo:{path:base()+'/designer/logo-'+id+'.png'},stamp:{path:base()+'/designer/stamp-'+id+'.png'}},stamps:{icon:'custom',emoji:'🍔'},colors:{primary:'#000000',secondary:'#2448F0'},apple:{showBusinessName:showName,showStampPanel:showPanel},preview:{progress:3,goal:10}});
   const base=()=>demo?'tests/'+id:mid+'/'+pid;
   globalThis.__pngClient={
    rpc:async()=>({data:true}),
@@ -41,7 +41,9 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
   await import(pathToFileURL(mod.pathname).href+'?test='+Date.now());
   for(const nativeName of [false,true]){
    showName=nativeName;
-   for(const isDemo of [true,false]){
+   for(const panelVisible of [true,false]){
+    showPanel=panelVisible;
+    for(const isDemo of [true,false]){
    demo=isDemo;reads=[];
    const res=await handler(new Request('https://test/functions/v1/apple-pass?token='+'a'.repeat(32)));
    assert.equal(res.status,200);assert.equal(res.headers.get('content-type'),'application/vnd.apple.pkpass');
@@ -60,10 +62,13 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    assert.equal(jsQR(rgba,dim,dim).data,message);
    assert.equal(parseCode(message).kind,demo?'demo':'qr');
    if(!demo)assert.equal(contents.storeCard.headerFields[0].value,'9876');
-   assert.equal(reads.length,2);
+   assert.equal(reads.length,panelVisible?2:1,'hidden rectangle must avoid downloading stamp assets');
    execFileSync('unzip',['-o','-q',join(dir,'pass.zip'),'-d',join(dir,'unpacked')]);
    const manifest=JSON.parse(readFileSync(join(dir,'unpacked/manifest.json')));
    for(const name of ['icon.png','icon@2x.png','logo.png','logo@2x.png','strip.png','strip@2x.png','pass.json'])assert.ok(manifest[name]);
+   const stripFile=readFileSync(join(dir,'unpacked/strip.png'));
+   assert.equal(stripFile.readUInt32BE(16),375,'native strip width must stay fixed');
+   assert.equal(stripFile.readUInt32BE(20),144,'native strip height must stay fixed');
    const logoFile=readFileSync(join(dir,'unpacked/logo.png'));
    assert.equal(logoFile.readUInt32BE(16),nativeName?64:160,'logo width must leave room for native text');
    assert.equal(logoFile.readUInt32BE(20),nativeName?48:50);
@@ -72,6 +77,7 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    assert.equal(logo2.readUInt32BE(20),logoFile.readUInt32BE(20)*2);
    assert.ok(!manifest['logo@3x.png'],'optional 3x export skipped to protect Edge CPU budget');
    execFileSync('openssl',['smime','-verify','-inform','DER','-in',join(dir,'unpacked/signature'),'-content',join(dir,'unpacked/manifest.json'),'-noverify'],{stdio:'ignore'});
+    }
    }
   }
  } finally {globalThis.fetch=originalFetch;delete globalThis.Deno;delete globalThis.__pngClient;rmSync(mod,{force:true});rmSync(dir,{recursive:true,force:true});}
