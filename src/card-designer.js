@@ -265,7 +265,7 @@ export function makeCardDesigner(React, api) {
         }, (String(data.cardNumber || '').replace(/\D/g, '') || '0000').slice(-4))
       ),
 
-      // 2. BANDEAU : image Apple pleine largeur, ou rectangle historique sans image
+      // 2. RECTANGLE CENTRAL AVEC LES TAMPONS PNG (OU BANDEAU APPLE PLEINE LARGEUR)
       h('div', {
         'data-apple-stamp-panel': platform==='apple' ? (o.showStampPanel===false?'hidden':'visible') : undefined,
         style: {
