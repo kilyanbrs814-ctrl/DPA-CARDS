@@ -38,4 +38,4 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - run: deno check supabase/functions/wallet/index.ts supabase/functions/apple-pass/index.ts
+      - run: deno check --node-modules-dir=auto supabase/functions/wallet/index.ts supabase/functions/apple-pass/index.ts
