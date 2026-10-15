@@ -1,5 +1,6 @@
 import { preparePngUpload } from './png-upload.js';
 import { createAppleWordmark } from './apple-wordmark.js';
+import { createRewardLabel, rewardLabelColor } from './apple-reward-label.js';
 // Card designer (admin): one design project per program, rendered in two layouts —
 // Apple Wallet (full rectangle, rounded corners only) and Google Wallet (its own layout).
 // The design only describes the look. Customer name, progress, rewards and the QR code are
@@ -22,7 +23,7 @@ export const STAMP_ICONS = [
   ['icecream', 'Glace'], ['bakery_dining', 'Viennoiserie'], ['custom', 'Personnalisée'],
 ];
 const HEX = /^#[0-9A-Fa-f]{6}$/;
-const ASSET_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(designer\/)?(logo|hero|background|stamp)-[0-9a-f-]{36}\.(png|jpg)$/;
+const ASSET_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(designer\/)?(logo|hero|background|stamp|appleHeader|rewardLabel)-[0-9a-f-]{36}\.(png|jpg)$/;
 // Demo data of the editor (the real card gets its own customer, balance and QR token).
 export const DEMO = { client: 'Nicolas Moreau', progress: 3, goal: 10, reward: '1 dessert offert', available: 1, qr: 'DPA1:DEMO-DPA-CARDS-PREVIEW', cardNumber: 'DPA-DEMO-0003' };
 
@@ -44,9 +45,9 @@ export function defaultDesign(project) {
     identity: { name: m.business_name || '', subtitle: m.activity || '' },
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
-    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleHeader: null },
+    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleHeader: null, rewardLabel: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
-    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, useBackground: false, heroFocus: 50, label: '' },
+    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, showReward: false, rewardText: 'Débloque la coupe offerte !', useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
   };
@@ -69,7 +70,8 @@ export function prepareDesign(cardDesign, program, merchant, assetUrl) {
   const withUrl = (a, fb) => (a && a.path ? { path: a.path, url: assetUrl(a.path), fallback: fb ? fb.url : null } : fb);
   d.assets = { logo: cardDesign.assets && Object.hasOwn(cardDesign.assets,'logo') ? withUrl(cardDesign.assets.logo,null) : base.assets.logo, hero: withUrl(cardDesign.assets && cardDesign.assets.hero, base.assets.hero),
     background: withUrl(cardDesign.assets && cardDesign.assets.background, null), stamp: withUrl(cardDesign.assets && cardDesign.assets.stamp, null),
-    appleHeader: withUrl(cardDesign.assets && cardDesign.assets.appleHeader, null) };
+    appleHeader: withUrl(cardDesign.assets && cardDesign.assets.appleHeader, null),
+    rewardLabel: withUrl(cardDesign.assets && cardDesign.assets.rewardLabel, null) };
   if (!d.identity.name) d.identity.name = base.identity.name;
   if (d.stamps.icon === 'custom' && !d.assets.stamp) d.stamps.icon = 'check';
   return d;
@@ -261,6 +263,7 @@ export function makeCardDesigner(React, api) {
           margin: '0 16px',
           padding: '24px 12px',
           minHeight: 145,
+          position: 'relative',
           borderRadius: 15,
           background: c.secondary,
           display: 'grid',
@@ -268,13 +271,22 @@ export function makeCardDesigner(React, api) {
           boxSizing: 'border-box'
         }
       },
-        h(Progress, {
-          d,
-          data,
-          width: 275,
-          align: 'center',
-          dark: false, large:platform==='apple'
-        })
+        h('div',{style:platform==='apple' && o.showReward && o.rewardText?.trim()?
+          {transform:'translateY(-11px) scale(0.86)',transformOrigin:'center center'}:{}},
+          h(Progress, {
+            d,
+            data,
+            width: 275,
+            align: 'center',
+            dark: false, large:platform==='apple'
+          })),
+        platform==='apple' && o.showReward && o.rewardText?.trim() &&
+          h('div',{'data-apple-reward':true,style:{
+            position:'absolute',bottom:8,left:18,right:18,
+            textAlign:'center',fontSize:14,fontWeight:700,lineHeight:'20px',
+            overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',
+            color:rewardLabelColor(design)
+          }},o.rewardText.trim())
       ),
 
       // 3. Compteurs sur une seule ligne, côte à côte
@@ -573,6 +585,8 @@ export function makeCardDesigner(React, api) {
       // Never show or save stale baked lettering when the brand or Apple colors change.
       if(path==='identity.name'||path==='assets.logo'||path==='apple.showBusinessName'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
         n.assets.appleHeader=null;
+      if(path==='apple.showReward'||path==='apple.rewardText'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
+        n.assets.rewardLabel=null;
       return n;
     });
     const forSave=async()=>{
@@ -584,6 +598,13 @@ export function makeCardDesigner(React, api) {
         next.assets.appleHeader=asset;
       }
       if(next.apple?.showBusinessName!==true)next.assets.appleHeader=null;
+      if(next.apple?.showReward===true&&!next.assets?.rewardLabel?.path){
+        const bitmap=await createRewardLabel(next);
+        const asset=isTest ? await api.testUpload(project.test.id,'rewardLabel',bitmap)
+          : await api.upload(project.program.id,'rewardLabel',bitmap);
+        next.assets.rewardLabel=asset;
+      }
+      if(next.apple?.showReward!==true)next.assets.rewardLabel=null;
       return next;
     };
     const savedMark=next=>JSON.stringify(next)+(isTest?'|'+testName:'');
@@ -656,7 +677,7 @@ export function makeCardDesigner(React, api) {
     const testApple = async () => {
       if (busy) return; setBusy('apple');
       try {
-        if (dirty || (design.apple?.showBusinessName && !design.assets?.appleHeader?.path)) { const next=await forSave(); const saved = await api.testSave(project.test.id, testName, next);
+        if (dirty || (design.apple?.showBusinessName && !design.assets?.appleHeader?.path) || (design.apple?.showReward && !design.assets?.rewardLabel?.path)) { const next=await forSave(); const saved = await api.testSave(project.test.id, testName, next);
           setProject(p => ({ ...p, test: saved.test })); setDesign(next); setSaved(savedMark(next)); }
         const result = await api.testApple(project.test.id);
         if (!result.url) throw new Error('apple_wallet_unavailable');
@@ -845,6 +866,16 @@ export function makeCardDesigner(React, api) {
         h(Field, { label: 'Cadrage vertical de l’image principale : ' + po.heroFocus + ' %' },
           h('input', { type: 'range', min: 0, max: 100, value: po.heroFocus, 'aria-label': 'Cadrage vertical', onChange: e => set(platform + '.heroFocus', +e.target.value), style: { width: '100%', accentColor: '#2448F0' } })),
         h(Text, { label: 'Libellé spécifique (facultatif)', value: po.label, max: 16, placeholder: design.label || (pv.mode === 'points' ? 'POINTS' : 'TAMPONS'), onChange: v => set(platform + '.label', v) }),
+        platform==='apple' && h('div',{'data-apple-reward-settings':true,style:{
+          padding:'13px 14px',background:'#F6F5F1',borderRadius:12,
+          display:'flex',flexDirection:'column',gap:10
+        }},
+          h(Check,{label:'Afficher la récompense dans le bloc des tampons',checked:po.showReward===true,onChange:v=>set('apple.showReward',v)}),
+          po.showReward===true && h(Text,{label:'Texte de récompense',value:po.rewardText||'',max:64,
+            placeholder:'Débloque la coupe offerte !',onChange:v=>set('apple.rewardText',v)}),
+          h('div',{style:{fontSize:13,color:'#5E636B',lineHeight:1.4}},
+            'Désactivé : design Apple Wallet actuel strictement inchangé. Activé : phrase centrée dans le rectangle des tampons, sans déplacer le header, les compteurs ni le QR.')
+        ),
         h(Check, { label: 'Couleurs spécifiques à ' + pName, checked: Object.keys(po.colors || {}).length > 0, onChange: v => set(platform + '.colors', v ? { ...design.colors } : {}) }),
         Object.keys(po.colors || {}).length ? h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           [['primary', 'Fond'], ['secondary', 'Secondaire'], ['text', 'Texte'], ['accent', 'Accent']].map(([k, l]) => h(Color, { key: k, label: l + ' (' + pName + ')', value: po.colors[k] || design.colors[k], onChange: v => set(platform + '.colors.' + k, v) }))) : null),
