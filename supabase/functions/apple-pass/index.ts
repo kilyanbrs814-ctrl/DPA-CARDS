@@ -72,7 +72,7 @@ async function brandedLogo(program: { logo_path?: string | null }) {
 
 async function createDemoPass(testId: string, signerKey: string, signerCert: string) {
   const { data: t, error } = await supabase.from('test_card_designs')
-    .select('id, name, config, qr_token').eq('id', testId).maybeSingle();
+    .select('id, name, config, qr_token, test_balance').eq('id', testId).maybeSingle();
   if (error || !t) throw new SafeError(404, 'test_card_not_found');
   // Use this test card's own saved designer config, not DPA's default template.
   const d = t.config || {}, pv = d.preview || {};
@@ -80,7 +80,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   const primary = d.apple?.colors?.primary || d.colors?.primary || '#2448F0';
   const accent = d.colors?.accent || '#F2C94C';
   const label = String(d.apple?.label || d.label || (pv.mode === 'points' ? 'POINTS' : 'TAMPONS')).slice(0, 16);
-  const balance = Math.max(0, Math.round(Number(pv.progress) || 0));
+  const balance = Math.max(0, Math.round(Number(t.test_balance) || 0));
   const goal = Math.max(1, Math.round(Number(pv.goal) || 10));
   const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA_TEST:' + t.qr_token,
     messageEncoding: 'iso-8859-1', altText: (d.stamps?.emoji || d.stamps?.icon==='library') ? visibleCardNumber('TEST '+t.id.slice(0,4)+' '+t.qr_token.slice(0,4)) : 'CARTE TEST' };
@@ -150,8 +150,8 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   // use the exact HTML layout, but the two-row colored stamps and blue gradient
   // now come from the same saved config as the Apple preview.
   try {
-    images['strip.png'] = Buffer.from(await makeDemoStrip(d, 1, stamp));
-    images['strip@2x.png'] = Buffer.from(await makeDemoStrip(d, 2, stamp));
+    images['strip.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp));
+    images['strip@2x.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 2, stamp));
   } catch { console.error('apple-pass demo strip unavailable'); }
   const pass = new PKPass({ ...images, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8') }, {
     wwdr: await wwdrCert(),
