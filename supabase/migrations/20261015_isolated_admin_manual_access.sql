@@ -44,7 +44,7 @@ $$;
 -- Atomic update + audit. Restrict execution to service_role; director identity rechecked in SQL.
 CREATE OR REPLACE FUNCTION public.admin_manual_access_change(p_merchant uuid,p_enabled boolean,p_days integer,p_reason text,p_actor text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
-AS $
+AS $access_fn$
 DECLARE row public.merchant_manual_access; expiration timestamptz;
 BEGIN
   IF NOT EXISTS(SELECT 1 FROM public.admin_users u WHERE u.email=lower(btrim(p_actor)) AND u.role='director')
@@ -67,7 +67,7 @@ BEGIN
   RETURN jsonb_build_object('merchant_id',row.merchant_id,'enabled',row.enabled,'expires_at',row.expires_at,
     'reason',row.reason,'updated_by',row.updated_by,'updated_at',row.updated_at);
 END;
-$;
+$access_fn$;
 REVOKE ALL ON FUNCTION public.admin_manual_access_change(uuid,boolean,integer,text,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_manual_access_change(uuid,boolean,integer,text,text) TO service_role;
 
