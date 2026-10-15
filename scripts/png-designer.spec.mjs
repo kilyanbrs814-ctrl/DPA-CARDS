@@ -232,3 +232,61 @@ test('Apple stamp rectangle can be toggled off and on without moving counters or
  await expect(checkbox).toBeChecked();
  await expect(panel).toHaveCSS('visibility','visible');
 });
+
+test('Apple strip upload exports exactly the portrait or landscape area shown in the crop window',async({page})=>{
+  for (const portrait of [true,false]) {
+    await page.goto('/scripts/fixtures/designer.html');
+    await page.evaluate(()=>localStorage.clear());
+    await page.reload();
+    const imageData=await page.evaluate(portrait=>{
+      const c=document.createElement('canvas');
+      c.width=portrait?680:1200;c.height=portrait?1020:450;
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#161C25';ctx.fillRect(0,0,c.width,c.height);
+      // High-contrast, nonrepeating geometry makes an accidental top-left crop
+      // observably different from the area visible in the dialog.
+      for(let y=0;y<c.height;y+=60)for(let x=0;x<c.width;x+=60){
+        ctx.fillStyle=`rgb(${(x*7+y*3)%256},${(x*3+y*5)%256},${(x*2+y*9)%256})`;
+        ctx.fillRect(x,y,60,60);
+      }
+      ctx.fillStyle='#FF00FF';ctx.fillRect(c.width*.55,c.height*.4,100,110);
+      return c.toDataURL('image/png').split(',')[1];
+    },portrait);
+    await page.locator('[data-upload="appleStrip"]').setInputFiles({
+      name:portrait?'portrait.png':'landscape.png',mimeType:'image/png',buffer:Buffer.from(imageData,'base64')
+    });
+    const crop=page.getByRole('application',{name:/Zone de recadrage/});
+    await expect(crop.locator('img')).toBeVisible();
+    // Exercise different zoom and pan, not just the initial centered selection.
+    const zoom=page.locator('[role="dialog"] input[type="range"]').first();
+    await zoom.focus();
+    for(let z=0;z<35;z++)await zoom.press('ArrowRight');
+    const rect=await crop.boundingBox();
+    await page.mouse.move(rect.x+rect.width*.5,rect.y+rect.height*.5);
+    await page.mouse.down();
+    await page.mouse.move(rect.x+rect.width*.6,rect.y+rect.height*.4,{steps:8});
+    await page.mouse.up();
+    const selected=await crop.screenshot();
+    await page.getByRole('button',{name:'Valider le recadrage'}).click();
+    const panel=page.locator('[data-layout="apple"] [data-apple-stamp-panel]').first();
+    await expect(panel).toHaveCSS('background-image',/data:image\/png;base64/);
+    const result=await panel.evaluate(async (el, screenshot)=>{
+      const stored=el.style.backgroundImage.match(/data:image\/png;base64,[^"'\\)]+/);
+      if(!stored)throw new Error('no uploaded cropped image');
+      const load=async url=>{const im=new Image();im.src=url;await im.decode();return im;};
+      const output=await load(stored[0]);
+      const input=await load('data:image/png;base64,'+screenshot);
+      const make=(img)=>{const c=document.createElement('canvas');c.width=375;c.height=144;c.getContext('2d').drawImage(img,0,0,375,144);return c.getContext('2d').getImageData(0,0,375,144).data;};
+      const expected=make(input),actual=make(output);
+      let error=0,count=0;
+      for(let y=15;y<129;y+=2)for(let x=20;x<355;x+=2){
+        const i=(y*375+x)*4;
+        for(let k=0;k<3;k++){error+=Math.abs(expected[i+k]-actual[i+k]);count++;}
+      }
+      return {width:output.naturalWidth,height:output.naturalHeight,averageChannelError:error/count};
+    },selected.toString('base64'));
+    expect(result.width).toBe(1125);
+    expect(result.height).toBe(432);
+    expect(result.averageChannelError).toBeLessThan(19);
+  }
+});

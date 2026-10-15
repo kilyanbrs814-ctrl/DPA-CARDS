@@ -2,6 +2,28 @@
 // the same instance dc-runtime renders with) and handed to the logic script through
 // window.dpaReady. Drag to move, slider to zoom; exports exactly outW × outH pixels.
 
+// Match the canvas export to what the browser actually paints inside the crop frame.
+// Reading DOM rectangles prevents stale zoom/offset/frame measurements (including
+// responsive resizing and browser image sizing) from exporting a different area.
+export function visibleCropPixels(image, frameElement, imageElement) {
+  const frame = frameElement?.getBoundingClientRect();
+  const painted = imageElement?.getBoundingClientRect();
+  const iw = image?.naturalWidth, ih = image?.naturalHeight;
+  if (!frame || !painted || !(iw > 0 && ih > 0 && frame.width > 0 && frame.height > 0 && painted.width > 0 && painted.height > 0))
+    throw new Error('invalid_crop_geometry');
+  const sx = (frame.left - painted.left) * iw / painted.width;
+  const sy = (frame.top - painted.top) * ih / painted.height;
+  const sw = frame.width * iw / painted.width;
+  const sh = frame.height * ih / painted.height;
+  // The UI clamps panning to the frame, so out-of-bounds here signals a bad
+  // measurement rather than silently shifting the selected image.
+  const eps = 2;
+  if (sx < -eps || sy < -eps || sx + sw > iw + eps || sy + sh > ih + eps)
+    throw new Error('crop_out_of_bounds');
+  return { x: Math.max(0, sx), y: Math.max(0, sy),
+    width: Math.min(sw, iw - Math.max(0, sx)), height: Math.min(sh, ih - Math.max(0, sy)) };
+}
+
 export function makeCropper(React) {
   const { useState, useRef, useEffect, useCallback } = React;
   const h = React.createElement;
@@ -14,6 +36,7 @@ export function makeCropper(React) {
     const [fw, setFw] = useState(0);
     const [busy, setBusy] = useState(false);
     const frame = useRef(null);
+    const previewImage = useRef(null);
     const drag = useRef(null);
 
     useEffect(() => {
@@ -56,12 +79,22 @@ export function makeCropper(React) {
     const confirm = () => {
       if (!img || busy) return;
       setBusy(true);
-      const c = document.createElement('canvas'); c.width = outW; c.height = outH;
-      const ctx = c.getContext('2d');
-      ctx.imageSmoothingQuality = 'high';
-      if (mime === 'image/jpeg') { ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, outW, outH); }
-      ctx.drawImage(img, -off.x / scale, -off.y / scale, fw / scale, fh / scale, 0, 0, outW, outH);
-      c.toBlob(b => { setBusy(false); if (b) onDone(b); }, mime, 0.88);
+      try {
+        // Export the visible crop, not an independently reconstructed crop from
+        // React offsets. What is selected in the modal is exactly what is saved.
+        const selection = visibleCropPixels(img, frame.current, previewImage.current);
+        const c = document.createElement('canvas'); c.width = outW; c.height = outH;
+        const ctx = c.getContext('2d');
+        if (!ctx) throw new Error('canvas_unavailable');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        if (mime === 'image/jpeg') { ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, outW, outH); }
+        ctx.drawImage(img, selection.x, selection.y, selection.width, selection.height, 0, 0, outW, outH);
+        c.toBlob(b => { setBusy(false); if (b) onDone(b); else setFailed(true); }, mime, 0.88);
+      } catch (e) {
+        setBusy(false);
+        setFailed(true);
+      }
     };
 
     const btn = (label, onClick, primary, disabled) => h('button', {
@@ -73,14 +106,14 @@ export function makeCropper(React) {
     return h(React.Fragment, null,
       h('h2', { id: 'dlg-t', style: { margin: 0, fontWeight: 800, fontSize: 22 } }, title),
       hint ? h('p', { style: { margin: 0, color: '#4A4E55', fontSize: 14, lineHeight: 1.45 } }, hint) : null,
-      failed ? h('div', { role: 'alert', style: { padding: '12px 14px', borderRadius: 12, background: '#FCEBEA', color: '#A11D14', fontSize: 15 } }, 'Cette image ne peut pas être lue. Choisissez un fichier PNG ou JPEG.') : null,
+      failed ? h('div', { role: 'alert', style: { padding: '12px 14px', borderRadius: 12, background: '#FCEBEA', color: '#A11D14', fontSize: 15 } }, 'Impossible de préparer cette image. Réessayez avec un fichier PNG ou JPEG.') : null,
       h('div', {
         ref: frame, tabIndex: 0, role: 'application', 'aria-label': 'Zone de recadrage : glissez l’image ou utilisez les flèches du clavier',
         onPointerDown: down, onPointerMove: move, onPointerUp: up, onPointerCancel: up, onKeyDown: key,
         style: { position: 'relative', width: '100%', aspectRatio: String(aspect), overflow: 'hidden', borderRadius: 14, touchAction: 'none', cursor: img ? 'grab' : 'default',
           background: 'repeating-conic-gradient(#ECEAE4 0% 25%, #F6F5F1 0% 50%) 0 0/20px 20px', userSelect: 'none' },
       },
-        img ? h('img', { src, alt: '', draggable: false, style: { position: 'absolute', left: off.x, top: off.y, width: dw, height: dh, maxWidth: 'none', pointerEvents: 'none' } }) : null,
+        img ? h('img', { ref: previewImage, src, alt: '', draggable: false, style: { position: 'absolute', left: off.x, top: off.y, width: dw, height: dh, maxWidth: 'none', pointerEvents: 'none' } }) : null,
         round ? h('div', { 'aria-hidden': true, style: { position: 'absolute', inset: 0, borderRadius: '50%', boxShadow: '0 0 0 9999px rgba(20,22,28,0.45)', pointerEvents: 'none' } }) : null,
         round ? h('div', { 'aria-hidden': true, style: { position: 'absolute', inset: '15%', borderRadius: '50%', border: '1.5px dashed rgba(255,255,255,0.9)', pointerEvents: 'none' } }) : null,
       ),
