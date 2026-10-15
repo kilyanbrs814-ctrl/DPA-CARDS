@@ -6,6 +6,7 @@
 
 import QRCode from 'qrcode';
 import { makeCropper } from './cropper.js';
+import { DEFAULT_STAMP_EMOJI, normalizeStampEmoji, makeEmojiPicker } from './emoji-stamps.js';
 
 export const FONTS = {
   hanken: { label: 'Hanken Grotesk', css: "'Hanken Grotesk', system-ui, sans-serif" },
@@ -41,7 +42,7 @@ export function defaultDesign(project) {
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
     assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null },
-    stamps: { shape: 'circle', icon: 'check', style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
+    stamps: { shape: 'circle', icon: 'emoji', emoji: DEFAULT_STAMP_EMOJI, style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
     apple: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
@@ -52,7 +53,7 @@ export function normalize(config, project) {
   const d = defaultDesign(project), c = config || {};
   const plat = k => ({ ...d[k], ...(c[k] || {}), colors: { ...((c[k] || {}).colors || {}) } });
   return { ...d, ...c, identity: { ...d.identity, ...(c.identity || {}) }, colors: { ...d.colors, ...(c.colors || {}) },
-    assets: { ...d.assets, ...(c.assets || {}) }, stamps: { ...d.stamps, ...(c.stamps || {}) }, apple: plat('apple'), google: plat('google'),
+    assets: { ...d.assets, ...(c.assets || {}) }, stamps: { ...d.stamps, ...(c.stamps || {}), emoji: c.stamps && !Object.prototype.hasOwnProperty.call(c.stamps, 'emoji') ? '' : (c.stamps?.emoji ?? d.stamps.emoji) }, apple: plat('apple'), google: plat('google'),
     preview: { ...d.preview, ...(c.preview || {}) } };
 }
 // Real cards: the validated programs.card_design (paths only) → a renderable design. Missing parts fall
@@ -80,6 +81,7 @@ export function makeCardDesigner(React, api) {
   const { useState, useEffect, useMemo, useRef } = React;
   const h = React.createElement;
   const Cropper = makeCropper(React);
+  const EmojiPicker = makeEmojiPicker(React);
   const icon = (name, size, extra) => h('span', { className: 'material-symbols-rounded', 'aria-hidden': true, style: { fontSize: size || 20, lineHeight: 1, ...extra } }, name);
 
   // ------------------------------------------------------------ real QR code (vector, never an image)
@@ -102,6 +104,15 @@ export function makeCardDesigner(React, api) {
 
   // ------------------------------------------------------------ stamps / points
   function Stamp({ on, st, size, stampUrl }) {
+    const unicode = normalizeStampEmoji(st?.emoji);
+    if (unicode) return h('span', {
+      'data-stamp': on ? 'filled-emoji' : 'empty-emoji',
+      role: 'img', 'aria-label': on ? 'Tampon validé' : 'Tampon restant',
+      style: { width:size, height:size, display:'grid', placeItems:'center', flex:'none',
+        fontFamily: "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif",
+        fontSize:Math.round(size*.86), lineHeight:1, opacity:on?1:.22,
+        filter:on?'none':'grayscale(1)', overflow:'visible' }
+    },unicode);
     const radius = st.shape === 'circle' ? '50%' : st.shape === 'rounded' ? '30%' : '4px';
     const base = { width: size, height: size, borderRadius: radius, flex: 'none', display: 'grid', placeItems: 'center', boxSizing: 'border-box' };
     if (!on) return h('div', { 'data-stamp': 'empty', style: { ...base, ...(st.style === 'soft' ? { background: rgba(st.empty, 0.28) } : { border: `2px solid ${rgba(st.empty, 0.85)}` }) } });
@@ -151,69 +162,51 @@ export function makeCardDesigner(React, api) {
   const label = (d, opt, data) => (opt.label || d.label || (data.mode === 'points' ? 'POINTS' : 'TAMPONS')).toUpperCase();
   const ellipsis = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 
-  // ------------------------------------------------------------ Apple Wallet: full rectangle, rounded corners only
-  function AppleCard({ design, data }) {
-    const d = effective(design, 'apple'), o = d.opt, W = 340, c = d.colors;
-    const hero = o.showHero && d.assets.hero && d.assets.hero.url;
-    const small = { fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.72 };
-    return h('div', { 'data-layout': 'apple', style: { width: W, borderRadius: 16, overflow: 'hidden', background: cardBg(d, o), color: c.text, fontFamily: FONTS[d.font].css, boxShadow: '0 18px 40px rgba(20,22,28,0.22)', display: 'flex', flexDirection: 'column' } },
-      // Zone 1 — header
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px' } },
-        h(Logo, { d, size: 40 }),
-        h('div', { style: { flex: 1, minWidth: 0 } },
-          h('div', { 'data-field': 'business', style: { fontWeight: 700, fontSize: 16, lineHeight: 1.2, ...ellipsis } }, d.identity.name || 'Nom du commerce'),
-          o.showSubtitle && d.identity.subtitle ? h('div', { style: { fontSize: 12, opacity: 0.75, marginTop: 2, ...ellipsis } }, d.identity.subtitle) : null),
-        h('div', { style: { textAlign: 'right', flex: 'none' } },
-          h('div', { style: small }, label(d, o, data)),
-          h('div', { 'data-field': 'progress', style: { fontWeight: 700, fontSize: 22, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', color: c.accent } }, data.mode === 'points' ? data.progress.toLocaleString('fr-FR') : `${Math.min(data.progress, data.goal)}/${data.goal}`))),
-      // Zones 2 + 3 — main visual with the stamps on it
-      h('div', { style: { position: 'relative', width: W, height: Math.round(W / 2.45), background: `linear-gradient(135deg, ${c.secondary}, ${c.primary})`, overflow: 'hidden' } },
-        hero ? h(Img, { asset: d.assets.hero, style: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: `50% ${o.heroFocus}%`, display: 'block' } }) : null,
-        h('div', { style: { position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', padding: '10px 18px', background: hero ? 'linear-gradient(rgba(0,0,0,0.05), rgba(0,0,0,0.28))' : 'none', color: '#FFFFFF' } },
-          h(Progress, { d, data, width: W - 36, align: 'center', dark: false }))),
-      // Zone 4 — information (3 columns)
-      h('div', { style: { display: 'grid', gridTemplateColumns: '1.2fr 1.4fr 0.9fr', gap: 10, padding: '12px 16px 4px' } },
-        [['Client', data.client, 'client'], ['Récompense', data.reward, 'reward'], ['Récompenses dispo', String(data.available), 'available']].map(([k, v, f]) =>
-          h('div', { key: k, style: { minWidth: 0, textAlign: f === 'available' ? 'right' : 'left' } },
-            h('div', { style: { ...small, fontSize: 9 } }, k), h('div', { 'data-field': f, style: { fontWeight: 600, fontSize: 13, marginTop: 3, ...ellipsis } }, v)))),
-      // Zone 5 — QR code, always on white
-      h('div', { style: { display: 'flex', justifyContent: 'center', padding: '12px 16px 18px' } },
-        h('div', { style: { background: '#FFFFFF', borderRadius: 10, padding: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 } },
-          h(Qr, { value: data.qr, size: 124 }), h('div', { style: { color: '#1C1F24', fontSize: 11, fontFamily: "'IBM Plex Mono', monospace" } }, data.cardNumber))));
+  // OneCup-inspired card arrangement. Preview remains illustrative: iOS/Google
+  // native Wallet apps control text placement and cannot guarantee pixel parity.
+  function WalletCard({ design, data, platform }) {
+    const d = effective(design, platform), o=d.opt, c=d.colors, W=340;
+    const completed=Math.max(0,Math.min(data.progress,data.goal));
+    const remainder=Math.max(0,data.goal-completed);
+    const small={fontSize:10,fontWeight:650,opacity:.75,letterSpacing:'.065em'};
+    const hero=o.showHero && d.assets.hero?.url;
+    const modePoints=data.mode==='points' || data.goal>30;
+    const isApple=platform==='apple';
+    return h('div', { 'data-layout':platform, 'data-onecup-inspired':true,
+      style:{width:W,borderRadius:isApple?20:24,overflow:'hidden',color:c.text,
+        background:cardBg(d,o),fontFamily:FONTS[d.font].css,boxShadow:'0 14px 36px rgba(20,22,28,.19)'}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:11,padding:'16px 17px 14px'}},
+        h(Logo,{d,size:39,round:false}),
+        h('div',{style:{flex:1,minWidth:0}},
+          h('div',{'data-field':'business',style:{fontSize:18,fontWeight:760,lineHeight:1.2,...ellipsis}},d.identity.name||'Nom du commerce'),
+          o.showSubtitle && d.identity.subtitle ? h('div',{style:{fontSize:11,opacity:.75,marginTop:2,...ellipsis}},d.identity.subtitle):null),
+        h('div',{style:{textAlign:'right',flex:'none'}},
+          h('div',{style:small},label(d,o,data)),
+          h('div',{'data-field':'progress',style:{fontWeight:750,fontSize:23,lineHeight:1.1,fontVariantNumeric:'tabular-nums'}},
+            data.mode==='points'?String(data.progress):completed+'/'+data.goal))),
+      h('div',{style:{margin:'0 14px 10px',padding:'18px 12px',borderRadius:14,minHeight:115,
+        position:'relative',overflow:'hidden',background:hero?'#333':c.secondary,display:'grid',placeItems:'center'}},
+        hero?h(Img,{asset:d.assets.hero,style:{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'50% '+o.heroFocus+'%'}}):null,
+        hero?h('div',{style:{position:'absolute',inset:0,background:'rgba(0,0,0,.28)'}}):null,
+        h('div',{style:{position:'relative',zIndex:1}},
+          h(Progress,{d,data,width:275,align:'center',dark:false}))),
+      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'start',gap:12,padding:'3px 18px 14px'}},
+        h('div',{style:{flex:1,minWidth:0}},
+          h('div',{style:small},modePoints?'POINTS':'TAMPONS'),
+          h('div',{style:{fontWeight:700,fontSize:15,marginTop:3}},modePoints?data.progress+' / '+data.goal:completed+' / '+data.goal),
+          h('div',{style:{...small,marginTop:8}},'RESTANTS'),
+          h('div',{style:{fontWeight:600,fontSize:15}},remainder),
+          h('div',{style:{...small,marginTop:8}},'RÉCOMPENSE'),
+          h('div',{'data-field':'reward',style:{fontWeight:700,fontSize:15,marginTop:3,overflowWrap:'anywhere'}},data.reward),
+          h('div',{style:{...small,marginTop:8}},'CLIENT'),
+          h('div',{'data-field':'client',style:{fontSize:12,opacity:.86,overflowWrap:'anywhere'}},data.client)),
+        h('div',{style:{background:'#FFFFFF',padding:8,borderRadius:12,color:'#1C1F24',flex:'none',display:'grid',justifyItems:'center',gap:4}},
+          h(Qr,{value:data.qr,size:106}),
+          h('div',{style:{fontSize:9,fontFamily:"'IBM Plex Mono',monospace"}},data.cardNumber))),
+      h('div',{style:{fontSize:10,opacity:.58,textAlign:'center',padding:'0 0 12px'}},'DPA Cards · Aperçu de disposition'));
   }
-
-  // ------------------------------------------------------------ Google Wallet: its own layout
-  function GoogleCard({ design, data }) {
-    const d = effective(design, 'google'), o = d.opt, W = 340, c = d.colors;
-    const hero = o.showHero && d.assets.hero && d.assets.hero.url;
-    const lab = { fontSize: 12, fontWeight: 500, opacity: 0.75 };
-    const dark = lum(c.primary) > 0.45;
-    return h('div', { 'data-layout': 'google', style: { width: W, borderRadius: 26, overflow: 'hidden', background: cardBg(d, o), color: c.text, fontFamily: FONTS[d.font].css, boxShadow: '0 14px 36px rgba(20,22,28,0.2)', display: 'flex', flexDirection: 'column', gap: 14, paddingBottom: 18 } },
-      // Header — round logo, name, progress chip
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: 12, padding: '16px 16px 0' } },
-        h(Logo, { d, size: 38, round: true }),
-        h('div', { style: { flex: 1, minWidth: 0 } },
-          h('div', { 'data-field': 'business', style: { fontWeight: 600, fontSize: 15, ...ellipsis } }, d.identity.name || 'Nom du commerce'),
-          o.showSubtitle && d.identity.subtitle ? h('div', { style: { fontSize: 12, opacity: 0.75, ...ellipsis } }, d.identity.subtitle) : null),
-        h('div', { 'data-field': 'progress', style: { flex: 'none', padding: '6px 12px', borderRadius: 999, background: c.accent, color: onColor(c.accent), fontWeight: 700, fontSize: 14, fontVariantNumeric: 'tabular-nums' } },
-          data.mode === 'points' ? `${data.progress.toLocaleString('fr-FR')} pts` : `${Math.min(data.progress, data.goal)} / ${data.goal}`)),
-      // Main visual, inset with rounded corners
-      hero ? h('div', { style: { margin: '0 16px', height: 158, borderRadius: 16, overflow: 'hidden', background: `linear-gradient(135deg, ${c.secondary}, ${c.primary})` } },
-        h(Img, { asset: d.assets.hero, style: { width: '100%', height: '100%', objectFit: 'cover', objectPosition: `50% ${o.heroFocus}%`, display: 'block' } })) : null,
-      // Progress on the card background
-      h('div', { style: { padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 8 } },
-        h('div', { style: lab }, label(d, o, data).charAt(0) + label(d, o, data).slice(1).toLowerCase()),
-        h('div', { style: { padding: 12, borderRadius: 14, background: rgba(dark ? '#000000' : '#FFFFFF', 0.12) } }, h(Progress, { d, data, width: W - 56, align: 'left', dark }))),
-      // Information rows
-      h('div', { style: { padding: '0 16px', display: 'grid', gridTemplateColumns: '1fr auto', gap: '10px 16px' } },
-        h('div', { style: { minWidth: 0 } }, h('div', { style: lab }, 'Client'), h('div', { 'data-field': 'client', style: { fontWeight: 600, fontSize: 15, ...ellipsis } }, data.client)),
-        h('div', { style: { textAlign: 'right' } }, h('div', { style: lab }, 'Récompenses dispo'), h('div', { 'data-field': 'available', style: { fontWeight: 600, fontSize: 15 } }, String(data.available))),
-        h('div', { style: { gridColumn: '1 / -1', minWidth: 0 } }, h('div', { style: lab }, 'Récompense'), h('div', { 'data-field': 'reward', style: { fontWeight: 600, fontSize: 15, ...ellipsis } }, data.reward))),
-      // QR code, white square
-      h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 } },
-        h('div', { style: { background: '#FFFFFF', borderRadius: 16, padding: 12 } }, h(Qr, { value: data.qr, size: 140 })),
-        h('div', { style: { fontSize: 12, opacity: 0.8, fontFamily: "'IBM Plex Mono', monospace" } }, data.cardNumber)));
-  }
+  function AppleCard({design,data}){return h(WalletCard,{design,data,platform:'apple'});}
+  function GoogleCard({design,data}){return h(WalletCard,{design,data,platform:'google'});}
 
   function CardPreview({ design, data, platform }) { return h(platform === 'google' ? GoogleCard : AppleCard, { design, data }); }
   // The card is drawn at 340 px and scaled to the width of its container (merchant screens use 280–330 px).
@@ -660,8 +653,7 @@ export function makeCardDesigner(React, api) {
         h(Text, { label: 'Prénom et nom', value: pv.client, max: 60, onChange: v => set('preview.client', v) })),
       h(Section, { title: 'Tampons' },
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
-          h(Select, { label: 'Forme', value: design.stamps.shape, options: [['circle', 'Cercle'], ['rounded', 'Carré arrondi'], ['square', 'Carré']], onChange: v => set('stamps.shape', v) }),
-          h(Select, { label: 'Icône', value: design.stamps.icon, options: STAMP_ICONS, onChange: v => set('stamps.icon', v) }),
+          h(EmojiPicker, { value: design.stamps.emoji || '', onChange: v => { set('stamps.emoji', v); set('stamps.icon', 'emoji'); } }),
           h(Color, { label: 'Couleur tampon rempli', value: design.stamps.filled, onChange: v => set('stamps.filled', v) }),
           h(Color, { label: 'Couleur tampon vide', value: design.stamps.empty, onChange: v => set('stamps.empty', v) }),
           h(Select, { label: 'Tampon vide', value: design.stamps.style, options: [['outline', 'Contour'], ['soft', 'Plein léger']], onChange: v => set('stamps.style', v) })),

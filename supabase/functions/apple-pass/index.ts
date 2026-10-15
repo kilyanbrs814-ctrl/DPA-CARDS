@@ -20,36 +20,38 @@ const supabase = createClient(SUPABASE_URL, SERVICE_KEY, {
 const ICON_B64 = 'iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAIAAADZ8fBYAAABnElEQVR4nGPkWtDEQAPARAtDR80dNXfUXKyABc4SZud6FFHMwMDw69/fDz9/nH37rOPioTNvnsHFGRgYPv76ceTlo4IT2559+8zAwJCnZdFu6srAwGC6cea1D6/wuff82+diSzsiD6xS5xfZ6RFvICwJF+de2Jx7fKu3rNoECy+IYJyqwYvvX/4zMMSrGqCZgyUcfv/7d+LVk/pz+ziYWZLVjJCldjy5zcDAoCsozsDAYCoirSkgOu36qX3P7kUp67ExMRMwFwLufnrHwMCgxCuILOgho8rAwHD5/UsGBoZ4VYM///8tvnNh3q1zQuycPnLqyCpZGHAAVT5hBgaGe5/fQ7iGwpJf42s//fq5/cntopPbuVhYQxV1WBiZ7ocVQRTEqxqse3ANn7msTExGwlL1Ro4///6de+scRPD82+c2W+bA1cSo6POwsgXuWb7r6R0GBoZ2E9ccLXMZbr4nXz9hDwdDYck3MZUrncJuf3zrtmPBhbfPsfomXtXw3///J14/hnCPv3rMxMgYq2IAV8A4Wl+Mmjtq7pA3FwDGM5K4BAgMHQAAAABJRU5ErkJggg==';
 
 class SafeError extends Error {
-  constructor(status, code) { super(code); this.status = status; this.code = code; }
+  status: number;
+  code: string;
+  constructor(status: number, code: string) { super(code); this.status = status; this.code = code; }
 }
-const reply = (status, code) => new Response(JSON.stringify({ error: code }), {
+const reply = (status: number, code: string) => new Response(JSON.stringify({ error: code }), {
   status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
 });
-function hexHash(bytes) { return [...new Uint8Array(bytes)].map(x => x.toString(16).padStart(2, '0')).join(''); }
-function rgb(hex) {
+function hexHash(bytes: ArrayBuffer | Uint8Array) { return [...new Uint8Array(bytes)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+function rgb(hex: string) {
   if (!/^#[0-9a-f]{6}$/i.test(hex || '')) hex = '#2448F0';
   const c = [1, 3, 5].map(i => parseInt(hex.substring(i, i + 2), 16));
   return 'rgb(' + c.join(', ') + ')';
 }
-function textColor(hex) {
+function textColor(hex: string) {
   if (!/^#[0-9a-f]{6}$/i.test(hex || '')) return 'rgb(255, 255, 255)';
   const rgb = [1, 3, 5].map(i => parseInt(hex.substring(i, i + 2), 16));
   const lightness = rgb.reduce((n, v, i) => n + (v / 255) * [0.2126, 0.7152, 0.0722][i], 0);
   return lightness > 0.62 ? 'rgb(24, 28, 37)' : 'rgb(255, 255, 255)';
 }
 
-let wwdrPromise;
+let wwdrPromise: Promise<string> | null = null;
 async function wwdrCert() {
   if (!wwdrPromise) wwdrPromise = (async () => {
     const url = 'https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer';
     const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!response.ok) throw new Error('apple_intermediate_unavailable');
     const base64 = Buffer.from(await response.arrayBuffer()).toString('base64');
-    return '-----BEGIN CERTIFICATE-----\n' + base64.match(/.{1,64}/g).join('\n') + '\n-----END CERTIFICATE-----\n';
+    return '-----BEGIN CERTIFICATE-----\n' + (base64.match(/.{1,64}/g) ?? []).join('\n') + '\n-----END CERTIFICATE-----\n';
   })().catch(e => { wwdrPromise = null; throw e; });
   return wwdrPromise;
 }
-async function brandedLogo(program) {
+async function brandedLogo(program: { logo_path?: string | null }) {
   // Program-controlled paths are never used as a target hostname.
   const path = program.logo_path;
   let url = SUPABASE_URL + '/functions/v1/wallet/logo.png';
@@ -66,7 +68,7 @@ async function brandedLogo(program) {
   } catch { return null; }
 }
 
-async function createDemoPass(testId, signerKey, signerCert) {
+async function createDemoPass(testId: string, signerKey: string, signerCert: string) {
   const { data: t, error } = await supabase.from('test_card_designs')
     .select('id, name, config, qr_token').eq('id', testId).maybeSingle();
   if (error || !t) throw new SafeError(404, 'test_card_not_found');
@@ -90,7 +92,8 @@ async function createDemoPass(testId, signerKey, signerCert) {
     logoText: name, backgroundColor: rgb(primary), foregroundColor: textColor(primary),
     labelColor: textColor(primary),
     storeCard: {
-      primaryFields: [{ key: 'progress', label: label.toUpperCase(), value: balance + '/' + goal }],
+      primaryFields: [{ key: 'progress', label: label.toUpperCase(),
+        value: balance + '/' + goal + (d.stamps?.emoji ? ' ' + String(d.stamps.emoji).slice(0,32) : '') }],
       secondaryFields: [
         { key: 'client', label: 'CLIENT', value: String(pv.client || 'Client test').slice(0, 60) },
         { key: 'reward', label: 'RÉCOMPENSE', value: String(pv.reward || 'Récompense test').slice(0, 80) },
@@ -151,7 +154,7 @@ async function createDemoPass(testId, signerKey, signerCert) {
 // Real cards only. Do not change how demo/test passes are signed and delivered.
 // Some merchants have a real PNG logo saved by the design tool; use its native
 // bytes. Never download arbitrary URLs or another merchant's assets.
-async function realLogo(path) {
+async function realLogo(path: string | null) {
   if (!path) return null;
   try {
     const { data, error } = await supabase.storage.from('program-assets').download(path);
@@ -162,7 +165,7 @@ async function realLogo(path) {
   } catch { return null; }
 }
 
-async function createPass(token) {
+async function createPass(token: string) {
   if (!/^[A-Za-z0-9_-]{24,160}$/.test(token)) throw new SafeError(401, 'invalid_link');
   const keyPem = Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM') || '';
   const certPem = Deno.env.get('APPLE_PASS_CERT_PEM') || '';

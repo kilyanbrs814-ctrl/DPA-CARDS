@@ -1,3 +1,4 @@
+import { notoEmoji, compositeEmoji } from './emoji-art.js';
 // Lightweight, dependency-free PNG for native Apple store-card strips.
 // Avoid native/WASM image dependencies in the Edge Function: the test-pass route
 // must be able to cold-start even if no real-card artwork is requested.
@@ -60,12 +61,19 @@ export async function makeRealStrip(brand, balance, goal, scale = 1) {
   const columns = Math.min(maxStamps, 5), rows = Math.ceil(maxStamps / columns);
   const dX = 31 * scale, dY = (rows === 1 ? 0 : 43 * scale);
   const center = 285 * scale;
+  const bitmap = brand.emoji ? await notoEmoji(brand.emoji) : null;
   for (let i = 0; i < maxStamps; i++) {
     const col = i % columns, row = Math.floor(i / columns);
     const x = Math.round(center + (col - (columns - 1) / 2) * dX);
     const y = Math.round(height / 2 + (row - (rows - 1) / 2) * dY);
-    circle(pixels, width, height, x, y, 12 * scale, i < done ? accent : empty);
-    if (i >= done) circle(pixels, width, height, x, y, 9 * scale, secondary);
+    if (brand.emoji) {
+      // With an emoji choice, never fall back to round stamps. A missing
+      // open-source asset leaves a clean strip and native text fields intact.
+      if (bitmap) compositeEmoji(pixels,width,height,x,y,25*scale,bitmap,i<done);
+    } else {
+      circle(pixels, width, height, x, y, 12 * scale, i < done ? accent : empty);
+      if (i >= done) circle(pixels, width, height, x, y, 9 * scale, secondary);
+    }
   }
   // PNG RGBA8, unfiltered scanlines, compressed with standard Web CompressionStream.
   const raw = new Uint8Array(height * (1 + width * 4));
@@ -140,6 +148,24 @@ export async function makeDemoStrip(config, scale = 1) {
     const frac = Math.min(1, done / goal), x1 = 190 * scale, barW = 165 * scale, yy = 70 * scale;
     for(let y=yy-7*scale;y<yy+7*scale;y++) for(let x=x1;x<x1+barW;x++)
       paint(pixels,width,height,x,y,x-x1 < barW*frac ? filled : empty);
+    return demoPng(width,height,pixels);
+  }
+  // Saved emoji choice: draw actual Unicode emoji artwork, rather than circles.
+  // Noto image assets are open source. For missing assets leave the native
+  // text fallback; do not render unrelated geometric tampons.
+  const emojiChoice = config?.stamps?.emoji;
+  const emojiImage = emojiChoice ? await notoEmoji(emojiChoice) : null;
+  if (emojiChoice) {
+    const visible = Math.min(goal, 15), rows = visible <= 6 ? 1 : visible <= 14 ? 2 : 3;
+    const columns = Math.ceil(visible/rows);
+    const gapX = columns>1?Math.min(32,160/(columns-1)):0;
+    const gapY = rows===1?0:rows===2?47:35;
+    for(let i=0;i<visible;i++){
+      const row=Math.floor(i/columns),col=i%columns,nCols=Math.min(columns,visible-row*columns);
+      const x=Math.round((281+(col-(nCols-1)/2)*gapX)*scale);
+      const y=Math.round((73+(row-(rows-1)/2)*gapY)*scale);
+      if(emojiImage)compositeEmoji(pixels,width,height,x,y,25*scale,emojiImage,i<done);
+    }
     return demoPng(width,height,pixels);
   }
   // Keep primary-field text readable on the left (Apple places it over strip).
@@ -225,6 +251,42 @@ export async function makeDemoLogo(name, accent='#F2C94C', scale=1, kind='logo')
     for(let y=0;y<7;y++)for(let x=0;x<5;x++)if(g[y][x]==='1')
       for(let yy=0;yy<step;yy++)for(let xx=0;xx<step;xx++)
         paint(pixels,width,height,startX+n*6*step+x*step+xx,startY+y*step+yy,fg);
+  }
+  return demoPng(width,height,pixels);
+}
+
+// Google Wallet LoyaltyObject heroImage: open-license emoji stamps for THIS
+// card's current balance. Text, rewards and QR stay native Google Wallet fields.
+// Requires a 5:4 image (1032x812) and no PII inside the generated PNG.
+export async function makeGoogleStampHero(d, progress, goal, mode='passages') {
+  const width=1032,height=812;
+  const pixels=new Uint8Array(width*height*4);
+  const primary=rgb(d?.google?.colors?.primary||d?.colors?.primary,'#1C1F24');
+  const secondary=rgb(d?.google?.colors?.secondary||d?.colors?.secondary,'#2448F0');
+  const done=Math.max(0,Math.floor(Number(progress)||0)),target=Math.max(1,Math.floor(Number(goal)||10));
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const gradient=Math.max(0,Math.min(1,.22+.76*(x/width)));
+    pixel(pixels,width,x,y,secondary.map((v,k)=>Math.round(v*(1-gradient)+primary[k]*gradient)));
+  }
+  const selected=typeof d?.stamps?.emoji==='string' ? d.stamps.emoji : '';
+  const bitmap=selected ? await notoEmoji(selected) : null;
+  if(mode==='points'||target>30) {
+    // A large horizontal progress bar, no fake round stamps for points mode.
+    const left=105,right=width-105, top=height/2-20, frac=Math.min(1,done/target);
+    const ink=rgb(d?.stamps?.filled,'#F2C94C'),empty=rgb(d?.stamps?.empty,'#FFFFFF');
+    for(let y=top;y<top+40;y++)for(let x=left;x<right;x++)
+      pixel(pixels,width,x,y,x-left<(right-left)*frac?ink:empty);
+    return demoPng(width,height,pixels);
+  }
+  const n=Math.max(1,Math.min(20,target)),rows=n<=6?1:n<=14?2:3,cols=Math.ceil(n/rows);
+  for(let i=0;i<n;i++){
+    const row=Math.floor(i/cols),col=i%cols;
+    const rowCount=Math.min(cols,n-row*cols);
+    const spaceX=rows===1?152:cols>5?115:154;
+    const x=Math.round(width/2+(col-(rowCount-1)/2)*spaceX);
+    const spaceY=rows===1?0:rows===2?235:192;
+    const y=Math.round(height/2+(row-(rows-1)/2)*spaceY);
+    if(bitmap)compositeEmoji(pixels,width,height,x,y,130,bitmap,i<done);
   }
   return demoPng(width,height,pixels);
 }

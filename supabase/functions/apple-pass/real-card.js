@@ -55,6 +55,7 @@ export function realAppleBrand(program, merchant, card) {
     logo: assetPath(assets.logo, card, 'logo') || assetPath(program?.logo_path, card, 'logo'),
     artwork: backgroundImage || hero, heroFocus: Number.isFinite(+apple.heroFocus) ? Math.max(0, Math.min(100, +apple.heroFocus)) : 50,
     stamps: d.stamps || {},
+    emoji: typeof d.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(d.stamps.emoji) ? d.stamps.emoji.slice(0,32) : '',
   };
 }
 export function realApplePassData({ program, merchant, customer, card, balance }) {
@@ -81,6 +82,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
       secondaryFields: [
         { key: 'client', label: 'CLIENT', value: client },
         { key: 'reward', label: 'RÉCOMPENSE', value: txt(program.reward, 60) || 'Récompense fidélité' },
+        ...(brand.emoji ? [{ key: 'native_stamp', label: 'TAMPONS VALIDÉS', value: brand.emoji.repeat(Math.min(10, b)) || '0' }] : []),
       ],
       auxiliaryFields: [{ key: 'card', label: 'CARTE', value: txt(card.card_number, 42) }],
       backFields: [
