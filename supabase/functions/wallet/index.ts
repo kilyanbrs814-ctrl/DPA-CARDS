@@ -1198,7 +1198,7 @@ function cleanDesign(raw: any, folder: string) {
     assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
     stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, savedEmoji(s.emoji) ? 'emoji' : 'library'), libraryId: libraryStampId(s.libraryId), emoji: s.icon==='library' ? '' : savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
       filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF') },
-    apple: platform(r.apple),
+    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true },
     google: platform(r.google),
     // Editor only (demo customer, demo progress): never copied to the program.
     preview: { mode: pick(pv.mode, ['passages', 'points'] as const, 'passages'), goal: int(pv.goal, 1, 1000, 10), progress: int(pv.progress, 0, 100000, 3),
