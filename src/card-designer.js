@@ -55,7 +55,7 @@ export function normalize(config, project) {
   const d = defaultDesign(project), c = config || {};
   const plat = k => ({ ...d[k], ...(c[k] || {}), colors: { ...((c[k] || {}).colors || {}) } });
   return { ...d, ...c, identity: { ...d.identity, ...(c.identity || {}) }, colors: { ...d.colors, ...(c.colors || {}) },
-    assets: { ...d.assets, ...(c.assets || {}) }, stamps: { ...d.stamps, ...(c.stamps || {}), emoji: c.stamps && !Object.prototype.hasOwnProperty.call(c.stamps, 'emoji') ? '' : (c.stamps?.emoji ?? d.stamps.emoji) }, apple: plat('apple'), google: plat('google'),
+    assets: { ...d.assets, ...(c.assets || {}) }, stamps: { ...d.stamps, ...(c.stamps || {}), icon: c.stamps?.icon || (normalizeStampEmoji(c.stamps?.emoji) ? 'emoji' : d.stamps.icon), emoji: c.stamps && !Object.prototype.hasOwnProperty.call(c.stamps, 'emoji') ? '' : (c.stamps?.emoji ?? d.stamps.emoji) }, apple: plat('apple'), google: plat('google'),
     preview: { ...d.preview, ...(c.preview || {}) } };
 }
 // Real cards: the validated programs.card_design (paths only) → a renderable design. Missing parts fall
