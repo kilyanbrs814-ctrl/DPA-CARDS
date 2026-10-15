@@ -61,15 +61,14 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    assert.equal(reads.length,2);
    execFileSync('unzip',['-o','-q',join(dir,'pass.zip'),'-d',join(dir,'unpacked')]);
    const manifest=JSON.parse(readFileSync(join(dir,'unpacked/manifest.json')));
-   for(const name of ['icon.png','icon@2x.png','logo.png','logo@2x.png','logo@3x.png','strip.png','strip@2x.png','pass.json'])assert.ok(manifest[name]);
+   for(const name of ['icon.png','icon@2x.png','logo.png','logo@2x.png','strip.png','strip@2x.png','pass.json'])assert.ok(manifest[name]);
    const logoFile=readFileSync(join(dir,'unpacked/logo.png'));
    assert.equal(logoFile.readUInt32BE(16),nativeName?52:160,'logo width must leave room for native text');
    assert.equal(logoFile.readUInt32BE(20),nativeName?40:50);
-   const logo2=readFileSync(join(dir,'unpacked/logo@2x.png')),logo3=readFileSync(join(dir,'unpacked/logo@3x.png'));
+   const logo2=readFileSync(join(dir,'unpacked/logo@2x.png'));
    assert.equal(logo2.readUInt32BE(16),logoFile.readUInt32BE(16)*2);
    assert.equal(logo2.readUInt32BE(20),logoFile.readUInt32BE(20)*2);
-   assert.equal(logo3.readUInt32BE(16),logoFile.readUInt32BE(16)*3);
-   assert.equal(logo3.readUInt32BE(20),logoFile.readUInt32BE(20)*3);
+   assert.ok(!manifest['logo@3x.png'],'optional 3x export skipped to protect Edge CPU budget');
    execFileSync('openssl',['smime','-verify','-inform','DER','-in',join(dir,'unpacked/signature'),'-content',join(dir,'unpacked/manifest.json'),'-noverify'],{stdio:'ignore'});
    }
   }
