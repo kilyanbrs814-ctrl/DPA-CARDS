@@ -917,6 +917,17 @@ async function adminOverview(req: Request): Promise<Response> {
   const merchants = visible.map(({ owner_id, ...m }:any) => ({ ...m, owner_email: emails[owner_id] ?? null, sales_rep: reps[m.id] ?? null,
     apple_wallet_downloads: appleByMerchant[m.id] ?? 0, manual_access: overrideById[m.id]??null,
     subscription: m.subscription ? { ...m.subscription, billing_mode: mode[m.id] ?? 'monthly' } : null }));
+  const extra=await (async()=>{
+    if(allowed===null)return {notifications_sent:0,designs_to_process:0};
+    const ids=visible.map((m:any)=>m.id);
+    if(!ids.length)return {notifications_sent:0,designs_to_process:0};
+    const [{count:notifications,error:ne},{count:designs,error:de}]=await Promise.all([
+      admin.from('notifications').select('id',{count:'exact',head:true}).in('merchant_id',ids).in('status',['sent','partial']),
+      admin.from('design_requests').select('id',{count:'exact',head:true}).in('merchant_id',ids).in('status',['submitted','in_progress']).eq('payment_status','paid')
+    ]);
+    if(ne||de)throw new Error('db_admin_scoped_counts');
+    return {notifications_sent:notifications??0,designs_to_process:designs??0};
+  })();
   const kpis=allowed===null?{ ...data.kpis, apple_wallet_downloads: appleTotal, wallet_both: bothTotal }
     :{merchants:merchants.length,programs:merchants.filter((m:any)=>m.program).length,
       customers:merchants.reduce((n:number,m:any)=>n+Number(m.customers||0),0),
@@ -924,8 +935,8 @@ async function adminOverview(req: Request): Promise<Response> {
       events:merchants.reduce((n:number,m:any)=>n+Number(m.events||0),0),
       wallet_passes:merchants.reduce((n:number,m:any)=>n+Number(m.wallet_passes||0),0),
       apple_wallet_downloads:merchants.reduce((n:number,m:any)=>n+Number(m.apple_wallet_downloads||0),0),
-      wallet_both:0,subscriptions_valid:merchants.filter((m:any)=>m.manual_access?.enabled&&new Date(m.manual_access.expires_at)>new Date()||['trialing','active'].includes(m.subscription?.status)&&m.manual_access?.enabled!==false).length,
-      notifications_sent:0,designs_to_process:0};
+      wallet_both:(appleRows??[]).filter((x:any)=>allowed.has(x.merchant_id)).reduce((n:number,x:any)=>n+Number(x.both_count||0),0),subscriptions_valid:merchants.filter((m:any)=>m.manual_access?.enabled&&new Date(m.manual_access.expires_at)>new Date()||['trialing','active'].includes(m.subscription?.status)&&m.manual_access?.enabled!==false).length,
+      ...extra};
   return json(req,200,{kpis,merchants,me:{email:user.dpaEmail,role:user.dpaRole}});
 }
 
