@@ -1160,7 +1160,7 @@ const savedEmoji = (value: unknown) => {
   return [...emoji].length <= 16 && /\p{Extended_Pictographic}/u.test(emoji) ? emoji : '';
 };
 
-const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'appleHeader'] as const;
+const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'appleHeader', 'rewardLabel'] as const;
 type AssetKind = typeof ASSET_KINDS[number];
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '');
@@ -1169,7 +1169,7 @@ const pick = <T extends string>(v: unknown, list: readonly T[], dflt: T): T => (
 const int = (v: unknown, min: number, max: number, dflt: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt; };
 // Images of the program's own folder: the designer's uploads, or the logo / cover the program already uses.
 // `folder` = "<merchant>/<program>" for a real program, "tests/<test id>" for a test card (designer/ only).
-const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp)-[0-9a-f-]{36}\\.(png|jpg)$`);
+const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp|appleHeader|rewardLabel)-[0-9a-f-]{36}\\.(png|jpg)$`);
 
 // Whitelist of the design document; anything else is dropped. Colours of a platform are optional overrides.
 function cleanDesign(raw: any, folder: string) {
@@ -1198,7 +1198,7 @@ function cleanDesign(raw: any, folder: string) {
     assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
     stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, savedEmoji(s.emoji) ? 'emoji' : 'library'), libraryId: libraryStampId(s.libraryId), emoji: s.icon==='library' ? '' : savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
       filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF') },
-    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true },
+    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64) },
     google: platform(r.google),
     // Editor only (demo customer, demo progress): never copied to the program.
     preview: { mode: pick(pv.mode, ['passages', 'points'] as const, 'passages'), goal: int(pv.goal, 1, 1000, 10), progress: int(pv.progress, 0, 100000, 3),
@@ -1289,7 +1289,7 @@ async function adminCardUpload(req: Request): Promise<Response> {
 // Validate actual bytes before persisting logo/stamp references, including drafts
 // and demo cards. Upload URLs authorize only unique, server-selected paths.
 async function validateDesignPng(config: any) {
-  for(const kind of ['logo','stamp','appleHeader']) {
+  for(const kind of ['logo','stamp','appleHeader','rewardLabel']) {
     const path=config.assets?.[kind]?.path;
     if(!path || !path.endsWith('.png'))continue; // legacy JPEG assets remain compatible
     const {data,error}=await admin.storage.from('program-assets').download(path);
