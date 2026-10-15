@@ -105,7 +105,8 @@ function overlayPanel(pixels, width, height, art, left, top, right, bottom, radi
 // The strip is only the rectangular stamp region from the admin designer;
 // logo, number, counters and QR remain native Wallet fields.
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon
- * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt */
+ * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt
+ * @param {{width:number,height:number,pixels:Uint8Array}|null} panelArt */
 export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, scale=1, customIcon=null, rewardArt=null, finalStar=null, panelArt=null) {
   if (![1,2].includes(scale)) throw new Error('invalid_strip_scale');
   const width=375*scale,height=144*scale,pixels=new Uint8Array(width*height*4);
@@ -156,7 +157,8 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
 }
 
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon
- * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt */
+ * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt
+ * @param {{width:number,height:number,pixels:Uint8Array}|null} panelArt */
 export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=null, rewardArt=null, finalStar=null, panelArt=null) {
   if (![1, 2].includes(scale)) throw new Error('invalid_strip_scale');
   if(brand.emoji || brand.stamp || brand.libraryId) return makeEmojiCardStrip(brand.stamps,brand,balance,goal,brand.mode||'passages',scale,customIcon,rewardArt,finalStar,panelArt);
@@ -256,7 +258,8 @@ function line(pixels, width, height, x1, y1, x2, y2, thickness, color) {
 }
 // Same two rows of 5 as the test designer where goal is 10.
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon
- * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt */
+ * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt
+ * @param {{width:number,height:number,pixels:Uint8Array}|null} panelArt */
 export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardArt=null, finalStar=null, panelArt=null) {
   if (![1, 2].includes(scale)) throw new Error('invalid_demo_strip_scale');
   if(config?.stamps?.emoji || customIcon) {
