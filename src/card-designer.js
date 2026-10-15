@@ -332,6 +332,7 @@ export function makeCardDesigner(React, api) {
 
       // 4. QR CODE CENTRÉ EN BAS
       h('div', {
+        'data-field': 'qr',
         style: {
           display: 'flex',
           justifyContent: 'center',
