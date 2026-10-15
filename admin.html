@@ -371,7 +371,7 @@ function lum(hex){ const h=(hex||'#FFFFFF').replace('#',''); const v=[0,2,4].map
 const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
 const nf=n=>(+n||0).toLocaleString('fr-FR');
 const unitOf=p=>p&&p.mode==='points'?'points':'passages';
-const statusOf=m=>['trialing','active'].includes(subKey(m))?'active':'setup';
+const statusOf=m=>['trialing','active','manual'].includes(subKey(m))?'active':'setup';
 // #generateur, #generateur/m/<merchant id>, #generateur/r/<design request id>[/<merchant id>], #generateur/t/<test card id>
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function readHash(){ try{ const p=(window.location.hash||'').replace(/^#/,'').split('/'); if(p[0]==='commerciaux') return {tab:'sales',gen:null}; if(p[0]!=='generateur') return {tab:'list',gen:null};
