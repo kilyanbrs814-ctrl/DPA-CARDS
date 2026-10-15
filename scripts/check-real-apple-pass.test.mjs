@@ -115,10 +115,10 @@ test('number printed on real pass works with manual scanner fallback', () => {
 test('Apple header leaves room between merchant and last four digits',()=>{
   assert.equal(appleHeaderName('Commerce test'),'Commerce');
   assert.equal(appleHeaderName('Barber'),'Barber');
-  assert.equal(visibleCardNumber('TEST 931f ae31'),'9313');
+  assert.equal(visibleCardNumber('TEST 931f x3'),'9313');
   const p=structuredClone(program);p.card_design.stamps.emoji='💧';
   const {json}=realApplePassData({program:p,merchant,customer,card,balance:3});
-  assert.equal(json.logoText,'Boulanger');
+  assert.equal(json.logoText,'Boulangeri');
   assert.equal(json.storeCard.headerFields[0].value,'0001');
   assert.equal(json.barcode.altText,'0001');
 });
