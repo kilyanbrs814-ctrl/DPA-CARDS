@@ -52,6 +52,18 @@ test('Apple overrides do not alter Google settings and can hide hero/subtitle', 
   assert.equal(a.subtitle,'');
   assert.equal(a.primary,'#20242A');
 });
+test('Apple native business name is opt-in and uses saved commerce text', () => {
+  const p=structuredClone(program);
+  assert.equal(realApplePassData({program:p,merchant,customer,card,balance:2}).json.logoText,undefined,'existing cards stay unchanged');
+  p.card_design.apple.showBusinessName=true;
+  const {brand,json}=realApplePassData({program:p,merchant,customer,card,balance:2});
+  assert.equal(brand.showBusinessName,true);
+  assert.equal(json.logoText,'Boulangerie des Arts');
+  assert.equal(json.organizationName,'Boulangerie des Arts');
+  assert.equal(json.storeCard.secondaryFields[0].value,'Nicolas Moreau','counter/customer data must be unchanged');
+  p.card_design.apple.showBusinessName=false;
+  assert.equal(realApplePassData({program:p,merchant,customer,card,balance:2}).json.logoText,undefined);
+});
 test('branded background is preferred over hero when specifically selected', () => {
   const p=structuredClone(program);
   p.card_design.apple.useBackground=true;
