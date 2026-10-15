@@ -782,7 +782,7 @@ export function makeCardDesigner(React, api) {
       h(Section, { title: 'Tampons' },
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           h('div', { style: {gridColumn:'1 / -1'} }, h(StampLibraryPicker, { value: design.stamps.icon === 'library' ? design.stamps.libraryId : '',
-            onChange: v => { set('stamps.icon', 'library'); set('stamps.libraryId', v); set('stamps.emoji', ''); set('assets.stamp', null); } })),
+            onChange: v => { set('stamps.icon', 'library'); set('stamps.libraryId', v); set('stamps.emoji', ''); set('assets.stamp', null); } }))),
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, background: '#1C1F24' } },
           h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }), h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }),
           h(Stamp, { on: false, st: design.stamps, size: 34, stampUrl:design.assets.stamp?.url }), h('span', { style: { color: '#FFFFFF', fontSize: 13, opacity: 0.8 } }, 'Rempli · Rempli · Vide')),
