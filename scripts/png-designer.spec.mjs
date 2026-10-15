@@ -258,7 +258,9 @@ test('Apple strip upload exports exactly the portrait or landscape area shown in
     const crop=page.getByRole('application',{name:/Zone de recadrage/});
     await expect(crop.locator('img')).toBeVisible();
     // Exercise different zoom and pan, not just the initial centered selection.
-    await page.locator('[role="dialog"] input[type="range"]').first().fill('1.4');
+    const zoom=page.locator('[role="dialog"] input[type="range"]').first();
+    await zoom.focus();
+    for(let z=0;z<35;z++)await zoom.press('ArrowRight');
     const rect=await crop.boundingBox();
     await page.mouse.move(rect.x+rect.width*.5,rect.y+rect.height*.5);
     await page.mouse.down();
