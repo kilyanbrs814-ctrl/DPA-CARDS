@@ -184,8 +184,28 @@ test('💧 Apple demo strip stays visible even when Noto and Twemoji are unavail
   } finally { globalThis.fetch=savedFetch; }
 });
 
+test('Apple header uses 3x Retina and high-quality anti-aliased transparent artwork',async()=>{
+  const {resizeAppleLogo}=await import('../supabase/functions/apple-pass/logo-resize.js');
+  const srcW=400,srcH=400,rgba=new Uint8Array(srcW*srcH*4);
+  // High-resolution diagonal logo, with an intentionally transparent border.
+  for(let y=60;y<340;y++)for(let x=60;x<340;x++){
+    if(Math.abs(y-x)>92)continue;
+    const index=(y*srcW+x)*4;
+    rgba.set([235,75,36,255],index);
+  }
+  const source={width:srcW,height:srcH,pixels:rgba};
+  for(const compact of [false,true])for(const scale of [1,2,3]){
+    const w=(compact?52:160)*scale,h=(compact?40:50)*scale;
+    const img=resizeAppleLogo(source,w,h);
+    assert.equal(img.length,w*h*4);
+    assert.equal(img[3],0,'canvas margin remains transparent');
+    assert.ok(img.some((v,i)=>i%4===3&&v===255),'logo has a visible opaque core');
+    const translucent=img.filter((v,i)=>i%4===3&&v>0&&v<255);
+    assert.ok(translucent.length>0,'fine diagonal edges must be antialiased');
+  }
+});
 test('Apple header is transparent without a PNG, with no initials or bitmap name',async()=>{
-  for(const scale of [1,2]) {
+  for(const scale of [1,2,3]) {
     const png=await makeAppleHeaderLogo('Commerce test','#F2C94C','#1C1F24',null,scale);
     const img=parsePng(png);
     assert.equal(img.w,160*scale);assert.equal(img.h,50*scale);
@@ -193,7 +213,7 @@ test('Apple header is transparent without a PNG, with no initials or bitmap name
   }
 });
 test('Apple compact header logo reserves space for system text at 1x and 2x',async()=>{
-  for(const scale of [1,2]){
+  for(const scale of [1,2,3]){
     const png=await makeAppleHeaderLogo('Napolithein','#F2C94C','#1C1F24',null,scale,true);
     const img=parsePng(png);
     assert.equal(img.w,52*scale);
