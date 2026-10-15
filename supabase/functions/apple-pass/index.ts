@@ -10,7 +10,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
 import { realApplePassData, visibleCardNumber, testAssetPath, appleHeaderName } from './real-card.js';
-import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeAppleHeaderLogo } from './real-strip.js';
+import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeAppleHeaderLogo, makeBlankAppleStrip } from './real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 function serviceKey() { try { const k = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}'); if (k.default) return k.default; } catch {} return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''; }
@@ -149,6 +149,11 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   const compact=d.apple?.showBusinessName===true && !composedPath;
   images['logo.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,headerLogo,1,compact));
   images['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,headerLogo,2,compact));
+  if(d.apple?.showStampPanel===false) {
+    // Keep the exact native strip footprint. No tampons, label or secondary box.
+    images['strip.png']=Buffer.from(await makeBlankAppleStrip(primary,1));
+    images['strip@2x.png']=Buffer.from(await makeBlankAppleStrip(primary,2));
+  }else {
   const stampBytes=d.stamps?.icon==='custom' ? await realLogo(testAsset('stamp')) : null;
   const selectedLibrary=d.stamps?.icon==='library'?libraryStampId(d.stamps.libraryId):'';
   const stamp=stampBytes ? await decodePng(stampBytes) : selectedLibrary ? await loadLibraryStamp(selectedLibrary) : null;
@@ -166,6 +171,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
     images['strip.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt, finalStar));
     images['strip@2x.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 2, stamp, rewardArt, finalStar));
   } catch { console.error('apple-pass demo strip unavailable'); }
+  }
   const pass = new PKPass({ ...images, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8') }, {
     wwdr: await wwdrCert(),
     signerCert: signerCert.replace(/\\n/g, '\n'),
@@ -242,6 +248,11 @@ async function createPass(token: string) {
   };
   assets['logo.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,headerLogo,1,compact));
   assets['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,headerLogo,2,compact));
+  if(!brand.showStampPanel) {
+    // Preserve PassKit positions of the header, native counters and QR.
+    assets['strip.png']=Buffer.from(await makeBlankAppleStrip(brand.primary,1));
+    assets['strip@2x.png']=Buffer.from(await makeBlankAppleStrip(brand.primary,2));
+  }else {
   const stampBytes=brand.stamp ? await realLogo(brand.stamp) : null;
   const stamp=stampBytes ? await decodePng(stampBytes) : brand.libraryId ? await loadLibraryStamp(brand.libraryId) : null;
   if((brand.stamp || brand.libraryId) && !stamp) throw new SafeError(422,'invalid_stamp');
@@ -257,6 +268,7 @@ async function createPass(token: string) {
     assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2, stamp, rewardArt, finalStar));
   } catch {
     console.error('apple-pass real strip unavailable');
+  }
   }
   const pass = new PKPass({
     ...assets, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8'),
