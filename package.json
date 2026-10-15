@@ -11,9 +11,14 @@
     "test:apple": "node scripts/check-apple-integration.mjs",
     "test:real-apple": "node --test scripts/check-real-apple-pass.test.mjs",
     "test:apple-strip": "node --test scripts/check-real-apple-strip.test.mjs",
-    "test:emoji": "node --test scripts/check-emoji-designer.test.mjs"
+    "test:emoji": "node --test scripts/check-emoji-designer.test.mjs",
+    "test:png": "node --test scripts/check-png-assets.test.mjs scripts/check-signed-png-pass.test.mjs",
+    "test:png-ui": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.18.10",
+    "passkit-generator": "3.6.1",
     "vite": "^7.1.5"
   },
   "dependencies": {

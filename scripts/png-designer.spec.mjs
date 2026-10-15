@@ -1,0 +1,33 @@
+import {test,expect} from '@playwright/test';
+import {fixture} from './fixtures/png.mjs';
+test('upload PNG, preview both states, persist, replace, remove and reject invalid files',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const upload=kind=>page.locator(`[data-upload="${kind}"]`);
+ const png=fixture(80,40);
+ await upload('logo').setInputFiles({name:'logo.png',mimeType:'image/png',buffer:png});
+ await upload('stamp').setInputFiles({name:'stamp.png',mimeType:'image/png',buffer:png});
+ const preview=page.locator('[data-layout="apple"]').first();
+ await expect(preview.locator('[data-stamp="filled-png"]')).toHaveCount(3);
+ await expect(preview.locator('[data-stamp="empty-png"]')).toHaveCount(7);
+ await expect(preview.locator('[data-stamp="empty-png"]').first()).toHaveCSS('opacity','0.22');
+ await expect(preview.locator('[data-stamp="empty-png"]').first()).toHaveCSS('filter','grayscale(1)');
+ await expect(preview.locator('[data-field="business"]')).toHaveCount(0);
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ await page.reload();
+ await expect(preview.locator('[data-stamp="filled-png"]')).toHaveCount(3);
+ const before=await preview.locator('[data-stamp="filled-png"]').first().getAttribute('src');
+ await upload('stamp').setInputFiles({name:'replacement.png',mimeType:'image/png',buffer:fixture(40,80,[0,170,240,255])});
+ await expect(preview.locator('[data-stamp="filled-png"]').first()).not.toHaveAttribute('src',before);
+ await upload('stamp').setInputFiles({name:'bad.png',mimeType:'image/png',buffer:Buffer.from('not a png')});
+ await expect(page.locator('#toast')).toContainText('PNG invalide');
+ await page.screenshot({path:'/tmp/dpa-png-designer.png',fullPage:true});
+ // Remove through the same ImagePick component as the real generator.
+ await upload('stamp').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
+ await expect(preview.locator('[data-stamp="filled-png"]')).toHaveCount(0);
+ await upload('logo').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await page.reload();
+ await expect(preview.getByRole('img',{name:'Logo',exact:true})).toHaveCount(0);
+ await expect(preview.locator('[data-stamp="filled-png"]')).toHaveCount(0);
+});

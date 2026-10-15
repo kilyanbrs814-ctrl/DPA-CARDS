@@ -45,12 +45,17 @@ const isUuid = s => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 // Only branded image files belonging to THIS program may be read with service role.
 export const assetPath = (value, card, kind) => {
   const path = typeof value === 'string' ? value : value?.path;
-  if (!isUuid(card?.merchant_id) || !isUuid(card?.program_id) || !['logo', 'hero', 'background'].includes(kind)) return null;
+  if (!isUuid(card?.merchant_id) || !isUuid(card?.program_id) || !['logo', 'hero', 'background', 'stamp'].includes(kind)) return null;
   const prefix = card.merchant_id + '/' + card.program_id + '/';
   if (!path?.startsWith(prefix)) return null;
   const suffix = path.slice(prefix.length);
   return new RegExp('^(?:designer/)?' + kind + '-[0-9a-f-]{36}\\.(?:png|jpg)$', 'i').test(suffix) ? path : null;
 };
+export function testAssetPath(value, testId, kind) {
+  if(!isUuid(testId) || !['logo','stamp'].includes(kind))return null;
+  const path=typeof value==='string'?value:value?.path;
+  return typeof path==='string' && new RegExp('^tests/'+testId+'/designer/'+kind+'-[0-9a-f-]{36}\\.png$','i').test(path)?path:null;
+}
 export function realAppleBrand(program, merchant, card) {
   const d = program?.card_design && typeof program.card_design === 'object' ? program.card_design : {};
   const apple = d.apple || {}, base = d.colors || {}, overrides = apple.colors || {}, assets = d.assets || {};
@@ -67,7 +72,8 @@ export function realAppleBrand(program, merchant, card) {
   const hero = showHero ? (assetPath(assets.hero, card, 'hero') || assetPath(program?.hero_path, card, 'hero')) : null;
   return {
     issuer, subtitle, label, primary, secondary, accent, foreground,
-    logo: assetPath(assets.logo, card, 'logo') || assetPath(program?.logo_path, card, 'logo'),
+    logo: Object.hasOwn(assets,'logo') ? assetPath(assets.logo, card, 'logo') : assetPath(program?.logo_path, card, 'logo'),
+    stamp: d.stamps?.icon === 'custom' && assets.stamp?.path?.endsWith('.png') ? assetPath(assets.stamp, card, 'stamp') : null,
     artwork: backgroundImage || hero, heroFocus: Number.isFinite(+apple.heroFocus) ? Math.max(0, Math.min(100, +apple.heroFocus)) : 50,
     stamps: d.stamps || {}, mode: program?.mode === 'points' ? 'points' : 'passages',
     emoji: typeof d.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(d.stamps.emoji) ? d.stamps.emoji.slice(0,32) : '',
@@ -79,7 +85,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
   const goal = Math.max(1, Math.floor(Number(program.goal) || 10));
   const modePoints = program.mode === 'points';
   const client = [txt(customer?.first_name, 80), txt(customer?.last_name, 80)].filter(Boolean).join(' ') || 'Client';
-  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: brand.emoji ? visibleCardNumber(card.card_number) : card.card_number };
+  const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: (brand.emoji || brand.stamp) ? visibleCardNumber(card.card_number) : card.card_number };
   return { brand, goal, balance: b, json: {
     formatVersion: 1,
     passTypeIdentifier: 'pass.fr.digitalprojectagency.cards',
@@ -87,11 +93,11 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     serialNumber: card.id,
     organizationName: brand.issuer,
     description: 'Carte de fidélité ' + brand.issuer,
-    logoText: brand.emoji ? appleHeaderName(brand.issuer) : brand.issuer,
+
     backgroundColor: toRgb(brand.primary),
     foregroundColor: toRgb(brand.foreground),
     labelColor: toRgb(brand.foreground),
-    storeCard: brand.emoji ? {
+    storeCard: (brand.emoji || brand.stamp) ? {
       // Apple controls native StoreCard placement. A tiny neutral primary
       // field reserves the strip artwork; no progress text obscures emojis.
       headerFields: [{key:'number',label:'',value:visibleCardNumber(card.card_number)}],
