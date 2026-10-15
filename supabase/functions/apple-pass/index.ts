@@ -103,6 +103,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
       backFields: [
         {key:'demo',label:'DÉMONSTRATION',value:'Cette carte ne possède aucune valeur commerciale.'},
         {key:'reward',label:'RÉCOMPENSE SIMULÉE',value:String(pv.reward || 'Récompense test').slice(0,80)},
+        {key:'emoji_credits',label:'ILLUSTRATIONS',value:'Noto Emoji (Google, Apache 2.0) ; Twemoji (Twitter, CC BY 4.0) — github.com/jdecked/twemoji'},
         ...(d.apple?.showSubtitle!==false && d.identity?.subtitle
           ? [{key:'subtitle',label:'LE COMMERCE',value:String(d.identity.subtitle).slice(0,80)}]:[]),
       ],
