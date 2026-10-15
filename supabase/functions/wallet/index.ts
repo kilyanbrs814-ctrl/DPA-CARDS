@@ -973,12 +973,10 @@ async function adminManualAccess(req: Request): Promise<Response> {
   if(!merchant) throw new HttpError(404,'merchant_not_found');
   const days=Number(body.days);
   if(body.enabled && ![7,30,90,365].includes(days)) throw new HttpError(422,'invalid_duration');
-  const expires=body.enabled?new Date(Date.now()+days*86400000).toISOString():null;
-  const record={merchant_id:id,enabled:body.enabled,expires_at:expires,reason,updated_by:user.dpaEmail,updated_at:new Date().toISOString()};
-  const {data,error}=await admin.from('merchant_manual_access').upsert(record,{onConflict:'merchant_id'}).select().single();
-  if(error)throw new Error('db_manual_access');
-  const {error:auditErr}=await admin.from('merchant_manual_access_audit').insert({merchant_id:id,enabled:body.enabled,expires_at:expires,reason,actor:user.dpaEmail});
-  if(auditErr){ console.error('wallet manual access audit error',auditErr.code);throw new Error('db_manual_access_audit'); }
+  const {data,error}=await admin.rpc('admin_manual_access_change',{
+    p_merchant:id,p_enabled:body.enabled,p_days:body.enabled?days:null,p_reason:reason,p_actor:user.dpaEmail
+  });
+  if(error){ if(/not_director/.test(error.message))throw new HttpError(403,'not_director'); throw new Error('db_manual_access'); }
   return json(req,200,{manual_access:data});
 }
 
