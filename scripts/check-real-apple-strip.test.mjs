@@ -137,7 +137,7 @@ test('Apple and Google sources include emoji-safe image routes and balance updat
   const apple=readFileSync(new URL('../supabase/functions/apple-pass/index.ts',import.meta.url),'utf8');
   assert.ok(server.includes("publicStampBoard(req,path)"));
   assert.ok(server.includes('hasStampEmoji(program)'));
-  assert.ok(server.includes('stampSignature(id)'));
+  assert.ok(server.includes('async function stampSignature(id: string)'));
   assert.ok(server.includes('update.heroImage'));
   assert.ok(apple.includes('makeDemoStrip(d, 1)'));
   assert.ok(apple.includes('realApplePassData({'));
