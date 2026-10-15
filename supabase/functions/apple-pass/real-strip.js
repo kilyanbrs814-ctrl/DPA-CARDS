@@ -1,4 +1,5 @@
 import { decodePng } from '../_shared/png.js';
+import { resizeAppleLogo } from './logo-resize.js';
 import { notoEmoji, compositeEmoji } from './emoji-art.js';
 // Lightweight, dependency-free PNG for native Apple store-card strips.
 // Avoid native/WASM image dependencies in the Edge Function: the test-pass route
@@ -324,17 +325,11 @@ export async function makeDemoLogo(name, accent='#F2C94C', scale=1, kind='logo')
  * @param {boolean} compact
  */
 export async function makeAppleHeaderLogo(_name, _accent='#F2C94C', _background='#1C1F24', logoBytes=null, scale=1, compact=false) {
-  if (![1,2].includes(scale)) throw new Error('invalid_header_scale');
+  if (![1,2,3].includes(scale)) throw new Error('invalid_header_scale');
   const width=(compact?52:160)*scale,height=(compact?40:50)*scale,pixels=new Uint8Array(width*height*4);
   if(logoBytes) {
     const src=await decodePng(logoBytes);
-    const ratio=Math.min(width/src.width,height/src.height);
-    const w=Math.max(1,Math.round(src.width*ratio)),h=Math.max(1,Math.round(src.height*ratio));
-    const top=Math.floor((height-h)/2);
-    for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-      const sx=Math.min(src.width-1,Math.floor(x/ratio)),sy=Math.min(src.height-1,Math.floor(y/ratio));
-      pixels.set(src.pixels.subarray((sy*src.width+sx)*4,(sy*src.width+sx)*4+4),((top+y)*width+x)*4);
-    }
+    pixels.set(resizeAppleLogo(src,width,height));
   }
   // Transparent when absent: no initials, tile or merchant name is baked into the PNG.
   return demoPng(width,height,pixels);
