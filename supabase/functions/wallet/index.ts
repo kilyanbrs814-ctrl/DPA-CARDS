@@ -981,7 +981,13 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/;
 const DESIGN_FONTS = ['hanken', 'space', 'playfair'];
 const STAMP_SHAPES = ['circle', 'rounded', 'square'];
 const STAMP_STYLES = ['outline', 'soft'];
-const STAMP_ICONS = ['none', 'check', 'star', 'favorite', 'local_cafe', 'local_pizza', 'content_cut', 'restaurant', 'cake', 'spa', 'local_bar', 'icecream', 'bakery_dining', 'custom'];
+const STAMP_ICONS = ['emoji', 'none', 'check', 'star', 'favorite', 'local_cafe', 'local_pizza', 'content_cut', 'restaurant', 'cake', 'spa', 'local_bar', 'icecream', 'bakery_dining', 'custom'];
+const savedEmoji = (value: unknown) => {
+  if (typeof value !== 'string') return '';
+  const emoji = value.trim();
+  return [...emoji].length <= 16 && /\p{Extended_Pictographic}/u.test(emoji) ? emoji : '';
+};
+
 const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp'] as const;
 type AssetKind = typeof ASSET_KINDS[number];
 
@@ -1018,7 +1024,7 @@ function cleanDesign(raw: any, folder: string) {
     font: pick(r.font, DESIGN_FONTS, 'hanken'),
     label: str(r.label, 16),
     assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
-    stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, 'check'), style: pick(s.style, STAMP_STYLES, 'outline'),
+    stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, 'check'), emoji: savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
       filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF') },
     apple: platform(r.apple),
     google: platform(r.google),
