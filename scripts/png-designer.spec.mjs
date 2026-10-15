@@ -8,7 +8,10 @@ test('upload PNG, preview both states, persist, replace, remove and reject inval
  await upload('stamp').setInputFiles({name:'stamp.png',mimeType:'image/png',buffer:png});
  const preview=page.locator('[data-layout="apple"]').first();
  await expect(preview.locator('[data-stamp="filled-png"]')).toHaveCount(3);
- await expect(preview.locator('[data-stamp="empty-png"]')).toHaveCount(7);
+ await expect(preview.locator('[data-stamp="empty-png"]')).toHaveCount(6);
+ await expect(preview.locator('[data-stamp="empty-final-star"]')).toHaveCount(1);
+ await expect(preview.locator('[data-stamp="empty-final-star"]')).toHaveCSS('filter','grayscale(1)');
+ await expect(preview.locator('[data-stamp="empty-final-star"]')).toHaveCSS('opacity','0.22');
  await expect(preview.locator('[data-stamp="empty-png"]').first()).toHaveCSS('opacity','0.22');
  await expect(preview.locator('[data-stamp="empty-png"]').first()).toHaveCSS('filter','grayscale(1)');
  await expect(preview.locator('[data-field="business"]')).toHaveCount(0);
@@ -64,4 +67,25 @@ test('Apple larger name and logo share one vertically centered bitmap without ad
  const afterOffset=stamp.y-afterCard.y;
  expect(Math.abs(beforeOffset-afterOffset)).toBeLessThan(1);
  expect(afterOffset).toBeGreaterThan(70);
+});
+
+test('last stamp is a gray reward star, label color can be edited, and the Apple name font is selectable',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const apple=page.locator('[data-layout="apple"]').first();
+ const google=page.locator('[data-layout="google"]').first();
+ await expect(apple.locator('[data-stamp="empty-final-star"]')).toHaveCount(1);
+ const star=apple.locator('[data-stamp="empty-final-star"]');
+ await expect(star).toHaveAttribute('src','/assets/stamps/reward-star.png');
+ await page.getByRole('tab',{name:/Google Wallet/}).click();
+ await expect(google.locator('[data-stamp="empty-final-star"]')).toHaveCount(1);
+ await page.getByRole('tab',{name:/Apple Wallet/}).click();
+ const nameFont=page.getByLabel('Police du nom');
+ await expect(nameFont).toHaveValue('system');
+ await nameFont.selectOption('playfair');
+ await expect(nameFont).toHaveValue('playfair');
+ const rewardSection=page.locator('[data-apple-reward-settings]');
+ await rewardSection.getByLabel('Afficher la récompense dans le bloc des tampons').check();
+ await expect(apple.locator('[data-apple-reward]')).toContainText('Débloque');
+ await expect(rewardSection.getByText('Couleur du texte de récompense')).toBeVisible();
+ await rewardSection.getByRole('button',{name:'Revenir à la couleur automatique'}).count().then(n=>expect(n).toBe(0));
 });
