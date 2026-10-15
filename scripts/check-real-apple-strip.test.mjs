@@ -24,6 +24,25 @@ const parsePng=(png) => {
   for(let y=0;y<h;y++)assert.equal(raw[y*(1+4*w)],0,'unfiltered PNG scanline');
   return {w,h,raw};
 };
+test('the same final reward-star is gray until the target and gold when earned on Apple and Google',async()=>{
+  const {loadRewardStar}=await import('../supabase/functions/_shared/reward-star.js');
+  const star=await loadRewardStar();
+  assert.equal(star.width,95);
+  assert.equal(star.height,96);
+  const config={colors:{primary:'#111111',secondary:'#2448F0'},stamps:{icon:'library',filled:'#F2C94C'},
+    preview:{mode:'passages',goal:10,progress:0}};
+  for(const scale of [1,2]){
+    const empty=parsePng(await makeDemoStrip(config,scale,null,null,star));
+    const completed=parsePng(await makeDemoStrip({...config,preview:{...config.preview,progress:10}},scale,null,null,star));
+    assert.equal(empty.w,375*scale);
+    assert.equal(completed.h,144*scale);
+    assert.notDeepEqual(empty.raw,completed.raw);
+    const rendered=parsePng(await makeRealStrip({...brand,libraryId:'burger',stamps:{icon:'library',filled:'#F2C94C'}},0,10,scale,null,null,star));
+    assert.equal(rendered.w,375*scale);
+  }
+  const google=await makeGoogleStampHero(config,0,10,'passages',null,star);
+  assert.equal(parsePng(google).w,1032);
+});
 test('safe native PNG strip encodes true dimensions at 1x and 2x',async()=>{
   for (const scale of [1,2]) {
     const png=await makeRealStrip(brand,3,10,scale);
