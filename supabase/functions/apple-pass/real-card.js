@@ -73,6 +73,7 @@ export function realAppleBrand(program, merchant, card) {
   const hero = showHero ? (assetPath(assets.hero, card, 'hero') || assetPath(program?.hero_path, card, 'hero')) : null;
   return {
     issuer, subtitle, label, primary, secondary, accent, foreground,
+    showBusinessName: apple.showBusinessName === true,
     logo: Object.hasOwn(assets,'logo') ? assetPath(assets.logo, card, 'logo') : assetPath(program?.logo_path, card, 'logo'),
     stamp: d.stamps?.icon === 'custom' && assets.stamp?.path?.endsWith('.png') ? assetPath(assets.stamp, card, 'stamp') : null,
     libraryId: d.stamps?.icon === 'library' ? libraryStampId(d.stamps.libraryId) : '',
@@ -94,6 +95,8 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     teamIdentifier: 'HDK7R3283T',
     serialNumber: card.id,
     organizationName: brand.issuer,
+    // Native PassKit text: iOS draws it in its system typography next to the logo.
+    ...(brand.showBusinessName ? { logoText: brand.issuer } : {}),
     description: 'Carte de fidélité ' + brand.issuer,
 
     backgroundColor: toRgb(brand.primary),
