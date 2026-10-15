@@ -32,6 +32,32 @@ test('safe native PNG strip encodes true dimensions at 1x and 2x',async()=>{
     assert.equal(image.h,123*scale);
   }
 });
+test('Apple reward line is opt-in and composited inside the existing stamp rectangle',async()=>{
+  const artW=630,artH=52,layer=new Uint8Array(artW*artH*4);
+  for(let y=14;y<38;y++)for(let x=150;x<480;x++){
+    const p=(y*artW+x)*4;layer.set([255,255,255,255],p);
+  }
+  const label={width:artW,height:artH,pixels:layer};
+  const signedBrand={...brand,libraryId:'burger',stamps:{icon:'library',filled:'#F2C94C'}};
+  const preview={colors:{primary:'#121820',secondary:'#3040C0'},
+    stamps:{icon:'library',filled:'#F2C94C'},preview:{mode:'passages',goal:10,progress:3}};
+  for(const scale of [1,2]){
+    const off=await makeRealStrip(signedBrand,3,10,scale);
+    const old=await makeRealStrip(signedBrand,3,10,scale,null,null);
+    assert.deepEqual(off,old,'disabled render must be byte-for-byte unchanged');
+    const on=await makeRealStrip(signedBrand,3,10,scale,null,label);
+    const img=parsePng(on),plain=parsePng(off);
+    assert.equal(img.w,375*scale);assert.equal(img.h,144*scale,'strip height fixed');
+    const x=Math.floor(187*scale),y=Math.floor(125*scale);
+    const offset=y*(1+img.w*4)+1+x*4;
+    assert.ok(img.raw[offset]>plain.raw[offset]+30,'reward text becomes visible');
+    const demoOff=await makeDemoStrip(preview,scale);
+    const demoOn=await makeDemoStrip(preview,scale,null,label);
+    const d=parsePng(demoOn);
+    assert.equal(d.w,375*scale);assert.equal(d.h,144*scale);
+    assert.notDeepEqual(demoOff,demoOn,'demo pass includes the reward too');
+  }
+});
 test('different balances produce visibly different branded stamp strips',async()=>{
   const a=await makeRealStrip(brand,0,10,1), b=await makeRealStrip(brand,10,10,1);
   assert.notDeepEqual(a,b);
@@ -89,7 +115,7 @@ test('native badge shows commerce initials on yellow, not a generic DPA logo',as
 test('real pass still uses independent logo and strip path; demo remains excluded from metrics',()=>{
   const source=readFileSync(new URL('../supabase/functions/apple-pass/index.ts',import.meta.url),'utf8');
   const demo=source.split('async function createDemoPass(')[1].split('// Real cards only.')[0];
-  assert.ok(demo.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp)'));
+  assert.ok(demo.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt)'));
   assert.ok(demo.includes('makeDemoLogo(name, accent'));
   assert.ok(demo.includes('DPA_TEST:'));
   assert.ok(demo.includes('crypto.randomUUID()'));
@@ -139,7 +165,7 @@ test('Apple and Google sources include emoji-safe image routes and balance updat
   assert.ok(server.includes('hasStampEmoji(program)'));
   assert.ok(server.includes('async function stampSignature(id: string)'));
   assert.ok(server.includes('update.heroImage'));
-  assert.ok(apple.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp)'));
+  assert.ok(apple.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt)'));
   assert.ok(apple.includes('realApplePassData({'));
 });
 
