@@ -198,7 +198,7 @@ test('Apple header uses 3x Retina and high-quality anti-aliased transparent artw
     const w=(compact?52:160)*scale,h=(compact?40:50)*scale;
     const img=resizeAppleLogo(source,w,h);
     assert.equal(img.length,w*h*4);
-    assert.equal(img[3],0,'canvas margin remains transparent');
+    assert.equal(img[((h-1)*w)*4+3],0,'transparent area outside the diagonal stays transparent');
     assert.ok(img.some((v,i)=>i%4===3&&v===255),'logo has a visible opaque core');
     const translucent=img.filter((v,i)=>i%4===3&&v>0&&v<255);
     assert.ok(translucent.length>0,'fine diagonal edges must be antialiased');
