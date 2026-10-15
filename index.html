@@ -2103,15 +2103,15 @@ class Component extends DCLogic {
       selId:null, notifs:demoNotifs(demoClients()), nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
       modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple',
       ob:{step:1,biz:'',activity:'Restaurant',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
-      section:'profile', loadingHome:false, prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true, subscription:null, billingPlan:null, tip:{open:null,pinned:false}, subVerify:null, billSum:null, billMsg:null,
+      section:'profile', loadingHome:false, prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true, subscription:null, hasAccess:false, accessSource:'none', manualExpiresAt:null, billingPlan:null, tip:{open:null,pinned:false}, subVerify:null, billSum:null, billMsg:null,
       ...(JOIN_SLUG?{screen:'joinLoading',pubSlug:JOIN_SLUG,pubErr:null,pubWallet:null,pubApple:null,clients:[],notifs:[],consent:false,merchant:{...M0,business:'',slug:JOIN_SLUG}}:{}) };
   }
   componentDidMount(){
     this._r=()=>this.setState(s=>({w:window.innerWidth,...(window.innerWidth<1024&&s.screen==='card'?{screen:'home'}:{})})); window.addEventListener('resize',this._r);
     this._k=e=>{ if(e.key==='Escape'&&this.state.tip&&this.state.tip.open) this.setState({tip:{open:null,pinned:false}}); if(e.key==='Escape'&&this.state.modal&&!this.state.busy) this.setState({modal:null}); }; window.addEventListener('keydown',this._k);
     this._wedge=e=>this.onWedgeKey(e); window.addEventListener('keydown',this._wedge,true);
-    this._vis=()=>this.setState({pageVisible:document.visibilityState!=='hidden'}); document.addEventListener('visibilitychange',this._vis);
-    this._wf=()=>this.setState({winFocus:document.hasFocus()}); window.addEventListener('focus',this._wf); window.addEventListener('blur',this._wf);
+    this._vis=()=>{this.setState({pageVisible:document.visibilityState!=='hidden'});if(document.visibilityState==='visible')this.refreshAccess();}; document.addEventListener('visibilitychange',this._vis);
+    this._wf=()=>{this.setState({winFocus:document.hasFocus()});if(document.hasFocus())this.refreshAccess();}; window.addEventListener('focus',this._wf); window.addEventListener('blur',this._wf);
     if(this.state.pubSlug) return this.bootPublic();
     const st=this.props.startScreen; if(st&&st!=='login'){ this.enterDemo(); if(st!=='home') setTimeout(()=>this.go(st),10); }
     else this.bootLive();
@@ -2263,7 +2263,7 @@ class Component extends DCLogic {
     this.setState({busy:true,err:{}});
     try{
       const d=await api.loadAll(user);
-      const base={busy:false,live:true,demo:false,role:d.role||'owner',subscription:d.subscription||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
+      const base={busy:false,live:true,demo:false,role:d.role||'owner',subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
         f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
       if(!d.merchant||!d.program){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
@@ -2288,7 +2288,7 @@ class Component extends DCLogic {
   cancelDesignReq=async()=>{ const s=this.state, r=s.designReq; if(s.busy||!designUnpaid(r)) return; this.setState({busy:true});
     try{ await this.api.billing.designCancel(r.id); const d=await this.api.loadAll((await this.api.session()).user);
       const p=d.program, m=d.merchant;
-      this.setState({busy:false,designAsk:false,program:p,draft:{...p},merchant:m,sd:{...m},clients:d.clients,designReq:d.designRequest,subscription:d.subscription,
+      this.setState({busy:false,designAsk:false,program:p,draft:{...p},merchant:m,sd:{...m},clients:d.clients,designReq:d.designRequest,subscription:d.subscription,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,
         ...(p.designStatus==='draft'?{screen:'ob',err:{},ob:this.obStep3(m,p,'custom')}:{})});
       this.scrollTop(); this.showToast('Demande annulée : vous pouvez personnaliser votre carte.','ok'); }
     catch(e){ this.setState({busy:false,designAsk:false}); this.showToast(this.api.errorMessage(e),'error');
@@ -2297,7 +2297,7 @@ class Component extends DCLogic {
   reqId(key){ this._req=this._req||{}; return this._req[key]||(this._req[key]=this.api.uuid()); }
   settleReq(key,e){ if(!e||!this.api.isNetwork(e)) delete this._req[key]; }
   liveFail(e,extra={}){ this.setState({busy:false,...extra}); this.showToast(this.api.errorMessage(e),'error'); if(!this.api.isNetwork(e)) this.refreshLive(); }
-  async refreshLive(){ try{ const ses=await this.api.session(); if(!ses){ this.resetToLogin(); return; } const d=await this.api.loadAll(ses.user); if(d.merchant&&d.program) this.setState({clients:d.clients,program:d.program,merchant:d.merchant}); }catch(e){} }
+  async refreshLive(){ try{ const ses=await this.api.session(); if(!ses){ this.resetToLogin(); return; } const d=await this.api.loadAll(ses.user); if(d.merchant&&d.program) this.setState({clients:d.clients,program:d.program,merchant:d.merchant,subscription:d.subscription,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null}); }catch(e){} }
   fh(k){ return this._h['f'+k] ||= e=>{ const v=e.target.value; this.setState(s=>({f:{...s.f,[k]:v},err:{...s.err,[k]:null}})); }; }
   dh(k){ return this._h['d'+k] ||= e=>{ const v=e.target.value; this.setState(s=>({draft:{...s.draft,[k]:v}})); }; }
   oh(k){ return this._h['o'+k] ||= e=>{ const v=e.target.value; this.setState(s=>({ob:{...s.ob,[k]:v},err:{...s.err,['ob'+k]:null}})); }; }
@@ -2305,11 +2305,25 @@ class Component extends DCLogic {
   showToast(msg,kind='ok'){ clearTimeout(this._tt); this.setState({toast:{msg,kind}}); this._tt=setTimeout(()=>this.setState({toast:null}),3000); }
   armToast(){ clearTimeout(this._tt); this._tt=setTimeout(()=>this.setState({toast:null}),3000); }
   scrollTop(){ try{ window.scrollTo(0,0); }catch(e){} }
+  // Changes made by the director become visible without logging out or repaying Stripe.
+  refreshAccess=async()=>{
+    const id=this.state.merchant?.id;
+    if(!this.state.live||!id||!this.api||this._accessBusy)return;
+    this._accessBusy=true;
+    try{
+      const a=await this.api.access();
+      if(this.state.live&&this.state.merchant?.id===id){
+        this.setState(x=>({hasAccess:a.has_access===true,accessSource:a.source||'none',manualExpiresAt:a.manual_expires_at||null,
+          ...(a.has_access===true&&x.screen==='locked'?{screen:'home',lockKind:null}:{})}));
+      }
+    }catch(e){/* Keep last verified state; server continues to enforce every paid feature. */}
+    finally{this._accessBusy=false;}
+  };
   go(screen,extra={}){
     // The card/programme editor is desktop-only: on mobile it is never opened.
     if(screen==='card'&&window.innerWidth<1024) screen='home';
     // No valid subscription (trialing / active): business screens show a lock (the server refuses the actions anyway).
-    if(this.state.live&&LOCKED_SCREENS.includes(screen)&&!subOk(this.state.subscription)){ extra={...extra,lockKind:screen}; screen='locked'; }
+    if(this.state.live&&LOCKED_SCREENS.includes(screen)&&!this.state.hasAccess){ extra={...extra,lockKind:screen}; screen='locked'; }
     if(screen==='settings'&&extra.section==='billing') setTimeout(()=>this.loadBillingSummary(),0);
     const s=this.state, n={screen,err:{},...extra};
     if(screen==='scanner'&&!extra.keepScan){ const ist=this.initialScanState(s); n.scan={st:ist,id:null,added:false,used:false,msg:''}; n.pos={loading:false,err:null};
@@ -2434,7 +2448,7 @@ class Component extends DCLogic {
       // Not an order yet: it becomes one once Stripe confirms the 29,90 € payment (server side).
       if(req.paymentStatus==='paid'){ const d=await this.api.loadAll((await this.api.session()).user); this.setState({busy:false,program:d.program,draft:{...d.program},designReq:d.designRequest||req,screen:'designSent'}); return this.scrollTop(); }
       // The design is paid after the offer: without a valid subscription, the offer page comes first.
-      if(!subOk(this.state.subscription)){ this.setState({busy:false,designReq:req}); this.go('billing'); return this.scrollTop(); }
+      if(!this.state.hasAccess){ this.setState({busy:false,designReq:req}); this.go('billing'); return this.scrollTop(); }
       const r=await this.api.billing.designCheckout(req.id); window.location.assign(r.url); }
     catch(e){ this.settleReq('design',e); this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
   clearDesignUrl(){ try{ history.replaceState(null,'','/'); }catch(e){} }
@@ -2444,7 +2458,7 @@ class Component extends DCLogic {
     for(let i=0;i<8;i++){
       try{ const r=await this.api.billing.designVerify(id);
         if(r.paid){ this.clearDesignUrl(); let d=null; try{ d=await this.api.loadAll((await this.api.session()).user); }catch(x){}
-          return this.setState(x=>({designVerify:{st:'ok'},...(d?{program:d.program,draft:{...d.program},designReq:d.designRequest}:{})})); }
+          return this.setState(x=>({designVerify:{st:'ok'},...(d?{program:d.program,draft:{...d.program},designReq:d.designRequest,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none'}:{})})); }
         if(i>=2){ this.clearDesignUrl(); return this.setState({designVerify:{st:'unpaid'}}); } }
       catch(e){ if(e.code==='forbidden'||e.code==='invalid_session'||i===7){ this.clearDesignUrl(); return this.setState({designVerify:{st:'error',msg:this.api.errorMessage(e)}}); } }
       await new Promise(r=>setTimeout(r,2000)); }
@@ -2458,7 +2472,7 @@ class Component extends DCLogic {
       this.showToast(this.api.errorMessage(e),'error'); } };
   designContinue=()=>{ this.clearDesignUrl(); const s=this.state;
     if(s.program&&s.program.designStatus==='draft'&&!designUnpaid(s.designReq)) return this.setState(x=>({screen:'ob',ob:{...x.ob,step:3}}));
-    if(!subOk(s.subscription)) return this.go('billing');
+    if(!s.hasAccess) return this.go('billing');
     this.go('home'); };
   unitOf(p){ return p.mode==='points'?'points':'passages'; }
   stepOf(p){ return p.mode==='points'?10:1; }
@@ -2608,7 +2622,7 @@ class Component extends DCLogic {
     catch(e){ this.setState({busy:false,billingPlan:null});
       if(e.code==='already_subscribed'){ await this.refreshSub(); return this.go('home'); }
       this.showToast(this.api.errorMessage(e),'error'); } };
-  async refreshSub(){ try{ const sub=await this.api.billing.refresh(this.state.merchant.id); this.setState({subscription:sub}); return sub; }catch(e){ return this.state.subscription; } }
+  async refreshSub(){ try{ const [sub,a]=await Promise.all([this.api.billing.refresh(this.state.merchant.id),this.api.access()]); this.setState({subscription:sub,hasAccess:a.has_access===true,accessSource:a.source||'none',manualExpiresAt:a.manual_expires_at||null}); return sub; }catch(e){ return this.state.subscription; } }
   clearSubUrl(){ try{ history.replaceState(null,'','/'); }catch(e){} }
   // Back from Stripe: the page never trusts the URL; the server asks Stripe whether the session is paid.
   async verifySub(){ const id=new URLSearchParams(window.location.search).get('session_id');
@@ -2616,7 +2630,7 @@ class Component extends DCLogic {
     this.setState({screen:'subSuccess',subVerify:{st:'loading'}});
     for(let i=0;i<8;i++){
       try{ const r=await this.api.billing.verify(id);
-        if(r.access){ this.clearSubUrl(); this.setState({subscription:r.subscription,subVerify:{st:'ok',sub:r.subscription,prepaid:r.prepaid||null}});
+        if(r.access){ this.clearSubUrl(); this.setState({subscription:r.subscription,hasAccess:true,subVerify:{st:'ok',sub:r.subscription,prepaid:r.prepaid||null}});
           clearTimeout(this._toHome); if(!designUnpaid(this.state.designReq)) this._toHome=setTimeout(()=>{ if(this.state.screen==='subSuccess') this.go('home'); },5000); return; }
         // Deferred payment still processing at Stripe: nothing is opened until Stripe confirms it.
         if(!r.paid&&r.pending&&i>=2){ this.clearSubUrl(); return this.setState({subVerify:{st:'pending'}}); }
@@ -2881,8 +2895,9 @@ class Component extends DCLogic {
       :[{k:'Abonnement',v:'Aucun abonnement'}];
     const IST={paid:'Payée',open:'À payer',void:'Annulée',uncollectible:'Irrécouvrable'};
     const invoices=(sum.invoices||[]).map(i=>({date:fmtFull(i.date),amount:eur(i.amount_cents),number:i.number||'Facture',status:IST[i.status]||i.status,url:i.url||'',hasUrl:!!i.url}));
+    if(s.accessSource==='manual'&&s.hasAccess)rows.unshift({k:'Accès DPA Cards',v:'Activé manuellement jusqu’au '+fmtFull(s.manualExpiresAt)+' (indépendant de Stripe)'});
     const msg=s.billMsg||(sum.error||'');
-    const billDesignNote=dUnpaid&&!subOk(sub)?'Votre demande de création sur mesure est enregistrée. Son paiement (29,90 € TTC) vous sera proposé juste après celui de votre offre. Si vous choisissez votre offre plus tard, aucun paiement de design n’est demandé d’ici là.':'';
+    const billDesignNote=dUnpaid&&!s.hasAccess?'Votre demande de création sur mesure est enregistrée. Son paiement (29,90 € TTC) vous sera proposé juste après celui de votre offre. Si vous choisissez votre offre plus tard, aucun paiement de design n’est demandé d’ici là.':'';
     return {plans,bill,billDesignNote,retractText:'La rétractation concerne l’abonnement. Les frais de mise en place restent dus dès lors que la prestation de configuration a commencé. Les périodes d’abonnement déjà consommées restent également dues.',
       hasCgv:!!(this.api&&this.api.cgvUrl),noCgv:!(this.api&&this.api.cgvUrl),cgvUrl:(this.api&&this.api.cgvUrl)||'',
       billNote:s.billMode==='prepaid'
@@ -2923,7 +2938,7 @@ class Component extends DCLogic {
     const S={}; names.forEach(k=>S[k]=scr===k);
     S.auth=S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.bill=S.billing||S.subSuccess||S.subCancel||S.designPaid||S.designCancel; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState&&!S.bill;
     // Belt and braces: a business screen never renders without a valid subscription.
-    const locked=!!s.live&&!subOk(s.subscription);
+    const locked=!!s.live&&!s.hasAccess;
     let lockKind=s.screen==='locked'?s.lockKind:null;
     if(locked) LOCKED_SCREENS.forEach(k=>{ if(S[k]){ S[k]=false; S.locked=true; lockKind=k; } });
     const m=s.merchant, P=s.program, goal=+P.goal, unit=this.unitOf(P), step=this.stepOf(P);
@@ -3070,7 +3085,7 @@ class Component extends DCLogic {
       {icon:'storefront',label:'Informations du commerce',sub:m.business,run:openSec('business')},
       {icon:'lock',label:'Sécurité et mot de passe',sub:s.live?'Mot de passe, export des données, suppression du compte':'Modifier le mot de passe',run:openSec('security')},
       {icon:'help',label:'Aide et contact',sub:'Questions fréquentes, support',run:openSec('help')},
-      ...(s.live?[{icon:'credit_card',label:'Mon abonnement',sub:s.subscription?(s.subscription.billing_mode==='prepaid'?'Engagement 12 mois · payé en une fois':s.subscription.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement')+' · '+(s.subscription.billing_mode==='prepaid'&&s.subscription.status==='active'&&!subOk(s.subscription)?SUB_ST.expired:(SUB_ST[s.subscription.status]||s.subscription.status)):'Offre, factures, moyen de paiement',run:openSec('billing')}]:[]),
+      ...(s.live?[{icon:'credit_card',label:'Mon abonnement',sub:s.accessSource==='manual'?'Accès offert par DPA Cards · jusqu’au '+fmtFull(s.manualExpiresAt):s.subscription?(s.subscription.billing_mode==='prepaid'?'Engagement 12 mois · payé en une fois':s.subscription.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement')+' · '+(s.subscription.billing_mode==='prepaid'&&s.subscription.status==='active'&&!subOk(s.subscription)?SUB_ST.expired:(SUB_ST[s.subscription.status]||s.subscription.status)):'Offre, factures, moyen de paiement',run:openSec('billing')}]:[]),
       {icon:'restart_alt',label:'Réinitialiser la démo',sub:'Revenir aux données BASH',run:()=>{ this.enterDemo(); this.showToast('Données de démonstration réinitialisées'); }}].filter(x=>!s.live||x.icon!=='restart_alt');
     const secTitle={profile:'Profil du responsable',business:'Informations du commerce',security:'Sécurité et mot de passe',help:'Aide et contact',billing:'Mon abonnement'}[s.section];
     const sec={profile:s.section==='profile',business:s.section==='business',security:s.section==='security',help:s.section==='help',billing:s.section==='billing',form:s.section!=='help'&&s.section!=='billing'};
@@ -3133,13 +3148,13 @@ class Component extends DCLogic {
       logoutNote:s.demo?'Vous devrez vous reconnecter pour scanner des cartes. Les données de démonstration seront réinitialisées.':'Vous devrez vous reconnecter pour scanner des cartes. Vos données restent enregistrées.',
       authCard,
       ob:o, O, obSteps, obActs, obCard, obStep1:o.step===1, obStep2:o.step===2, obStep3:o.step===3, obNotFirst:o.step>1, obNext:this.obNext, obBack:()=>this.setState(x=>({ob:{...x.ob,step:x.ob.step-1},err:{}})),
-      obNextLabel:o.step===3?(o.design==='custom'?(s.busy?'Validation…':'Valider ma carte'):o.design==='dpa'?(subOk(s.subscription)?(s.busy?'Redirection vers le paiement…':'Commander mon design — 29,90 €'):(s.busy?'Enregistrement…':'Enregistrer ma demande et choisir mon offre')):'Continuer'):(s.busy?'Enregistrement…':'Continuer'),
-      obDpaNote:subOk(s.subscription)?'Paiement unique de 29,90 € TTC par carte bancaire (Stripe). Votre demande est transmise à DPA Cards dès le paiement confirmé.':'Paiement unique de 29,90 € TTC, proposé juste après le paiement de votre offre. Si vous choisissez votre offre plus tard, aucun paiement de design n’est demandé d’ici là.',
+      obNextLabel:o.step===3?(o.design==='custom'?(s.busy?'Validation…':'Valider ma carte'):o.design==='dpa'?(s.hasAccess?(s.busy?'Redirection vers le paiement…':'Commander mon design — 29,90 €'):(s.busy?'Enregistrement…':'Enregistrer ma demande et choisir mon offre')):'Continuer'):(s.busy?'Enregistrement…':'Continuer'),
+      obDpaNote:s.hasAccess?'Paiement unique de 29,90 € TTC par carte bancaire (Stripe). Votre demande est transmise à DPA Cards dès le paiement confirmé.':'Paiement unique de 29,90 € TTC, proposé juste après le paiement de votre offre. Si vous choisissez votre offre plus tard, aucun paiement de design n’est demandé d’ici là.',
       obChoices, obCustom:o.design==='custom', obDpa:o.design==='dpa', wp, dz, dr:drV, dReq, designPending:!!s.live&&pr.designStatus==='pending_dpa'&&!!rq, cropEl,
       obPickLogo:this.obPick('logo'), obPickHero:this.obPick('hero'), obRemoveLogo:()=>this.removeImage('logo'), obRemoveHero:()=>this.removeImage('hero'),
       drPickLogo:this.drPick(false), drPickRefs:this.drPick(true), drRemoveLogo:()=>this.setState({drLogo:null}), obMode:mkMode('ob'), obGoalDown:stepGoal('ob',-1), obGoalUp:stepGoal('ob',1), obUnit:o.mode==='points'?'points':'passages',
       obBg:mkSw(BGS,'bg','ob'), obAccent:mkSw(ACCENTS,'accent','ob'), obPat:mkPat('ob'), obLogoPreview:obP.logo,
-      obDoneGo:()=>{ if(s.live&&!subOk(s.subscription)) return this.go('billing'); this.go('home',{loadingHome:true}); setTimeout(()=>this.setState({loadingHome:false}),600); },
+      obDoneGo:()=>{ if(s.live&&!s.hasAccess) return this.go('billing'); this.go('home',{loadingHome:true}); setTimeout(()=>this.setState({loadingHome:false}),600); },
       qrBiz:locked?null:(this.api?this.realQr(pubUrl,200,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,200)), qrBizSm:locked?null:(this.api?this.realQr(pubUrl,168,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,168)), link, pubUrl, hasLink:!!link, noLink:!link,
       copyLink:()=>locked?this.go('invite'):this.copyJoinLink(),
       lockBanner:locked&&S.app, toBilling:()=>this.go('billing'), canSkipBilling:locked&&!!s.program&&(s.program.designStatus!=='draft'||designUnpaid(s.designReq)),
@@ -3148,7 +3163,7 @@ class Component extends DCLogic {
       homeDesign:(()=>{ const r=s.designReq; if(!s.live||!S.home||!r) return {show:false};
         if(designUnpaid(r)){ const ask=!!s.designAsk, meta='Demande du '+fmtFull(r.createdAt)+' · En attente de paiement';
           const change={ask,alt:ask?'':'Je préfère personnaliser ma carte moi-même',altAct:()=>this.setState({designAsk:true}),keep:()=>this.setState({designAsk:false}),confirm:this.cancelDesignReq};
-          if(subOk(s.subscription)) return {show:true,icon:'brush',bg:'#FFF3DC',border:'#F2D49B',fg:'#8A5A00',title:'Votre création sur mesure attend son paiement',text:'Réglez la création de votre carte (29,90 € TTC, paiement unique) : DPA Cards commence dès le paiement confirmé.',meta,cta:ask?'':(s.busy?'Redirection…':'Payer mon design — 29,90 €'),spin:!!s.busy,act:this.resumeDesign,...change};
+          if(s.hasAccess) return {show:true,icon:'brush',bg:'#FFF3DC',border:'#F2D49B',fg:'#8A5A00',title:'Votre création sur mesure attend son paiement',text:'Réglez la création de votre carte (29,90 € TTC, paiement unique) : DPA Cards commence dès le paiement confirmé.',meta,cta:ask?'':(s.busy?'Redirection…':'Payer mon design — 29,90 €'),spin:!!s.busy,act:this.resumeDesign,...change};
           return {show:true,icon:'brush',bg:'#FFF3DC',border:'#F2D49B',fg:'#8A5A00',title:'Demande de design en attente',text:'Choisissez d’abord votre offre : le paiement de votre création sur mesure (29,90 € TTC) vous sera proposé juste après. Aucun paiement de design n’est demandé d’ici là.',meta,cta:ask?'':'Choisir mon offre',spin:false,act:()=>this.go('billing'),...change}; }
         if(r.paymentStatus!=='paid') return {show:false};
         const when='Demande du '+fmtFull(r.paidAt||r.createdAt)+' · '+({submitted:'Envoyée',in_progress:'En cours de création',delivered:'Livrée'}[r.status]||r.status);
