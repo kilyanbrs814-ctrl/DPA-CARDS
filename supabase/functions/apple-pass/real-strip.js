@@ -314,6 +314,12 @@ export async function makeDemoLogo(name, accent='#F2C94C', scale=1, kind='logo')
 // to the logo, independent of Apple's right-aligned headerFields layout.
 // Native logoText must then be omitted to prevent a second centered name.
 // The logo image is transparent except for the merchant identity and its name.
+/** @param {string} name
+ * @param {string} accent
+ * @param {string} background
+ * @param {Uint8Array | null} logoBytes
+ * @param {number} scale
+ */
 export async function makeAppleHeaderLogo(name, accent='#F2C94C', background='#1C1F24', logoBytes=null, scale=1) {
   if (![1,2].includes(scale)) throw new Error('invalid_header_scale');
   const width=160*scale,height=50*scale;
