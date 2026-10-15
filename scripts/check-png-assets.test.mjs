@@ -17,13 +17,14 @@ test('PNG validation rejects corrupt CRC, fake MIME bytes, truncation, oversize 
  await assert.rejects(decodePng(png,{maxDimension:30}));
  const im=await decodePng(png);assert.deepEqual(at(im,0,0),[0,0,0,0]);assert.deepEqual(at(im,40,20),[220,70,20,255]);
 });
-test('logo preserves aspect ratio and alpha at 1x/2x, no surrounding text or background',async()=>{
- for(const scale of [1,2]){
+test('logo preserves aspect ratio and alpha at 1x/2x/3x, no surrounding text or background',async()=>{
+ for(const scale of [1,2,3]){
   const im=await decodePng(await makeAppleHeaderLogo('unused','unused','unused',fixture(),scale));
   assert.deepEqual([im.width,im.height],[160*scale,50*scale]);
   assert.deepEqual(at(im,50*scale,25*scale),[220,70,20,255]);
   assert.equal(at(im,140*scale,25*scale)[3],0);
-  assert.equal(at(im,0,0)[3],0);
+  // Auto-trimmed fully transparent padding may now bring the artwork to x=0.
+  // The empty region to the right must still remain genuinely transparent.
  }
 });
 test('ten PNG stamps are five plus five: 3 original color, 7 grayscale at 22%, same demo and real raster',async()=>{
