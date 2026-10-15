@@ -118,3 +118,63 @@ test('long Apple merchant names stay on exactly one line and arbitrary reward he
  expect(result.color).toBe('#FF00CC');
  expect(result.rewardSize).toBeGreaterThan(1000);
 });
+
+test('optional name-only transparent PNG sits beside original logo, persists and can be removed',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const preview=page.locator('[data-layout="apple"]').first();
+ const header=preview.locator('[data-field="card-number"]');
+ const stamp=preview.locator('[data-progress="stamps"]').first();
+ const yBefore=(await stamp.boundingBox()).y-(await preview.boundingBox()).y;
+ const logo=fixture(120,120,[220,60,35,255]);
+ const name=fixture(400,80,[30,230,100,255]);
+ await page.locator('[data-upload="logo"]').setInputFiles({name:'logo.png',mimeType:'image/png',buffer:logo});
+ await page.locator('[data-upload="businessNameImage"]').setInputFiles({name:'barber-name.png',mimeType:'image/png',buffer:name});
+ await expect(preview.getByRole('img',{name:'Image du nom du commerce'})).toHaveCount(1);
+ await expect(page.getByRole('button',{name:/Afficher le nom du commerce/})).toHaveAttribute('aria-pressed','true');
+ await expect(header).toContainText('1234');
+ const yAfter=(await stamp.boundingBox()).y-(await preview.boundingBox()).y;
+ expect(Math.abs(yAfter-yBefore)).toBeLessThan(1);
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ await expect(preview.getByRole('img',{name:'Logo et nom du commerce'})).toHaveCount(1);
+ const data=await page.evaluate(async()=>{
+   const raw=localStorage.getItem('test-design'),saved=JSON.parse(raw);
+   const {createAppleWordmark}=await import('/src/apple-wordmark.js');
+   const combined=await createAppleWordmark(saved.config);
+   const bitmap=await createImageBitmap(combined),c=document.createElement('canvas');
+   c.width=bitmap.width;c.height=bitmap.height;
+   const ctx=c.getContext('2d');ctx.drawImage(bitmap,0,0);
+   const arr=ctx.getImageData(0,0,c.width,c.height).data;
+   let logoInk=0,nameInk=0;
+   for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){
+     const i=(y*c.width+x)*4;
+     if(arr[i+3]<32)continue;
+     if(x<c.width*.32&&arr[i]>arr[i+1]*1.5)logoInk++;
+     if(x>c.width*.34&&arr[i+1]>arr[i]*1.5)nameInk++;
+   }
+   return {hasName:!!saved.config.assets.businessNameImage?.path,headerVersion:saved.config.apple.headerArtworkVersion,
+      width:bitmap.width,height:bitmap.height,logoInk,nameInk};
+ });
+ expect(data).toMatchObject({hasName:true,headerVersion:2,width:480,height:150});
+ expect(data.logoInk).toBeGreaterThan(30);
+ expect(data.nameInk).toBeGreaterThan(30);
+ await page.reload();
+ await expect(preview.getByRole('img',{name:'Logo et nom du commerce'})).toHaveCount(1);
+ await page.locator('[data-upload="businessNameImage"]').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ const fallback=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
+ expect(fallback.assets.businessNameImage).toBeNull();
+ expect(fallback.assets.appleHeader.path).toBeTruthy();
+});
+
+test('opaque or blank name image is rejected while preserving original Apple header',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const before=await page.locator('[data-layout="apple"]').first().boundingBox();
+ const notPng=Buffer.from('not a png');
+ await page.locator('[data-upload="businessNameImage"]').setInputFiles({name:'invalid.png',mimeType:'image/png',buffer:notPng});
+ await expect(page.locator('#toast')).toContainText('PNG invalide');
+ const after=await page.locator('[data-layout="apple"]').first().boundingBox();
+ expect(after.height).toBe(before.height);
+ await expect(page.locator('[data-layout="apple"]').first().getByRole('img',{name:'Image du nom du commerce'})).toHaveCount(0);
+});

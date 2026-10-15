@@ -1169,7 +1169,7 @@ const savedEmoji = (value: unknown) => {
   return [...emoji].length <= 16 && /\p{Extended_Pictographic}/u.test(emoji) ? emoji : '';
 };
 
-const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'appleHeader', 'rewardLabel', 'businessFont'] as const;
+const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'appleHeader', 'rewardLabel', 'businessFont', 'businessNameImage'] as const;
 type AssetKind = typeof ASSET_KINDS[number];
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '');
@@ -1178,14 +1178,14 @@ const pick = <T extends string>(v: unknown, list: readonly T[], dflt: T): T => (
 const int = (v: unknown, min: number, max: number, dflt: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt; };
 // Images of the program's own folder: the designer's uploads, or the logo / cover the program already uses.
 // `folder` = "<merchant>/<program>" for a real program, "tests/<test id>" for a test card (designer/ only).
-const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp|appleHeader|rewardLabel)-[0-9a-f-]{36}\\.(png|jpg)$`);
+const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\\.(png|jpg)$`);
 
 // Whitelist of the design document; anything else is dropped. Colours of a platform are optional overrides.
 function cleanDesign(raw: any, folder: string) {
   const r = raw && typeof raw === 'object' ? raw : {};
   const re = designerPath(folder);
   const fontRe=new RegExp('^'+folder+'/designer/businessFont-[0-9a-f-]{36}\\.(?:ttf|otf|woff2)$');
-  const asset = (a: any, kind: AssetKind) => (a && typeof a.path === 'string' && (kind==='businessFont'?fontRe.test(a.path):re.test(a.path)) && a.path.split('/').pop()!.startsWith(`${kind}-`) ? { path: a.path } : null);
+  const asset = (a: any, kind: AssetKind) => (a && typeof a.path === 'string' && (kind==='businessFont'?fontRe.test(a.path):(re.test(a.path)&&(kind!=='businessNameImage'||a.path.endsWith('.png')))) && a.path.split('/').pop()!.startsWith(`${kind}-`) ? { path: a.path } : null);
   const colors = (c: any, base: Record<string, string> | null) => {
     const o = c && typeof c === 'object' ? c : {};
     if (!base) return Object.fromEntries(['primary', 'secondary', 'text', 'accent'].filter(k => HEX_RE.test(o[k] ?? '')).map(k => [k, String(o[k]).toUpperCase()]));
@@ -1292,7 +1292,7 @@ async function adminCardUpload(req: Request): Promise<Response> {
   await assertAdminMerchant(user,program.merchant_id);
   const kind = String(body?.kind ?? '') as AssetKind, type = String(body?.type ?? '');
   const extension=kind==='businessFont'?({'font/ttf':'ttf','font/otf':'otf','font/woff2':'woff2'} as Record<string,string>)[type]:null;
-  if(!ASSET_KINDS.includes(kind)||(kind==='businessFont'?!extension:!['image/png','image/jpeg'].includes(type)))throw new HttpError(400,'invalid_request');
+  if(!ASSET_KINDS.includes(kind)||(kind==='businessFont'?!extension:kind==='businessNameImage'?type!=='image/png':!['image/png','image/jpeg'].includes(type)))throw new HttpError(400,'invalid_request');
   const path = `${program.merchant_id}/${program.id}/designer/${kind}-${crypto.randomUUID()}.${extension || (type === 'image/png' ? 'png' : 'jpg')}`;
   const { data, error } = await admin.storage.from('program-assets').createSignedUploadUrl(path);
   if (error || !data) throw new Error('storage_signed_upload');
@@ -1310,14 +1310,24 @@ async function validateDesignPng(config: any) {
     const valid=ext==='otf'&&magic==='OTTO'||ext==='woff2'&&magic==='wOF2'||ext==='ttf'&&bytes[0]===0&&bytes[1]===1&&bytes[2]===0&&bytes[3]===0;
     if(!valid)throw new HttpError(422,'invalid_business_font');
   }
-  for(const kind of ['logo','stamp','appleHeader','rewardLabel']) {
+  for(const kind of ['logo','stamp','appleHeader','rewardLabel','businessNameImage']) {
     const path=config.assets?.[kind]?.path;
     if(!path || !path.endsWith('.png'))continue; // legacy JPEG assets remain compatible
     const {data,error}=await admin.storage.from('program-assets').download(path);
     if(error || !data)throw new HttpError(422,`missing_${kind}`);
     if(data.size>2097152)throw new HttpError(422,`invalid_${kind}`);
-    try { await decodePng(new Uint8Array(await data.arrayBuffer())); }
-    catch {throw new HttpError(422,`invalid_${kind}`);}
+    try {
+      const img=await decodePng(new Uint8Array(await data.arrayBuffer()));
+      if(kind==='businessNameImage') {
+        let ink=false,transparent=false;
+        for(let i=3;i<img.pixels.length;i+=4){
+          if(img.pixels[i]>=8)ink=true;
+          if(img.pixels[i]<255)transparent=true;
+          if(ink&&transparent)break;
+        }
+        if(!ink||!transparent)throw new Error('transparent_name_required');
+      }
+    }catch{throw new HttpError(422,`invalid_${kind}`);}
   }
 }
 
@@ -1389,6 +1399,7 @@ async function adminCardValidate(req: Request): Promise<Response> {
   const fit: Record<string, boolean> = {};
   for (const kind of ASSET_KINDS) {
     const a = (config.assets as any)[kind]; if (!a) continue;
+    if(kind==='businessFont')continue; // validateDesignPng already verifies font magic and size.
     const { data: f } = await admin.storage.from('program-assets').download(a.path);
     if (!f) throw new HttpError(422, `missing_${kind}`);
     const bytes = new Uint8Array(await f.arrayBuffer()), info = imageInfo(bytes);
@@ -1582,7 +1593,7 @@ async function adminTestCardUpload(req: Request): Promise<Response> {
   const t = await testRow(body?.id,user);
   const kind = String(body?.kind ?? '') as AssetKind, type = String(body?.type ?? '');
   const extension=kind==='businessFont'?({'font/ttf':'ttf','font/otf':'otf','font/woff2':'woff2'} as Record<string,string>)[type]:null;
-  if(!ASSET_KINDS.includes(kind)||(kind==='businessFont'?!extension:!['image/png','image/jpeg'].includes(type)))throw new HttpError(400,'invalid_request');
+  if(!ASSET_KINDS.includes(kind)||(kind==='businessFont'?!extension:kind==='businessNameImage'?type!=='image/png':!['image/png','image/jpeg'].includes(type)))throw new HttpError(400,'invalid_request');
   const path = `${testFolder(t.id)}/designer/${kind}-${crypto.randomUUID()}.${extension || (type === 'image/png' ? 'png' : 'jpg')}`;
   const { data, error } = await admin.storage.from('program-assets').createSignedUploadUrl(path);
   if (error || !data) throw new Error('storage_signed_upload');
