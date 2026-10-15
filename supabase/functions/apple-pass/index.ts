@@ -6,7 +6,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
-import { realApplePassData } from './real-card.js';
+import { realApplePassData, visibleCardNumber } from './real-card.js';
 import { makeRealStrip, makeDemoStrip, makeDemoLogo } from './real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -91,9 +91,24 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
     description: 'Démonstration DPA Cards – sans valeur commerciale',
     logoText: name, backgroundColor: rgb(primary), foregroundColor: textColor(primary),
     labelColor: textColor(primary),
-    storeCard: {
+    storeCard: d.stamps?.emoji ? {
+      // Same visible fields as the real saved loyalty pass. The test QR stays
+      // DPA_TEST: and the test UUID never becomes a real card identifier.
+      headerFields: [{key:'number',label:'',value:visibleCardNumber('TEST '+t.id.slice(0,4)+' '+t.qr_token.slice(0,4))}],
+      primaryFields: [{key:'artwork',label:'',value:'\u00a0'}],
+      secondaryFields: [
+        {key:'done',label:'',value:(pv.mode==='points'?'Points gagnés ':'Passages effectués ')+String(balance)},
+        {key:'remaining',label:'',value:(pv.mode==='points'?'Points restants ':'Passages restants ')+String(Math.max(0,goal-balance))},
+      ],
+      backFields: [
+        {key:'demo',label:'DÉMONSTRATION',value:'Cette carte ne possède aucune valeur commerciale.'},
+        {key:'reward',label:'RÉCOMPENSE SIMULÉE',value:String(pv.reward || 'Récompense test').slice(0,80)},
+        ...(d.apple?.showSubtitle!==false && d.identity?.subtitle
+          ? [{key:'subtitle',label:'LE COMMERCE',value:String(d.identity.subtitle).slice(0,80)}]:[]),
+      ],
+    } : {
       primaryFields: [{ key: 'progress', label: label.toUpperCase(),
-        value: balance + '/' + goal + (d.stamps?.emoji ? ' ' + String(d.stamps.emoji).slice(0,32) : '') }],
+        value: balance + '/' + goal }],
       secondaryFields: [
         { key: 'client', label: 'CLIENT', value: String(pv.client || 'Client test').slice(0, 60) },
         { key: 'reward', label: 'RÉCOMPENSE', value: String(pv.reward || 'Récompense test').slice(0, 80) },
