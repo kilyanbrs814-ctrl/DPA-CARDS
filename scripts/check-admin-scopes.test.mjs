@@ -21,7 +21,7 @@ test('admin demo cards and their asset modifications are isolated by creator',()
   assert.match(wallet,/q=q\.eq\('created_by',user\.id\)/);
   for(const fn of ['adminTestCardGet','adminTestCardSave','adminTestCardDuplicate','adminTestCardDelete','adminTestCardNewQr','adminTestCardUpload','adminTestCardApple','adminTestCardWallet']){
     const start=wallet.indexOf('async function '+fn+'('),end=wallet.indexOf('\n}',start);
-    assert.ok(wallet.slice(start,end).includes('testRow(body.'),fn+' checks owner');
+    assert.match(wallet.slice(start,end),/testRow\(body(?:\?\.|\.)id,user\)/,fn+' checks owner');
   }
 });
 test('director has all merchants, sales rep attribution and separate temporary subscription access',()=>{
