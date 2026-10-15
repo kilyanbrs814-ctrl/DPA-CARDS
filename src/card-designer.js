@@ -1,4 +1,5 @@
 import { preparePngUpload } from './png-upload.js';
+import { createAppleWordmark } from './apple-wordmark.js';
 // Card designer (admin): one design project per program, rendered in two layouts —
 // Apple Wallet (full rectangle, rounded corners only) and Google Wallet (its own layout).
 // The design only describes the look. Customer name, progress, rewards and the QR code are
@@ -43,7 +44,7 @@ export function defaultDesign(project) {
     identity: { name: m.business_name || '', subtitle: m.activity || '' },
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
-    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null },
+    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleHeader: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
     apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
@@ -67,7 +68,8 @@ export function prepareDesign(cardDesign, program, merchant, assetUrl) {
   const d = normalize(cardDesign, project), base = defaultDesign(project);
   const withUrl = (a, fb) => (a && a.path ? { path: a.path, url: assetUrl(a.path), fallback: fb ? fb.url : null } : fb);
   d.assets = { logo: cardDesign.assets && Object.hasOwn(cardDesign.assets,'logo') ? withUrl(cardDesign.assets.logo,null) : base.assets.logo, hero: withUrl(cardDesign.assets && cardDesign.assets.hero, base.assets.hero),
-    background: withUrl(cardDesign.assets && cardDesign.assets.background, null), stamp: withUrl(cardDesign.assets && cardDesign.assets.stamp, null) };
+    background: withUrl(cardDesign.assets && cardDesign.assets.background, null), stamp: withUrl(cardDesign.assets && cardDesign.assets.stamp, null),
+    appleHeader: withUrl(cardDesign.assets && cardDesign.assets.appleHeader, null) };
   if (!d.identity.name) d.identity.name = base.identity.name;
   if (d.stamps.icon === 'custom' && !d.assets.stamp) d.stamps.icon = 'check';
   return d;
@@ -223,10 +225,12 @@ export function makeCardDesigner(React, api) {
             minWidth: 0
           }
         },
-          platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
-          platform==='apple' && o.showBusinessName && h('div',{
+          platform==='apple' && o.showBusinessName && d.assets.appleHeader?.url
+            ? h(Img,{asset:d.assets.appleHeader,alt:'Logo et nom du commerce',style:{width:160,height:50,objectFit:'contain',objectPosition:'left center',flexShrink:0}})
+            : platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
+          platform==='apple' && o.showBusinessName && !d.assets.appleHeader?.url && h('div',{
             'data-field':'apple-native-business-name',
-            style:{...ellipsis,minWidth:0,fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:15,fontWeight:600,lineHeight:1.2}
+            style:{...ellipsis,minWidth:0,fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:21,fontWeight:700,lineHeight:1.1}
           },d.identity.name||'Nom du commerce'),
           platform!=='apple' && h('div', {
             'data-field': 'business',
@@ -562,7 +566,27 @@ export function makeCardDesigner(React, api) {
       window.addEventListener('beforeunload', w); return () => window.removeEventListener('beforeunload', w);
     }, [dirty]);
 
-    const set = (path, value) => setDesign(d => { const n = JSON.parse(JSON.stringify(d)); let o = n; const ks = path.split('.'); ks.slice(0, -1).forEach(k => { o[k] = o[k] || {}; o = o[k]; }); o[ks[ks.length - 1]] = value; return n; });
+    const set = (path, value) => setDesign(d => {
+      const n = JSON.parse(JSON.stringify(d)); let o = n; const ks = path.split('.');
+      ks.slice(0, -1).forEach(k => { o[k] = o[k] || {}; o = o[k]; });
+      o[ks[ks.length - 1]] = value;
+      // Never show or save stale baked lettering when the brand or Apple colors change.
+      if(path==='identity.name'||path==='assets.logo'||path==='apple.showBusinessName'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
+        n.assets.appleHeader=null;
+      return n;
+    });
+    const forSave=async()=>{
+      const next=JSON.parse(JSON.stringify(design));
+      if(next.apple?.showBusinessName===true&&!next.assets?.appleHeader?.path){
+        const artwork=await createAppleWordmark(next);
+        const asset=isTest ? await api.testUpload(project.test.id,'appleHeader',artwork)
+          : await api.upload(project.program.id,'appleHeader',artwork);
+        next.assets.appleHeader=asset;
+      }
+      if(next.apple?.showBusinessName!==true)next.assets.appleHeader=null;
+      return next;
+    };
+    const savedMark=next=>JSON.stringify(next)+(isTest?'|'+testName:'');
     const pickFile = kind => async f => {
       if(kind==='logo' || kind==='stamp') {
         setBusy('up-'+kind);
@@ -585,9 +609,9 @@ export function makeCardDesigner(React, api) {
     };
     const save = async () => {
       if (busy) return; setBusy('save');
-      try { const s = snap();
-        if (isTest) { const r = await api.testSave(project.test.id, testName, design); setProject(p => ({ ...p, test: r.test })); setSaved(s); refreshTests(); toast('Carte test enregistrée.'); }
-        else { await api.save(project.program.id, requestId, design); setSaved(s); toast('Brouillon enregistré.'); } }
+      try { const next=await forSave();
+        if (isTest) { const r = await api.testSave(project.test.id, testName, next); setProject(p => ({ ...p, test: r.test })); setDesign(next); setSaved(savedMark(next)); refreshTests(); toast('Carte test enregistrée.'); }
+        else { await api.save(project.program.id, requestId, next); setDesign(next); setSaved(savedMark(next)); toast('Brouillon enregistré.'); } }
       catch (e) { toast(errText(e)); } finally { setBusy(null); }
     };
     // ---- test cards
@@ -625,15 +649,15 @@ export function makeCardDesigner(React, api) {
     };
     const testWallet = async () => {
       if (busy) return; setBusy('wallet');
-      try { if (dirty) { const r0 = await api.testSave(project.test.id, testName, design); setProject(p => ({ ...p, test: r0.test })); setSaved(snap()); }
+      try { if (dirty) { const next=await forSave(); const r0 = await api.testSave(project.test.id, testName, next); setProject(p => ({ ...p, test: r0.test })); setDesign(next); setSaved(savedMark(next)); }
         const r = await api.testWallet(project.test.id); window.open(r.url, '_blank', 'noopener'); toast('Carte de démonstration prête pour Google Wallet.'); }
       catch (e) { toast(e && e.code === 'wallet_not_configured' ? 'Google Wallet n’est pas configuré.' : errText(e)); } finally { setBusy(null); }
     };
     const testApple = async () => {
       if (busy) return; setBusy('apple');
       try {
-        if (dirty) { const saved = await api.testSave(project.test.id, testName, design);
-          setProject(p => ({ ...p, test: saved.test })); setSaved(snap()); }
+        if (dirty || (design.apple?.showBusinessName && !design.assets?.appleHeader?.path)) { const next=await forSave(); const saved = await api.testSave(project.test.id, testName, next);
+          setProject(p => ({ ...p, test: saved.test })); setDesign(next); setSaved(savedMark(next)); }
         const result = await api.testApple(project.test.id);
         if (!result.url) throw new Error('apple_wallet_unavailable');
         window.location.assign(result.url);
@@ -645,8 +669,8 @@ export function makeCardDesigner(React, api) {
     };
     const validate = async () => {
       if (busy) return; setBusy('validate');
-      try { const snap = JSON.stringify(design); const r = await api.validate(project.program.id, requestId, design);
-        setProject(p => ({ ...p, program: r.program, draft: r.draft })); setSaved(snap); setConfirm(false);
+      try { const next=await forSave(); const r = await api.validate(project.program.id, requestId, next);
+        setProject(p => ({ ...p, program: r.program, draft: r.draft })); setDesign(next); setSaved(savedMark(next)); setConfirm(false);
         toast('Design validé et appliqué au programme.' + (r.google && r.google.status === 'synced' ? ' Google Wallet mis à jour.' : r.google && r.google.status === 'error' ? ' Synchro Google Wallet en erreur : réessayez.' : '')); }
       catch (e) { toast(errText(e)); } finally { setBusy(null); }
     };
@@ -781,7 +805,7 @@ export function makeCardDesigner(React, api) {
       h(Section, { title: 'Identité' },
         h(Text, { label: 'Nom du commerce', value: design.identity.name, max: 40, onChange: v => set('identity.name', v) }),
         h(Text, { label: 'Activité / sous-titre (facultatif)', value: design.identity.subtitle, max: 40, onChange: v => set('identity.subtitle', v) }),
-        h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), showBusinessName: design.apple.showBusinessName === true, onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true), hint: 'PNG transparent, 2 Mo maximum. Proportions conservées, sans recadrage. Avec l’option nom, Apple Wallet écrit le texte à côté du logo (Google Wallet inchangé).' })),
+        h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), showBusinessName: design.apple.showBusinessName === true, onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true), hint: 'PNG transparent, 2 Mo maximum. Proportions conservées, sans recadrage. Avec l’option nom, DPA Cards crée un bandeau logo + nom plus grand, centré sur les 50 points déjà disponibles. Sans modifier le haut du rectangle des tampons ni Google Wallet.' })),
       h(Section, { title: 'Couleurs' },
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           h(Color, { label: 'Couleur principale (fond)', value: design.colors.primary, onChange: v => set('colors.primary', v) }),
