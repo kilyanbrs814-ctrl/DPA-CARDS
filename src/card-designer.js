@@ -1,3 +1,4 @@
+import { preparePngUpload } from './png-upload.js';
 // Card designer (admin): one design project per program, rendered in two layouts —
 // Apple Wallet (full rectangle, rounded corners only) and Google Wallet (its own layout).
 // The design only describes the look. Customer name, progress, rewards and the QR code are
@@ -64,7 +65,7 @@ export function prepareDesign(cardDesign, program, merchant, assetUrl) {
   const project = { merchant, program: { ...program, logo_url: assetUrl(program.logo_path), hero_url: assetUrl(program.hero_path) } };
   const d = normalize(cardDesign, project), base = defaultDesign(project);
   const withUrl = (a, fb) => (a && a.path ? { path: a.path, url: assetUrl(a.path), fallback: fb ? fb.url : null } : fb);
-  d.assets = { logo: withUrl(cardDesign.assets && cardDesign.assets.logo, base.assets.logo), hero: withUrl(cardDesign.assets && cardDesign.assets.hero, base.assets.hero),
+  d.assets = { logo: cardDesign.assets && Object.hasOwn(cardDesign.assets,'logo') ? withUrl(cardDesign.assets.logo,null) : base.assets.logo, hero: withUrl(cardDesign.assets && cardDesign.assets.hero, base.assets.hero),
     background: withUrl(cardDesign.assets && cardDesign.assets.background, null), stamp: withUrl(cardDesign.assets && cardDesign.assets.stamp, null) };
   if (!d.identity.name) d.identity.name = base.identity.name;
   if (d.stamps.icon === 'custom' && !d.assets.stamp) d.stamps.icon = 'check';
@@ -104,6 +105,10 @@ export function makeCardDesigner(React, api) {
 
   // ------------------------------------------------------------ stamps / points
   function Stamp({ on, st, size, stampUrl }) {
+    if(st?.icon==='custom' && stampUrl) return h('img', {
+      src:stampUrl, alt:on?'Tampon validé':'Tampon restant', 'data-stamp':on?'filled-png':'empty-png',
+      style:{width:size,height:size,objectFit:'contain',display:'block',flex:'none',opacity:on?1:.22,filter:on?'none':'grayscale(1)'}
+    });
     const unicode = normalizeStampEmoji(st?.emoji);
     if (unicode) return h('span', {
       'data-stamp': on ? 'filled-emoji' : 'empty-emoji',
@@ -121,7 +126,7 @@ export function makeCardDesigner(React, api) {
       custom ? h('img', { src: stampUrl, alt: '', style: { width: '100%', height: '100%', objectFit: 'contain', display: 'block' } })
         : st.icon !== 'none' && st.icon !== 'custom' ? icon(st.icon, Math.round(size * 0.6), { fontVariationSettings: "'FILL' 1, 'wght' 600" }) : null);
   }
-  function Progress({ d, data, width, align, dark }) {
+  function Progress({ d, data, width, align, dark, large=false }) {
     const goal = Math.max(1, data.goal), done = Math.min(data.progress, goal);
     if (data.mode === 'points' || goal > 30) {
       const pct = Math.min(100, Math.round(data.progress / goal * 100));
@@ -133,7 +138,7 @@ export function makeCardDesigner(React, api) {
           h('div', { style: { width: pct + '%', height: '100%', background: d.stamps.filled } })));
     }
     const rows = goal <= 6 ? 1 : goal <= 14 ? 2 : 3, per = Math.ceil(goal / rows), gap = 8;
-    const size = Math.max(14, Math.min(34, Math.floor((width - (per - 1) * gap) / per)));
+    const size = Math.max(14, Math.min(large?50:34, Math.floor((width - (per - 1) * gap) / per)));
     const stampUrl = d.assets.stamp && d.assets.stamp.url;
     const lines = Array.from({ length: rows }, (_, r) => Array.from({ length: Math.min(per, goal - r * per) }, (_, i) => r * per + i));
     return h('div', { 'data-progress': 'stamps', 'data-done': done, 'data-goal': goal, style: { display: 'flex', flexDirection: 'column', gap, alignItems: align === 'center' ? 'center' : 'flex-start' } },
@@ -208,8 +213,8 @@ export function makeCardDesigner(React, api) {
             minWidth: 0
           }
         },
-          h(Logo, { d, size: 40, round: false }),
-          h('div', {
+          platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:145,height:45,objectFit:'contain',objectPosition:'left center'}}) : h(Logo, { d, size: 40, round: false }),
+          platform!=='apple' && h('div', {
             'data-field': 'business',
             style: {
               ...ellipsis,
@@ -229,7 +234,7 @@ export function makeCardDesigner(React, api) {
             flexShrink: 0,
             fontVariantNumeric: 'tabular-nums'
           }
-        }, (String(data.cardNumber || '').replace(/\D/g, '') || '0000'))
+        }, (String(data.cardNumber || '').replace(/\D/g, '') || '0000').slice(-4))
       ),
 
       // 2. RECTANGLE CENTRAL AVEC LES EMOJIS
@@ -250,7 +255,7 @@ export function makeCardDesigner(React, api) {
           data,
           width: 275,
           align: 'center',
-          dark: false
+          dark: false, large:platform==='apple'
         })
       ),
 
@@ -375,7 +380,7 @@ export function makeCardDesigner(React, api) {
     return h(Field, { label, hint },
       h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
         asset && asset.url ? h('img', { src: asset.url, alt: '', style: { width: 56, height: 56, objectFit: 'contain', borderRadius: 10, border: '1px solid #E4E1DA', background: 'repeating-conic-gradient(#ECEAE4 0% 25%, #FFFFFF 0% 50%) 0 0/12px 12px' } }) : null,
-        h('input', { ref, type: 'file', accept: 'image/png,image/jpeg,image/webp', 'data-upload': testId, style: { display: 'none' }, onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPick(f); } }),
+        h('input', { ref, type: 'file', accept: ['logo','stamp'].includes(testId)?'image/png':'image/png,image/jpeg,image/webp', 'data-upload': testId, style: { display: 'none' }, onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPick(f); } }),
         h('button', { type: 'button', disabled: busy, onClick: () => ref.current && ref.current.click(), style: { minHeight: 44, padding: '0 14px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
           icon('upload', 18), busy ? 'Envoi…' : asset ? 'Remplacer' : 'Importer'),
         asset ? h('button', { type: 'button', onClick: onRemove, style: { minHeight: 44, padding: '0 12px', border: 0, background: 'none', color: '#B42318', fontWeight: 600, fontSize: 14 } }, 'Retirer') : null));
@@ -541,7 +546,16 @@ export function makeCardDesigner(React, api) {
     }, [dirty]);
 
     const set = (path, value) => setDesign(d => { const n = JSON.parse(JSON.stringify(d)); let o = n; const ks = path.split('.'); ks.slice(0, -1).forEach(k => { o[k] = o[k] || {}; o = o[k]; }); o[ks[ks.length - 1]] = value; return n; });
-    const pickFile = kind => f => {
+    const pickFile = kind => async f => {
+      if(kind==='logo' || kind==='stamp') {
+        setBusy('up-'+kind);
+        try {
+          const blob=await preparePngUpload(f);
+          const a=isTest ? await api.testUpload(project.test.id,kind,blob) : await api.upload(project.program.id,kind,blob);
+          set('assets.'+kind,a); if(kind==='stamp')set('stamps.icon','custom');
+        } catch(e) {toast(e.message || errText(e));} finally {setBusy(null);}
+        return;
+      }
       if (!/^image\/(png|jpeg|webp)$/.test(f.type)) return toast('Format non pris en charge : PNG, JPEG ou WebP.');
       if (f.size > 15 * 1024 * 1024) return toast('Image trop lourde (15 Mo maximum).');
       setCrop({ kind, src: URL.createObjectURL(f) });
@@ -738,7 +752,7 @@ export function makeCardDesigner(React, api) {
       h(Section, { title: 'Identité' },
         h(Text, { label: 'Nom du commerce', value: design.identity.name, max: 40, onChange: v => set('identity.name', v) }),
         h(Text, { label: 'Activité / sous-titre (facultatif)', value: design.identity.subtitle, max: 40, onChange: v => set('identity.subtitle', v) }),
-        h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), hint: 'PNG, JPEG ou WebP. Recadré au carré, jamais déformé.' })),
+        h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), hint: 'PNG transparent, 2 Mo maximum. Proportions conservées, sans recadrage.' })),
       h(Section, { title: 'Couleurs' },
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           h(Color, { label: 'Couleur principale (fond)', value: design.colors.primary, onChange: v => set('colors.primary', v) }),
@@ -767,8 +781,8 @@ export function makeCardDesigner(React, api) {
           h(Select, { label: 'Tampon vide', value: design.stamps.style, options: [['outline', 'Contour'], ['soft', 'Plein léger']], onChange: v => set('stamps.style', v) })),
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, background: '#1C1F24' } },
           h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }), h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }),
-          h(Stamp, { on: false, st: design.stamps, size: 34 }), h('span', { style: { color: '#FFFFFF', fontSize: 13, opacity: 0.8 } }, 'Rempli · Rempli · Vide')),
-        h(ImagePick, { label: 'Icône personnalisée', testId: 'stamp', asset: design.assets.stamp, busy: busy === 'up-stamp', onPick: pickFile('stamp'), onRemove: () => { set('assets.stamp', null); if (design.stamps.icon === 'custom') set('stamps.icon', 'check'); }, hint: 'Choisie automatiquement comme icône une fois importée.' })),
+          h(Stamp, { on: false, st: design.stamps, size: 34, stampUrl:design.assets.stamp?.url }), h('span', { style: { color: '#FFFFFF', fontSize: 13, opacity: 0.8 } }, 'Rempli · Rempli · Vide')),
+        h(ImagePick, { label: 'Tampon PNG personnalisé', testId: 'stamp', asset: design.assets.stamp, busy: busy === 'up-stamp', onPick: pickFile('stamp'), onRemove: () => { set('assets.stamp', null); if (design.stamps.icon === 'custom') set('stamps.icon', 'check'); }, hint: 'Un seul PNG transparent : passages effectués en couleur, restants grisés à 22 %. 2 Mo maximum.' })),
       h(Section, { title: 'Typographie' },
         h(Select, { label: 'Police de la carte', value: design.font, options: Object.entries(FONTS).map(([k, f]) => [k, f.label]), onChange: v => set('font', v) })),
       h(Section, { title: 'Ajustements ' + pName },

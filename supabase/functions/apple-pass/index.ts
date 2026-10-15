@@ -1,3 +1,4 @@
+import { decodePng } from '../_shared/png.js';
 // DPA Cards: creates a signed Apple Wallet pass from one real loyalty card.
 // GET /functions/v1/apple-pass?token=<opaque bearer token>
 // Signing material is never accessible in the browser or repository.
@@ -6,7 +7,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
-import { realApplePassData, visibleCardNumber, appleHeaderName } from './real-card.js';
+import { realApplePassData, visibleCardNumber, testAssetPath } from './real-card.js';
 import { makeRealStrip, makeDemoStrip, makeDemoLogo, makeAppleHeaderLogo } from './real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -89,9 +90,9 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
     serialNumber: 'test-' + t.id + '-' + crypto.randomUUID(),
     organizationName: name,
     description: 'Démonstration DPA Cards – sans valeur commerciale',
-    logoText: d.stamps?.emoji ? appleHeaderName(name) : name, backgroundColor: rgb(primary), foregroundColor: textColor(primary),
+    backgroundColor: rgb(primary), foregroundColor: textColor(primary),
     labelColor: textColor(primary),
-    storeCard: d.stamps?.emoji ? {
+    storeCard: (d.stamps?.emoji || d.stamps?.icon==='custom') ? {
       // Same visible fields as the real saved loyalty pass. The test QR stays
       // DPA_TEST: and the test UUID never becomes a real card identifier.
       headerFields: [{key:'number',label:'',value:visibleCardNumber('TEST '+t.id.slice(0,4)+' '+t.qr_token.slice(0,4))}],
@@ -136,38 +137,19 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
     images['icon@2x.png'] = Buffer.from(icon2);
   } catch { /* Keep the valid fallback icon. */ }
 
-  // Uploaded logos must belong to this isolated admin test (never another
-  // commerce or another test). Otherwise use initials on the designer's accent
-  // tile (e.g. CT on gold for "Commerce test"), not the generic DPA logo.
-  const logoPath = d.assets?.logo?.path;
-  const allowedLogo = typeof logoPath === 'string' &&
-    new RegExp('^tests/' + testId + '/designer/logo-[0-9a-f-]{36}\\.png$', 'i').test(logoPath);
-  const uploaded = allowedLogo ? await realLogo(logoPath) : null;
-  if (uploaded) {
-    images['logo.png'] = uploaded;
-    images['logo@2x.png'] = uploaded;
-  } else {
-    try {
-      images['logo.png'] = Buffer.from(await makeDemoLogo(name, accent, 1));
-      images['logo@2x.png'] = Buffer.from(await makeDemoLogo(name, accent, 2));
-    } catch { images['logo.png'] = fallback; }
-  }
-  // When using the minimal emoji design, put the merchant name immediately
-  // after its uploaded logo (or initials) INSIDE Apple logo.png. Otherwise
-  // iOS distributes native logoText between the logo and right-hand number.
-  if (d.stamps?.emoji) {
-    try {
-      images['logo.png'] = Buffer.from(await makeAppleHeaderLogo(name, accent, primary, uploaded, 1));
-      images['logo@2x.png'] = Buffer.from(await makeAppleHeaderLogo(name, accent, primary, uploaded, 2));
-      delete (json as { logoText?: string }).logoText;
-    } catch { console.error('apple-pass demo composite header unavailable'); }
-  }
+  const testAsset = (kind: string) => testAssetPath(d.assets?.[kind],testId,kind);
+  const uploaded=await realLogo(testAsset('logo'));
+  images['logo.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,uploaded,1));
+  images['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,uploaded,2));
+  const stampBytes=d.stamps?.icon==='custom' ? await realLogo(testAsset('stamp')) : null;
+  const stamp=stampBytes ? await decodePng(stampBytes) : null;
+  if(d.stamps?.icon==='custom' && testAsset('stamp') && !stamp) throw new SafeError(422,'invalid_stamp');
   // Apple displays its native primary text on top of the strip image. It cannot
   // use the exact HTML layout, but the two-row colored stamps and blue gradient
   // now come from the same saved config as the Apple preview.
   try {
-    images['strip.png'] = Buffer.from(await makeDemoStrip(d, 1));
-    images['strip@2x.png'] = Buffer.from(await makeDemoStrip(d, 2));
+    images['strip.png'] = Buffer.from(await makeDemoStrip(d, 1, stamp));
+    images['strip@2x.png'] = Buffer.from(await makeDemoStrip(d, 2, stamp));
   } catch { console.error('apple-pass demo strip unavailable'); }
   const pass = new PKPass({ ...images, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8') }, {
     wwdr: await wwdrCert(),
@@ -184,10 +166,10 @@ async function realLogo(path: string | null) {
   if (!path) return null;
   try {
     const { data, error } = await supabase.storage.from('program-assets').download(path);
-    if (error || !data || data.size > 700000) return null;
+    if (error || !data || data.size > 2097152) return null;
     const bytes = new Uint8Array(await data.arrayBuffer());
-    const png = [137,80,78,71,13,10,26,10].every((x,i)=>bytes[i]===x);
-    return png ? Buffer.from(bytes) : null;
+    await decodePng(bytes);
+    return Buffer.from(bytes);
   } catch { return null; }
 }
 
@@ -236,24 +218,19 @@ async function createPass(token: string) {
   const fallback = Buffer.from(ICON_B64, 'base64');
   const logo = await realLogo(brand.logo);
   const assets: Record<string, Uint8Array> = {
-    'icon.png': fallback, 'icon@2x.png': fallback,
+    'icon.png': fallback, 'icon@2x.png': Buffer.from(await makeDemoLogo('DPA',brand.accent,2,'icon')),
     ...(logo ? { 'logo.png': logo, 'logo@2x.png': logo } : {}),
   };
-  // Native Apple logoText floats toward right-side headerFields. Embed the
-  // full commerce name beside its real logo within transparent 160x50 artwork.
-  // Keep existing logo + logoText if compositing fails.
-  if (brand.emoji) {
-    try {
-      assets['logo.png'] = Buffer.from(await makeAppleHeaderLogo(brand.issuer, brand.accent, brand.primary, logo, 1));
-      assets['logo@2x.png'] = Buffer.from(await makeAppleHeaderLogo(brand.issuer, brand.accent, brand.primary, logo, 2));
-      delete (json as { logoText?: string }).logoText;
-    } catch { console.error('apple-pass real composite header unavailable'); }
-  }
+  assets['logo.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,logo,1));
+  assets['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,logo,2));
+  const stampBytes=brand.stamp ? await realLogo(brand.stamp) : null;
+  const stamp=stampBytes ? await decodePng(stampBytes) : null;
+  if(brand.stamp && !stamp) throw new SafeError(422,'invalid_stamp');
   // Strip is optional: a rendering issue should not prevent a customer from
   // receiving a valid pass containing all native fields and QR code.
   try {
-    assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1));
-    assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2));
+    assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1, stamp));
+    assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2, stamp));
   } catch {
     console.error('apple-pass real strip unavailable');
   }

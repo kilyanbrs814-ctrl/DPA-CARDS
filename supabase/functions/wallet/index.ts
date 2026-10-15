@@ -1,3 +1,4 @@
+import { decodePng } from '../_shared/png.js';
 // DPA Cards — Google Wallet Edge Function.
 //
 //   POST /wallet/save-link  merchant session → signed "Add to Google Wallet" link for one card
@@ -1200,11 +1201,26 @@ async function adminCardUpload(req: Request): Promise<Response> {
   return json(req, 200, { path, token: data.token, url: assetUrl(path) });
 }
 
+// Validate actual bytes before persisting logo/stamp references, including drafts
+// and demo cards. Upload URLs authorize only unique, server-selected paths.
+async function validateDesignPng(config: any) {
+  for(const kind of ['logo','stamp']) {
+    const path=config.assets?.[kind]?.path;
+    if(!path || !path.endsWith('.png'))continue; // legacy JPEG assets remain compatible
+    const {data,error}=await admin.storage.from('program-assets').download(path);
+    if(error || !data)throw new HttpError(422,`missing_${kind}`);
+    if(data.size>2097152)throw new HttpError(422,`invalid_${kind}`);
+    try { await decodePng(new Uint8Array(await data.arrayBuffer())); }
+    catch {throw new HttpError(422,`invalid_${kind}`);}
+  }
+}
+
 async function adminCardSave(req: Request): Promise<Response> {
   const user = await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   const program = await designProgram(body?.program_id);
   const config = cleanDesign(body?.config, `${program.merchant_id}/${program.id}`);
+  await validateDesignPng(config);
   const design_request_id = await linkedRequest(body?.design_request_id, program);
   // Saving a draft never touches the program, the request status or the applied design.
   const { data, error } = await admin.from('card_designs').upsert({ merchant_id: program.merchant_id, program_id: program.id, design_request_id, config, status: 'draft', updated_by: user.id },
@@ -1258,6 +1274,7 @@ async function adminCardValidate(req: Request): Promise<Response> {
   const body = await req.json().catch(() => ({}));
   const program = await designProgram(body?.program_id);
   const config = cleanDesign(body?.config, `${program.merchant_id}/${program.id}`);
+  await validateDesignPng(config);
   const design_request_id = await linkedRequest(body?.design_request_id, program);
   // Every image must exist and really be a PNG or JPEG.
   const fit: Record<string, boolean> = {};
@@ -1430,7 +1447,9 @@ async function adminTestCardSave(req: Request): Promise<Response> {
   const name = str(body?.name, 80) || 'Carte test';
   if (body?.id) {
     const t = await testRow(body.id);
-    const { data, error } = await admin.from('test_card_designs').update({ name, config: cleanDesign(body?.config, testFolder(t.id)) }).eq('id', t.id).select(TEST_SELECT).single();
+    const config=cleanDesign(body?.config,testFolder(t.id));
+    await validateDesignPng(config);
+    const { data, error } = await admin.from('test_card_designs').update({ name, config }).eq('id', t.id).select(TEST_SELECT).single();
     if (error) throw new Error('db_test_cards');
     return json(req, 200, { test: testView(data) });
   }

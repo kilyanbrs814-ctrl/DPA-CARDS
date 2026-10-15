@@ -1,0 +1,13 @@
+<div id="root"></div><div id="toast"></div>
+<script type="module">
+import React from 'react';
+import {createRoot} from 'react-dom/client';
+import {makeCardDesigner} from '../../src/card-designer.js';
+const id='33333333-3333-4333-8333-333333333333';
+const initial={id,name:'PNG browser test',qr_token:'demo-token',qr_value:'DPA_TEST:demo-token',card_number:'TEST 1234',config:{identity:{name:'PNG browser test'},preview:{progress:3,goal:10},stamps:{icon:'emoji',emoji:'🍔'}}};
+const load=()=>JSON.parse(localStorage.getItem('test-design')||JSON.stringify(initial));
+const upload=async(id,kind,blob)=>({path:`tests/${id}/designer/${kind}-11111111-1111-4111-8111-111111111111.png`,url:await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(blob);})});
+const api={testList:async()=>({tests:[load()]}),testGet:async()=>({test:load()}),testUpload:upload,testSave:async(id,name,config)=>{const t={...load(),name,config};localStorage.setItem('test-design',JSON.stringify(t));return {test:t};}};
+const {CardDesigner}=makeCardDesigner(React,api);
+createRoot(document.getElementById('root')).render(React.createElement(CardDesigner,{merchants:[],target:{testId:id},onTarget:()=>{},toast:t=>{document.getElementById('toast').textContent=t;},width:1200}));
+</script>

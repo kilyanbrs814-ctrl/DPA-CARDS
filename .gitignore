@@ -16,3 +16,6 @@ supabase-email-backup-*.json
 *.p12
 *.p8
 *.key
+
+test-results/
+playwright-report/

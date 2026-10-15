@@ -89,7 +89,7 @@ test('native badge shows commerce initials on yellow, not a generic DPA logo',as
 test('real pass still uses independent logo and strip path; demo remains excluded from metrics',()=>{
   const source=readFileSync(new URL('../supabase/functions/apple-pass/index.ts',import.meta.url),'utf8');
   const demo=source.split('async function createDemoPass(')[1].split('// Real cards only.')[0];
-  assert.ok(demo.includes('makeDemoStrip(d, 1)'));
+  assert.ok(demo.includes('makeDemoStrip(d, 1, stamp)'));
   assert.ok(demo.includes('makeDemoLogo(name, accent'));
   assert.ok(demo.includes('DPA_TEST:'));
   assert.ok(demo.includes('crypto.randomUUID()'));
@@ -139,7 +139,7 @@ test('Apple and Google sources include emoji-safe image routes and balance updat
   assert.ok(server.includes('hasStampEmoji(program)'));
   assert.ok(server.includes('async function stampSignature(id: string)'));
   assert.ok(server.includes('update.heroImage'));
-  assert.ok(apple.includes('makeDemoStrip(d, 1)'));
+  assert.ok(apple.includes('makeDemoStrip(d, 1, stamp)'));
   assert.ok(apple.includes('realApplePassData({'));
 });
 
@@ -184,20 +184,13 @@ test('💧 Apple demo strip stays visible even when Noto and Twemoji are unavail
   } finally { globalThis.fetch=savedFetch; }
 });
 
-test('Apple Wallet logo art includes merchant name next to icon at 1x and 2x',async()=>{
-  for (const scale of [1,2]) {
+test('Apple header is transparent without a PNG, with no initials or bitmap name',async()=>{
+  for(const scale of [1,2]) {
     const png=await makeAppleHeaderLogo('Commerce test','#F2C94C','#1C1F24',null,scale);
     const img=parsePng(png);
     assert.equal(img.w,160*scale);assert.equal(img.h,50*scale);
-    assert.ok(rgbaAt(img,10*scale,20*scale)[3]>0,'merchant initials tile is visible');
-    const rows=[10,20,30,40].flatMap(y=>[57,68,80,90,105,120,138,149].map(x=>rgbaAt(img,x*scale,y*scale)[3]));
-    assert.ok(rows.some(v=>v>0),'merchant name pixels must exist to the right of tile');
+    assert.ok(img.raw.every(v=>v===0));
   }
-  // PNG from uploaded logo replaces the initials, but not the adjacent name.
-  const raw=await makeDemoLogo('X Logo','#305ACA',1,'logo');
-  const img=parsePng(await makeAppleHeaderLogo('Commerce test','#F2C94C','#1C1F24',raw,1));
-  assert.equal(img.w,160);
-  assert.ok(rgbaAt(img,10,20)[3]>0);
 });
 test('Apple emojis are 50pt and 2x artwork doubles pixels rather than getting smaller',async()=>{
   const saved=globalThis.fetch;
@@ -225,8 +218,7 @@ test('Apple emojis are 50pt and 2x artwork doubles pixels rather than getting sm
 
 test('Apple signed demo and real passes omit logoText instead of sending invalid empty text',()=>{
   const source=readFileSync(new URL('../supabase/functions/apple-pass/index.ts', import.meta.url),'utf8');
-  const removals=source.split('delete (json as { logoText?: string }).logoText;').length-1;
-  assert.equal(removals,2,'both demo and real pass must omit the optional native logoText');
+  assert.ok(!/logoText\s*:/.test(source),'demo JSON never includes logoText');
   assert.ok(!source.includes("json.logoText = ''"),'empty logoText is rejected by passkit-generator Joi schema');
   const json={logoText:'Commerce',storeCard:{headerFields:[]}};
   delete json.logoText;
