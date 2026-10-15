@@ -115,7 +115,7 @@ test('native badge shows commerce initials on yellow, not a generic DPA logo',as
 test('real pass still uses independent logo and strip path; demo remains excluded from metrics',()=>{
   const source=readFileSync(new URL('../supabase/functions/apple-pass/index.ts',import.meta.url),'utf8');
   const demo=source.split('async function createDemoPass(')[1].split('// Real cards only.')[0];
-  assert.ok(demo.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp)'));
+  assert.ok(demo.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt)'));
   assert.ok(demo.includes('makeDemoLogo(name, accent'));
   assert.ok(demo.includes('DPA_TEST:'));
   assert.ok(demo.includes('crypto.randomUUID()'));
@@ -165,7 +165,7 @@ test('Apple and Google sources include emoji-safe image routes and balance updat
   assert.ok(server.includes('hasStampEmoji(program)'));
   assert.ok(server.includes('async function stampSignature(id: string)'));
   assert.ok(server.includes('update.heroImage'));
-  assert.ok(apple.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp)'));
+  assert.ok(apple.includes('makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt)'));
   assert.ok(apple.includes('realApplePassData({'));
 });
 
