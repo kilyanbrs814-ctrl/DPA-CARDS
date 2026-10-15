@@ -207,7 +207,11 @@ export function makeCardDesigner(React, api) {
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
-          padding: '20px 17px'
+          // Exact existing height: 80px with the native business name, 85px otherwise.
+          // Enlarging the logo must NEVER push the stamp rectangle down.
+          height: platform==='apple' ? (o.showBusinessName ? 80 : 85) : undefined,
+          boxSizing: 'border-box',
+          padding: platform==='apple' ? '0 17px' : '20px 17px'
         }
       },
         h('div', {
@@ -219,7 +223,7 @@ export function makeCardDesigner(React, api) {
             minWidth: 0
           }
         },
-          platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?52:145,height:o.showBusinessName?40:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
+          platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
           platform==='apple' && o.showBusinessName && h('div',{
             'data-field':'apple-native-business-name',
             style:{...ellipsis,minWidth:0,fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:15,fontWeight:600,lineHeight:1.2}

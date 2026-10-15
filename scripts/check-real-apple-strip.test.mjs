@@ -216,8 +216,8 @@ test('Apple compact header logo reserves space for system text at 1x and 2x',asy
   for(const scale of [1,2,3]){
     const png=await makeAppleHeaderLogo('Napolithein','#F2C94C','#1C1F24',null,scale,true);
     const img=parsePng(png);
-    assert.equal(img.w,52*scale);
-    assert.equal(img.h,40*scale);
+    assert.equal(img.w,64*scale);
+    assert.equal(img.h,48*scale);
     assert.ok(img.raw.every(v=>v===0),'only native PassKit draws the business name');
   }
 });

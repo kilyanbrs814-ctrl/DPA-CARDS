@@ -45,6 +45,21 @@ test('wallet designer preview renders only digits in card number and inline coun
   assert.equal('DPA-DEMO-0003'.replace(/\D/g,''),'0003');
 });
 
+test('Apple preview keeps the header height constant when enlarging the logo',()=>{
+  const src=read('src/card-designer.js');
+  const start=src.indexOf('function WalletCard({ design, data, platform })');
+  const end=src.indexOf('// 2. RECTANGLE CENTRAL AVEC LES TAMPONS PNG',start);
+  const header=src.slice(start,end);
+  assert.ok(start>0 && end>start);
+  assert.ok(header.includes("height: platform==='apple' ? (o.showBusinessName ? 80 : 85) : undefined"),
+    'the logo and native name cannot increase the distance above the stamp rectangle');
+  assert.ok(header.includes("padding: platform==='apple' ? '0 17px' : '20px 17px'"),
+    'Apple uses fixed-height centered content without extra vertical padding');
+  assert.ok(header.includes("width:o.showBusinessName?64:145,height:o.showBusinessName?48:45"),
+    'larger logo remains inside the 50pt Apple native header');
+  assert.ok(header.includes("'data-field':'apple-native-business-name'"),
+    'the business name remains Apple-native, not burned into the PNG');
+});
 test('native Google Wallet emits real completed/remaining counters without changing QR identity',()=>{
   const src=read('supabase/functions/wallet/index.ts');
   assert.ok(src.includes('secondaryLoyaltyPoints'));

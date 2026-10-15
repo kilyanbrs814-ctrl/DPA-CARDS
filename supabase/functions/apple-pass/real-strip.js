@@ -315,7 +315,8 @@ export async function makeDemoLogo(name, accent='#F2C94C', scale=1, kind='logo')
 
 
 // Apple header: uploaded PNG only, contained inside the native 160 x 50pt area.
-// When native logoText is enabled, reserve room to its right by limiting the PNG to 52 x 40pt.
+// When native logoText is enabled, keep the logo within Apple's existing 50pt-high header:
+// a 64 x 48pt image gives the brand more visual weight without changing the pass layout.
 // Missing logos leave a transparent header image; text is drawn by PassKit, never in the bitmap.
 /** @param {string} _name
  * @param {string} _accent
@@ -326,7 +327,7 @@ export async function makeDemoLogo(name, accent='#F2C94C', scale=1, kind='logo')
  */
 export async function makeAppleHeaderLogo(_name, _accent='#F2C94C', _background='#1C1F24', logoBytes=null, scale=1, compact=false) {
   if (![1,2,3].includes(scale)) throw new Error('invalid_header_scale');
-  const width=(compact?52:160)*scale,height=(compact?40:50)*scale,pixels=new Uint8Array(width*height*4);
+  const width=(compact?64:160)*scale,height=(compact?48:50)*scale,pixels=new Uint8Array(width*height*4);
   if(logoBytes) {
     const src=await decodePng(logoBytes);
     pixels.set(resizeAppleLogo(src,width,height));
