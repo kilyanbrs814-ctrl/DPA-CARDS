@@ -1556,7 +1556,12 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   };
   const og = await google('GET', `/loyaltyObject/${encodeURIComponent(objectId)}`);
   if (og.status === 404) { const r = await google('POST', '/loyaltyObject', object); if (r.status !== 200 && r.status !== 409) throw gErr('test_object_insert', r); }
-  else if (og.status === 200) { const r = await google('PUT', `/loyaltyObject/${encodeURIComponent(objectId)}`, { ...og.data, ...object }); if (r.status !== 200) throw gErr('test_object_update', r); }
+  else if (og.status === 200) {
+    const next:any={...og.data,...object};
+    if(d.stamps?.emoji) delete next.accountName; // an old saved demo may have the former Client field
+    const r=await google('PUT',`/loyaltyObject/${encodeURIComponent(objectId)}`,next);
+    if(r.status!==200)throw gErr('test_object_update',r);
+  }
   else throw gErr('test_object_get', og);
   await admin.from('test_card_designs').update({ google_class_id: classId, google_object_id: objectId, google_synced_at: new Date().toISOString() }).eq('id', t.id);
   const origin = req.headers.get('origin');
