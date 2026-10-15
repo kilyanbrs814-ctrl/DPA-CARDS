@@ -1,4 +1,5 @@
 import { decodePng } from '../_shared/png.js';
+import { loadRewardStar } from '../_shared/reward-star.js';
 import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 // DPA Cards: creates a signed Apple Wallet pass from one real loyalty card.
 // GET /functions/v1/apple-pass?token=<opaque bearer token>
@@ -156,13 +157,15 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   const rewardBytes=rewardPath ? await realLogo(rewardPath) : null;
   if(rewardPath && !rewardBytes)throw new SafeError(422,'invalid_reward_label');
   const rewardArt=rewardBytes ? await decodePng(rewardBytes) : null;
+  const finalStar=await loadRewardStar();
+  const finalStar=await loadRewardStar();
   if(rewardArt && (rewardArt.width!==630||rewardArt.height!==52))throw new SafeError(422,'invalid_reward_label');
   // Apple displays its native primary text on top of the strip image. It cannot
   // use the exact HTML layout, but the two-row colored stamps and blue gradient
   // now come from the same saved config as the Apple preview.
   try {
-    images['strip.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt));
-    images['strip@2x.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 2, stamp, rewardArt));
+    images['strip.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt, finalStar));
+    images['strip@2x.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 2, stamp, rewardArt, finalStar));
   } catch { console.error('apple-pass demo strip unavailable'); }
   const pass = new PKPass({ ...images, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8') }, {
     wwdr: await wwdrCert(),
@@ -250,8 +253,8 @@ async function createPass(token: string) {
   // Strip is optional: a rendering issue should not prevent a customer from
   // receiving a valid pass containing all native fields and QR code.
   try {
-    assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1, stamp, rewardArt));
-    assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2, stamp, rewardArt));
+    assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1, stamp, rewardArt, finalStar));
+    assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2, stamp, rewardArt, finalStar));
   } catch {
     console.error('apple-pass real strip unavailable');
   }
