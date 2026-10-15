@@ -863,6 +863,21 @@ async function requireDirector(req: Request) {
 }
 
 // Rep of each shop (who brought it), shown to every admin; amounts stay director-only.
+// For non-directors, business data is strictly partitioned by the saved sales attribution.
+// No browser-supplied rep id or local storage is trusted.
+async function adminAllowedMerchantIds(user: any): Promise<Set<string> | null> {
+  if (user.dpaRole === 'director') return null;
+  const {data: rep,error: re}=await admin.from('sales_reps').select('id').eq('email',user.dpaEmail).eq('active',true).maybeSingle();
+  if(re) throw new Error('db_sales_rep');
+  if(!rep) return new Set();
+  const {data,error}=await admin.from('merchant_attributions').select('merchant_id').eq('sales_rep_id',rep.id);
+  if(error) throw new Error('db_attributions');
+  return new Set((data??[]).map((r:any)=>r.merchant_id));
+}
+async function assertAdminMerchant(user: any,id: string) {
+  const ids=await adminAllowedMerchantIds(user);
+  if(ids!==null && !ids.has(id)) throw new HttpError(403,'merchant_forbidden');
+}
 async function attributions(ids?: string[]) {
   let q = admin.from('merchant_attributions').select('merchant_id, source, attributed_at, sales_reps(id, display_name)');
   if (ids) q = q.in('merchant_id', ids);
@@ -885,20 +900,33 @@ async function adminOverview(req: Request): Promise<Response> {
   const user = await requireAdmin(req);
   const { data, error } = await admin.rpc('admin_overview');
   if (error) throw new Error('db_admin_overview');
-  const [emails, reps, { data: modes }, { data: appleRows, error: appleError }] = await Promise.all([ownerEmails((data.merchants as any[]).map(m => m.owner_id)), attributions(),
+  const allowed=await adminAllowedMerchantIds(user);
+  const visible=(data.merchants as any[]).filter((m:any)=>allowed===null||allowed.has(m.id));
+  const [emails, reps, { data: modes }, { data: appleRows, error: appleError }, {data: overrides}] = await Promise.all([
+    ownerEmails(visible.map((m:any)=>m.owner_id)), attributions(visible.map((m:any)=>m.id)),
     admin.from('subscriptions').select('merchant_id, billing_mode'),
-    admin.rpc('admin_apple_wallet_counts')]);
+    admin.rpc('admin_apple_wallet_counts'),
+    admin.from('merchant_manual_access').select('merchant_id, enabled, expires_at, reason, updated_at')]);
   if (appleError) throw new Error('db_admin_apple_wallet_counts');
   const appleByMerchant = Object.fromEntries((appleRows ?? []).map((x: any) => [x.merchant_id, Number(x.apple_count) || 0]));
   const appleTotal = (appleRows ?? []).reduce((n: number, x: any) => n + (Number(x.apple_count) || 0), 0);
   const bothTotal = (appleRows ?? []).reduce((n: number, x: any) => n + (Number(x.both_count) || 0), 0);
   // Monthly or paid in one go (commitment offer), next to the subscription the dashboard already shows.
   const mode: Record<string, string> = Object.fromEntries((modes ?? []).map(x => [x.merchant_id, x.billing_mode]));
-  const merchants = (data.merchants as any[]).map(({ owner_id, ...m }) => ({ ...m, owner_email: emails[owner_id] ?? null, sales_rep: reps[m.id] ?? null,
-    apple_wallet_downloads: appleByMerchant[m.id] ?? 0,
+  const overrideById=Object.fromEntries((overrides??[]).map((o:any)=>[o.merchant_id,o]));
+  const merchants = visible.map(({ owner_id, ...m }:any) => ({ ...m, owner_email: emails[owner_id] ?? null, sales_rep: reps[m.id] ?? null,
+    apple_wallet_downloads: appleByMerchant[m.id] ?? 0, manual_access: overrideById[m.id]??null,
     subscription: m.subscription ? { ...m.subscription, billing_mode: mode[m.id] ?? 'monthly' } : null }));
-  return json(req, 200, { kpis: { ...data.kpis, apple_wallet_downloads: appleTotal, wallet_both: bothTotal }, merchants,
-    me: { email: user.dpaEmail, role: user.dpaRole } });
+  const kpis=allowed===null?{ ...data.kpis, apple_wallet_downloads: appleTotal, wallet_both: bothTotal }
+    :{merchants:merchants.length,programs:merchants.filter((m:any)=>m.program).length,
+      customers:merchants.reduce((n:number,m:any)=>n+Number(m.customers||0),0),
+      cards:merchants.reduce((n:number,m:any)=>n+Number(m.cards||0),0),
+      events:merchants.reduce((n:number,m:any)=>n+Number(m.events||0),0),
+      wallet_passes:merchants.reduce((n:number,m:any)=>n+Number(m.wallet_passes||0),0),
+      apple_wallet_downloads:merchants.reduce((n:number,m:any)=>n+Number(m.apple_wallet_downloads||0),0),
+      wallet_both:0,subscriptions_valid:merchants.filter((m:any)=>m.manual_access?.enabled&&new Date(m.manual_access.expires_at)>new Date()||['trialing','active'].includes(m.subscription?.status)&&m.manual_access?.enabled!==false).length,
+      notifications_sent:0,designs_to_process:0};
+  return json(req,200,{kpis,merchants,me:{email:user.dpaEmail,role:user.dpaRole}});
 }
 
 async function adminMerchant(req: Request): Promise<Response> {
@@ -906,16 +934,18 @@ async function adminMerchant(req: Request): Promise<Response> {
   const body = await req.json().catch(() => ({}));
   const id = String(body?.merchant_id ?? '');
   if (!UUID_RE.test(id)) throw new HttpError(400, 'invalid_request');
+  await assertAdminMerchant(user,id);
   const { data, error } = await admin.rpc('admin_merchant_detail', { p_merchant: id });
   if (error) throw new Error('db_admin_merchant');
   if (!data) throw new HttpError(404, 'merchant_not_found');
   const { owner_id, ...merchant } = data.merchant;
-  const [emails, reps, { data: sub }, { data: prepaid }, { count: appleCount, error: appleError }] = await Promise.all([ownerEmails([owner_id]), attributions([id]),
+  const [emails, reps, { data: sub }, { data: prepaid }, { count: appleCount, error: appleError }, {data: manualAccess}] = await Promise.all([ownerEmails([owner_id]), attributions([id]),
     admin.from('subscriptions').select('billing_mode').eq('merchant_id', id).maybeSingle(),
     // Commitment paid in one go: what was collected, the period it covers, refunds (pending attempts left out).
     admin.from('prepaid_purchases').select('id, months, monthly_cents, setup_cents, total_cents, status, conflict, dispute_status, access_start, access_end, paid_at, refunded_cents, refunded_at, access_revoked_at')
       .eq('merchant_id', id).in('status', ['paid', 'refunded', 'partially_refunded']).order('paid_at', { ascending: false }),
-    admin.from('apple_wallet_downloads').select('card_id', { count: 'exact', head: true }).eq('merchant_id', id)]);
+    admin.from('apple_wallet_downloads').select('card_id', { count: 'exact', head: true }).eq('merchant_id', id),
+    admin.from('merchant_manual_access').select('enabled,expires_at,reason,updated_at,updated_by').eq('merchant_id',id).maybeSingle()]);
   if (appleError) throw new Error('db_admin_apple_wallet_count');
   if (data.subscription) data.subscription.billing_mode = sub?.billing_mode ?? 'monthly';
   // Payments, commissions and attribution history: director only.
@@ -929,7 +959,7 @@ async function adminMerchant(req: Request): Promise<Response> {
     sales = { ...s, reps };
   }
   return json(req, 200, { ...data, counts: { ...(data.counts ?? {}), apple_wallet_downloads: appleCount ?? 0 },
-    merchant: { ...merchant, owner_email: emails[owner_id] ?? null }, sales_rep: reps[id] ?? null, prepaid: prepaid ?? [], sales });
+    merchant: { ...merchant, owner_email: emails[owner_id] ?? null }, sales_rep: reps[id] ?? null, manual_access:manualAccess??null, prepaid: prepaid ?? [], sales });
 }
 
 // ---------------------------------------------------------------- sales tracking (director only)
@@ -1029,10 +1059,11 @@ async function adminSalesPayout(req: Request): Promise<Response> {
 }
 
 async function adminDesigns(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user=await requireAdmin(req);
+  const allowed=await adminAllowedMerchantIds(user);
   const { data, error } = await admin.rpc('admin_design_requests');
   if (error) throw new Error('db_admin_designs');
-  const rows = data as any[];
+  const rows = (data as any[]).filter((r:any)=>allowed===null||allowed.has(r.merchant_id));
   const emails = await ownerEmails(rows.map(r => r.owner_id));
   const sign = async (p: string | null) => p ? (await admin.storage.from('design-requests').createSignedUrl(p, 3600)).data?.signedUrl ?? null : null;
   const out = await Promise.all(rows.map(async ({ owner_id, logo_path, reference_paths, ...r }) => ({
@@ -1044,10 +1075,13 @@ async function adminDesigns(req: Request): Promise<Response> {
 }
 
 async function adminDesignStatus(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user=await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   const id = String(body?.id ?? ''), status = String(body?.status ?? '');
   if (!UUID_RE.test(id) || !['in_progress', 'delivered'].includes(status)) throw new HttpError(400, 'invalid_request');
+  const {data: ref}=await admin.from('design_requests').select('merchant_id').eq('id',id).maybeSingle();
+  if(!ref) throw new HttpError(404,'design_request_not_found');
+  await assertAdminMerchant(user,ref.merchant_id);
   const { data: row, error } = await admin.rpc('design_set_status', { p_request: id, p_status: status });
   if (error) throw new HttpError(409, /invalid_transition/.test(error.message) ? 'invalid_transition' : 'design_update_failed');
   let email: { sent: boolean; error?: string } | null = null;
@@ -1153,7 +1187,7 @@ async function linkedRequest(id: unknown, program: any) {
 }
 
 async function adminCardDesigner(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user=await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   let merchantId = String(body?.merchant_id ?? ''), programId: string | null = null, requestId: string | null = null;
   if (body?.design_request_id) {
@@ -1164,6 +1198,7 @@ async function adminCardDesigner(req: Request): Promise<Response> {
     merchantId = r.merchant_id; programId = r.program_id; requestId = r.id;
   }
   if (!UUID_RE.test(merchantId)) throw new HttpError(400, 'invalid_request');
+  await assertAdminMerchant(user,merchantId);
   const { data: m0 } = await admin.from('merchants').select('id, business_name, activity, first_name, last_name, phone, address, slug, created_by').eq('id', merchantId).maybeSingle();
   if (!m0) throw new HttpError(404, 'merchant_not_found');
   const { created_by, ...merchant } = m0;
@@ -1196,9 +1231,10 @@ async function adminCardDesigner(req: Request): Promise<Response> {
 
 // Signed upload to program-assets/<merchant>/<program>/designer/<kind>-<uuid>.<ext> (PNG or JPEG, 2 MB, bucket rules).
 async function adminCardUpload(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user = await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   const program = await designProgram(body?.program_id);
+  await assertAdminMerchant(user,program.merchant_id);
   const kind = String(body?.kind ?? '') as AssetKind, type = String(body?.type ?? '');
   if (!ASSET_KINDS.includes(kind) || !['image/png', 'image/jpeg'].includes(type)) throw new HttpError(400, 'invalid_request');
   const path = `${program.merchant_id}/${program.id}/designer/${kind}-${crypto.randomUUID()}.${type === 'image/png' ? 'png' : 'jpg'}`;
@@ -1225,6 +1261,7 @@ async function adminCardSave(req: Request): Promise<Response> {
   const user = await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   const program = await designProgram(body?.program_id);
+  await assertAdminMerchant(user,program.merchant_id);
   const config = cleanDesign(body?.config, `${program.merchant_id}/${program.id}`);
   await validateDesignPng(config);
   const design_request_id = await linkedRequest(body?.design_request_id, program);
@@ -1265,9 +1302,10 @@ async function syncDesignToGoogle(programId: string) {
 }
 
 async function adminCardGoogleSync(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user = await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   const program = await designProgram(body?.program_id);
+  await assertAdminMerchant(user,program.merchant_id);
   if (!program.card_design) throw new HttpError(409, 'design_not_validated');
   const google = await syncDesignToGoogle(program.id);
   const { data: draft } = await admin.from('card_designs').select(DRAFT_SELECT).eq('program_id', program.id).maybeSingle();
@@ -1279,6 +1317,7 @@ async function adminCardValidate(req: Request): Promise<Response> {
   const user = await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   const program = await designProgram(body?.program_id);
+  await assertAdminMerchant(user,program.merchant_id);
   const config = cleanDesign(body?.config, `${program.merchant_id}/${program.id}`);
   await validateDesignPng(config);
   const design_request_id = await linkedRequest(body?.design_request_id, program);
@@ -1388,10 +1427,11 @@ async function adminMerchantCreate(req: Request): Promise<Response> {
 // "Envoyer l'accès au commerçant": the standard password link (same e-mail as « Mot de passe oublié »),
 // only for shops prepared by the admin and only when the admin asks.
 async function adminMerchantAccess(req: Request): Promise<Response> {
-  await requireAdmin(req);
+  const user=await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   const id = String(body?.merchant_id ?? '');
   if (!UUID_RE.test(id)) throw new HttpError(400, 'invalid_request');
+  await assertAdminMerchant(user,id);
   const { data: m } = await admin.from('merchants').select('id, created_by').eq('id', id).maybeSingle();
   if (!m) throw new HttpError(404, 'merchant_not_found');
   const { data: row } = await admin.from('admin_created_merchants').select('access_sent_count').eq('merchant_id', id).maybeSingle();
