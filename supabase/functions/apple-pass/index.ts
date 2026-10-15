@@ -90,7 +90,8 @@ async function createDemoPass(testId, signerKey, signerCert) {
     logoText: name, backgroundColor: rgb(primary), foregroundColor: textColor(primary),
     labelColor: textColor(primary),
     storeCard: {
-      primaryFields: [{ key: 'progress', label: label.toUpperCase(), value: balance + '/' + goal }],
+      primaryFields: [{ key: 'progress', label: label.toUpperCase(),
+        value: balance + '/' + goal + (d.stamps?.emoji ? ' ' + String(d.stamps.emoji).slice(0,32) : '') }],
       secondaryFields: [
         { key: 'client', label: 'CLIENT', value: String(pv.client || 'Client test').slice(0, 60) },
         { key: 'reward', label: 'RÉCOMPENSE', value: String(pv.reward || 'Récompense test').slice(0, 80) },
