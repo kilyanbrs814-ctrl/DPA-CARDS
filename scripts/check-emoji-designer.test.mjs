@@ -29,3 +29,17 @@ test('admin preview and save backend include emoji settings',()=>{
   assert.ok(server.includes("emoji: savedEmoji(s.emoji)"),'backend stores emoji');
   assert.ok(server.includes("emoji', 'none'"),'emoji variant accepted');
 });
+
+test('wallet designer preview renders only digits in card number and inline counts',()=>{
+  const designer=read('src/card-designer.js');
+  const start=designer.indexOf('function WalletCard({ design, data, platform })');
+  const finish=designer.indexOf('function AppleCard(',start);
+  assert.ok(start>0 && finish>start);
+  const preview=designer.slice(start,finish);
+  assert.ok(preview.includes("String(data.cardNumber || '').replace(/\\D/g, '')"),'remove prefixes while retaining leading zeros');
+  assert.ok(preview.includes("'data-field': 'completed-count'"),'completed counter exists');
+  assert.ok(preview.includes("'data-field': 'remaining-count'"),'remaining counter exists');
+  assert.ok(!preview.includes("'data-field': 'client'"),'remove customer info');
+  assert.ok(!preview.includes("'data-field': 'reward'"),'remove extra reward field');
+  assert.equal('DPA-DEMO-0003'.replace(/\\D/g,''),'0003');
+});
