@@ -180,7 +180,7 @@ const walletCounter = (done: number, goal: number, mode: string) => {
 };
 const hasSavedStampArt = (design: any) =>
   (design?.stamps?.icon === 'library' && !!libraryStampId(design.stamps.libraryId)) ||
-  (design?.stamps?.icon === 'emoji' && typeof design.stamps.emoji === 'string' && /\p{Extended_Pictographic}/u.test(design.stamps.emoji));
+  (!['library','custom'].includes(design?.stamps?.icon) && typeof design?.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(design.stamps.emoji));
 // Retain the existing Google Wallet layout and signed stamp-board route.
 const hasStampEmoji = (program: any) => hasSavedStampArt(program?.card_design);
 async function stampBoardUrl(id: string, revision = 0, test = false) {
@@ -1119,7 +1119,7 @@ function cleanDesign(raw: any, folder: string) {
     font: pick(r.font, DESIGN_FONTS, 'hanken'),
     label: str(r.label, 16),
     assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
-    stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, 'library'), libraryId: libraryStampId(s.libraryId), emoji: s.icon==='library' ? '' : savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
+    stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, savedEmoji(s.emoji) ? 'emoji' : 'library'), libraryId: libraryStampId(s.libraryId), emoji: s.icon==='library' ? '' : savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
       filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF') },
     apple: platform(r.apple),
     google: platform(r.google),
