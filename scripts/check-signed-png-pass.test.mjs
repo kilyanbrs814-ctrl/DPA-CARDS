@@ -10,6 +10,7 @@ import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
 import {transform} from 'esbuild';
+import {decodePng} from '../supabase/functions/_shared/png.js';
 import {fixture} from './fixtures/png.mjs';
 const mid='11111111-1111-4111-8111-111111111111',pid='22222222-2222-4222-8222-222222222222',id='33333333-3333-4333-8333-333333333333';
 test('signed demo and real pkpass contain scoped PNGs, native counters and intact scanner QR',async()=>{
@@ -62,13 +63,17 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    assert.equal(jsQR(rgba,dim,dim).data,message);
    assert.equal(parseCode(message).kind,demo?'demo':'qr');
    if(!demo)assert.equal(contents.storeCard.headerFields[0].value,'9876');
-   assert.equal(reads.length,panelVisible?2:1,'hidden rectangle must avoid downloading stamp assets');
+   assert.equal(reads.length,2,'stamps must still be downloaded when only the rectangle is hidden');
    execFileSync('unzip',['-o','-q',join(dir,'pass.zip'),'-d',join(dir,'unpacked')]);
    const manifest=JSON.parse(readFileSync(join(dir,'unpacked/manifest.json')));
    for(const name of ['icon.png','icon@2x.png','logo.png','logo@2x.png','strip.png','strip@2x.png','pass.json'])assert.ok(manifest[name]);
    const stripFile=readFileSync(join(dir,'unpacked/strip.png'));
    assert.equal(stripFile.readUInt32BE(16),375,'native strip width must stay fixed');
    assert.equal(stripFile.readUInt32BE(20),144,'native strip height must stay fixed');
+   const strip=await decodePng(stripFile);
+   const at=(x,y)=>Array.from(strip.pixels.slice((y*strip.width+x)*4,(y*strip.width+x)*4+4));
+   assert.deepEqual(at(20,25),panelVisible?[36,72,240,255]:[0,0,0,255],'only the rectangle background changes');
+   assert.ok(strip.pixels.some((v,i)=>i%4!==3&&v!==0),'signed strip retains stamp artwork');
    const logoFile=readFileSync(join(dir,'unpacked/logo.png'));
    assert.equal(logoFile.readUInt32BE(16),nativeName?64:160,'logo width must leave room for native text');
    assert.equal(logoFile.readUInt32BE(20),nativeName?48:50);
