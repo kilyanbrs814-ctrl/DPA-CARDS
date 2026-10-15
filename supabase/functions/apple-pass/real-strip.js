@@ -41,11 +41,37 @@ function circle(pixels, width, height, cx, cy, r, color) {
       if ((x + .5 - cx) ** 2 + (y + .5 - cy) ** 2 <= r2)
         pixel(pixels, width, x, y, color);
 }
+// Small text overlay is prepared once by the browser and signed into each pass.
+// No font rendering or heavy image resizing is performed in the Edge Function.
+// An absent overlay is a strict no-op: existing PNGs remain byte-for-byte identical.
+function overlayReward(pixels,width,height,scale,art,short=false){
+  if(!art?.pixels || art.width<1 || art.height<1)return;
+  const destW=315*scale,destH=26*scale;
+  const x0=30*scale,y0=(short?91:112)*scale;
+  if(x0+destW>width||y0+destH>height)return;
+  for(let y=0;y<destH;y++)for(let x=0;x<destW;x++){
+    // 2x label downsampling uses a 2x2 box average (not nearest neighbour).
+    const sx0=Math.floor(x*art.width/destW),sy0=Math.floor(y*art.height/destH);
+    const sx1=Math.min(art.width-1,Math.floor((x+.75)*art.width/destW));
+    const sy1=Math.min(art.height-1,Math.floor((y+.75)*art.height/destH));
+    let a=0,r=0,g=0,b=0;
+    for(const sy of [sy0,sy1])for(const sx of [sx0,sx1]){
+      const i=(sy*art.width+sx)*4,alpha=art.pixels[i+3]/255;
+      a+=alpha;r+=art.pixels[i]*alpha;g+=art.pixels[i+1]*alpha;b+=art.pixels[i+2]*alpha;
+    }
+    a/=4;if(a<=0)continue;
+    const i=((y+y0)*width+(x+x0))*4,keep=1-a;
+    pixels[i]=Math.round(r/4+pixels[i]*keep);
+    pixels[i+1]=Math.round(g/4+pixels[i+1]*keep);
+    pixels[i+2]=Math.round(b/4+pixels[i+2]*keep);
+    pixels[i+3]=255;
+  }
+}
 // Minimal emoji banner used by BOTH signed Apple test and customer passes.
 // The strip is only the rectangular stamp region from the admin designer;
 // logo, number, counters and QR remain native Wallet fields.
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon */
-export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, scale=1, customIcon=null) {
+export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, scale=1, customIcon=null, rewardArt=null) {
   if (![1,2].includes(scale)) throw new Error('invalid_strip_scale');
   const width=375*scale,height=144*scale,pixels=new Uint8Array(width*height*4);
   const primary=rgb(colors?.primary,'#1C1F24');
@@ -72,11 +98,11 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
     // OneCup-style 5 + 5 layout: visibly larger emojis. Compute in 1x
     // logical pixels FIRST so strip@2x scales sprites instead of shrinking them.
     const gap=rows<=2?11:7;
-    const maxSize=rows===1?54:rows===2?50:34;
+    const maxSize=rewardArt ? (rows===1?48:rows===2?44:30) : (rows===1?54:rows===2?50:34);
     const logicalSize=Math.max(12,Math.min(maxSize,Math.floor((315-(per-1)*gap)/per)));
     const size=logicalSize*scale;
-    const rowGap=(rows===3?40:rows===2?58:0)*scale;
-    const cx=width/2,cy=height/2;
+    const rowGap=(rewardArt?(rows===3?31:rows===2?49:0):(rows===3?40:rows===2?58:0))*scale;
+    const cx=width/2,cy=height/2-(rewardArt?12*scale:0);
     for(let i=0;i<n;i++){
       const row=Math.floor(i/per),col=i%per,rowCount=Math.min(per,n-row*per);
       const x=Math.round(cx+(col-(rowCount-1)/2)*(size+gap*scale));
@@ -84,13 +110,14 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
       if(icon)compositeEmoji(pixels,width,height,x,y,size,icon,i<done);
     }
   }
+  overlayReward(pixels,width,height,scale,rewardArt);
   return demoPng(width,height,pixels);
 }
 
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon */
-export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=null) {
+export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=null, rewardArt=null) {
   if (![1, 2].includes(scale)) throw new Error('invalid_strip_scale');
-  if(brand.emoji || brand.stamp || brand.libraryId) return makeEmojiCardStrip(brand.stamps,brand,balance,goal,brand.mode||'passages',scale,customIcon);
+  if(brand.emoji || brand.stamp || brand.libraryId) return makeEmojiCardStrip(brand.stamps,brand,balance,goal,brand.mode||'passages',scale,customIcon,rewardArt);
   const width = 375 * scale, height = 123 * scale;
   const pixels = new Uint8Array(width * height * 4);
   const primary = rgb(brand.primary, '#2448F0');
@@ -115,7 +142,7 @@ export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=
   for (let i = 0; i < maxStamps; i++) {
     const col = i % columns, row = Math.floor(i / columns);
     const x = Math.round(center + (col - (columns - 1) / 2) * dX);
-    const y = Math.round(height / 2 + (row - (rows - 1) / 2) * dY);
+    const y = Math.round(height / 2 - (rewardArt?14*scale:0) + (row - (rows - 1) / 2) * dY);
     if (brand.emoji) {
       // With an emoji choice, never fall back to round stamps. A missing
       // open-source asset leaves a clean strip and native text fields intact.
@@ -125,6 +152,7 @@ export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=
       if (i >= done) circle(pixels, width, height, x, y, 9 * scale, secondary);
     }
   }
+  overlayReward(pixels,width,height,scale,rewardArt,true);
   // PNG RGBA8, unfiltered scanlines, compressed with standard Web CompressionStream.
   const raw = new Uint8Array(height * (1 + width * 4));
   for (let y = 0; y < height; y++) {
@@ -179,14 +207,14 @@ function line(pixels, width, height, x1, y1, x2, y2, thickness, color) {
 }
 // Same two rows of 5 as the test designer where goal is 10.
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon */
-export async function makeDemoStrip(config, scale = 1, customIcon=null) {
+export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardArt=null) {
   if (![1, 2].includes(scale)) throw new Error('invalid_demo_strip_scale');
   if(config?.stamps?.emoji || customIcon) {
     const pv=config.preview||{};
     return makeEmojiCardStrip(config.stamps, {
       primary:config?.apple?.colors?.primary || config?.colors?.primary,
       secondary:config?.apple?.colors?.secondary || config?.colors?.secondary,
-    },pv.progress,pv.goal,pv.mode,scale,customIcon);
+    },pv.progress,pv.goal,pv.mode,scale,customIcon,rewardArt);
   }
   const width = 375 * scale, height = 144 * scale;
   const pixels = new Uint8Array(width * height * 4);
@@ -206,6 +234,7 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null) {
     const frac = Math.min(1, done / goal), x1 = 190 * scale, barW = 165 * scale, yy = 70 * scale;
     for(let y=yy-7*scale;y<yy+7*scale;y++) for(let x=x1;x<x1+barW;x++)
       paint(pixels,width,height,x,y,x-x1 < barW*frac ? filled : empty);
+    overlayReward(pixels,width,height,scale,rewardArt);
     return demoPng(width,height,pixels);
   }
   // Saved emoji choice: draw actual Unicode emoji artwork, rather than circles.
@@ -217,13 +246,14 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null) {
     const visible = Math.min(goal, 15), rows = visible <= 6 ? 1 : visible <= 14 ? 2 : 3;
     const columns = Math.ceil(visible/rows);
     const gapX = columns>1?Math.min(32,160/(columns-1)):0;
-    const gapY = rows===1?0:rows===2?47:35;
+    const gapY = rows===1?0:rows===2?(rewardArt?39:47):(rewardArt?30:35);
     for(let i=0;i<visible;i++){
       const row=Math.floor(i/columns),col=i%columns,nCols=Math.min(columns,visible-row*columns);
       const x=Math.round((281+(col-(nCols-1)/2)*gapX)*scale);
-      const y=Math.round((73+(row-(rows-1)/2)*gapY)*scale);
+      const y=Math.round(((rewardArt?61:73)+(row-(rows-1)/2)*gapY)*scale);
       if(emojiImage)compositeEmoji(pixels,width,height,x,y,25*scale,emojiImage,i<done);
     }
+    overlayReward(pixels,width,height,scale,rewardArt);
     return demoPng(width,height,pixels);
   }
   // Keep primary-field text readable on the left (Apple places it over strip).
@@ -232,8 +262,8 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null) {
   const columns = Math.ceil(visible / rows);
   const size = Math.min(13, 73 / Math.max(1, columns));
   const gapX = columns > 1 ? Math.min(32, 160 / (columns - 1)) : 0;
-  const gapY = rows === 1 ? 0 : rows === 2 ? 47 : 35;
-  const centerX = 281, centerY = 73;
+  const gapY = rows === 1 ? 0 : rows === 2 ? (rewardArt?39:47) : (rewardArt?30:35);
+  const centerX = 281, centerY = rewardArt?61:73;
   for (let i = 0; i < visible; i++) {
     const row = Math.floor(i / columns), col = i % columns;
     const nCols = Math.min(columns, visible - row * columns);
@@ -251,7 +281,8 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null) {
       circle(pixels,width,height,cx,cy,rr-2.4*scale,primary);
     }
   }
-  return demoPng(width,height,pixels);
+  overlayReward(pixels,width,height,scale,rewardArt);
+    return demoPng(width,height,pixels);
 }
 // Bitmap font for a discreet identity fallback in Apple Wallet. The sample
 // test card has no uploaded logo and is expected to show a yellow CT tile.
