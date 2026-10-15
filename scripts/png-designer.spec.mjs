@@ -31,3 +31,37 @@ test('upload PNG, preview both states, persist, replace, remove and reject inval
  await expect(preview.getByRole('img',{name:'Logo',exact:true})).toHaveCount(0);
  await expect(preview.locator('[data-stamp="filled-png"]')).toHaveCount(0);
 });
+
+test('Apple larger name and logo share one vertically centered bitmap without adding header height',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const bitmap=await page.evaluate(async()=>{
+   const {createAppleWordmark}=await import('/src/apple-wordmark.js');
+   const logo=document.createElement('canvas');logo.width=90;logo.height=90;
+   const gc=logo.getContext('2d');gc.fillStyle='#FF6A33';gc.fillRect(10,10,70,70);
+   const d={identity:{name:'Barber Factory'},colors:{primary:'#10436B',text:'#FFFFFF'},apple:{showBusinessName:true,colors:{}},
+     assets:{logo:{url:logo.toDataURL('image/png')}}};
+   const blob=await createAppleWordmark(d);
+   const img=await createImageBitmap(blob);
+   const canvas=document.createElement('canvas');canvas.width=img.width;canvas.height=img.height;
+   const c=canvas.getContext('2d');c.drawImage(img,0,0);
+   const data=c.getImageData(0,0,img.width,img.height).data;
+   let minY=img.height,maxY=-1;
+   for(let y=0;y<img.height;y++)for(let x=0;x<img.width;x++)
+     if(data[(y*img.width+x)*4+3]>30){minY=Math.min(minY,y);maxY=Math.max(maxY,y);}
+   return {width:img.width,height:img.height,centering:(minY+maxY)/2,opaque:Math.max(0,maxY-minY)};
+ });
+ expect(bitmap.width).toBe(480);
+ expect(bitmap.height).toBe(150);
+ expect(bitmap.opaque).toBeGreaterThan(45);
+ expect(Math.abs(bitmap.centering-75)).toBeLessThan(9);
+ const preview=page.locator('[data-layout="apple"]').first();
+ const beforeCard=await preview.boundingBox();
+ const beforeStamp=await preview.locator('[data-progress="stamps"]').first().boundingBox();
+ const beforeOffset=beforeStamp.y-beforeCard.y;
+ await page.getByRole('button',{name:/Afficher le nom du commerce/}).click();
+ const afterCard=await preview.boundingBox();
+ const stamp=await preview.locator('[data-progress="stamps"]').first().boundingBox();
+ const afterOffset=stamp.y-afterCard.y;
+ expect(Math.abs(beforeOffset-afterOffset)).toBeLessThan(1);
+ expect(afterOffset).toBeGreaterThan(70);
+});

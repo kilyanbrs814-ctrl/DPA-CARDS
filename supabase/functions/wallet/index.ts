@@ -1160,7 +1160,7 @@ const savedEmoji = (value: unknown) => {
   return [...emoji].length <= 16 && /\p{Extended_Pictographic}/u.test(emoji) ? emoji : '';
 };
 
-const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp'] as const;
+const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'appleHeader'] as const;
 type AssetKind = typeof ASSET_KINDS[number];
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '');
@@ -1289,7 +1289,7 @@ async function adminCardUpload(req: Request): Promise<Response> {
 // Validate actual bytes before persisting logo/stamp references, including drafts
 // and demo cards. Upload URLs authorize only unique, server-selected paths.
 async function validateDesignPng(config: any) {
-  for(const kind of ['logo','stamp']) {
+  for(const kind of ['logo','stamp','appleHeader']) {
     const path=config.assets?.[kind]?.path;
     if(!path || !path.endsWith('.png'))continue; // legacy JPEG assets remain compatible
     const {data,error}=await admin.storage.from('program-assets').download(path);

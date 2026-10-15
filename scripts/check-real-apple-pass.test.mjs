@@ -64,6 +64,17 @@ test('Apple native business name is opt-in and uses saved commerce text', () => 
   p.card_design.apple.showBusinessName=false;
   assert.equal(realApplePassData({program:p,merchant,customer,card,balance:2}).json.logoText,undefined);
 });
+test('precomposed Apple header replaces native small text without changing number',()=>{
+  const p=structuredClone(program);
+  p.card_design.apple.showBusinessName=true;
+  const path=folder+'/designer/appleHeader-'+token+'.png';
+  p.card_design.assets.appleHeader={path};
+  const {brand,json}=realApplePassData({program:p,merchant,customer,card,balance:2});
+  assert.equal(brand.appleHeader,path);
+  assert.equal(json.logoText,undefined);
+  assert.equal(json.organizationName,'Boulangerie des Arts');
+  assert.equal(json.barcode.message,'DPA1:'+token);
+});
 test('branded background is preferred over hero when specifically selected', () => {
   const p=structuredClone(program);
   p.card_design.apple.useBackground=true;

@@ -51,7 +51,7 @@ test('Apple preview keeps the header height constant when enlarging the logo',()
   const end=src.indexOf('// 2. RECTANGLE CENTRAL AVEC LES TAMPONS PNG',start);
   const header=src.slice(start,end);
   assert.ok(start>0 && end>start);
-  assert.ok(header.includes("height: platform==='apple' ? (o.showBusinessName ? 80 : 85) : undefined"),
+  assert.ok(header.includes("height: platform==='apple' ? 80 : undefined"),
     'the logo and native name cannot increase the distance above the stamp rectangle');
   assert.ok(header.includes("padding: platform==='apple' ? '0 17px' : '20px 17px'"),
     'Apple uses fixed-height centered content without extra vertical padding');
