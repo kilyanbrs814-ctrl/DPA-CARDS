@@ -163,6 +163,19 @@ async function stampSignature(id: string) {
   const raw = new Uint8Array(await crypto.subtle.sign('HMAC',await stampKey(),new TextEncoder().encode('dpa-wallet-stamp:'+id)));
   return Array.from(raw.slice(0,12), b=>b.toString(16).padStart(2,'0')).join('');
 }
+// Visible card number matches the administrator's digits-only preview.
+// The QR payload and database identifier remain untouched.
+const walletCardDigits = (value: unknown) =>
+  String(value ?? '').replace(/\D/g, '') || String(value ?? '');
+const walletCounter = (done: number, goal: number, mode: string) => {
+  const current=Math.max(0,Math.floor(Number(done)||0));
+  const left=Math.max(0,Math.floor(Number(goal)||0)-current);
+  const isPoints=mode==='points';
+  return {
+    loyaltyPoints:{label:isPoints?'Points gagnés':'Passages effectués',balance:{int:current}},
+    secondaryLoyaltyPoints:{label:isPoints?'Points restants':'Passages restants',balance:{int:left}}
+  };
+};
 const hasStampEmoji = (program: any) =>
   typeof program?.card_design?.stamps?.emoji === 'string' &&
   /\p{Extended_Pictographic}/u.test(program.card_design.stamps.emoji);
@@ -274,20 +287,21 @@ async function ensureObject(card: any, classId: string): Promise<string> {
       id: objectId,
       classId,
       state: 'ACTIVE',
-      accountId: card.card_number,
-      accountName: [card.customers.first_name, card.customers.last_name].filter(Boolean).join(' '),
-      loyaltyPoints: { label: unitLabel(program.mode), balance: { int: now.balance } },
+      accountId: hasStampEmoji(program) ? walletCardDigits(card.card_number) : card.card_number,
+      ...(hasStampEmoji(program) ? {} : {
+        accountName:[card.customers.first_name,card.customers.last_name].filter(Boolean).join(' '),
+      }),
+      ...(hasStampEmoji(program) ? walletCounter(now.balance,program.goal,program.mode)
+        : {loyaltyPoints:{label:unitLabel(program.mode),balance:{int:now.balance}}}),
       // Identifies the card at the counter. It authorises nothing on its own.
       barcode: { type: 'QR_CODE', value: `DPA1:${card.qr_token}`, alternateText: card.card_number },
       ...(hasStampEmoji(program) ? {
         heroImage: { sourceUri: { uri: await stampBoardUrl(card.id,now.seq) } },
       } : {}),
-      textModulesData: [
-        { id: 'reward', header: 'Récompense', body: `${program.goal} ${program.mode === 'points' ? 'points' : 'passages'} = ${program.reward}` },
-        ...(hasStampEmoji(program) ? [{
-          id:'stamps',header:'Tampons',body:googleEmojiText(program.card_design.stamps.emoji,now.balance,program.goal)
-        }] : []),
-      ],
+      ...(hasStampEmoji(program) ? { textModulesData: [] } : {
+        textModulesData:[{id:'reward',header:'Récompense',
+          body:`${program.goal} ${program.mode === 'points'?'points':'passages'} = ${program.reward}`}]
+      }),
     });
     if (ins.status !== 200 && ins.status !== 409) throw gErr('object_insert', ins);
   } else if (got.status !== 200) {
@@ -314,10 +328,8 @@ async function runSync(limit = 20): Promise<{ synced: number; failed: number }> 
         const prog=(row as any)?.programs;
         if(row && hasStampEmoji(prog)){
           update.heroImage={sourceUri:{uri:await stampBoardUrl(r.card_id,r.seq)}};
-          update.textModulesData=[
-            {id:'reward',header:'Récompense',body:`${prog.goal} ${prog.mode==='points'?'points':'passages'} = ${prog.reward}`},
-            {id:'stamps',header:'Tampons',body:googleEmojiText(prog.card_design.stamps.emoji,r.balance,prog.goal)},
-          ];
+          Object.assign(update,walletCounter(r.balance,prog.goal,prog.mode));
+          update.textModulesData=[];
         }
       } catch { console.error('wallet stamp sync auxiliary error'); }
       const res = await google('PATCH', `/loyaltyObject/${encodeURIComponent(r.google_object_id)}`, update);
@@ -1515,7 +1527,7 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   const issuer = String(d.identity?.name || 'Carte test DPA Cards').slice(0, 40);
   const classId = `${ISSUER_ID}.dpa-test-class-${t.id}`, objectId = `${ISSUER_ID}.dpa-test-${t.id}`;
   const branding = {
-    issuerName: issuer, programName: 'Carte de démonstration',
+    issuerName: issuer, programName: d.stamps?.emoji ? issuer : 'Carte de démonstration',
     programLogo: { sourceUri: { uri: logo ? assetUrl(logo) : LOGO_URL }, contentDescription: text(issuer) },
     ...(hero && d.google?.showHero !== false ? { heroImage: { sourceUri: { uri: assetUrl(hero) }, contentDescription: text(issuer) } } : {}),
     hexBackgroundColor: HEX_RE.test(colors.primary ?? '') ? colors.primary : '#1C1F24',
@@ -1528,16 +1540,18 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   else throw gErr('test_class_get', cg);
   const mode = pv.mode === 'points' ? 'points' : 'passages', view = testView(t);
   const object = {
-    id: objectId, classId, state: 'ACTIVE', accountId: view.card_number, accountName: String(pv.client || 'Client test').slice(0, 60),
+    id: objectId, classId, state: 'ACTIVE',
+    accountId: d.stamps?.emoji ? walletCardDigits(view.card_number) : view.card_number,
+    ...(d.stamps?.emoji ? {} : {accountName:String(pv.client || 'Client test').slice(0,60)}),
     ...(typeof d.stamps?.emoji==='string' && d.stamps.emoji ? {
       heroImage:{sourceUri:{uri:await stampBoardUrl(t.id,Date.now(),true)}},
     } : {}),
-    loyaltyPoints: { label: unitLabel(mode), balance: { int: Math.max(0, Math.round(Number(pv.progress) || 0)) } },
+    ...(d.stamps?.emoji ? walletCounter(pv.progress||0,pv.goal||10,mode)
+      : {loyaltyPoints:{label:unitLabel(mode),balance:{int:Math.max(0,Math.round(Number(pv.progress)||0))}}}),
     barcode: { type: 'QR_CODE', value: view.qr_value, alternateText: 'CARTE TEST' },
-    textModulesData: [
+    textModulesData: d.stamps?.emoji ? [] : [
       { id: 'reward', header: 'Récompense', body: `${pv.goal ?? 10} ${mode} = ${pv.reward || 'Récompense'}` },
       { id: 'demo', header: 'Carte de démonstration', body: 'Carte de test DPA Cards : elle n’appartient à aucun commerce et n’a aucune valeur.' },
-      ...(d.stamps?.emoji?[{id:'stamps',header:'Tampons',body:googleEmojiText(d.stamps.emoji,pv.progress||0,pv.goal||10)}]:[]),
     ],
   };
   const og = await google('GET', `/loyaltyObject/${encodeURIComponent(objectId)}`);
