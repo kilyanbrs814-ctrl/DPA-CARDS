@@ -107,6 +107,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
         ...(brand.subtitle?[{key:'subtitle',label:'LE COMMERCE',value:brand.subtitle}]:[]),
         {key:'rule',label:'CONDITIONS',value:modePoints?goal+' points pour '+txt(program.reward,90):goal+' passages pour '+txt(program.reward,90)},
         {key:'info',label:'DPA Cards',value:'Présentez votre QR code en caisse. Le solde correspond à la dernière génération du pass ; les mises à jour automatiques ne sont pas encore activées.'},
+        {key:'emoji_credits',label:'ILLUSTRATIONS',value:'Noto Emoji (Google, Apache 2.0) ; Twemoji (Twitter, CC BY 4.0) — github.com/jdecked/twemoji'},
       ],
     } : {
       headerFields: [{ key: 'program', label: 'PROGRAMME', value: txt(program.name, 22) || 'Fidélité' }],
