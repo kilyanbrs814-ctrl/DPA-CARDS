@@ -52,6 +52,17 @@ test('Apple overrides do not alter Google settings and can hide hero/subtitle', 
   assert.equal(a.subtitle,'');
   assert.equal(a.primary,'#20242A');
 });
+test('Apple stamp panel can be hidden without changing native counters, card number or QR',()=>{
+  const visible=realApplePassData({program,merchant,customer,card,balance:3});
+  assert.equal(visible.brand.showStampPanel,true,'saved older designs show stamps by default');
+  const hidden=structuredClone(program);
+  hidden.card_design.apple.showStampPanel=false;
+  const result=realApplePassData({program:hidden,merchant,customer,card,balance:3});
+  assert.equal(result.brand.showStampPanel,false);
+  assert.deepEqual(result.json.storeCard,visible.json.storeCard);
+  assert.deepEqual(result.json.barcode,visible.json.barcode);
+  assert.equal(result.json.serialNumber,visible.json.serialNumber);
+});
 test('Apple native business name is opt-in and uses saved commerce text', () => {
   const p=structuredClone(program);
   assert.equal(realApplePassData({program:p,merchant,customer,card,balance:2}).json.logoText,undefined,'existing cards stay unchanged');
