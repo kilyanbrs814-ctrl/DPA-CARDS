@@ -7,7 +7,8 @@ import { preparePngUpload } from './png-upload.js';
 
 import QRCode from 'qrcode';
 import { makeCropper } from './cropper.js';
-import { DEFAULT_STAMP_EMOJI, normalizeStampEmoji, makeEmojiPicker } from './emoji-stamps.js';
+import { normalizeStampEmoji } from './emoji-stamps.js';
+import { stampImageUrl, makeStampLibraryPicker } from './stamp-library.js';
 
 export const FONTS = {
   hanken: { label: 'Hanken Grotesk', css: "'Hanken Grotesk', system-ui, sans-serif" },
@@ -43,7 +44,7 @@ export function defaultDesign(project) {
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
     assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null },
-    stamps: { shape: 'circle', icon: 'emoji', emoji: DEFAULT_STAMP_EMOJI, style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
+    stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
     apple: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
@@ -82,7 +83,7 @@ export function makeCardDesigner(React, api) {
   const { useState, useEffect, useMemo, useRef } = React;
   const h = React.createElement;
   const Cropper = makeCropper(React);
-  const EmojiPicker = makeEmojiPicker(React);
+  const StampLibraryPicker = makeStampLibraryPicker(React);
   const icon = (name, size, extra) => h('span', { className: 'material-symbols-rounded', 'aria-hidden': true, style: { fontSize: size || 20, lineHeight: 1, ...extra } }, name);
 
   // ------------------------------------------------------------ real QR code (vector, never an image)
@@ -105,6 +106,11 @@ export function makeCardDesigner(React, api) {
 
   // ------------------------------------------------------------ stamps / points
   function Stamp({ on, st, size, stampUrl }) {
+    const libraryUrl = st?.icon === 'library' ? stampImageUrl(st.libraryId) : '';
+    if (libraryUrl) return h('img', {
+      src:libraryUrl, alt:on?'Tampon validé':'Tampon restant', 'data-stamp':on?'filled-library-png':'empty-library-png',
+      style:{width:size,height:size,objectFit:'contain',display:'block',flex:'none',opacity:on?1:.22,filter:on?'none':'grayscale(1)'}
+    });
     if(st?.icon==='custom' && stampUrl) return h('img', {
       src:stampUrl, alt:on?'Tampon validé':'Tampon restant', 'data-stamp':on?'filled-png':'empty-png',
       style:{width:size,height:size,objectFit:'contain',display:'block',flex:'none',opacity:on?1:.22,filter:on?'none':'grayscale(1)'}
@@ -237,7 +243,7 @@ export function makeCardDesigner(React, api) {
         }, (String(data.cardNumber || '').replace(/\D/g, '') || '0000').slice(-4))
       ),
 
-      // 2. RECTANGLE CENTRAL AVEC LES EMOJIS
+      // 2. RECTANGLE CENTRAL AVEC LES TAMPONS PNG
       h('div', {
         style: {
           margin: '0 16px',
@@ -775,14 +781,12 @@ export function makeCardDesigner(React, api) {
         h(Text, { label: 'Prénom et nom', value: pv.client, max: 60, onChange: v => set('preview.client', v) })),
       h(Section, { title: 'Tampons' },
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
-          h(EmojiPicker, { value: design.stamps.emoji || '', onChange: v => { set('stamps.emoji', v); set('stamps.icon', 'emoji'); } }),
-          h(Color, { label: 'Couleur tampon rempli', value: design.stamps.filled, onChange: v => set('stamps.filled', v) }),
-          h(Color, { label: 'Couleur tampon vide', value: design.stamps.empty, onChange: v => set('stamps.empty', v) }),
-          h(Select, { label: 'Tampon vide', value: design.stamps.style, options: [['outline', 'Contour'], ['soft', 'Plein léger']], onChange: v => set('stamps.style', v) })),
+          h('div', { style: {gridColumn:'1 / -1'} }, h(StampLibraryPicker, { value: design.stamps.icon === 'library' ? design.stamps.libraryId : '',
+            onChange: v => { set('stamps.icon', 'library'); set('stamps.libraryId', v); set('stamps.emoji', ''); set('assets.stamp', null); } })),
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, background: '#1C1F24' } },
           h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }), h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }),
           h(Stamp, { on: false, st: design.stamps, size: 34, stampUrl:design.assets.stamp?.url }), h('span', { style: { color: '#FFFFFF', fontSize: 13, opacity: 0.8 } }, 'Rempli · Rempli · Vide')),
-        h(ImagePick, { label: 'Tampon PNG personnalisé', testId: 'stamp', asset: design.assets.stamp, busy: busy === 'up-stamp', onPick: pickFile('stamp'), onRemove: () => { set('assets.stamp', null); if (design.stamps.icon === 'custom') set('stamps.icon', 'check'); }, hint: 'Un seul PNG transparent : passages effectués en couleur, restants grisés à 22 %. 2 Mo maximum.' })),
+        h(ImagePick, { label: 'Ou importer un tampon PNG personnalisé', testId: 'stamp', asset: design.assets.stamp, busy: busy === 'up-stamp', onPick: pickFile('stamp'), onRemove: () => { set('assets.stamp', null); if (design.stamps.icon === 'custom') { set('stamps.icon', 'library'); set('stamps.libraryId', 'cafe'); } }, hint: 'Un seul PNG transparent : passages effectués en couleur, restants grisés à 22 %. 2 Mo maximum.' })),
       h(Section, { title: 'Typographie' },
         h(Select, { label: 'Police de la carte', value: design.font, options: Object.entries(FONTS).map(([k, f]) => [k, f.label]), onChange: v => set('font', v) })),
       h(Section, { title: 'Ajustements ' + pName },
