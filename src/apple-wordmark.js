@@ -100,14 +100,38 @@ export async function createAppleWordmark(design) {
     if(typeof img.close==='function')img.close();
   }
   const area=WIDTH-textLeft-2;
-  const family=await resolveBusinessFont(design);
-  // Wait for web presets as well: measureText must use the same font as the PNG.
-  if(design?.apple?.businessNameFont!=='custom' && document.fonts?.load)
-    await document.fonts.load('700 23px '+family);
-  const {text,size}=singleLine(ctx,name,area,family);
-  ctx.font=`700 ${size}px ${family}`;
-  ctx.fillStyle=foreground(design);ctx.textAlign='left';ctx.textBaseline='middle';
-  ctx.fillText(text,textLeft,HEIGHT/2,area);
+  // The original logo stays separate in the editor. Apple's fixed header
+  // receives one combined 160×50pt bitmap, so no native logoText can wrap.
+  if(design?.assets?.businessNameImage?.url) {
+    const wordmark=await imageFromUrl(design.assets.businessNameImage.url);
+    const source=document.createElement('canvas');
+    source.width=wordmark.width;source.height=wordmark.height;
+    const sc=source.getContext('2d',{willReadFrequently:true});
+    if(!sc)throw new Error('Image du nom impossible à lire.');
+    sc.drawImage(wordmark,0,0);
+    const data=sc.getImageData(0,0,source.width,source.height).data;
+    let x0=source.width,y0=source.height,x1=-1,y1=-1,transparent=false;
+    for(let y=0;y<source.height;y++)for(let x=0;x<source.width;x++){
+      const a=data[(y*source.width+x)*4+3];
+      if(a<255)transparent=true;
+      if(a<8)continue;
+      if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
+    }
+    if(!transparent||x1<x0)throw new Error('Importez un PNG du nom avec fond transparent et lettres visibles.');
+    const w=x1-x0+1,h=y1-y0+1,ratio=Math.min(area/w,44/h);
+    const dw=w*ratio,dh=h*ratio;
+    ctx.drawImage(source,x0,y0,w,h,textLeft,(HEIGHT-dh)/2,dw,dh);
+    if(typeof wordmark.close==='function')wordmark.close();
+  } else {
+    const family=await resolveBusinessFont(design);
+    // Without a custom PNG, render the saved text and chosen font on one line.
+    if(design?.apple?.businessNameFont!=='custom' && document.fonts?.load)
+      await document.fonts.load('700 23px '+family);
+    const {text,size}=singleLine(ctx,name,area,family);
+    ctx.font=`700 ${size}px ${family}`;
+    ctx.fillStyle=foreground(design);ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText(text,textLeft,HEIGHT/2,area);
+  }
   const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
   if(!blob||blob.size>2097152)throw new Error('Logo Apple Wallet trop lourd après préparation.');
   return blob;
