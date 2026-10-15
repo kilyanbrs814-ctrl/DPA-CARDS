@@ -170,7 +170,7 @@ export const STAMP_LIBRARY = [
 const BY_ID = new Map(STAMP_LIBRARY.map(stamp=>[stamp.id,stamp]));
 export function stampById(id) { return typeof id === 'string' ? BY_ID.get(id) || null : null; }
 export function stampImageUrl(id) { return stampById(id) ? '/assets/stamps/'+id+'.png' : ''; }
-function normalizeSearch(value) { return String(value || '').normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLowerCase().trim(); }
+function normalizeSearch(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
 export function filterStamps(query) {
   const q=normalizeSearch(query);
   return q ? STAMP_LIBRARY.filter(x=>normalizeSearch(x.label+' '+x.tags).includes(q)) : STAMP_LIBRARY;
