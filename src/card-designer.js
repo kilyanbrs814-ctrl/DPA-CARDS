@@ -209,9 +209,9 @@ export function makeCardDesigner(React, api) {
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
-          // Exact existing height: 80px with the native business name, 85px otherwise.
+          // Fixed at the prior named-card height: NEVER extend header or move the stamp rectangle.
           // Enlarging the logo must NEVER push the stamp rectangle down.
-          height: platform==='apple' ? (o.showBusinessName ? 80 : 85) : undefined,
+          height: platform==='apple' ? 80 : undefined,
           boxSizing: 'border-box',
           padding: platform==='apple' ? '0 17px' : '20px 17px'
         }
