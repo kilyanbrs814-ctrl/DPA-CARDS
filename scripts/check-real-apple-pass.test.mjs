@@ -90,6 +90,7 @@ test('emoji design uses only card number, two counters and native QR on Apple fr
   assert.equal(json.storeCard.secondaryFields[1].value,'Passages restants 7');
   assert.equal(json.storeCard.auxiliaryFields?.length||0,0);
   assert.equal(json.barcode.message,'DPA1:'+token);
+  assert.equal(json.barcode.altText,'0001');
   assert.equal(json.storeCard.backFields.find(f=>f.key==='full_card').value,card.card_number);
   assert.ok(!JSON.stringify(json.storeCard.secondaryFields).includes('Nicolas'));
   assert.ok(!JSON.stringify(json.storeCard.secondaryFields).includes('dessert'));
