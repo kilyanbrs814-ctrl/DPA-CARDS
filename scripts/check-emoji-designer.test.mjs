@@ -53,5 +53,5 @@ test('native Google Wallet emits real completed/remaining counters without chang
   assert.ok(src.includes('walletCounter(pv.progress||0,pv.goal||10,mode)'));
   assert.ok(src.includes('DPA1:${card.qr_token}'));
   assert.ok(src.includes('accountId: hasStampEmoji(program) ? walletCardDigits(card.card_number)'));
-  assert.ok(src.includes('textModulesData: d.stamps?.emoji ? []'));
+  assert.ok(src.includes('textModulesData: hasSavedStampArt(d) ? []'));
 });
