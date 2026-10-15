@@ -43,3 +43,14 @@ test('wallet designer preview renders only digits in card number and inline coun
   assert.ok(!preview.includes("'data-field': 'reward'"),'remove extra reward field');
   assert.equal('DPA-DEMO-0003'.replace(/\D/g,''),'0003');
 });
+
+test('native Google Wallet emits real completed/remaining counters without changing QR identity',()=>{
+  const src=read('supabase/functions/wallet/index.ts');
+  assert.ok(src.includes('secondaryLoyaltyPoints'));
+  assert.ok(src.includes('walletCounter(now.balance,program.goal,program.mode)'));
+  assert.ok(src.includes('walletCounter(r.balance,prog.goal,prog.mode)'));
+  assert.ok(src.includes('walletCounter(pv.progress||0,pv.goal||10,mode)'));
+  assert.ok(src.includes('DPA1:${card.qr_token}'));
+  assert.ok(src.includes('accountId: hasStampEmoji(program) ? walletCardDigits(card.card_number)'));
+  assert.ok(src.includes('textModulesData: d.stamps?.emoji ? []'));
+});
