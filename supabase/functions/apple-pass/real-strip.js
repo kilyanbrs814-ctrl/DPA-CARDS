@@ -254,3 +254,39 @@ export async function makeDemoLogo(name, accent='#F2C94C', scale=1, kind='logo')
   }
   return demoPng(width,height,pixels);
 }
+
+// Google Wallet LoyaltyObject heroImage: open-license emoji stamps for THIS
+// card's current balance. Text, rewards and QR stay native Google Wallet fields.
+// Requires a 5:4 image (1032x812) and no PII inside the generated PNG.
+export async function makeGoogleStampHero(d, progress, goal, mode='passages') {
+  const width=1032,height=812;
+  const pixels=new Uint8Array(width*height*4);
+  const primary=rgb(d?.google?.colors?.primary||d?.colors?.primary,'#1C1F24');
+  const secondary=rgb(d?.google?.colors?.secondary||d?.colors?.secondary,'#2448F0');
+  const done=Math.max(0,Math.floor(Number(progress)||0)),target=Math.max(1,Math.floor(Number(goal)||10));
+  for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+    const gradient=Math.max(0,Math.min(1,.22+.76*(x/width)));
+    pixel(pixels,width,x,y,secondary.map((v,k)=>Math.round(v*(1-gradient)+primary[k]*gradient)));
+  }
+  const selected=typeof d?.stamps?.emoji==='string' ? d.stamps.emoji : '';
+  const bitmap=selected ? await notoEmoji(selected) : null;
+  if(mode==='points'||target>30) {
+    // A large horizontal progress bar, no fake round stamps for points mode.
+    const left=105,right=width-105, top=height/2-20, frac=Math.min(1,done/target);
+    const ink=rgb(d?.stamps?.filled,'#F2C94C'),empty=rgb(d?.stamps?.empty,'#FFFFFF');
+    for(let y=top;y<top+40;y++)for(let x=left;x<right;x++)
+      pixel(pixels,width,x,y,x-left<(right-left)*frac?ink:empty);
+    return demoPng(width,height,pixels);
+  }
+  const n=Math.max(1,Math.min(20,target)),rows=n<=6?1:n<=14?2:3,cols=Math.ceil(n/rows);
+  for(let i=0;i<n;i++){
+    const row=Math.floor(i/cols),col=i%cols;
+    const rowCount=Math.min(cols,n-row*cols);
+    const spaceX=rows===1?152:cols>5?115:154;
+    const x=Math.round(width/2+(col-(rowCount-1)/2)*spaceX);
+    const spaceY=rows===1?0:rows===2?235:192;
+    const y=Math.round(height/2+(row-(rows-1)/2)*spaceY);
+    if(bitmap)compositeEmoji(pixels,width,height,x,y,130,bitmap,i<done);
+  }
+  return demoPng(width,height,pixels);
+}
