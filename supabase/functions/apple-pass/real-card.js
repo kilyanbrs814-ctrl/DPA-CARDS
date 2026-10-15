@@ -6,7 +6,16 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 // display-only, while the full number stays available on the back for support.
 export const visibleCardNumber = value => {
   const raw=String(value || '').trim();
-  return raw.replace(/\D/g, '') || raw || '—';
+  const digits=raw.replace(/\D/g, '');
+  return digits ? digits.slice(-4) : (raw || '—');
+};
+// iOS gives logoText and the header card number a shared horizontal area.
+// Shorten ONLY the visible header; the full merchant name remains metadata.
+export const appleHeaderName = name => {
+  const full=String(name||'DPA Cards').trim();
+  if(full.length<=10)return full;
+  const words=full.slice(0,11).trim().split(/\s+/);
+  return words.length>1?words.slice(0,-1).join(' '):full.slice(0,10);
 };
 const txt = (value, limit = 60) => typeof value === 'string' ? value.replace(/[\x00-\x1F\x7F]/g, ' ').trim().slice(0, limit) : '';
 export const hex = (value, fallback) => HEX.test(value || '') ? value.toUpperCase() : fallback;
@@ -78,7 +87,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     serialNumber: card.id,
     organizationName: brand.issuer,
     description: 'Carte de fidélité ' + brand.issuer,
-    logoText: brand.issuer,
+    logoText: brand.emoji ? appleHeaderName(brand.issuer) : brand.issuer,
     backgroundColor: toRgb(brand.primary),
     foregroundColor: toRgb(brand.foreground),
     labelColor: toRgb(brand.foreground),
