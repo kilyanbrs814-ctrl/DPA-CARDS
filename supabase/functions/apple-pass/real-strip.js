@@ -49,22 +49,30 @@ function overlayReward(pixels,width,height,scale,art,short=false){
   const destW=315*scale,destH=26*scale;
   const x0=30*scale,y0=(short?91:112)*scale;
   if(x0+destW>width||y0+destH>height)return;
+  const src=art.pixels;
   for(let y=0;y<destH;y++)for(let x=0;x<destW;x++){
-    // 2x label downsampling uses a 2x2 box average (not nearest neighbour).
-    const sx0=Math.floor(x*art.width/destW),sy0=Math.floor(y*art.height/destH);
-    const sx1=Math.min(art.width-1,Math.floor((x+.75)*art.width/destW));
-    const sy1=Math.min(art.height-1,Math.floor((y+.75)*art.height/destH));
-    let a=0,r=0,g=0,b=0;
-    for(const sy of [sy0,sy1])for(const sx of [sx0,sx1]){
-      const i=(sy*art.width+sx)*4,alpha=art.pixels[i+3]/255;
-      a+=alpha;r+=art.pixels[i]*alpha;g+=art.pixels[i+1]*alpha;b+=art.pixels[i+2]*alpha;
+    const dest=((y+y0)*width+(x+x0))*4;
+    if(art.width===destW&&art.height===destH){
+      const p=(y*art.width+x)*4,a=src[p+3]/255;
+      if(a===0)continue;
+      pixels[dest]=Math.round(src[p]*a+pixels[dest]*(1-a));
+      pixels[dest+1]=Math.round(src[p+1]*a+pixels[dest+1]*(1-a));
+      pixels[dest+2]=Math.round(src[p+2]*a+pixels[dest+2]*(1-a));
+      pixels[dest+3]=255;
+      continue;
     }
-    a/=4;if(a<=0)continue;
-    const i=((y+y0)*width+(x+x0))*4,keep=1-a;
-    pixels[i]=Math.round(r/4+pixels[i]*keep);
-    pixels[i+1]=Math.round(g/4+pixels[i+1]*keep);
-    pixels[i+2]=Math.round(b/4+pixels[i+2]*keep);
-    pixels[i+3]=255;
+    const sx=Math.floor(x*art.width/destW),sy=Math.floor(y*art.height/destH);
+    const sx2=Math.min(art.width-1,sx+1),sy2=Math.min(art.height-1,sy+1);
+    const p=(sy*art.width+sx)*4,q=(sy*art.width+sx2)*4;
+    const r=(sy2*art.width+sx)*4,t=(sy2*art.width+sx2)*4;
+    const a0=src[p+3]/255,a1=src[q+3]/255,a2=src[r+3]/255,a3=src[t+3]/255;
+    const a=(a0+a1+a2+a3)/4;
+    if(a===0)continue;
+    const inv=1-a;
+    pixels[dest]=Math.round((src[p]*a0+src[q]*a1+src[r]*a2+src[t]*a3)/4+pixels[dest]*inv);
+    pixels[dest+1]=Math.round((src[p+1]*a0+src[q+1]*a1+src[r+1]*a2+src[t+1]*a3)/4+pixels[dest+1]*inv);
+    pixels[dest+2]=Math.round((src[p+2]*a0+src[q+2]*a1+src[r+2]*a2+src[t+2]*a3)/4+pixels[dest+2]*inv);
+    pixels[dest+3]=255;
   }
 }
 // Minimal emoji banner used by BOTH signed Apple test and customer passes.
