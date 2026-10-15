@@ -89,7 +89,7 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
 /** @param {{width:number,height:number,pixels:Uint8Array}|null} customIcon */
 export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=null) {
   if (![1, 2].includes(scale)) throw new Error('invalid_strip_scale');
-  if(brand.emoji || brand.stamp) return makeEmojiCardStrip(brand.stamps,brand,balance,goal,brand.mode||'passages',scale,customIcon);
+  if(brand.emoji || brand.stamp || brand.libraryId) return makeEmojiCardStrip(brand.stamps,brand,balance,goal,brand.mode||'passages',scale,customIcon);
   const width = 375 * scale, height = 123 * scale;
   const pixels = new Uint8Array(width * height * 4);
   const primary = rgb(brand.primary, '#2448F0');
@@ -341,7 +341,7 @@ export async function makeAppleHeaderLogo(_name, _accent='#F2C94C', _background=
 // Google Wallet LoyaltyObject heroImage: open-license emoji stamps for THIS
 // card's current balance. Text, rewards and QR stay native Google Wallet fields.
 // Requires a 5:4 image (1032x812) and no PII inside the generated PNG.
-export async function makeGoogleStampHero(d, progress, goal, mode='passages') {
+export async function makeGoogleStampHero(d, progress, goal, mode='passages', customIcon=null) {
   const width=1032,height=812;
   const pixels=new Uint8Array(width*height*4);
   const primary=rgb(d?.google?.colors?.primary||d?.colors?.primary,'#1C1F24');
@@ -352,7 +352,7 @@ export async function makeGoogleStampHero(d, progress, goal, mode='passages') {
     pixel(pixels,width,x,y,secondary.map((v,k)=>Math.round(v*(1-gradient)+primary[k]*gradient)));
   }
   const selected=typeof d?.stamps?.emoji==='string' ? d.stamps.emoji : '';
-  const bitmap=selected ? await notoEmoji(selected) : null;
+  const bitmap=customIcon || (selected ? await notoEmoji(selected) : null);
   if(mode==='points'||target>30) {
     // A large horizontal progress bar, no fake round stamps for points mode.
     const left=105,right=width-105, top=height/2-20, frac=Math.min(1,done/target);

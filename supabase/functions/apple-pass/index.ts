@@ -1,4 +1,5 @@
 import { decodePng } from '../_shared/png.js';
+import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 // DPA Cards: creates a signed Apple Wallet pass from one real loyalty card.
 // GET /functions/v1/apple-pass?token=<opaque bearer token>
 // Signing material is never accessible in the browser or repository.
@@ -82,7 +83,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   const balance = Math.max(0, Math.round(Number(pv.progress) || 0));
   const goal = Math.max(1, Math.round(Number(pv.goal) || 10));
   const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA_TEST:' + t.qr_token,
-    messageEncoding: 'iso-8859-1', altText: d.stamps?.emoji ? visibleCardNumber('TEST '+t.id.slice(0,4)+' '+t.qr_token.slice(0,4)) : 'CARTE TEST' };
+    messageEncoding: 'iso-8859-1', altText: (d.stamps?.emoji || d.stamps?.icon==='library') ? visibleCardNumber('TEST '+t.id.slice(0,4)+' '+t.qr_token.slice(0,4)) : 'CARTE TEST' };
   const json = {
     formatVersion: 1, passTypeIdentifier: PASS_TYPE_ID, teamIdentifier: TEAM_ID,
     // Each preview gets a fresh demo serial. Wallet otherwise reuses the old
@@ -92,7 +93,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
     description: 'Démonstration DPA Cards – sans valeur commerciale',
     backgroundColor: rgb(primary), foregroundColor: textColor(primary),
     labelColor: textColor(primary),
-    storeCard: (d.stamps?.emoji || d.stamps?.icon==='custom') ? {
+    storeCard: (d.stamps?.emoji || d.stamps?.icon==='custom' || d.stamps?.icon==='library') ? {
       // Same visible fields as the real saved loyalty pass. The test QR stays
       // DPA_TEST: and the test UUID never becomes a real card identifier.
       headerFields: [{key:'number',label:'',value:visibleCardNumber('TEST '+t.id.slice(0,4)+' '+t.qr_token.slice(0,4))}],
@@ -104,7 +105,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
       backFields: [
         {key:'demo',label:'DÉMONSTRATION',value:'Cette carte ne possède aucune valeur commerciale.'},
         {key:'reward',label:'RÉCOMPENSE SIMULÉE',value:String(pv.reward || 'Récompense test').slice(0,80)},
-        {key:'emoji_credits',label:'ILLUSTRATIONS',value:'Noto Emoji (Google, Apache 2.0) ; Twemoji (Twitter, CC BY 4.0) — github.com/jdecked/twemoji'},
+        ...(d.stamps?.icon==='emoji' ? [{key:'emoji_credits',label:'ILLUSTRATIONS',value:'Noto Emoji (Google, Apache 2.0) ; Twemoji (Twitter, CC BY 4.0) — github.com/jdecked/twemoji'}] : []),
         ...(d.apple?.showSubtitle!==false && d.identity?.subtitle
           ? [{key:'subtitle',label:'LE COMMERCE',value:String(d.identity.subtitle).slice(0,80)}]:[]),
       ],
@@ -142,8 +143,9 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   images['logo.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,uploaded,1));
   images['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,uploaded,2));
   const stampBytes=d.stamps?.icon==='custom' ? await realLogo(testAsset('stamp')) : null;
-  const stamp=stampBytes ? await decodePng(stampBytes) : null;
-  if(d.stamps?.icon==='custom' && testAsset('stamp') && !stamp) throw new SafeError(422,'invalid_stamp');
+  const selectedLibrary=d.stamps?.icon==='library'?libraryStampId(d.stamps.libraryId):'';
+  const stamp=stampBytes ? await decodePng(stampBytes) : selectedLibrary ? await loadLibraryStamp(selectedLibrary) : null;
+  if((d.stamps?.icon==='custom' && testAsset('stamp') || selectedLibrary) && !stamp) throw new SafeError(422,'invalid_stamp');
   // Apple displays its native primary text on top of the strip image. It cannot
   // use the exact HTML layout, but the two-row colored stamps and blue gradient
   // now come from the same saved config as the Apple preview.
@@ -224,8 +226,8 @@ async function createPass(token: string) {
   assets['logo.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,logo,1));
   assets['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,logo,2));
   const stampBytes=brand.stamp ? await realLogo(brand.stamp) : null;
-  const stamp=stampBytes ? await decodePng(stampBytes) : null;
-  if(brand.stamp && !stamp) throw new SafeError(422,'invalid_stamp');
+  const stamp=stampBytes ? await decodePng(stampBytes) : brand.libraryId ? await loadLibraryStamp(brand.libraryId) : null;
+  if((brand.stamp || brand.libraryId) && !stamp) throw new SafeError(422,'invalid_stamp');
   // Strip is optional: a rendering issue should not prevent a customer from
   // receiving a valid pass containing all native fields and QR code.
   try {

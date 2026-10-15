@@ -22,11 +22,12 @@ test('Unicode emoji is safely accepted, and ordinary text rejected',()=>{
 });
 test('admin preview and save backend include emoji settings',()=>{
   const designer=read('src/card-designer.js'), server=read('supabase/functions/wallet/index.ts');
-  assert.ok(designer.includes('makeEmojiPicker(React)'),'search picker registered');
+  assert.ok(designer.includes('makeStampLibraryPicker(React)'),'PNG gallery registered');
+  assert.ok(!designer.includes('makeEmojiPicker(React)'),'old Unicode picker absent from generator');
   assert.ok(/'data-onecup-inspired':\s*true/.test(designer),'layout present');
   assert.ok(designer.includes("stamps.emoji"),'emoji used in card preview');
   assert.ok(designer.includes("opacity:on?1:.22"),'same emoji grayscale when empty');
-  assert.ok(server.includes("emoji: savedEmoji(s.emoji)"),'backend stores emoji');
+  assert.ok(server.includes("libraryId: libraryStampId(s.libraryId)"),'backend persists approved PNG id');
   assert.ok(server.includes("emoji', 'none'"),'emoji variant accepted');
 });
 
@@ -52,5 +53,5 @@ test('native Google Wallet emits real completed/remaining counters without chang
   assert.ok(src.includes('walletCounter(pv.progress||0,pv.goal||10,mode)'));
   assert.ok(src.includes('DPA1:${card.qr_token}'));
   assert.ok(src.includes('accountId: hasStampEmoji(program) ? walletCardDigits(card.card_number)'));
-  assert.ok(src.includes('textModulesData: d.stamps?.emoji ? []'));
+  assert.ok(src.includes('textModulesData: hasSavedStampArt(d) ? []'));
 });
