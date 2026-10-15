@@ -324,11 +324,12 @@ async function runSync(limit = 20): Promise<{ synced: number; failed: number }> 
       // Keep the Google stamp image and native emoji fallback current when points change.
       // A failed auxiliary lookup must not block the existing balance synchronization.
       try {
-        const {data:row}=await admin.from('cards').select('id,programs(mode,goal,reward,card_design)').eq('id',r.card_id).maybeSingle();
+        const {data:row}=await admin.from('cards').select('id,card_number,programs(mode,goal,reward,card_design)').eq('id',r.card_id).maybeSingle();
         const prog=(row as any)?.programs;
         if(row && hasStampEmoji(prog)){
           update.heroImage={sourceUri:{uri:await stampBoardUrl(r.card_id,r.seq)}};
           Object.assign(update,walletCounter(r.balance,prog.goal,prog.mode));
+          update.accountId=walletCardDigits((row as any).card_number);
           update.textModulesData=[];
         }
       } catch { console.error('wallet stamp sync auxiliary error'); }
