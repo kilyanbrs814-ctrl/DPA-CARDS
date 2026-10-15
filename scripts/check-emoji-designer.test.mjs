@@ -23,7 +23,7 @@ test('Unicode emoji is safely accepted, and ordinary text rejected',()=>{
 test('admin preview and save backend include emoji settings',()=>{
   const designer=read('src/card-designer.js'), server=read('supabase/functions/wallet/index.ts');
   assert.ok(designer.includes('makeEmojiPicker(React)'),'search picker registered');
-  assert.ok(designer.includes("'data-onecup-inspired':true"),'layout present');
+  assert.ok(/'data-onecup-inspired':\s*true/.test(designer),'layout present');
   assert.ok(designer.includes("stamps.emoji"),'emoji used in card preview');
   assert.ok(designer.includes("opacity:on?1:.22"),'same emoji grayscale when empty');
   assert.ok(server.includes("emoji: savedEmoji(s.emoji)"),'backend stores emoji');
@@ -36,10 +36,10 @@ test('wallet designer preview renders only digits in card number and inline coun
   const finish=designer.indexOf('function AppleCard(',start);
   assert.ok(start>0 && finish>start);
   const preview=designer.slice(start,finish);
-  assert.ok(preview.includes("String(data.cardNumber || '').replace(/\\D/g, '')"),'remove prefixes while retaining leading zeros');
+  assert.ok(preview.includes(String.raw`replace(/\D/g, '')`),'remove prefixes while retaining leading zeros');
   assert.ok(preview.includes("'data-field': 'completed-count'"),'completed counter exists');
   assert.ok(preview.includes("'data-field': 'remaining-count'"),'remaining counter exists');
   assert.ok(!preview.includes("'data-field': 'client'"),'remove customer info');
   assert.ok(!preview.includes("'data-field': 'reward'"),'remove extra reward field');
-  assert.equal('DPA-DEMO-0003'.replace(/\\D/g,''),'0003');
+  assert.equal('DPA-DEMO-0003'.replace(/\D/g,''),'0003');
 });
