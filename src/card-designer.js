@@ -229,7 +229,7 @@ export function makeCardDesigner(React, api) {
             flexShrink: 0,
             fontVariantNumeric: 'tabular-nums'
           }
-        }, String(data.cardNumber || '0256'))
+        }, (String(data.cardNumber || '').replace(/\D/g, '') || '0000'))
       ),
 
       // 2. RECTANGLE CENTRAL AVEC LES EMOJIS
@@ -254,46 +254,36 @@ export function makeCardDesigner(React, api) {
         })
       ),
 
-      // 3. PASSAGES EFFECTUÉS À GAUCHE / RESTANTS À DROITE
+      // 3. Compteurs sur une seule ligne, côte à côte
       h('div', {
         style: {
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '20px 18px 24px',
-          gap: 12
+          justifyContent: 'space-between',
+          gap: 12,
+          padding: '20px 18px 24px'
         }
       },
-
         h('div', {
-          style: { textAlign: 'left' }
+          style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }
         },
-          h('div', {
-            style: { fontSize: 13, opacity: 0.8 }
+          h('span', {
+            style: { fontSize: 11, opacity: 0.85, whiteSpace: 'nowrap' }
           }, isPoints ? 'Points gagnés' : 'Passages effectués'),
-
-          h('div', {
-            style: {
-              fontSize: 22,
-              fontWeight: 750,
-              marginTop: 5
-            }
+          h('strong', {
+            'data-field': 'completed-count',
+            style: { fontSize: 21, fontWeight: 750, fontVariantNumeric: 'tabular-nums' }
           }, String(done))
         ),
-
         h('div', {
-          style: { textAlign: 'right' }
+          style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }
         },
-          h('div', {
-            style: { fontSize: 13, opacity: 0.8 }
+          h('span', {
+            style: { fontSize: 11, opacity: 0.85, whiteSpace: 'nowrap' }
           }, isPoints ? 'Points restants' : 'Passages restants'),
-
-          h('div', {
-            style: {
-              fontSize: 22,
-              fontWeight: 750,
-              marginTop: 5
-            }
+          h('strong', {
+            'data-field': 'remaining-count',
+            style: { fontSize: 21, fontWeight: 750, fontVariantNumeric: 'tabular-nums' }
           }, String(remaining))
         )
       ),
