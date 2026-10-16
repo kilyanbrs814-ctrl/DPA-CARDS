@@ -103,18 +103,67 @@ export async function decodePanelArt(bytes) {
     throw new Error('invalid_apple_strip');
   return { width: image.width, height: image.height, pixels: image.data };
 }
-// Center-cover with alpha blending. Full-width Apple strips are never clipped to the inset panel.
+// Center-cover, with proper pixel-area averaging when downsizing (1125px
+// source to 375/750px passes) and bilinear interpolation if ever upscaling.
+// The exact-size 3x rendition copies the original pixel colors unchanged.
+// Sample in PREMULTIPLIED alpha to avoid dark fringes at transparent edges.
 function overlayPanel(pixels, width, height, art, left, top, right, bottom, radius=0) {
-  if (!art?.pixels || art.width < 1 || art.height < 1) return;
-  const ratio=Math.max((right-left)/art.width,(bottom-top)/art.height);
-  const cropX=(art.width-(right-left)/ratio)/2,cropY=(art.height-(bottom-top)/ratio)/2;
+  if(!art?.pixels || art.width<1 || art.height<1)return;
+  const drawW=right-left,drawH=bottom-top;
+  if(drawW<=0||drawH<=0)return;
+  const ratio=Math.max(drawW/art.width,drawH/art.height);
+  const step=1/ratio;
+  const cropX=(art.width-drawW*step)/2,cropY=(art.height-drawH*step)/2;
+  const source=art.pixels,srcW=art.width,srcH=art.height;
+  const sameSize=srcW===drawW&&srcH===drawH;
   for(let y=top;y<bottom;y++)for(let x=left;x<right;x++){
-    const cx=clamp(x,left+radius,right-radius),cy=clamp(y,top+radius,bottom-radius);
-    if((x-cx)**2+(y-cy)**2>radius*radius)continue;
-    const sx=clamp(Math.floor(cropX+(x-left+.5)/ratio),0,art.width-1);
-    const sy=clamp(Math.floor(cropY+(y-top+.5)/ratio),0,art.height-1);
-    const src=(sy*art.width+sx)*4,dest=(y*width+x)*4,a=art.pixels[src+3]/255;
-    for(let c=0;c<3;c++)pixels[dest+c]=Math.round(art.pixels[src+c]*a+pixels[dest+c]*(1-a));
+    if(radius){
+      const cx=clamp(x,left+radius,right-radius),cy=clamp(y,top+radius,bottom-radius);
+      if((x-cx)**2+(y-cy)**2>radius*radius)continue;
+    }
+    const dest=(y*width+x)*4;
+    let r=0,g=0,b=0,a=0;
+    if(sameSize){
+      // Do not resample a source already prepared at Apple's 3x dimensions.
+      const i=((y-top)*srcW+x-left)*4;
+      a=source[i+3]/255;
+      r=source[i]*a;g=source[i+1]*a;b=source[i+2]*a;
+    }else if(step<=1){
+      // Bilinear interpolation when a small source needs enlarging.
+      const sx=cropX+(x-left+.5)*step-.5,sy=cropY+(y-top+.5)*step-.5;
+      const x0=Math.floor(sx),y0=Math.floor(sy),fx=sx-x0,fy=sy-y0;
+      for(let iy=0;iy<2;iy++)for(let ix=0;ix<2;ix++){
+        const px=clamp(x0+ix,0,srcW-1),py=clamp(y0+iy,0,srcH-1);
+        const weight=(ix?fx:1-fx)*(iy?fy:1-fy);
+        const i=(py*srcW+px)*4,opacity=source[i+3]/255*weight;
+        a+=opacity;r+=source[i]*opacity;g+=source[i+1]*opacity;b+=source[i+2]*opacity;
+      }
+    }else{
+      // Integrate every contributing pixel's covered area. Sampling the
+      // center pixel alone caused Barber Factory's thin marble veins to alias.
+      const sx0=cropX+(x-left)*step,sx1=sx0+step;
+      const sy0=cropY+(y-top)*step,sy1=sy0+step;
+      for(let sy=Math.floor(sy0);sy<Math.ceil(sy1);sy++){
+        const wy=Math.min(sy+1,sy1)-Math.max(sy,sy0);
+        if(wy<=0)continue;
+        const py=clamp(sy,0,srcH-1);
+        for(let sx=Math.floor(sx0);sx<Math.ceil(sx1);sx++){
+          const wx=Math.min(sx+1,sx1)-Math.max(sx,sx0);
+          if(wx<=0)continue;
+          const px=clamp(sx,0,srcW-1);
+          const i=(py*srcW+px)*4,opacity=source[i+3]/255*wx*wy;
+          a+=opacity;r+=source[i]*opacity;g+=source[i+1]*opacity;b+=source[i+2]*opacity;
+        }
+      }
+      const invArea=1/(step*step);
+      a*=invArea;r*=invArea;g*=invArea;b*=invArea;
+    }
+    if(a<=0)continue;
+    const inv=1-Math.min(1,a);
+    pixels[dest]=Math.round(r+pixels[dest]*inv);
+    pixels[dest+1]=Math.round(g+pixels[dest+1]*inv);
+    pixels[dest+2]=Math.round(b+pixels[dest+2]*inv);
+    pixels[dest+3]=255;
   }
 }
 
@@ -137,7 +186,7 @@ function drawFadedRing(pixels,width,height,cx,cy,outer,inner,ink,alpha) {
  * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt
  * @param {{width:number,height:number,pixels:Uint8Array}|null} panelArt */
 export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, scale=1, customIcon=null, rewardArt=null, finalStar=null, panelArt=null) {
-  if (![1,2].includes(scale)) throw new Error('invalid_strip_scale');
+  if (![1,2,3].includes(scale)) throw new Error('invalid_strip_scale');
   const width=375*scale,height=144*scale,pixels=new Uint8Array(width*height*4);
   const primary=rgb(colors?.primary,'#1C1F24');
   const secondary=rgb(colors?.secondary,'#2448F0');
@@ -169,7 +218,7 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
     const n=Math.min(target,20),rows=n<=6?1:n<=14?2:3,per=Math.ceil(n/rows);
     const icon=customIcon || (stamps?.emoji?await notoEmoji(stamps.emoji):null);
     // OneCup-style 5 + 5 layout: visibly larger emojis. Compute in 1x
-    // logical pixels FIRST so strip@2x scales sprites instead of shrinking them.
+    // logical pixels FIRST so @2x/@3x stamp sizes remain consistent.
     const gap=rows<=2?11:7;
     const maxSize=rewardArt ? (rows===1?48:rows===2?44:30) : (rows===1?54:rows===2?50:34);
     const logicalSize=Math.max(12,Math.min(maxSize,Math.floor((315-(per-1)*gap)/per)));
@@ -195,7 +244,7 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
  * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt
  * @param {{width:number,height:number,pixels:Uint8Array}|null} panelArt */
 export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=null, rewardArt=null, finalStar=null, panelArt=null) {
-  if (![1, 2].includes(scale)) throw new Error('invalid_strip_scale');
+  if (![1, 2, 3].includes(scale)) throw new Error('invalid_strip_scale');
   if(brand.emoji || brand.stamp || brand.libraryId) return makeEmojiCardStrip(brand.stamps,brand,balance,goal,brand.mode||'passages',scale,customIcon,rewardArt,finalStar,panelArt);
   const width = 375 * scale, height = 123 * scale;
   const pixels = new Uint8Array(width * height * 4);
@@ -303,7 +352,7 @@ function line(pixels, width, height, x1, y1, x2, y2, thickness, color) {
  * @param {{width:number,height:number,pixels:Uint8Array}|null} rewardArt
  * @param {{width:number,height:number,pixels:Uint8Array}|null} panelArt */
 export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardArt=null, finalStar=null, panelArt=null) {
-  if (![1, 2].includes(scale)) throw new Error('invalid_demo_strip_scale');
+  if (![1, 2, 3].includes(scale)) throw new Error('invalid_demo_strip_scale');
   if(config?.stamps?.emoji || customIcon) {
     const pv=config.preview||{};
     return makeEmojiCardStrip(config.stamps, {

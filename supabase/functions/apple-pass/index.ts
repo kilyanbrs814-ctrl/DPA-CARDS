@@ -166,6 +166,9 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   try {
     images['strip.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 1, stamp, rewardArt, finalStar, panelArt));
     images['strip@2x.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 2, stamp, rewardArt, finalStar, panelArt));
+    // Retain an exact 1125×432 rendition when a custom full-width image is used.
+    // Skip the extra CPU/storage for old cards without custom strip artwork.
+    if(panelArt)images['strip@3x.png'] = Buffer.from(await makeDemoStrip({...d,preview:{...pv,progress:balance}}, 3, stamp, rewardArt, finalStar, panelArt));
   } catch { console.error('apple-pass demo strip unavailable'); }
   const pass = new PKPass({ ...images, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8') }, {
     wwdr: await wwdrCert(),
@@ -265,6 +268,7 @@ async function createPass(token: string) {
   try {
     assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1, stamp, rewardArt, finalStar, panelArt));
     assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2, stamp, rewardArt, finalStar, panelArt));
+    if(panelArt)assets['strip@3x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 3, stamp, rewardArt, finalStar, panelArt));
   } catch {
     console.error('apple-pass real strip unavailable');
   }

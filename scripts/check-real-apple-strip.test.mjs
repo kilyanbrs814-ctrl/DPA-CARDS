@@ -515,3 +515,45 @@ test('configurable unvalidated opacity keeps 22% original, accepts 0 and 100, le
  const done=p.slice();compositeEmoji(done,5,5,2,2,1,custom,true,100);
  assert.deepEqual(t,done,'earned icons remain fully colored regardless of inactive opacity');
 });
+
+test('Apple full-width artwork downsampling is antialiased, and Retina 3x keeps native source pixels',async()=>{
+  const {decodePng}=await import('../supabase/functions/_shared/png.js');
+  const w=1125,h=432,pixels=new Uint8Array(w*h*4);
+  // Each logical 1x pixel corresponds to a red/green/blue source triplet.
+  // Nearest-neighbor would sample green only; true area averaging yields gray.
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=(y*w+x)*4;
+    pixels[i]=x%3===0?255:0;
+    pixels[i+1]=x%3===1?255:0;
+    pixels[i+2]=x%3===2?255:0;
+    pixels[i+3]=255;
+  }
+  const panel={width:w,height:h,pixels};
+  const design={colors:{primary:'#000000',secondary:'#000000'},stamps:{},apple:{showStamps:false},preview:{progress:0,goal:10,mode:'passages'}};
+  const at=(bitmap,x,y)=>[...bitmap.pixels.slice((y*bitmap.width+x)*4,(y*bitmap.width+x)*4+4)];
+  const one=await decodePng(await makeDemoStrip(design,1,null,null,null,panel));
+  const two=await decodePng(await makeDemoStrip(design,2,null,null,null,panel));
+  const three=await decodePng(await makeDemoStrip(design,3,null,null,null,panel));
+  assert.deepEqual([one.width,one.height],[375,144]);
+  assert.deepEqual([two.width,two.height],[750,288]);
+  assert.deepEqual([three.width,three.height],[1125,432]);
+  assert.deepEqual(at(one,100,20),[85,85,85,255],'3:1 shrink averages fine detail instead of pixelating');
+  assert.deepEqual(at(three,300,60),[255,0,0,255],'3x keeps the exact first source pixel');
+  assert.deepEqual(at(three,301,60),[0,255,0,255]);
+  assert.deepEqual(at(three,302,60),[0,0,255,255]);
+  assert.notDeepEqual(at(two,200,40),at(two,201,40),'2x retains more detail than 1x');
+});
+test('Transparent source edges blend without dark halos during anti-aliased strip downsampling',async()=>{
+ const {decodePng}=await import('../supabase/functions/_shared/png.js');
+ const w=1125,h=432,px=new Uint8Array(w*h*4);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+  const off=(y*w+x)*4;
+  // Fully transparent black and opaque white alternate within each target pixel.
+  px[off]=px[off+1]=px[off+2]=x%3===0?255:0;
+  px[off+3]=x%3===0?255:0;
+ }
+ const d={colors:{primary:'#204060',secondary:'#204060'},apple:{showStamps:false},preview:{progress:0,goal:10,mode:'passages'}};
+ const image=await decodePng(await makeDemoStrip(d,1,null,null,null,{width:w,height:h,pixels:px}));
+ const i=(40*image.width+100)*4,rgba=[...image.pixels.slice(i,i+4)];
+ assert.deepEqual(rgba,[117,138,159,255],'premultiplied-alpha box filter avoids black transparent borders');
+});
