@@ -468,6 +468,7 @@ test('tampon spacing changes geometry on Apple and Google, defaults to byte-iden
 
 test('configurable unvalidated opacity keeps 22% original, accepts 0 and 100, leaves completed color untouched',async()=>{
  const {stampOpacity}=await import('../supabase/functions/apple-pass/real-strip.js');
+ const {decodePng}=await import('../supabase/functions/_shared/png.js');
  assert.equal(stampOpacity(undefined),22);
  assert.equal(stampOpacity('oops'),22);
  assert.equal(stampOpacity(-2),0);
@@ -489,7 +490,7 @@ test('configurable unvalidated opacity keeps 22% original, accepts 0 and 100, le
  assert.notDeepEqual(half,full);
  const x=310,y=43;
  const sample=async bytes=>{const img=await decodePng(bytes);return [...img.pixels.slice((y*img.width+x)*4,(y*img.width+x)*4+3)];};
- assert.deepEqual(await sample(zero),[24,24,24]);
+ assert.deepEqual(await sample(zero),[65,75,101],'0% shows the original blue panel underneath');
  const doneColor=async(bytes)=>{const im=await decodePng(bytes),cx=187,cy=43;return [...im.pixels.slice((cy*im.width+cx)*4,(cy*im.width+cx)*4+3)];};
  assert.deepEqual(await doneColor(zero),await doneColor(full),'validated icons unchanged');
  const real={...source.colors,stamps:{icon:'custom'},mode:'passages'};
