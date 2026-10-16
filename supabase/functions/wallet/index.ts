@@ -238,7 +238,7 @@ async function publicStampBoard(req: Request, path: string) {
   if(typeof artPath==='string' && designerPath(folder).test(artPath) && /\/(googleStrip|appleStrip)-[0-9a-f-]{36}\.(png|jpg)$/i.test(artPath)){
     const {data,error}=await admin.storage.from('program-assets').download(artPath);
     if(error || !data)return new Response('Image unavailable',{status:503});
-    try { panelArt=await decodePanelArt(new Uint8Array(await data.arrayBuffer())); }
+    try { panelArt=await decodePanelArt(new Uint8Array(await data.arrayBuffer()), { maxBytes: 15728640 }); }
     catch { return new Response('Image unavailable',{status:503}); }
   }
   const png=await makeGoogleStampHero(design,progress,goal,mode,icon,finalStar,panelArt);
@@ -1327,7 +1327,7 @@ async function validateDesignPng(config: any) {
   if(googleArt){
     const {data,error}=await admin.storage.from('program-assets').download(googleArt);
     if(error || !data)throw new HttpError(422,'missing_googleStrip');
-    try { await decodePanelArt(new Uint8Array(await data.arrayBuffer())); }
+    try { await decodePanelArt(new Uint8Array(await data.arrayBuffer()), { maxBytes: 15728640 }); }
     catch { throw new HttpError(422,'invalid_googleStrip'); }
   }
   for(const kind of ['logo','stamp','appleHeader','rewardLabel','businessNameImage','appleStrip']) {
