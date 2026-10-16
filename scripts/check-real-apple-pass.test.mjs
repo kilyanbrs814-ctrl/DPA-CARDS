@@ -78,6 +78,7 @@ test('Apple native business name is opt-in and uses saved commerce text', () => 
 test('saved raster logo+name is ignored: real Wallet shows uploaded logo and full native name',()=>{
   const p=structuredClone(program);
   p.card_design.apple.showBusinessName=true;
+  p.card_design.stamps.emoji='🍔'; // stamp-based passes have the native 4-digit header field
   const legacy=folder+'/designer/appleHeader-'+token+'.png';
   p.card_design.assets.appleHeader={path:legacy};
   p.card_design.apple.headerArtworkVersion=3;
