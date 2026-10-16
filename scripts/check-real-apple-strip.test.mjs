@@ -443,3 +443,25 @@ test('tampon size slider changes signed and demonstration Apple PNG, Google PNG;
   assert.deepEqual(await makeDemoStrip({...points,stamps:{...points.stamps,size:50}},1),
     await makeDemoStrip({...points,stamps:{...points.stamps,size:120}},1),'points mode unchanged');
 });
+
+test('tampon spacing changes geometry on Apple and Google, defaults to byte-identical old passes',async()=>{
+  const {stampSpacing}=await import('../supabase/functions/apple-pass/real-strip.js');
+  assert.equal(stampSpacing(undefined),1);
+  assert.equal(stampSpacing(NaN),1);
+  assert.equal(stampSpacing(0),0.5);
+  assert.equal(stampSpacing(999),1.2);
+  const d={colors:{primary:'#181818',secondary:'#414B65'},stamps:{icon:'none',filled:'#FF6600',empty:'#FFFFFF'},preview:{goal:10,progress:3,mode:'passages'}};
+  const compact={...d,stamps:{...d.stamps,spacing:50}};
+  const apart={...d,stamps:{...d.stamps,spacing:120}};
+  assert.deepEqual(await makeDemoStrip(d,1),await makeDemoStrip({...d,stamps:{...d.stamps,spacing:100}},1));
+  assert.notDeepEqual(await makeDemoStrip(compact,1),await makeDemoStrip(apart,1));
+  const brand={...d.colors,stamps:d.stamps,mode:'passages'};
+  assert.deepEqual(await makeRealStrip(brand,3,10,1),await makeRealStrip({...brand,stamps:{...brand.stamps,spacing:100}},3,10,1));
+  assert.notDeepEqual(await makeRealStrip({...brand,stamps:{...brand.stamps,spacing:50}},3,10,1),
+    await makeRealStrip({...brand,stamps:{...brand.stamps,spacing:120}},3,10,1));
+  assert.deepEqual(await makeGoogleStampHero(d,3,10),await makeGoogleStampHero({...d,stamps:{...d.stamps,spacing:100}},3,10));
+  assert.notDeepEqual(await makeGoogleStampHero(compact,3,10),await makeGoogleStampHero(apart,3,10));
+  const points={...d,preview:{goal:100,progress:30,mode:'points'}};
+  assert.deepEqual(await makeDemoStrip({...points,stamps:{...points.stamps,spacing:50}},1),
+    await makeDemoStrip({...points,stamps:{...points.stamps,spacing:120}},1));
+});

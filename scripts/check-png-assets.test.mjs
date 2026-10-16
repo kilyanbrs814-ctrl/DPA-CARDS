@@ -75,3 +75,15 @@ test('tampon scaling defaults to 100%, bounds unsafe values and survives config 
  const saved=prepareDesign(config,{}, {},p=>p);
  assert.equal(saved.stamps.size,75);
 });
+
+test('tampon spacing is optional, safely clamped and saved independently of size',()=>{
+ const project={merchant:{},program:{goal:10,mode:'passages'}};
+ assert.equal(normalize({},project).stamps.spacing,100);
+ assert.equal(normalize({stamps:{spacing:65,size:110}},project).stamps.spacing,65);
+ assert.equal(normalize({stamps:{spacing:-200}},project).stamps.spacing,50);
+ assert.equal(normalize({stamps:{spacing:999}},project).stamps.spacing,120);
+ assert.equal(normalize({stamps:{spacing:'n/a'}},project).stamps.spacing,100);
+ const actual=prepareDesign({stamps:{spacing:75,size:115}}, {}, {}, p=>p);
+ assert.equal(actual.stamps.spacing,75);
+ assert.equal(actual.stamps.size,115);
+});

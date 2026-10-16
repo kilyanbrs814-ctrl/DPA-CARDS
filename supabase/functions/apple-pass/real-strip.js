@@ -15,6 +15,12 @@ export function stampScale(size) {
   const n=Number(size);
   return size==null || size==='' || !Number.isFinite(n) ? 1 : clamp(n,50,120)/100;
 }
+// Scale center-to-center distances (never the bitmap or ring radius).
+// Invalid and legacy configs produce the same strip as before.
+export function stampSpacing(spacing) {
+  const n=Number(spacing);
+  return spacing==null || spacing==='' || !Number.isFinite(n) ? 1 : clamp(n,50,120)/100;
+}
 const u32 = n => new Uint8Array([(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255]);
 const concat = chunks => {
   const size = chunks.reduce((sum, part) => sum + part.length, 0);
@@ -152,12 +158,13 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
     const logicalSize=Math.max(12,Math.min(maxSize,Math.floor((315-(per-1)*gap)/per)));
     const size=logicalSize*scale;
     const visualSize=Math.round(size*stampScale(stamps?.size));
+    const spacing=stampSpacing(stamps?.spacing);
     const rowGap=(rewardArt?(rows===3?31:rows===2?49:0):(rows===3?40:rows===2?58:0))*scale;
     const cx=width/2,cy=height/2-(rewardArt?12*scale:0);
     for(let i=0;i<n;i++){
       const row=Math.floor(i/per),col=i%per,rowCount=Math.min(per,n-row*per);
-      const x=Math.round(cx+(col-(rowCount-1)/2)*(size+gap*scale));
-      const y=Math.round(cy+(row-(rows-1)/2)*rowGap);
+      const x=Math.round(cx+(col-(rowCount-1)/2)*(size+gap*scale)*spacing);
+      const y=Math.round(cy+(row-(rows-1)/2)*rowGap*spacing);
       const stamp=i===n-1&&finalStar?finalStar:icon;
       if(stamp)compositeEmoji(pixels,width,height,x,y,visualSize,stamp,i<done);
     }
@@ -195,7 +202,8 @@ export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=
   const maxStamps = Math.max(1, Math.min(10, Math.floor(Number(goal) || 10)));
   const done = clamp(Math.floor(Math.max(0, Number(balance) || 0) / Math.max(1, Number(goal) || 1) * maxStamps), 0, maxStamps);
   const columns = Math.min(maxStamps, 5), rows = Math.ceil(maxStamps / columns);
-  const dX = 31 * scale, dY = (rows === 1 ? 0 : 43 * scale);
+  const spacing=stampSpacing(brand.stamps?.spacing);
+  const dX = 31 * scale * spacing, dY = (rows === 1 ? 0 : 43 * scale) * spacing;
   const center = 285 * scale;
   const bitmap = brand.emoji ? await notoEmoji(brand.emoji) : null;
   const stampFactor=stampScale(brand.stamps?.size);
@@ -318,11 +326,12 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
     const columns = Math.ceil(visible/rows);
     const gapX = columns>1?Math.min(32,160/(columns-1)):0;
     const stampFactor=stampScale(config?.stamps?.size);
+    const spacing=stampSpacing(config?.stamps?.spacing);
     const gapY = rows===1?0:rows===2?(rewardArt?39:47):(rewardArt?30:35);
     for(let i=0;i<visible;i++){
       const row=Math.floor(i/columns),col=i%columns,nCols=Math.min(columns,visible-row*columns);
-      const x=Math.round((281+(col-(nCols-1)/2)*gapX)*scale);
-      const y=Math.round(((rewardArt?61:73)+(row-(rows-1)/2)*gapY)*scale);
+      const x=Math.round((281+(col-(nCols-1)/2)*gapX*spacing)*scale);
+      const y=Math.round(((rewardArt?61:73)+(row-(rows-1)/2)*gapY*spacing)*scale);
       const stamp=i===visible-1&&finalStar?finalStar:emojiImage;
       if(stamp)compositeEmoji(pixels,width,height,x,y,Math.round(25*scale*stampFactor),stamp,i<done);
     }
@@ -335,14 +344,15 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
   const columns = Math.ceil(visible / rows);
   const size = Math.min(13, 73 / Math.max(1, columns));
   const stampFactor=stampScale(config?.stamps?.size);
+  const spacing=stampSpacing(config?.stamps?.spacing);
   const gapX = columns > 1 ? Math.min(32, 160 / (columns - 1)) : 0;
   const gapY = rows === 1 ? 0 : rows === 2 ? (rewardArt?39:47) : (rewardArt?30:35);
   const centerX = 281, centerY = rewardArt?61:73;
   for (let i = 0; i < visible; i++) {
     const row = Math.floor(i / columns), col = i % columns;
     const nCols = Math.min(columns, visible - row * columns);
-    const cx = Math.round((centerX + (col - (nCols - 1)/2)*gapX)*scale);
-    const cy = Math.round((centerY + (row - (rows - 1)/2)*gapY)*scale);
+    const cx = Math.round((centerX + (col - (nCols - 1)/2)*gapX*spacing)*scale);
+    const cy = Math.round((centerY + (row - (rows - 1)/2)*gapY*spacing)*scale);
     const rr = Math.max(5, size) * scale * stampFactor;
     if (i===visible-1&&finalStar)compositeEmoji(pixels,width,height,cx,cy,Math.round(rr*2),finalStar,i<done);
     else if (i < done) {
@@ -467,13 +477,14 @@ export async function makeGoogleStampHero(d, progress, goal, mode='passages', cu
   }
   const n=Math.max(1,Math.min(20,target)),rows=n<=6?1:n<=14?2:3,cols=Math.ceil(n/rows);
   const stampFactor=stampScale(d?.stamps?.size);
+  const spacing=stampSpacing(d?.stamps?.spacing);
   for(let i=0;i<n;i++){
     const row=Math.floor(i/cols),col=i%cols;
     const rowCount=Math.min(cols,n-row*cols);
     const spaceX=rows===1?152:cols>5?115:154;
-    const x=Math.round(width/2+(col-(rowCount-1)/2)*spaceX);
+    const x=Math.round(width/2+(col-(rowCount-1)/2)*spaceX*spacing);
     const spaceY=rows===1?0:rows===2?235:192;
-    const y=Math.round(height/2+(row-(rows-1)/2)*spaceY);
+    const y=Math.round(height/2+(row-(rows-1)/2)*spaceY*spacing);
     const stamp=i===n-1&&finalStar?finalStar:bitmap;
     if(stamp)compositeEmoji(pixels,width,height,x,y,Math.round(130*stampFactor),stamp,i<done);
     else {
