@@ -93,9 +93,10 @@ function overlayReward(pixels,width,height,scale,art,short=false){
 }
 // Shared bounded decoding for the optional Apple panel. JPEG is loaded lazily;
 // existing PNG-only passes keep their lightweight rendering path.
-export async function decodePanelArt(bytes) {
-  if (bytes.length > 2097152) throw new Error('invalid_apple_strip');
-  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return decodePng(bytes);
+export async function decodePanelArt(bytes, limits = {}) {
+  const maxBytes = limits.maxBytes ?? 2097152;
+  if (bytes.length > maxBytes) throw new Error('invalid_apple_strip');
+  if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return decodePng(bytes, { maxBytes });
   const { default: jpeg } = await import('npm:jpeg-js@0.4.4');
   const image = jpeg.decode(bytes, { useTArray: true, formatAsRGBA: true,
     tolerantDecoding: false, maxResolutionInMP: 4.2, maxMemoryUsageInMB: 64 });
