@@ -33,6 +33,8 @@ jobs:
           done
 
       - uses: actions/checkout@v4
+        with:
+          ref: feat/ios-app-store-preparation
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
