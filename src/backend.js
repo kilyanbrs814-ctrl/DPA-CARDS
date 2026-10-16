@@ -11,10 +11,14 @@ import { makeCropper } from './cropper.js';
 import { makeCardDesigner, prepareDesign } from './card-designer.js';
 import { LEGAL } from './legal-config.js';
 import { scanDevice, canUseCamera, cameraPermission, decodeKeys, parseCode, qrPath, requestCamera, cameraErrorKind, makeCameraView } from './scanner.js';
+import { listenForAdminDeepLinks, forwardAdminAuthToPage } from './native-admin-link.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const REMEMBER = 'dpa.remember';
+// Handle an administrator magic-link clicked in Mail while the native app is
+// on its main screen: navigate to the packaged admin page, not to Safari.
+listenForAdminDeepLinks(forwardAdminAuthToPage);
 
 // Read the auth redirect before supabase-js consumes and clears the hash.
 const hash = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
