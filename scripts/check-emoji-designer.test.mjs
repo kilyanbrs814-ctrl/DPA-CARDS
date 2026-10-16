@@ -71,12 +71,12 @@ test('native Google Wallet emits real completed/remaining counters without chang
   assert.ok(src.includes('textModulesData: hasSavedStampArt(d) ? []'));
 });
 
-test('Apple header always uses native text, never combined PNG or custom font',()=>{
+test('Classic stays native and the optional custom Apple header is reversible',()=>{
   const src=read('src/card-designer.js'),apple=read('supabase/functions/apple-pass/index.ts');
-  assert.ok(!src.includes("createAppleWordmark("),'designer does not build image text');
-  assert.ok(!src.includes("data-upload':'businessNameImage'"),'no image-name upload field');
-  assert.ok(!src.includes("data-upload':'businessFont'"),'no custom font chooser');
-  assert.ok(src.includes("'data-field':'apple-native-business-name'"));
-  assert.ok(apple.includes("logoText: appleHeaderName(name)"),'demo pass writes native logoText');
-  assert.ok(!apple.includes('composedPath'),'never download old composite image');
+  assert.ok(src.includes("createAppleWordmark(next)"),'custom artwork is created in the designer');
+  assert.ok(src.includes("'data-field':'apple-native-business-name'"),'Classic keeps native text');
+  assert.ok(src.includes("['classic','Classique"),'explicit Classic and Custom selector');
+  assert.ok(apple.includes('&& !composedPath ? { logoText: appleHeaderName(name)'), 'native text remains when no custom image is selected');
+  assert.ok(apple.includes("composed||uploaded"),'optional image is independent of native logo');
+  assert.ok(!src.includes("data-upload':'businessNameImage'"),'no redundant name PNG upload');
 });
