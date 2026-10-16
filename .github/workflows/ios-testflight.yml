@@ -61,7 +61,29 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$RUNNER_TEMP/distribution.p12" -k "$KEYCHAIN_PATH" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          # A PKCS#12 created by OpenSSL 3 on Windows may use a SHA-256 MAC
+          # that Apple's Keychain rejects as "wrong password". Verify the secret
+          # with OpenSSL first, then try an Apple-compatible SHA-1/3DES container.
+          OPENSSL_BIN="$(command -v openssl)"
+          if command -v brew >/dev/null 2>&1 && [[ -x "$(brew --prefix openssl@3 2>/dev/null)/bin/openssl" ]]; then
+            OPENSSL_BIN="$(brew --prefix openssl@3)/bin/openssl"
+          fi
+          if ! "$OPENSSL_BIN" pkcs12 -in "$RUNNER_TEMP/distribution.p12" -noout -passin env:CERT_PASSWORD >/dev/null 2>&1; then
+            echo "::error::The iOS P12 and IOS_DISTRIBUTION_P12_PASSWORD do not match, or the P12 is invalid. Recheck both GitHub secrets."
+            exit 1
+          fi
+          if ! security import "$RUNNER_TEMP/distribution.p12" -k "$KEYCHAIN_PATH" -P "$CERT_PASSWORD" -T /usr/bin/codesign; then
+            echo "::warning::Keychain rejected the P12; retrying Apple-compatible PKCS12 container."
+            # Temporary unencrypted PEM exists only on the isolated ephemeral runner.
+            # Never print it or publish it as a build artifact.
+            trap 'rm -f "$RUNNER_TEMP/dpa-compatible.pem" "$RUNNER_TEMP/dpa-compatible.p12"' EXIT
+            "$OPENSSL_BIN" pkcs12 -in "$RUNNER_TEMP/distribution.p12" -passin env:CERT_PASSWORD -nodes -out "$RUNNER_TEMP/dpa-compatible.pem"
+            chmod 600 "$RUNNER_TEMP/dpa-compatible.pem"
+            "$OPENSSL_BIN" pkcs12 -export -in "$RUNNER_TEMP/dpa-compatible.pem" -out "$RUNNER_TEMP/dpa-compatible.p12" -passout env:CERT_PASSWORD -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1
+            security import "$RUNNER_TEMP/dpa-compatible.p12" -k "$KEYCHAIN_PATH" -P "$CERT_PASSWORD" -T /usr/bin/codesign
+            rm -f "$RUNNER_TEMP/dpa-compatible.pem" "$RUNNER_TEMP/dpa-compatible.p12"
+            trap - EXIT
+          fi
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH"
           security default-keychain -s "$KEYCHAIN_PATH"
