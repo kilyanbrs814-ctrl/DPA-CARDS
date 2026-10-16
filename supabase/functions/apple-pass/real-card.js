@@ -10,14 +10,9 @@ export const visibleCardNumber = value => {
   const digits=raw.replace(/\D/g, '');
   return digits ? digits.slice(-4) : (raw || '—');
 };
-// iOS gives logoText and the header card number a shared horizontal area.
-// Shorten ONLY the visible header; the full merchant name remains metadata.
-export const appleHeaderName = name => {
-  const full=String(name||'DPA Cards').trim();
-  if(full.length<=10)return full;
-  const words=full.slice(0,11).trim().split(/\s+/);
-  return words.length>1?words.slice(0,-1).join(' '):full.slice(0,10);
-};
+// Apple controls native logoText size and truncation according to available space.
+// Never truncate the merchant name arbitrarily to ten characters.
+export const appleHeaderName = name => String(name||'DPA Cards').replace(/[\x00-\x1F\x7F]/g,' ').trim().slice(0,40) || 'DPA Cards';
 const txt = (value, limit = 60) => typeof value === 'string' ? value.replace(/[\x00-\x1F\x7F]/g, ' ').trim().slice(0, limit) : '';
 export const hex = (value, fallback) => HEX.test(value || '') ? value.toUpperCase() : fallback;
 export const toRgb = (value) => {
@@ -77,8 +72,8 @@ export function realAppleBrand(program, merchant, card) {
     showStampPanel: apple.showStampPanel !== false,
     showStamps: apple.showStamps !== false,
     appleStrip: assetPath(assets.appleStrip, card, 'appleStrip'),
-    // Ignore legacy pre-single-line header PNGs; they must be rebuilt on next save.
-    appleHeader: apple.showBusinessName === true && [2,3].includes(apple.headerArtworkVersion) ? assetPath(assets.appleHeader,card,'appleHeader') : null,
+    // Old rasterized names never replace native Apple typography, even if saved.
+    appleHeader: null,
     rewardEnabled: apple.showReward === true,
     rewardLabel: apple.showReward === true ? assetPath(assets.rewardLabel,card,'rewardLabel') : null,
     logo: Object.hasOwn(assets,'logo') ? assetPath(assets.logo, card, 'logo') : assetPath(program?.logo_path, card, 'logo'),
@@ -102,10 +97,8 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     teamIdentifier: 'HDK7R3283T',
     serialNumber: card.id,
     organizationName: brand.issuer,
-    // Native PassKit text: iOS draws it in its system typography next to the logo.
-    // Precomposed header permits larger type while keeping the 50pt Apple slot.
-    // Legacy saved designs without it still use Apple's native text until re-saved.
-    ...(brand.showBusinessName && !brand.appleHeader ? { logoText: appleHeaderName(brand.issuer) } : {}),
+    // Native PassKit logoText is rendered by iOS with its own crisp system font.
+    ...(brand.showBusinessName ? { logoText: appleHeaderName(brand.issuer) } : {}),
     description: 'Carte de fidélité ' + brand.issuer,
 
     backgroundColor: toRgb(brand.primary),

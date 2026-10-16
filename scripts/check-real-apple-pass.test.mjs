@@ -69,42 +69,26 @@ test('Apple native business name is opt-in and uses saved commerce text', () => 
   p.card_design.apple.showBusinessName=true;
   const {brand,json}=realApplePassData({program:p,merchant,customer,card,balance:2});
   assert.equal(brand.showBusinessName,true);
-  assert.equal(json.logoText,appleHeaderName('Boulangerie des Arts'),'legacy header must not wrap while awaiting fresh image');
+  assert.equal(json.logoText,'Boulangerie des Arts','merchant name stays complete in native logoText');
   assert.equal(json.organizationName,'Boulangerie des Arts');
   assert.equal(json.storeCard.secondaryFields[0].value,'Nicolas Moreau','counter/customer data must be unchanged');
   p.card_design.apple.showBusinessName=false;
   assert.equal(realApplePassData({program:p,merchant,customer,card,balance:2}).json.logoText,undefined);
 });
-test('precomposed Apple header replaces native small text without changing number',()=>{
+test('saved raster logo+name is ignored: real Wallet shows uploaded logo and full native name',()=>{
   const p=structuredClone(program);
   p.card_design.apple.showBusinessName=true;
-  const path=folder+'/designer/appleHeader-'+token+'.png';
-  p.card_design.assets.appleHeader={path};
-  p.card_design.apple.headerArtworkVersion=2;
-  const {brand,json}=realApplePassData({program:p,merchant,customer,card,balance:2});
-  assert.equal(brand.appleHeader,path);
-  assert.equal(json.logoText,undefined);
-  assert.equal(json.organizationName,'Boulangerie des Arts');
-  assert.equal(json.barcode.message,'DPA1:'+token);
-});
-test('legacy v2 remains valid, v1 is ignored, and v3 header works',()=>{
-  const p=structuredClone(program);
-  p.card_design.apple.showBusinessName=true;
-  const path=folder+'/designer/appleHeader-'+token+'.png';
-  p.card_design.assets.appleHeader={path};
-  const stale=realApplePassData({program:p,merchant,customer,card,balance:3});
-  assert.equal(stale.brand.appleHeader,null,'do not serve an old two-line image');
-  assert.equal(stale.json.logoText,appleHeaderName('Boulangerie des Arts'));
-  p.card_design.apple.headerArtworkVersion=2;
-  const refreshed=realApplePassData({program:p,merchant,customer,card,balance:3});
-  assert.equal(refreshed.brand.appleHeader,path);
-  assert.equal(refreshed.json.logoText,undefined,'rendered 1-line PNG replaces native text');
-  assert.equal(refreshed.json.barcode.message,stale.json.barcode.message);
-  assert.equal(refreshed.json.storeCard.headerFields[0].value,stale.json.storeCard.headerFields[0].value);
+  const legacy=folder+'/designer/appleHeader-'+token+'.png';
+  p.card_design.assets.appleHeader={path:legacy};
   p.card_design.apple.headerArtworkVersion=3;
-  const enlarged=realApplePassData({program:p,merchant,customer,card,balance:3});
-  assert.equal(enlarged.brand.appleHeader,path);
-  assert.equal(enlarged.json.logoText,undefined);
+  const {brand,json}=realApplePassData({program:p,merchant,customer,card,balance:2});
+  assert.equal(brand.appleHeader,null,'never use rasterized lettering');
+  assert.equal(brand.logo,logo,'keep independently uploaded logo');
+  assert.equal(json.logoText,'Boulangerie des Arts');
+  assert.equal(json.storeCard.headerFields[0].value,'0001');
+  assert.equal(json.barcode.message,'DPA1:'+token);
+  p.card_design.apple.showBusinessName=false;
+  assert.equal(realApplePassData({program:p,merchant,customer,card,balance:2}).json.logoText,undefined);
 });
 test('branded background is preferred over hero when specifically selected', () => {
   const p=structuredClone(program);
@@ -173,8 +157,8 @@ test('number printed on real pass works with manual scanner fallback', () => {
 });
 
 test('Apple header leaves room between merchant and last four digits',()=>{
-  assert.equal(appleHeaderName('Commerce test'),'Commerce');
-  assert.equal(appleHeaderName('Barber'),'Barber');
+  assert.equal(appleHeaderName('Commerce test'),'Commerce test');
+  assert.equal(appleHeaderName('Barber Factory'),'Barber Factory');
   assert.equal(visibleCardNumber('TEST 931f x3'),'9313');
   const p=structuredClone(program);p.card_design.stamps.emoji='💧';
   const {json}=realApplePassData({program:p,merchant,customer,card,balance:3});

@@ -1,5 +1,4 @@
-import { preparePngUpload, prepareBusinessNamePng } from './png-upload.js';
-import { createAppleWordmark, resolveBusinessFont, APPLE_WORDMARK_VERSION } from './apple-wordmark.js';
+import { preparePngUpload } from './png-upload.js';
 import { createRewardLabel, rewardLabelColor } from './apple-reward-label.js';
 // Card designer (admin): one design project per program, rendered in two layouts —
 // Apple Wallet (full rectangle, rounded corners only) and Google Wallet (its own layout).
@@ -218,8 +217,7 @@ export function makeCardDesigner(React, api) {
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 12,
-          // Fixed at the prior named-card height: NEVER extend header or move the stamp rectangle.
-          // Enlarging the logo must NEVER push the stamp rectangle down.
+          // Fixed-height native-style header: do not move the stamp rectangle.
           height: platform==='apple' ? 80 : undefined,
           boxSizing: 'border-box',
           padding: platform==='apple' ? '0 17px' : '20px 17px'
@@ -234,13 +232,11 @@ export function makeCardDesigner(React, api) {
             minWidth: 0
           }
         },
-          platform==='apple' && o.showBusinessName && [2,3].includes(o.headerArtworkVersion) && d.assets.appleHeader?.url
-            ? h(Img,{asset:d.assets.appleHeader,alt:'Logo et nom du commerce',style:{width:160,height:50,objectFit:'contain',objectPosition:'left center',flexShrink:0}})
-            : platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?51:145,height:o.showBusinessName?50:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
-          platform==='apple' && o.showBusinessName && (![2,3].includes(o.headerArtworkVersion) || !d.assets.appleHeader?.url) && d.assets.businessNameImage?.url && h(Img,{asset:d.assets.businessNameImage,alt:'Image du nom du commerce',style:{width:109,height:48,maxWidth:'100%',objectFit:'contain',objectPosition:'left center',flexShrink:1}}),
-          platform==='apple' && o.showBusinessName && (![2,3].includes(o.headerArtworkVersion) || !d.assets.appleHeader?.url) && !d.assets.businessNameImage?.url && h('div',{
+          // Native PassKit logoText (iOS controls its font and spacing), NOT a name PNG.
+          platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
+          platform==='apple' && o.showBusinessName && h('div',{
             'data-field':'apple-native-business-name',
-            style:{...ellipsis,minWidth:0,fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:21,fontWeight:700,lineHeight:1.1}
+            style:{...ellipsis,minWidth:0,whiteSpace:'nowrap',fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:20,fontWeight:700,lineHeight:1.1}
           },d.identity.name||'Nom du commerce'),
           platform!=='apple' && h('div', {
             'data-field': 'business',
@@ -423,7 +419,7 @@ export function makeCardDesigner(React, api) {
     return h(Field, { label, hint },
       h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
         asset && asset.url ? h('img', { src: asset.url, alt: '', style: { width: 56, height: 56, objectFit: 'contain', borderRadius: 10, border: '1px solid #E4E1DA', background: 'repeating-conic-gradient(#ECEAE4 0% 25%, #FFFFFF 0% 50%) 0 0/12px 12px' } }) : null,
-        h('input', { ref, type: 'file', accept: ['logo','stamp','businessNameImage'].includes(testId)?'image/png':'image/png,image/jpeg,image/webp', 'data-upload': testId, style: { display: 'none' }, onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPick(f); } }),
+        h('input', { ref, type: 'file', accept: ['logo','stamp'].includes(testId)?'image/png':'image/png,image/jpeg,image/webp', 'data-upload': testId, style: { display: 'none' }, onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPick(f); } }),
         h('button', { type: 'button', disabled: busy, onClick: () => ref.current && ref.current.click(), style: { minHeight: 44, padding: '0 14px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
           icon('upload', 18), busy ? 'Envoi…' : asset ? 'Remplacer' : 'Importer'),
         asset ? h('button', { type: 'button', onClick: onRemove, style: { minHeight: 44, padding: '0 12px', border: 0, background: 'none', color: '#B42318', fontWeight: 600, fontSize: 14 } }, 'Retirer') : null,
@@ -596,23 +592,20 @@ export function makeCardDesigner(React, api) {
       const n = JSON.parse(JSON.stringify(d)); let o = n; const ks = path.split('.');
       ks.slice(0, -1).forEach(k => { o[k] = o[k] || {}; o = o[k]; });
       o[ks[ks.length - 1]] = value;
-      // Never show or save stale baked lettering when the brand or Apple colors change.
-      if(path==='identity.name'||path==='assets.logo'||path==='assets.businessFont'||path==='assets.businessNameImage'||path==='apple.businessNameFont'||path==='apple.showBusinessName'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
-        { n.assets.appleHeader=null; n.apple.headerArtworkVersion=0; }
+      // The Apple name toggle selects native PassKit text, not a baked image.
+      if(path==='apple.showBusinessName') { n.assets.appleHeader=null; n.apple.headerArtworkVersion=0; }
       if(path==='apple.showReward'||path==='apple.rewardText'||path==='apple.rewardTextColor'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
         n.assets.rewardLabel=null;
       return n;
     });
     const forSave=async()=>{
       const next=JSON.parse(JSON.stringify(design));
-      if(next.apple?.showBusinessName===true && (!next.assets?.appleHeader?.path || next.apple?.headerArtworkVersion!==APPLE_WORDMARK_VERSION)) {
-        const artwork=await createAppleWordmark(next);
-        const asset=isTest ? await api.testUpload(project.test.id,'appleHeader',artwork)
-          : await api.upload(project.program.id,'appleHeader',artwork);
-        next.assets.appleHeader=asset;
-        next.apple.headerArtworkVersion=APPLE_WORDMARK_VERSION;
-      }
-      if(next.apple?.showBusinessName!==true){next.assets.appleHeader=null;next.apple.headerArtworkVersion=0;}
+      // The old combined header and name-font assets are no longer used.
+      next.assets.appleHeader=null;
+      next.assets.businessNameImage=null;
+      next.assets.businessFont=null;
+      next.apple.headerArtworkVersion=0;
+      next.apple.businessNameFont='system';
       if(next.apple?.showReward===true&&!next.assets?.rewardLabel?.path){
         const bitmap=await createRewardLabel(next);
         const asset=isTest ? await api.testUpload(project.test.id,'rewardLabel',bitmap)
@@ -624,34 +617,12 @@ export function makeCardDesigner(React, api) {
     };
     const savedMark=next=>JSON.stringify(next)+(isTest?'|'+testName:'');
     const pickFile = kind => async f => {
-      if(kind==='businessFont') {
-        setBusy('up-businessFont');
-        try{
-          const ext=f.name.split('.').pop()?.toLowerCase();
-          const types={ttf:'font/ttf',otf:'font/otf',woff2:'font/woff2'};
-          if(!types[ext])throw new Error('Format de police autorisé : .ttf, .otf ou .woff2.');
-          if(f.size>1048576)throw new Error('Police trop lourde : 1 Mo maximum.');
-          const bytes=await f.arrayBuffer(),sig=new Uint8Array(bytes.slice(0,4));
-          const magic=String.fromCharCode(...sig);
-          if(!(ext==='otf'&&magic==='OTTO'||ext==='woff2'&&magic==='wOF2'||ext==='ttf'&&sig[0]===0&&sig[1]===1&&sig[2]===0&&sig[3]===0))
-            throw new Error('Ce fichier ne contient pas une police valide.');
-          const blob=new Blob([bytes],{type:types[ext]});
-          const a=isTest?await api.testUpload(project.test.id,kind,blob):await api.upload(project.program.id,kind,blob);
-          const next={...design,assets:{...design.assets,businessFont:a},apple:{...design.apple,businessNameFont:'custom'}};
-          await resolveBusinessFont(next);
-          set('assets.businessFont',a);
-          set('apple.businessNameFont','custom');
-          toast('Police importée : utilisée pour le nom sur Apple Wallet.');
-        }catch(e){toast(e.message||errText(e));}finally{setBusy(null);}
-        return;
-      }
-      if(kind==='logo' || kind==='stamp' || kind==='businessNameImage') {
+      if(kind==='logo' || kind==='stamp') {
         setBusy('up-'+kind);
         try {
-          const blob=kind==='businessNameImage' ? await prepareBusinessNamePng(f) : await preparePngUpload(f);
+          const blob=await preparePngUpload(f);
           const a=isTest ? await api.testUpload(project.test.id,kind,blob) : await api.upload(project.program.id,kind,blob);
           set('assets.'+kind,a); if(kind==='stamp')set('stamps.icon','custom');
-          if(kind==='businessNameImage')set('apple.showBusinessName',true);
         } catch(e) {toast(e.message || errText(e));} finally {setBusy(null);}
         return;
       }
@@ -714,7 +685,7 @@ export function makeCardDesigner(React, api) {
     const testApple = async () => {
       if (busy) return; setBusy('apple');
       try {
-        if (dirty || (design.apple?.showBusinessName && (!design.assets?.appleHeader?.path || design.apple?.headerArtworkVersion!==APPLE_WORDMARK_VERSION)) || (design.apple?.showReward && !design.assets?.rewardLabel?.path)) { const next=await forSave(); const saved = await api.testSave(project.test.id, testName, next);
+        if (dirty || (design.apple?.showReward && !design.assets?.rewardLabel?.path)) { const next=await forSave(); const saved = await api.testSave(project.test.id, testName, next);
           setProject(p => ({ ...p, test: saved.test })); setDesign(next); setSaved(savedMark(next)); }
         const result = await api.testApple(project.test.id);
         if (!result.url) throw new Error('apple_wallet_unavailable');
@@ -863,24 +834,9 @@ export function makeCardDesigner(React, api) {
       h(Section, { title: 'Identité' },
         h(Text, { label: 'Nom du commerce', value: design.identity.name, max: 40, onChange: v => set('identity.name', v) }),
         h(Text, { label: 'Activité / sous-titre (facultatif)', value: design.identity.subtitle, max: 40, onChange: v => set('identity.subtitle', v) }),
-        h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), showBusinessName: design.apple.showBusinessName === true, onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true), hint: 'PNG transparent, 2 Mo maximum. Proportions conservées, sans recadrage. Avec l’option nom, DPA Cards crée un bandeau logo + nom plus grand, centré sur les 50 points déjà disponibles. Sans modifier le haut du rectangle des tampons ni Google Wallet.' })),
+        h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), showBusinessName: design.apple.showBusinessName === true, onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true), hint: 'PNG transparent, 2 Mo maximum. Gardez seulement le logo, même si celui-ci contient des lettres. Le bouton ajoute séparément le nom du commerce avec la typographie native Apple Wallet.' })),
       h(Section, { title: 'Nom du commerce sur Apple Wallet' },
-        h('div',{style:{fontSize:13,color:'#5E636B'}},'Le nom reste toujours sur une seule ligne. Le PNG transparent du nom est prioritaire ; sans image, le texte et la police sélectionnée sont utilisés automatiquement.'),
-        h(ImagePick, { label: 'Image du nom du commerce (PNG transparent, facultatif)', testId: 'businessNameImage',
-          asset: design.assets.businessNameImage, busy: busy==='up-businessNameImage',
-          onPick: pickFile('businessNameImage'), onRemove: () => set('assets.businessNameImage', null),
-          hint: 'Importez seulement le nom écrit, sans logo ni fond. DPA Cards le place à côté du logo dans le même bandeau Apple Wallet, sans changer sa hauteur. Si vous retirez cette image, le texte et la police choisie reprennent automatiquement.' }),
-        h(Select,{label:'Police du nom',value:design.apple.businessNameFont||'system',
-          options:[['system','Apple / système'],['hanken','Hanken Grotesk'],['space','Space Grotesk'],['playfair','Playfair Display'],
-            ...(design.assets.businessFont?.path?[['custom','Police importée']]:[])],
-          onChange:v=>set('apple.businessNameFont',v)}),
-        h(Field,{label:'Importer une police personnalisée (.ttf, .otf, .woff2)',
-          hint:design.assets.businessFont?.path?'Police enregistrée pour ce commerce. Importez une autre police pour la remplacer.':'1 Mo maximum. Importez une police dont vous possédez les droits.'},
-          h('input',{type:'file',accept:'.ttf,.otf,.woff2,font/ttf,font/otf,font/woff2',
-            'data-upload':'businessFont',disabled:busy==='up-businessFont',
-            onChange:e=>{const file=e.target.files?.[0];e.target.value='';if(file)pickFile('businessFont')(file);},
-            style:{...inputStyle,padding:'9px 10px',height:'auto'}}))
-      ),
+        h('div',{style:{fontSize:13,color:'#5E636B'}},'Activez « Afficher le nom du commerce » à côté du logo. Apple Wallet affiche le nom défini dans « Identité » avec sa police système, net et séparé du logo. Aucune autre image ni police n’est nécessaire.')),
       h(Section, { title: 'Couleurs' },
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           h(Color, { label: 'Couleur principale (fond)', value: design.colors.primary, onChange: v => set('colors.primary', v) }),

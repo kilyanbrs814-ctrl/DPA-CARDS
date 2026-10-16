@@ -55,7 +55,7 @@ test('Apple preview keeps the header height constant when enlarging the logo',()
     'the logo and native name cannot increase the distance above the stamp rectangle');
   assert.ok(header.includes("padding: platform==='apple' ? '0 17px' : '20px 17px'"),
     'Apple uses fixed-height centered content without extra vertical padding');
-  assert.ok(header.includes("width:o.showBusinessName?51:145,height:o.showBusinessName?50:45"),
+  assert.ok(header.includes("width:o.showBusinessName?64:145,height:o.showBusinessName?48:45"),
     'larger logo remains inside the 50pt Apple native header');
   assert.ok(header.includes("'data-field':'apple-native-business-name'"),
     'the business name remains Apple-native, not burned into the PNG');
@@ -71,15 +71,12 @@ test('native Google Wallet emits real completed/remaining counters without chang
   assert.ok(src.includes('textModulesData: hasSavedStampArt(d) ? []'));
 });
 
-test('previously saved two-line Apple header must be regenerated and the preview stays one line',()=>{
-  const src=read('src/card-designer.js');
-  const wordmark=read('src/apple-wordmark.js');
-  const api=read('supabase/functions/wallet/index.ts');
-  assert.ok(wordmark.includes('export const APPLE_WORDMARK_VERSION=3'));
-  assert.ok(wordmark.includes('function singleLine('));
-  assert.ok(!wordmark.includes('function textLines('),'never break the shop name into two rows');
-  assert.ok(src.includes('next.apple?.headerArtworkVersion!==APPLE_WORDMARK_VERSION'),'existing raster designs rebuilt');
-  assert.ok(src.includes('design.apple?.headerArtworkVersion!==APPLE_WORDMARK_VERSION'),'Apple test install must refresh saved designs automatically');
-  assert.ok(src.includes('[2,3].includes(o.headerArtworkVersion) && d.assets.appleHeader?.url'),'valid v2/v3 image kept visible, v1 hidden in preview');
-  assert.ok(api.includes('headerArtworkVersion: int(r.apple?.headerArtworkVersion,0,3,0)'),'the server keeps the version flag');
+test('Apple header always uses native text, never combined PNG or custom font',()=>{
+  const src=read('src/card-designer.js'),apple=read('supabase/functions/apple-pass/index.ts');
+  assert.ok(!src.includes("createAppleWordmark("),'designer does not build image text');
+  assert.ok(!src.includes("data-upload':'businessNameImage'"),'no image-name upload field');
+  assert.ok(!src.includes("data-upload':'businessFont'"),'no custom font chooser');
+  assert.ok(src.includes("'data-field':'apple-native-business-name'"));
+  assert.ok(apple.includes("logoText: appleHeaderName(name)"),'demo pass writes native logoText');
+  assert.ok(!apple.includes('composedPath'),'never download old composite image');
 });
