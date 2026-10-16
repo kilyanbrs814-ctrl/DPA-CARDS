@@ -216,3 +216,41 @@ test('Apple strip upload exports exactly the portrait or landscape area shown in
   }
 });
 
+
+test('Custom Apple header saves at Retina 3x, then Classic restores native name without deleting the custom image',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const card=page.locator('[data-layout="apple"]').first();
+ await page.locator('[data-upload="logo"]').setInputFiles({name:'barber-logo.png',mimeType:'image/png',buffer:fixture(120,120,[245,162,25,255])});
+ await page.getByRole('button',{name:/Afficher le nom du commerce/}).click();
+ await page.getByLabel('Nom du commerce').fill('Barber Factory');
+ await page.getByLabel('Activité / sous-titre (facultatif)').fill('Coiffeur & Barbier');
+ const stamp=card.locator('[data-progress="stamps"]').first();
+ const before=await card.boundingBox(),beforeStamps=await stamp.boundingBox(),y=beforeStamps.y-before.y;
+ await page.getByLabel('Style de l’en-tête').selectOption('custom');
+ await expect(card.locator('[data-field="apple-custom-business-header"]')).toContainText('Coiffeur & Barbier');
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ const custom=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
+ expect(custom.apple.headerMode).toBe('custom');
+ expect(custom.apple.headerArtworkVersion).toBe(4);
+ expect(custom.assets.appleHeader.path).toContain('appleHeader-');
+ const img=card.getByRole('img',{name:'Logo, nom et activité du commerce'});
+ await expect(img).toBeVisible();
+ const bitmap=await img.evaluate(async el=>{await el.decode();return [el.naturalWidth,el.naturalHeight];});
+ expect(bitmap).toEqual([480,150]);
+ const after=await card.boundingBox(),afterStamps=await stamp.boundingBox();
+ expect(Math.abs(afterStamps.y-after.y-y)).toBeLessThan(1);
+ await page.getByLabel('Style de l’en-tête').selectOption('classic');
+ await expect(card.locator('[data-field="apple-native-business-name"]')).toHaveText('Barber Factory');
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ const classic=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
+ expect(classic.apple.headerMode).toBe('classic');
+ expect(classic.assets.appleHeader.path).toBe(custom.assets.appleHeader.path);
+ await page.reload();
+ await expect(card.locator('[data-field="apple-native-business-name"]')).toHaveText('Barber Factory');
+ await page.getByLabel('Style de l’en-tête').selectOption('custom');
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ const again=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
+ expect(again.apple.headerArtworkVersion).toBe(4);
+ expect(again.assets.appleHeader.path).toBe(custom.assets.appleHeader.path);
+});
