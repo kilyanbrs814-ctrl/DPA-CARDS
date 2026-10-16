@@ -1,145 +1,83 @@
-// Compose the Apple logo + an enlarged, system-style merchant name once in the
-// admin's browser, NOT during pass signing (Supabase Edge CPU is tightly limited).
-// The complete brand is centered vertically in Apple's existing 160x50pt logo slot.
-// No native logoText is emitted for these cards: native text size is not configurable.
-// Rebuild on next save: use more of the existing 160×50pt header slot.
-export const APPLE_WORDMARK_VERSION=3;
+// Optional DPA Cards Apple Wallet header: logo, merchant name and business type.
+// Rendered once in the admin's browser at Retina 3x resolution.
+// Classic mode still uses iOS native logoText and an independent logo PNG.
+export const APPLE_WORDMARK_VERSION=4;
 const WIDTH=160,HEIGHT=50,SCALE=3;
-const hex=v=>/^#[0-9a-f]{6}$/i.test(v||'')?v:'#FFFFFF';
-const luminance=color=>{
-  const n=hex(color).slice(1);
-  const [r,g,b]=[0,2,4].map(i=>parseInt(n.slice(i,i+2),16)/255).map(v=>v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);
-  return 0.2126*r+0.7152*g+0.0722*b;
-};
-function foreground(d) {
-  const bg=hex(d.apple?.colors?.primary||d.colors?.primary||'#1C1F24');
-  const preferred=hex(d.apple?.colors?.text||d.colors?.text||'#FFFFFF');
-  const contrast=c=>{const x=luminance(c),y=luminance(bg);return (Math.max(x,y)+0.05)/(Math.min(x,y)+0.05)};
-  if(contrast(preferred)>=4.5)return preferred;
-  return contrast('#FFFFFF')>contrast('#1C1F24')?'#FFFFFF':'#1C1F24';
+const FONT='"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
+const validHex=value=>/^#[0-9a-f]{6}$/i.test(value||'')?value:'#FFFFFF';
+function luminance(hex) {
+ const c=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);
+ return .2126*c[0]+.7152*c[1]+.0722*c[2];
 }
-// A single line is mandatory. Never split a merchant name across two lines.
-const PRESETS={
-  system:'-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Arial, sans-serif',
-  space:'"Space Grotesk", system-ui, sans-serif',
-  playfair:'"Playfair Display", Georgia, serif',
-  hanken:'"Hanken Grotesk", system-ui, sans-serif',
-};
-const loadedFonts=new Map();
-export async function resolveBusinessFont(design){
-  const choice=String(design?.apple?.businessNameFont||'system');
-  if(choice!=='custom')return PRESETS[choice]||PRESETS.system;
-  const url=design?.assets?.businessFont?.url;
-  if(!url)throw new Error('Importez une police pour le nom du commerce.');
-  if(!loadedFonts.has(url))loadedFonts.set(url,(async()=>{
-    const r=await fetch(url,{credentials:'omit',mode:'cors'});
-    if(!r.ok)throw new Error('Police inaccessible : veuillez la réimporter.');
-    const bytes=await r.arrayBuffer();
-    if(bytes.byteLength>1048576)throw new Error('Police trop lourde (1 Mo maximum).');
-    const family='DpaMerchant'+loadedFonts.size;
-    const face=new FontFace(family,bytes,{style:'normal',weight:'400 900'});
-    await face.load();
-    document.fonts.add(face);
-    return '"'+family+'"';
-  })().catch(e=>{loadedFonts.delete(url);throw e}));
-  return loadedFonts.get(url);
+function foreground(design) {
+ const bg=validHex(design.apple?.colors?.primary||design.colors?.primary||'#1C1F24');
+ const prefer=validHex(design.apple?.colors?.text||design.colors?.text||'#FFFFFF');
+ const contrast=c=>{const a=luminance(c),b=luminance(bg);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);};
+ return contrast(prefer)>=4.5?prefer:(contrast('#FFFFFF')>contrast('#1C1F24')?'#FFFFFF':'#1C1F24');
 }
-function singleLine(ctx,name,available,family){
-  const apply=size=>{ctx.font=`700 ${size}px ${family}`;};
-  for(let size=29;size>=21;size--){apply(size);if(ctx.measureText(name).width<=available)return {text:name,size};}
-  // Keep letters legible rather than falling back to 11pt.
-  // Canvas fillText(maxWidth) condenses the name horizontally when needed.
-  apply(21);
-  let shortened=name;
-  while(shortened.length>1&&ctx.measureText(shortened+'…').width>available*1.35)
-    shortened=shortened.slice(0,-1).trimEnd();
-  return {text:shortened===name?name:shortened+'…',size:21};
+const clean=(value,max)=>String(value||'').replace(/[\u0000-\u001f\u007f]/g,' ').trim().slice(0,max);
+async function loadLogo(url) {
+ if(!url)return null;
+ const response=await fetch(url,{credentials:'omit',mode:'cors'});
+ if(!response.ok)throw new Error('Logo inaccessible : veuillez le réimporter.');
+ const blob=await response.blob();
+ if(blob.size>2097152)throw new Error('Logo trop lourd : 2 Mo maximum.');
+ if(typeof createImageBitmap==='function')return createImageBitmap(blob);
+ const object=URL.createObjectURL(blob);
+ try {
+  const img=new Image();
+  await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=object;});
+  return img;
+ } finally {URL.revokeObjectURL(object);}
 }
-
-async function imageFromUrl(url){
-  if(!url)return null;
-  const response=await fetch(url,{mode:'cors',credentials:'omit'});
-  if(!response.ok)throw new Error('Logo inaccessible : veuillez le réimporter.');
-  const blob=await response.blob();
-  if(blob.size>2097152)throw new Error('Logo trop lourd : 2 Mo maximum.');
-  if(typeof createImageBitmap==='function')return createImageBitmap(blob);
-  const object=URL.createObjectURL(blob);
-  try{
-    const img=new Image();
-    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=object;});
-    return img;
-  }finally{URL.revokeObjectURL(object);}
+function sizeThatFits(ctx,value,available,max,min,weight) {
+ for(let size=max;size>=min;size--) {
+  ctx.font=weight+' '+size+'px '+FONT;
+  if(ctx.measureText(value).width<=available)return size;
+ }
+ return min;
 }
 export async function createAppleWordmark(design) {
-  const name=String(design?.identity?.name||'DPA Cards').replace(/[\u0000-\u001F\u007F]/g,' ').trim().slice(0,40)||'DPA Cards';
-  const canvas=document.createElement('canvas');
-  canvas.width=WIDTH*SCALE;canvas.height=HEIGHT*SCALE;
-  const ctx=canvas.getContext('2d',{willReadFrequently:true});
-  if(!ctx)throw new Error('Impossible de préparer le logo Apple Wallet.');
-  ctx.scale(SCALE,SCALE);
-  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-  const img=await imageFromUrl(design?.assets?.logo?.url||'');
-  let textLeft=1;
-  if(img){
-    // Respect transparent edges and preserve the logo's original aspect ratio.
-    const iw=img.width,ih=img.height;
-    const source=document.createElement('canvas');
-    source.width=iw;source.height=ih;
-    const sc=source.getContext('2d',{willReadFrequently:true});
-    sc.drawImage(img,0,0);
-    const data=sc.getImageData(0,0,iw,ih).data;
-    let x0=iw,y0=ih,x1=-1,y1=-1;
-    for(let y=0;y<ih;y++)for(let x=0;x<iw;x++){
-      if(data[(y*iw+x)*4+3]<8)continue;
-      if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
-    }
-    if(x1>=x0){
-      const sw=x1-x0+1,sh=y1-y0+1;
-      // Fit the visible artwork into the entire native 50pt height.
-      const factor=Math.min(50/sw,50/sh);
-      const dw=sw*factor,dh=sh*factor;
-      ctx.drawImage(source,x0,y0,sw,sh,(50-dw)/2,(HEIGHT-dh)/2,dw,dh);
-      textLeft=51;
-    }
-    if(typeof img.close==='function')img.close();
+ const canvas=document.createElement('canvas');
+ canvas.width=WIDTH*SCALE;canvas.height=HEIGHT*SCALE;
+ const ctx=canvas.getContext('2d',{willReadFrequently:true});
+ if(!ctx)throw new Error('Impossible de préparer l’en-tête Apple Wallet.');
+ ctx.scale(SCALE,SCALE);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+ const img=await loadLogo(design?.assets?.logo?.url||'');
+ let left=2;
+ if(img) {
+  const source=document.createElement('canvas');source.width=img.width;source.height=img.height;
+  const c=source.getContext('2d',{willReadFrequently:true});if(!c)throw new Error('Logo non lisible.');
+  c.drawImage(img,0,0);
+  const pixels=c.getImageData(0,0,img.width,img.height).data;
+  let x0=img.width,y0=img.height,x1=-1,y1=-1;
+  for(let y=0;y<img.height;y++)for(let x=0;x<img.width;x++)if(pixels[(y*img.width+x)*4+3]>=8) {
+   x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);
   }
-  const area=WIDTH-textLeft;
-  // The original logo stays separate in the editor. Apple's fixed header
-  // receives one combined 160×50pt bitmap, so no native logoText can wrap.
-  if(design?.assets?.businessNameImage?.url) {
-    const wordmark=await imageFromUrl(design.assets.businessNameImage.url);
-    const source=document.createElement('canvas');
-    source.width=wordmark.width;source.height=wordmark.height;
-    const sc=source.getContext('2d',{willReadFrequently:true});
-    if(!sc)throw new Error('Image du nom impossible à lire.');
-    sc.drawImage(wordmark,0,0);
-    const data=sc.getImageData(0,0,source.width,source.height).data;
-    let x0=source.width,y0=source.height,x1=-1,y1=-1,transparent=false;
-    for(let y=0;y<source.height;y++)for(let x=0;x<source.width;x++){
-      const a=data[(y*source.width+x)*4+3];
-      if(a<255)transparent=true;
-      if(a<8)continue;
-      if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
-    }
-    if(!transparent||x1<x0)throw new Error('Importez un PNG du nom avec fond transparent et lettres visibles.');
-    const w=x1-x0+1,h=y1-y0+1,fit=Math.min(area/w,48/h);
-    const dw=w*fit;
-    // A wide transparent wordmark otherwise appears only ~35pt tall.
-    // Cap vertical adjustment at 35% to retain recognizable lettering.
-    const dh=Math.min(48,h*fit*1.35);
-    ctx.drawImage(source,x0,y0,w,h,textLeft,(HEIGHT-dh)/2,dw,dh);
-    if(typeof wordmark.close==='function')wordmark.close();
-  } else {
-    const family=await resolveBusinessFont(design);
-    // Without a custom PNG, render the saved text and chosen font on one line.
-    if(design?.apple?.businessNameFont!=='custom' && document.fonts?.load)
-      await document.fonts.load('700 29px '+family);
-    const {text,size}=singleLine(ctx,name,area,family);
-    ctx.font=`700 ${size}px ${family}`;
-    ctx.fillStyle=foreground(design);ctx.textAlign='left';ctx.textBaseline='middle';
-    ctx.fillText(text,textLeft,HEIGHT/2,area);
+  if(x1>=x0) {
+   const sw=x1-x0+1,sh=y1-y0+1;
+   const factor=Math.min(47/sw,47/sh),w=sw*factor,h=sh*factor;
+   ctx.drawImage(source,x0,y0,sw,sh,1+(47-w)/2,(HEIGHT-h)/2,w,h);
+   left=52; // Keep a 4pt gap between the logo and the name.
   }
-  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
-  if(!blob||blob.size>2097152)throw new Error('Logo Apple Wallet trop lourd après préparation.');
-  return blob;
+  if(typeof img.close==='function')img.close();
+ }
+ const width=WIDTH-left-2;
+ const title=clean(design?.identity?.name,40)||'DPA Cards';
+ const subtitle=design?.apple?.showSubtitle===false?'':clean(design?.identity?.subtitle,40);
+ ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillStyle=foreground(design);
+ if(subtitle) {
+  const size=sizeThatFits(ctx,title,width,21,14,750);
+  ctx.font='750 '+size+'px '+FONT;
+  ctx.fillText(title,left,17,width);
+  ctx.font='500 8.7px '+FONT;
+  ctx.fillText(subtitle.toLocaleUpperCase('fr-FR'),left,35,width);
+ } else {
+  const size=sizeThatFits(ctx,title,width,25,15,750);
+  ctx.font='750 '+size+'px '+FONT;
+  ctx.fillText(title,left,HEIGHT/2,width);
+ }
+ const png=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+ if(!png||png.size>2097152)throw new Error('Image Apple Wallet trop lourde après préparation.');
+ return png;
 }
