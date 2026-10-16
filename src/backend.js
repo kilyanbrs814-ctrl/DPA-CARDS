@@ -1,3 +1,6 @@
+import { registrationPage, registrationPayload } from './registration-page.js';
+import { saveQrToPhotos } from './qr-photo.js';
+import { workspaceIdentity } from './workspace-identity.js';
 import { publicSiteUrl } from './public-site.js';
 import { completePasswordSetup } from './password-setup.js';
 // Supabase access for the DPA Cards logic script.
@@ -73,6 +76,8 @@ function isNetwork(e) {
 }
 
 const DB_ERRORS = {
+  workspace_members_unavailable: 'Votre compte est connecté, mais son rattachement au commerce n’a pas pu être chargé.',
+  workspace_merchant_unavailable: 'Les informations de votre commerce n’ont pas pu être chargées.',
   reward_not_available: 'Le solde ne permet pas encore d’utiliser la récompense.',
   already_corrected: 'Cette opération a déjà été corrigée.',
   correction_invalid: 'Cette opération ne peut pas être corrigée.',
@@ -185,6 +190,8 @@ const assetUrl = path => path
 
 function toProgram(p) {
   return {
+    registrationPage: p.registration_page || {},
+    registrationLogoUrl: assetUrl(p.card_design?.assets?.logo?.path || p.logo_path),
     id: p.id, merchantId: p.merchant_id, name: p.name, mode: p.mode, goal: p.goal, reward: p.reward, bg: p.bg, accent: p.accent,
     pattern: p.pattern, logo: p.logo, conditions: p.conditions,
     designStatus: p.design_status || 'validated', designMode: p.design_mode || null,
@@ -240,9 +247,7 @@ async function fetchAll(table, columns, order) {
 }
 
 async function loadAll(user) {
-  const { data: mem, error } = await sb.from('merchant_members')
-    .select('role, merchants(*)').eq('user_id', user.id).maybeSingle();
-  if (error) throw error;
+  const mem = await workspaceIdentity(sb,user);
   if (!mem || !mem.merchants) return { merchant: null };
   const merchant = toMerchant(mem.merchants, user.email);
 
@@ -347,6 +352,11 @@ const api = {
   updateEmail(email) { return sb.auth.updateUser({ email }, { emailRedirectTo: redirectTo() }); },
   signOut() { return sb.auth.signOut({ scope: 'local' }); },
 
+  registrationPage, saveQrToPhotos,
+  async saveRegistrationPage(id, config) {
+    const {data,error}=await sb.from('programs').update({registration_page:registrationPayload(config)}).eq('id',id).select().single();
+    if(error)throw error;return toProgram(data);
+  },
   loadAll,
   access: () => invokeFn('wallet/merchant-access', {}),
   async createMerchant({ business, first, last, activity, slug, program }) {

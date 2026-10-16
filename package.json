@@ -22,6 +22,8 @@
     "vite": "^7.1.5"
   },
   "dependencies": {
+    "@capacitor-community/media": "9.1.0",
+    "@capacitor/core": "8.5.3",
     "@supabase/supabase-js": "^2.117.2",
     "jsqr": "^1.4.0",
     "qrcode": "^1.5.4",

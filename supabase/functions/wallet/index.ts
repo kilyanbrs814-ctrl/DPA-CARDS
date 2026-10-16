@@ -550,7 +550,7 @@ async function publicProgramBySlug(raw: unknown) {
   if (error) throw new Error('db_merchants');
   if (!m) throw new HttpError(404, 'program_not_found');
   const { data: p, error: pe } = await admin.from('programs')
-    .select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, logo_path, hero_path, design_status, card_design')
+    .select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, logo_path, hero_path, design_status, card_design, registration_page')
     .eq('merchant_id', m.id).eq('is_active', true).maybeSingle();
   if (pe) throw new Error('db_programs');
   if (!p) throw new HttpError(404, 'program_not_found');
@@ -1535,7 +1535,7 @@ async function adminMerchantAccess(req: Request): Promise<Response> {
   const email = (await admin.auth.admin.getUserById(m.created_by)).data.user?.email;
   if (!email) throw new HttpError(409, 'owner_missing');
   const origin = req.headers.get('origin') ?? '';
-  const redirectTo = (/^https:\/\//.test(origin) && ALLOWED_ORIGINS.includes(origin) ? origin : PUBLIC_SITE) + '/?setup=1';
+  const redirectTo = PUBLIC_SITE + '/';
   const anon = createClient(SUPABASE_URL, PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
   const { error } = await anon.auth.resetPasswordForEmail(email, { redirectTo });
   const errCode = error ? String((error as any).code || error.message || 'email_failed').slice(0, 300) : null;
