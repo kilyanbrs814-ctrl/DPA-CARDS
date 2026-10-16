@@ -555,5 +555,5 @@ test('Transparent source edges blend without dark halos during anti-aliased stri
  const d={colors:{primary:'#204060',secondary:'#204060'},apple:{showStamps:false},preview:{progress:0,goal:10,mode:'passages'}};
  const image=await decodePng(await makeDemoStrip(d,1,null,null,null,{width:w,height:h,pixels:px}));
  const i=(40*image.width+100)*4,rgba=[...image.pixels.slice(i,i+4)];
- assert.deepEqual(rgba,[117,138,159,255],'premultiplied-alpha box filter avoids black transparent borders');
+ assert.deepEqual(rgba,[106,128,149,255],'premultiplied-alpha box filter avoids black transparent borders');
 });

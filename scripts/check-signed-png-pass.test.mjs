@@ -23,12 +23,12 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
   const rawCert=Buffer.from(cert.replace(/-----[^-]+-----/g,'').replace(/\s/g,''),'base64');
   globalThis.fetch=async()=>new Response(rawCert);
   globalThis.Deno={env:{get:n=>({SUPABASE_URL:'https://test.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'test',APPLE_PASS_CERT_PEM:cert,APPLE_PASS_PRIVATE_KEY_PEM:key}[n])},serve:fn=>{handler=fn;}};
-  let demo=true,reads=[],showName=false,showPanel=true,customMode=false;
-  const config=()=>({identity:{name:'PNG test'},assets:{logo:{path:base()+'/designer/logo-'+id+'.png'},stamp:{path:base()+'/designer/stamp-'+id+'.png'},appleHeader:{path:base()+'/designer/appleHeader-'+id+'.png'}},stamps:{icon:'custom',emoji:'🍔'},colors:{primary:'#000000',secondary:'#2448F0'},apple:{showBusinessName:showName,showStampPanel:showPanel,headerMode:customMode?'custom':'classic',headerArtworkVersion:customMode?4:0},preview:{progress:3,goal:10}});
+  let demo=true,reads=[],showName=false,showPanel=true,customMode=false,withStrip=false;
+  const config=()=>({identity:{name:'PNG test'},assets:{logo:{path:base()+'/designer/logo-'+id+'.png'},stamp:{path:base()+'/designer/stamp-'+id+'.png'},appleHeader:{path:base()+'/designer/appleHeader-'+id+'.png'},...(withStrip?{appleStrip:{path:base()+'/designer/appleStrip-'+id+'.png'}}:{})},stamps:{icon:'custom',emoji:'🍔'},colors:{primary:'#000000',secondary:'#2448F0'},apple:{showBusinessName:showName,showStampPanel:showPanel,headerMode:customMode?'custom':'classic',headerArtworkVersion:customMode?4:0},preview:{progress:3,goal:10}});
   const base=()=>demo?'tests/'+id:mid+'/'+pid;
   globalThis.__pngClient={
    rpc:async()=>({data:true}),
-   storage:{from:()=>({download:async path=>{reads.push(path);assert.ok(path.startsWith(base()+'/'));return {data:new Blob([fixture()])};}})},
+   storage:{from:()=>({download:async path=>{reads.push(path);assert.ok(path.startsWith(base()+'/'));return {data:new Blob([path.includes('/appleStrip-')?fixture(1125,432,[180,125,50,255]):fixture()])};}})},
    from:table=>{
     const rows={apple_wallet_links:demo?null:{card_id:id,expires_at:'2099-01-01'},apple_wallet_test_links:{test_card_id:id},test_card_designs:{id,name:'PNG test',config:config(),test_balance:3,qr_token:id},cards:{id,merchant_id:mid,program_id:pid,customer_id:id,qr_token:pid,card_number:'DPA-9876'},programs:{id:pid,merchant_id:mid,mode:'passages',goal:10,reward:'Reward',design_status:'validated',card_design:config()},merchants:{business_name:'Own shop'},customers:{first_name:'Customer'},card_events:[{seq:2,balance_after:6}]};
     const q={};for(const m of ['select','eq','gt','order','limit','upsert'])q[m]=()=>q;
@@ -87,6 +87,31 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
     }
    }
   }
+  }
+  // Exercise both issuance paths with the actual 1125x432 custom full-width
+  // artwork and check the signed PKPass manifest contains native 1x/2x/3x.
+  withStrip=true;customMode=false;showName=false;showPanel=true;
+  for(const isDemo of [true,false]){
+    demo=isDemo;reads=[];
+    const response=await handler(new Request('https://test/functions/v1/apple-pass?token='+'a'.repeat(32)));
+    assert.equal(response.status,200,'Apple pass signs with high-resolution custom strip');
+    writeFileSync(join(dir,'pass.zip'),Buffer.from(await response.arrayBuffer()));
+    execFileSync('unzip',['-o','-q',join(dir,'pass.zip'),'-d',join(dir,'unpacked')]);
+    const manifest=JSON.parse(readFileSync(join(dir,'unpacked/manifest.json')));
+    const expected=['strip.png','strip@2x.png','strip@3x.png'];
+    for(let scale=1;scale<=3;scale++){
+      const asset=expected[scale-1];
+      assert.ok(manifest[asset],asset+' listed in signed manifest');
+      const bytes=readFileSync(join(dir,'unpacked',asset));
+      assert.deepEqual([bytes.readUInt32BE(16),bytes.readUInt32BE(20)],[375*scale,144*scale]);
+      const bitmap=await decodePng(bytes);
+      assert.equal(bitmap.width,375*scale);
+    }
+    assert.equal(reads.length,3,'logo, stamp and strip loaded from same scoped card');
+    const contents=JSON.parse(readFileSync(join(dir,'unpacked/pass.json'),'utf8'));
+    assert.equal(contents.barcodes[0].message,isDemo?'DPA_TEST:'+id:'DPA1:'+pid);
+    assert.equal(contents.storeCard.secondaryFields[0].value,isDemo?'3':'6');
+    execFileSync('openssl',['smime','-verify','-inform','DER','-in',join(dir,'unpacked/signature'),'-content',join(dir,'unpacked/manifest.json'),'-noverify'],{stdio:'ignore'});
   }
  } finally {globalThis.fetch=originalFetch;delete globalThis.Deno;delete globalThis.__pngClient;rmSync(mod,{force:true});rmSync(dir,{recursive:true,force:true});}
 });
