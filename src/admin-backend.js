@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { makeCardDesigner } from './card-designer.js';
 import { makeSales } from './sales.js';
+import { isSixDigitCode } from './admin-otp.js';
 import { ADMIN_CALLBACK_URL, isNativeIOS, parseAdminAuthUrl, takePendingAdminAuth, listenForAdminDeepLinks } from './native-admin-link.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
@@ -31,6 +32,41 @@ const form = document.getElementById('admin-auth-form');
 const email = document.getElementById('admin-email');
 const submit = document.getElementById('admin-submit');
 const message = document.getElementById('admin-auth-message');
+const help = document.getElementById('admin-auth-help');
+const otpRow = document.getElementById('admin-otp-row');
+const otpCode = document.getElementById('admin-otp-code');
+const otpActions = document.getElementById('admin-otp-actions');
+const otpResend = document.getElementById('admin-otp-resend');
+const otpChange = document.getElementById('admin-otp-change');
+const nativeAdmin = isNativeIOS();
+let nativeOtpEmail = null;
+if (nativeAdmin) {
+  help.textContent = 'Recevez un code à 6 chiffres par e-mail, puis saisissez-le ici pour ouvrir votre tableau de bord. Pas besoin de quitter l’application.';
+  submit.textContent = 'Recevoir mon code';
+}
+function showCodeEntry(mail) {
+  nativeOtpEmail = mail;
+  email.value = mail;
+  email.readOnly = true;
+  otpRow.style.display = 'block';
+  otpActions.style.display = 'flex';
+  otpCode.required = true;
+  otpCode.value = '';
+  submit.textContent = 'Valider le code';
+  help.textContent = 'Entrez le code à 6 chiffres reçu par e-mail. N’ouvrez pas le lien : copiez uniquement les chiffres.';
+  message.textContent = 'Code envoyé. Vérifiez votre boîte de réception.';
+  otpCode.focus();
+}
+function resetCodeEntry() {
+  nativeOtpEmail = null;
+  email.readOnly = false;
+  otpRow.style.display = 'none';
+  otpActions.style.display = 'none';
+  otpCode.required = false;
+  otpCode.value = '';
+  submit.textContent = nativeAdmin ? 'Recevoir mon code' : 'Recevoir le lien de connexion';
+  if (nativeAdmin) help.textContent = 'Recevez un code à 6 chiffres par e-mail, puis saisissez-le ici pour ouvrir votre tableau de bord. Pas besoin de quitter l’application.';
+}
 const denied = document.getElementById('admin-denied');
 const signout = document.getElementById('admin-signout');
 const app = document.getElementById('admin-app');
@@ -103,34 +139,97 @@ async function refreshAccess(force = false) {
   else showDenied();
 }
 
-form.addEventListener('submit', async (e) => {
+// On the public website, retain the existing magic-link login.
+// On iOS, verify an e-mail OTP inside this same WebView: no Safari callback,
+// URL scheme, or cross-page sessionStorage handoff is required.
+async function sendAdminCode(mail) {
+  const { error } = await sb.auth.signInWithOtp({
+    email: mail,
+    options: {
+      emailRedirectTo: nativeAdmin ? ADMIN_CALLBACK_URL : window.location.origin + '/admin.html',
+      shouldCreateUser: true,
+    },
+  });
+  return error;
+}
+form.addEventListener('submit', async e => {
   e.preventDefault();
   const mail = email.value.trim().toLowerCase();
-
   if (!ALLOWED.has(mail)) {
     message.textContent = 'Cette adresse n’est pas autorisée.';
     return;
   }
-
+  if (nativeAdmin && nativeOtpEmail) {
+    const token = otpCode.value.trim();
+    if (!isSixDigitCode(token)) {
+      message.textContent = 'Saisissez les 6 chiffres figurant dans votre e-mail.';
+      otpCode.focus();
+      return;
+    }
+    submit.disabled = true;
+    submit.textContent = 'Vérification…';
+    completingNativeLogin = true;
+    try {
+      const { error } = await sb.auth.verifyOtp({ email: nativeOtpEmail, token, type: 'email' });
+      if (error) {
+        message.textContent = 'Code incorrect ou expiré. Vérifiez votre e-mail, ou demandez un nouveau code.';
+      } else {
+        // The admin client uses an isolated storageKey and all permissions are
+        // still checked against admin_users before displaying the dashboard.
+        await refreshAccess(true);
+      }
+    } catch {
+      message.textContent = 'Impossible de vérifier le code. Vérifiez votre connexion et réessayez.';
+    } finally {
+      completingNativeLogin = false;
+      submit.disabled = false;
+      submit.textContent = 'Valider le code';
+    }
+    return;
+  }
   submit.disabled = true;
   submit.textContent = 'Envoi…';
   message.textContent = '';
-
-  const { error } = await sb.auth.signInWithOtp({
-    email: mail,
-    options: {
-      emailRedirectTo: isNativeIOS() ? ADMIN_CALLBACK_URL : window.location.origin + '/admin.html',
-      shouldCreateUser: true,
-    },
-  });
-
-  submit.disabled = false;
-  submit.textContent = 'Recevoir le lien de connexion';
-
-  message.textContent = error
-    ? linkErrorMessage(error)
-    : 'Lien envoyé. Ouvrez l’e-mail reçu pour vous connecter.';
+  try {
+    const error = await sendAdminCode(mail);
+    if (error) {
+      message.textContent = linkErrorMessage(error);
+    } else if (nativeAdmin) {
+      showCodeEntry(mail);
+    } else {
+      message.textContent = 'Lien envoyé. Ouvrez l’e-mail reçu pour vous connecter.';
+    }
+  } catch {
+    message.textContent = 'Service de connexion indisponible. Réessayez dans quelques instants.';
+  } finally {
+    submit.disabled = false;
+    submit.textContent = nativeAdmin ? (nativeOtpEmail ? 'Valider le code' : 'Recevoir mon code') : 'Recevoir le lien de connexion';
+  }
 });
+
+if (nativeAdmin) {
+  otpChange.addEventListener('click', () => {
+    resetCodeEntry();
+    message.textContent = '';
+    email.focus();
+  });
+  otpResend.addEventListener('click', async () => {
+    if (!nativeOtpEmail) return;
+    otpResend.disabled = true;
+    message.textContent = '';
+    try {
+      const error = await sendAdminCode(nativeOtpEmail);
+      if (error) message.textContent = linkErrorMessage(error);
+      else {
+        otpCode.value = '';
+        message.textContent = 'Nouveau code envoyé. Utilisez le dernier e-mail reçu.';
+        otpCode.focus();
+      }
+    } catch {
+      message.textContent = 'Impossible de renvoyer le code. Réessayez plus tard.';
+    } finally { otpResend.disabled = false; }
+  });
+}
 
 // Supabase Auth errors on a sign-in link request, from its error code and status (never the raw message).
 function linkErrorMessage(error) {
