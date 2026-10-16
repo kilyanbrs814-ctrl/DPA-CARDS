@@ -34,19 +34,22 @@ jobs:
         run: npm ci
 
       - name: Install temporary Capacitor 8 toolchain
-        run: npm install --no-save --package-lock=false @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8
+        run: npm install --no-save --package-lock=false @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8 @capacitor/app@8
 
       - name: Build bundled web assets
         run: npm run build
 
       - name: Validate web routing
-        run: npm run test:static
+        run: |
+          npm run test:static
+          node --test scripts/check-native-admin-link.test.mjs
 
       - name: Generate and synchronize iOS project
         run: |
           npx cap add ios
           npx cap sync ios
           swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+          swift scripts/configure-ios-deeplink.swift ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName DPA Cards" ios/App/App/Info.plist || true
 
       - name: Declare QR camera usage
