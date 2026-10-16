@@ -77,7 +77,7 @@ a:hover{color:#1A36C4}
             </div>
             <button type="submit" disabled="{{ busy }}" style="height:56px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#1A36C4"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ loginBtn }}</button>
           </form>
-          <p style="margin:32px 0 0;text-align:center;font-size:15px;color:#3E424A">Pas encore de compte ? <button type="button" onClick="{{ toSignup }}" style="border:0;background:none;padding:8px 2px;color:#2448F0;font-weight:700;font-size:15px" style-hover="text-decoration:underline">Créer mon compte</button></p>
+          <sc-if value="{{ isWeb }}"><p style="margin:32px 0 0;text-align:center;font-size:15px;color:#3E424A">Pas encore de compte ? <button type="button" onClick="{{ toSignup }}" style="border:0;background:none;padding:8px 2px;color:#2448F0;font-weight:700;font-size:15px" style-hover="text-decoration:underline">Créer mon compte</button></p></sc-if>
         </sc-if>
 
         <sc-if value="{{ s.signup }}" hint-placeholder-val="{{ false }}">
@@ -404,6 +404,15 @@ a:hover{color:#1A36C4}
     <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:38px;width:auto;display:block">
     <div style="display:flex;align-items:center;gap:12px;font-size:14px;color:#5E636B"><span style="overflow-wrap:anywhere">{{ m.business }}</span><button type="button" onClick="{{ logout }}" style="min-height:40px;padding:0 12px;border:1.5px solid #D4D1C9;border-radius:10px;background:#FFFFFF;font-weight:600;font-size:14px;flex:none">Se déconnecter</button></div>
   </div>
+  <sc-if value="{{ s.nativeAccess }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;max-width:560px;width:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;gap:20px;text-align:center">
+      <div style="width:64px;height:64px;border-radius:18px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:32px">storefront</span></div>
+      <h1 style="margin:0;font-weight:800;font-size:28px">Espace commerçant</h1>
+      <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.6">Cette application est dédiée à la gestion des commerces disposant d’un compte DPA Cards configuré et actif.</p>
+      <button type="button" onClick="{{ nativeRetry }}" style="height:52px;width:100%;max-width:300px;border:0;border-radius:12px;background:#2448F0;color:white;font-weight:700">Actualiser mon accès</button>
+      <button type="button" onClick="{{ nativeLogout }}" style="height:48px;padding:0 20px;border:1px solid #D4D1C9;border-radius:12px;background:white;font-weight:600">Se déconnecter</button>
+    </div>
+  </sc-if>
   <sc-if value="{{ s.billing }}" hint-placeholder-val="{{ true }}">
   <div style="flex:1;width:100%;max-width:1000px;margin:0 auto;padding:clamp(24px,5vw,56px) 16px 48px;display:flex;flex-direction:column;gap:30px">
     <div style="text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center">
@@ -2272,6 +2281,14 @@ class Component extends DCLogic {
       const d=await api.loadAll(user);
       const base={busy:false,live:true,demo:false,role:d.role||'owner',subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
         f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
+      // The iOS app is a free companion to the existing merchant web service.
+      // There is no purchasing, pricing funnel or onboarding checkout in this native app.
+      if(DPA_NATIVE_IOS&&(!d.merchant||!d.program||!d.hasAccess)){
+        this.setState({...base,screen:'nativeAccess',
+          merchant:d.merchant||{...this.state.merchant,business:'DPA Cards'},
+          program:d.program||this.state.program,clients:d.clients||[],designReq:d.designRequest||null});
+        this.scrollTop(); return;
+      }
       if(!d.merchant||!d.program){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
         const me={first:String(md.first_name||''),last:String(md.last_name||''),email:user.email,phone:'',business:biz,activity:'',address:'',slug:slugify(biz)};
@@ -2327,6 +2344,9 @@ class Component extends DCLogic {
     finally{this._accessBusy=false;}
   };
   go(screen,extra={}){
+    if(DPA_NATIVE_IOS&&(screen==='billing'||screen==='signup'||screen==='ob'||(screen==='settings'&&extra.section==='billing'))){
+      this.showToast('Cette fonction n’est pas disponible dans l’application iPhone.','info'); return;
+    }
     // The card/programme editor is desktop-only: on mobile it is never opened.
     if(screen==='card'&&window.innerWidth<1024) screen='home';
     // No valid subscription (trialing / active): business screens show a lock (the server refuses the actions anyway).
@@ -2624,7 +2644,7 @@ class Component extends DCLogic {
     const ok=()=>this.showToast('Lien copié'), ko=()=>this.showToast('Copie impossible sur ce navigateur. Lien : '+url,'info');
     try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok,ko); else ko(); }catch(e){ ko(); } }
   // ---- subscription (Stripe). The page only names a plan; the billing Edge Function does the rest.
-  choosePlan=async(plan,billing)=>{ if(this.state.busy) return; this.setState({busy:true,billingPlan:plan});
+  choosePlan=async(plan,billing)=>{ if(DPA_NATIVE_IOS||this.state.busy) return; this.setState({busy:true,billingPlan:plan});
     try{ const r=await this.api.billing.checkout(plan,billing); window.location.assign(r.url); }
     catch(e){ this.setState({busy:false,billingPlan:null});
       if(e.code==='already_subscribed'){ await this.refreshSub(); return this.go('home'); }
@@ -2650,7 +2670,7 @@ class Component extends DCLogic {
   loadBillingSummary=async()=>{ if(!this.api) return; this.setState({billSum:{loading:true}});
     try{ const r=await this.api.billing.summary(); this.setState(x=>({billSum:{loading:false,...r},subscription:r.subscription||x.subscription})); }
     catch(e){ this.setState({billSum:{loading:false,error:this.api.errorMessage(e)}}); } };
-  openPortal=async()=>{ if(this.state.busy) return; this.setState({busy:true});
+  openPortal=async()=>{ if(DPA_NATIVE_IOS||this.state.busy) return; this.setState({busy:true});
     try{ const r=await this.api.billing.portal(); window.location.assign(r.url); }
     catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } };
   // During a 12-month commitment nothing is cancelled: the server records the request and answers with the end date.
