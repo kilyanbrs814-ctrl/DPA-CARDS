@@ -105,3 +105,14 @@ test('native uses verified Supabase email OTP; browser retains email magic link'
   assert.ok(js.includes('await refreshAccess(true)'));
   assert.ok(js.includes('showCodeEntry(mail)'));
 });
+
+test('expired admin code errors are visible in red, without exposing the OTP', () => {
+  const js = readFileSync(new URL('../src/admin-backend.js', import.meta.url), 'utf8');
+  assert.match(js, /const ERROR_COLOR = '#C62828'/);
+  assert.match(js, /message\.style\.color = isError \? ERROR_COLOR : NORMAL_COLOR/);
+  assert.match(js, /message\.setAttribute\('role', isError \? 'alert' : 'status'\)/);
+  assert.match(js, /error\.code === 'otp_expired'/);
+  assert.match(js, /setAuthMessage\([\s\S]*?true,\s*\)/);
+  assert.match(js, /otpCode\.value\.replace\(\/\[\^0-9\]\/g, ''\)/);
+  assert.ok(!js.includes('console.log(token)'), 'never log a one-time code');
+});
