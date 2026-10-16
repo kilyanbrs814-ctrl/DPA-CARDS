@@ -53,6 +53,9 @@ const ALLOWED_ORIGINS = (Deno.env.get('WALLET_ALLOWED_ORIGINS') ?? 'https://card
   .split(',').map(s => s.trim()).filter(Boolean);
 // Allow the new custom domain even if the production secret still contains an older origin.
 if (!ALLOWED_ORIGINS.includes('https://cards.digitalprojectagency.fr')) ALLOWED_ORIGINS.push('https://cards.digitalprojectagency.fr');
+// Capacitor iOS serves packaged resources with this non-HTTP origin.
+// Server-side JWT checks and merchant RLS still apply to every wallet operation.
+if (!ALLOWED_ORIGINS.includes('capacitor://localhost')) ALLOWED_ORIGINS.push('capacitor://localhost');
 
 function envKey(jsonVar: string, legacyVar: string): string {
   try {

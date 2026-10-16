@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -15,7 +15,8 @@
 <script>window.dpaReady=new Promise(function(r){window.__dpaResolve=r;});
 // Public sign-up page /join/<slug>: dc-runtime fetches sibling components relative to the
 // page ("./LoyaltyCard.dc.html"), which would resolve under /join/. Point it at the root copy.
-if(/^\/(join|subscription|design)\//.test(location.pathname)) window.__resources={'./LoyaltyCard.dc.html':'/LoyaltyCard.dc.html'};</script>
+if(/^\/(join|subscription|design)\//.test(location.pathname)) window.__resources={'./LoyaltyCard.dc.html':'/LoyaltyCard.dc.html'};
+if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa-native-ios');</script>
 <script src="/support.js"></script>
 <!-- Supabase client (bundled by Vite), hands its API to the logic script via window.dpaReady. -->
 <script type="module" src="/src/backend.js"></script>
@@ -29,6 +30,7 @@ if(/^\/(join|subscription|design)\//.test(location.pathname)) window.__resources
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block">
 <style>
 *{box-sizing:border-box}
+html.dpa-native-ios body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
 html,body{margin:0;background:#F6F5F1;color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 input,textarea,select,button{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -75,7 +77,7 @@ a:hover{color:#1A36C4}
             </div>
             <button type="submit" disabled="{{ busy }}" style="height:56px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#1A36C4"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ loginBtn }}</button>
           </form>
-          <p style="margin:32px 0 0;text-align:center;font-size:15px;color:#3E424A">Pas encore de compte ? <button type="button" onClick="{{ toSignup }}" style="border:0;background:none;padding:8px 2px;color:#2448F0;font-weight:700;font-size:15px" style-hover="text-decoration:underline">Créer mon compte</button></p>
+          <sc-if value="{{ isWeb }}"><p style="margin:32px 0 0;text-align:center;font-size:15px;color:#3E424A">Pas encore de compte ? <button type="button" onClick="{{ toSignup }}" style="border:0;background:none;padding:8px 2px;color:#2448F0;font-weight:700;font-size:15px" style-hover="text-decoration:underline">Créer mon compte</button></p></sc-if>
         </sc-if>
 
         <sc-if value="{{ s.signup }}" hint-placeholder-val="{{ false }}">
@@ -402,6 +404,15 @@ a:hover{color:#1A36C4}
     <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:38px;width:auto;display:block">
     <div style="display:flex;align-items:center;gap:12px;font-size:14px;color:#5E636B"><span style="overflow-wrap:anywhere">{{ m.business }}</span><button type="button" onClick="{{ logout }}" style="min-height:40px;padding:0 12px;border:1.5px solid #D4D1C9;border-radius:10px;background:#FFFFFF;font-weight:600;font-size:14px;flex:none">Se déconnecter</button></div>
   </div>
+  <sc-if value="{{ s.nativeAccess }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;max-width:560px;width:100%;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;gap:20px;text-align:center">
+      <div style="width:64px;height:64px;border-radius:18px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:32px">storefront</span></div>
+      <h1 style="margin:0;font-weight:800;font-size:28px">Espace commerçant</h1>
+      <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.6">Cette application est dédiée à la gestion des commerces disposant d’un compte DPA Cards configuré et actif.</p>
+      <button type="button" onClick="{{ nativeRetry }}" style="height:52px;width:100%;max-width:300px;border:0;border-radius:12px;background:#2448F0;color:white;font-weight:700">Actualiser mon accès</button>
+      <button type="button" onClick="{{ nativeLogout }}" style="height:48px;padding:0 20px;border:1px solid #D4D1C9;border-radius:12px;background:white;font-weight:600">Se déconnecter</button>
+    </div>
+  </sc-if>
   <sc-if value="{{ s.billing }}" hint-placeholder-val="{{ true }}">
   <div style="flex:1;width:100%;max-width:1000px;margin:0 auto;padding:clamp(24px,5vw,56px) 16px 48px;display:flex;flex-direction:column;gap:30px">
     <div style="text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center">
@@ -624,7 +635,7 @@ a:hover{color:#1A36C4}
         <div style="width:64px;height:64px;border-radius:18px;background:#EEF1FF;color:#2448F0;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:34px">lock</span></div>
         <h1 style="margin:0;font-weight:800;font-size:clamp(24px,5vw,30px);letter-spacing:-0.02em;line-height:1.15">{{ lockView.title }}</h1>
         <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5;max-width:460px">{{ lockView.text }}</p>
-        <button type="button" onClick="{{ toBilling }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px" style-hover="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:20px">lock_open</span>Choisir mon abonnement</button>
+        <sc-if value="{{ isWeb }}"><button type="button" onClick="{{ toBilling }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px" style-hover="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:20px">lock_open</span>Choisir mon abonnement</button></sc-if>
         <button type="button" onClick="{{ toHome }}" style="min-height:44px;padding:0 12px;border:0;background:none;color:#3E424A;font-weight:600;font-size:15px">Retour à l’accueil</button>
       </div>
     </sc-if>
@@ -1987,6 +1998,7 @@ const JOIN_SLUG=(()=>{ try{ const r=/^\/join\/([^\/]+)\/?$/.exec(window.location
 // Printed QR codes point to the canonical production domain on any deployed preview.
 // Local dev keeps its own origin for testing; no link depends on Vercel.
 const PUBLIC_SITE=/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)?window.location.origin:'https://cards.digitalprojectagency.fr';
+const DPA_NATIVE_IOS=window.location.protocol==='capacitor:';
 function joinUrl(slug){ return PUBLIC_SITE+'/join/'+slug; }
 // Return from Stripe Checkout: /subscription/success?session_id=… or /subscription/cancel.
 const SUB_RETURN=(()=>{ try{ const r=/^\/subscription\/(success|cancel)\/?$/.exec(window.location.pathname); return r?r[1]:null; }catch(e){ return null; } })();
@@ -2269,6 +2281,14 @@ class Component extends DCLogic {
       const d=await api.loadAll(user);
       const base={busy:false,live:true,demo:false,role:d.role||'owner',subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
         f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
+      // The iOS app is a free companion to the existing merchant web service.
+      // There is no purchasing, pricing funnel or onboarding checkout in this native app.
+      if(DPA_NATIVE_IOS&&(!d.merchant||!d.program||!d.hasAccess)){
+        this.setState({...base,screen:'nativeAccess',
+          merchant:d.merchant||{...this.state.merchant,business:'DPA Cards'},
+          program:d.program||this.state.program,clients:d.clients||[],designReq:d.designRequest||null});
+        this.scrollTop(); return;
+      }
       if(!d.merchant||!d.program){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
         const me={first:String(md.first_name||''),last:String(md.last_name||''),email:user.email,phone:'',business:biz,activity:'',address:'',slug:slugify(biz)};
@@ -2324,6 +2344,9 @@ class Component extends DCLogic {
     finally{this._accessBusy=false;}
   };
   go(screen,extra={}){
+    if(DPA_NATIVE_IOS&&(screen==='billing'||screen==='signup'||screen==='ob'||(screen==='settings'&&extra.section==='billing'))){
+      this.showToast('Cette fonction n’est pas disponible dans l’application iPhone.','info'); return;
+    }
     // The card/programme editor is desktop-only: on mobile it is never opened.
     if(screen==='card'&&window.innerWidth<1024) screen='home';
     // No valid subscription (trialing / active): business screens show a lock (the server refuses the actions anyway).
@@ -2621,7 +2644,7 @@ class Component extends DCLogic {
     const ok=()=>this.showToast('Lien copié'), ko=()=>this.showToast('Copie impossible sur ce navigateur. Lien : '+url,'info');
     try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok,ko); else ko(); }catch(e){ ko(); } }
   // ---- subscription (Stripe). The page only names a plan; the billing Edge Function does the rest.
-  choosePlan=async(plan,billing)=>{ if(this.state.busy) return; this.setState({busy:true,billingPlan:plan});
+  choosePlan=async(plan,billing)=>{ if(DPA_NATIVE_IOS||this.state.busy) return; this.setState({busy:true,billingPlan:plan});
     try{ const r=await this.api.billing.checkout(plan,billing); window.location.assign(r.url); }
     catch(e){ this.setState({busy:false,billingPlan:null});
       if(e.code==='already_subscribed'){ await this.refreshSub(); return this.go('home'); }
@@ -2647,7 +2670,7 @@ class Component extends DCLogic {
   loadBillingSummary=async()=>{ if(!this.api) return; this.setState({billSum:{loading:true}});
     try{ const r=await this.api.billing.summary(); this.setState(x=>({billSum:{loading:false,...r},subscription:r.subscription||x.subscription})); }
     catch(e){ this.setState({billSum:{loading:false,error:this.api.errorMessage(e)}}); } };
-  openPortal=async()=>{ if(this.state.busy) return; this.setState({busy:true});
+  openPortal=async()=>{ if(DPA_NATIVE_IOS||this.state.busy) return; this.setState({busy:true});
     try{ const r=await this.api.billing.portal(); window.location.assign(r.url); }
     catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } };
   // During a 12-month commitment nothing is cancelled: the server records the request and answers with the end date.
@@ -2938,9 +2961,9 @@ class Component extends DCLogic {
 
   renderVals(){
     const s=this.state, W=s.w, isDesk=W>=1024, isMob=!isDesk, scr=s.screen;
-    const names=['login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','joinLoading','joinMissing','notifs','notifNew','billing','subSuccess','subCancel','locked','designPaid','designCancel'];
+    const names=['nativeAccess','login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','joinLoading','joinMissing','notifs','notifNew','billing','subSuccess','subCancel','locked','designPaid','designCancel'];
     const S={}; names.forEach(k=>S[k]=scr===k);
-    S.auth=S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.bill=S.billing||S.subSuccess||S.subCancel||S.designPaid||S.designCancel; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState&&!S.bill;
+    S.auth=S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.bill=S.nativeAccess||S.billing||S.subSuccess||S.subCancel||S.designPaid||S.designCancel; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState&&!S.bill;
     // Belt and braces: a business screen never renders without a valid subscription.
     const locked=!!s.live&&!s.hasAccess;
     let lockKind=s.screen==='locked'?s.lockKind:null;
@@ -3089,7 +3112,7 @@ class Component extends DCLogic {
       {icon:'storefront',label:'Informations du commerce',sub:m.business,run:openSec('business')},
       {icon:'lock',label:'Sécurité et mot de passe',sub:s.live?'Mot de passe, export des données, suppression du compte':'Modifier le mot de passe',run:openSec('security')},
       {icon:'help',label:'Aide et contact',sub:'Questions fréquentes, support',run:openSec('help')},
-      ...(s.live?[{icon:'credit_card',label:'Mon abonnement',sub:s.accessSource==='manual'?'Accès offert par DPA Cards · jusqu’au '+fmtFull(s.manualExpiresAt):s.subscription?(s.subscription.billing_mode==='prepaid'?'Engagement 12 mois · payé en une fois':s.subscription.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement')+' · '+(s.subscription.billing_mode==='prepaid'&&s.subscription.status==='active'&&!subOk(s.subscription)?SUB_ST.expired:(SUB_ST[s.subscription.status]||s.subscription.status)):'Offre, factures, moyen de paiement',run:openSec('billing')}]:[]),
+      ...(!DPA_NATIVE_IOS&&s.live?[{icon:'credit_card',label:'Mon abonnement',sub:s.accessSource==='manual'?'Accès offert par DPA Cards · jusqu’au '+fmtFull(s.manualExpiresAt):s.subscription?(s.subscription.billing_mode==='prepaid'?'Engagement 12 mois · payé en une fois':s.subscription.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement')+' · '+(s.subscription.billing_mode==='prepaid'&&s.subscription.status==='active'&&!subOk(s.subscription)?SUB_ST.expired:(SUB_ST[s.subscription.status]||s.subscription.status)):'Offre, factures, moyen de paiement',run:openSec('billing')}]:[]),
       {icon:'restart_alt',label:'Réinitialiser la démo',sub:'Revenir aux données BASH',run:()=>{ this.enterDemo(); this.showToast('Données de démonstration réinitialisées'); }}].filter(x=>!s.live||x.icon!=='restart_alt');
     const secTitle={profile:'Profil du responsable',business:'Informations du commerce',security:'Sécurité et mot de passe',help:'Aide et contact',billing:'Mon abonnement'}[s.section];
     const sec={profile:s.section==='profile',business:s.section==='business',security:s.section==='security',help:s.section==='help',billing:s.section==='billing',form:s.section!=='help'&&s.section!=='billing'};
@@ -3137,7 +3160,7 @@ class Component extends DCLogic {
     const toastM=scr==='scanner'?'calc(220px + env(safe-area-inset-bottom))':(scr==='client'?'calc(160px + env(safe-area-inset-bottom))':'calc(96px + env(safe-area-inset-bottom))');
     return {
       s:S, isDesk, isMob, m, P, f:s.f, F, err, eb, inv, go, spin, scanLine, sheetAnim, busy:s.busy, notBusy:!s.busy,
-      showDemoHints:false,
+      showDemoHints:false, isWeb:!DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
       loginBtn:s.busy?'Connexion…':'Se connecter', signupBtn:s.busy?'Création du compte…':'Créer mon compte', forgotBtn:s.busy?'Envoi…':'Envoyer le lien',
       pwdType:s.showPwd?'text':'password', pwdIcon:s.showPwd?'visibility_off':'visibility', pwdAria:s.showPwd?'Masquer le mot de passe':'Afficher le mot de passe',
       togglePwd:()=>this.setState(x=>({showPwd:!x.showPwd})), remember:s.remember, toggleRemember:e=>this.setState({remember:e.target.checked}),
@@ -3161,10 +3184,10 @@ class Component extends DCLogic {
       obDoneGo:()=>{ if(s.live&&!s.hasAccess) return this.go('billing'); this.go('home',{loadingHome:true}); setTimeout(()=>this.setState({loadingHome:false}),600); },
       qrBiz:locked?null:(this.api?this.realQr(pubUrl,200,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,200)), qrBizSm:locked?null:(this.api?this.realQr(pubUrl,168,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,168)), link, pubUrl, hasLink:!!link, noLink:!link,
       copyLink:()=>locked?this.go('invite'):this.copyJoinLink(),
-      lockBanner:locked&&S.app, toBilling:()=>this.go('billing'), canSkipBilling:locked&&!!s.program&&(s.program.designStatus!=='draft'||designUnpaid(s.designReq)),
+      lockBanner:!DPA_NATIVE_IOS&&locked&&S.app, toBilling:()=>this.go('billing'), canSkipBilling:locked&&!!s.program&&(s.program.designStatus!=='draft'||designUnpaid(s.designReq)),
       skipBilling:()=>{ this.go('home'); this.scrollTop(); },
-      lockView:{title:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[0],text:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[1]},
-      homeDesign:(()=>{ const r=s.designReq; if(!s.live||!S.home||!r) return {show:false};
+      lockView:DPA_NATIVE_IOS?{title:'Fonction indisponible',text:'Cette fonction n’est pas disponible avec l’accès actuel de ce compte.'}:{title:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[0],text:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[1]},
+      homeDesign:(()=>{ const r=s.designReq; if(DPA_NATIVE_IOS||!s.live||!S.home||!r) return {show:false};
         if(designUnpaid(r)){ const ask=!!s.designAsk, meta='Demande du '+fmtFull(r.createdAt)+' · En attente de paiement';
           const change={ask,alt:ask?'':'Je préfère personnaliser ma carte moi-même',altAct:()=>this.setState({designAsk:true}),keep:()=>this.setState({designAsk:false}),confirm:this.cancelDesignReq};
           if(s.hasAccess) return {show:true,icon:'brush',bg:'#FFF3DC',border:'#F2D49B',fg:'#8A5A00',title:'Votre création sur mesure attend son paiement',text:'Réglez la création de votre carte (29,90 € TTC, paiement unique) : DPA Cards commence dès le paiement confirmé.',meta,cta:ask?'':(s.busy?'Redirection…':'Payer mon design — 29,90 €'),spin:!!s.busy,act:this.resumeDesign,...change};
@@ -3196,7 +3219,7 @@ class Component extends DCLogic {
       d, D, dirty, notDirty:!dirty, draftCard, tabs, tabApple:s.tab==='apple', tabGoogle:s.tab==='google', tabGoogleClassic:s.tab==='google'&&!cdOn, tabGoogleCD:s.tab==='google'&&cdOn, dMode:mkMode('draft'), dGoalDown:stepGoal('draft',-1), dGoalUp:stepGoal('draft',1), dUnit:d.mode==='points'?'points':'passages',
       dBg:mkSw(BGS,'bg','draft'), dAccent:mkSw(ACCENTS,'accent','draft'), dPat:mkPat('draft'), saveCard:this.saveCard, saveLabel:s.busy?'Enregistrement…':'Enregistrer les modifications',
       resetDraft:()=>this.setState(x=>({draft:{...x.program}})), importLogo:()=>this.showToast(s.live?'L’import de logo n’est pas encore disponible. Utilisez les initiales.':'Démo : import d’image simulé, aucun fichier n’est envoyé.','info'),
-      moreItems, logout:()=>this.setState({modal:'logout'}), confirmLogout:()=>{ if(s.live) return this.logoutLive(); this.setState({...this.initState(),w:window.innerWidth,screen:'login'}); },
+      moreItems, logout:()=>DPA_NATIVE_IOS&&s.screen==='nativeAccess'?this.logoutLive():this.setState({modal:'logout'}), confirmLogout:()=>{ if(s.live) return this.logoutLive(); this.setState({...this.initState(),w:window.innerWidth,screen:'login'}); },
       sec, secTitle, sd:s.sd, SD, saveSection:this.saveSection, saveSecLabel:s.busy?'Enregistrement…':'Enregistrer', contactSupport:()=>this.showToast(s.live?'Le contact support n’est pas encore disponible depuis l’application.':'Démo : aucun message n’a été envoyé.','info'),
       consent:s.consent, toggleConsent:e=>this.setState({consent:e.target.checked,err:{...s.err,consent:null}}), submitJoin:this.submitJoin, joinBtn:s.busy?'Création de votre carte…':'Obtenir ma carte',
       openGWallet:()=>sel&&this.openGWallet(sel.id), openAWallet:()=>sel&&this.openAWallet(sel.id),

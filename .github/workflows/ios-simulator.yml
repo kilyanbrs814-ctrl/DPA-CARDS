@@ -1,0 +1,72 @@
+name: Prepare iOS simulator build
+
+# Manual workflow: validates that the existing Vite application can be bundled
+# into an unsigned Capacitor iOS simulator app. Does NOT publish to Apple.
+on:
+  push:
+    branches:
+      - feat/ios-app-store-preparation
+    paths:
+      - index.html
+      - src/**
+      - capacitor.config.json
+      - .github/workflows/ios-simulator.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-simulator:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install existing web dependencies
+        run: npm ci
+
+      - name: Install temporary Capacitor 8 toolchain
+        run: npm install --no-save --package-lock=false @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8
+
+      - name: Build bundled web assets
+        run: npm run build
+
+      - name: Validate web routing
+        run: npm run test:static
+
+      - name: Generate and synchronize iOS project
+        run: |
+          npx cap add ios
+          npx cap sync ios
+          swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName DPA Cards" ios/App/App/Info.plist || true
+
+      - name: Declare QR camera usage
+        run: |
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string DPA Cards utilise la caméra pour scanner les QR codes des cartes de fidélité des clients." ios/App/App/Info.plist
+
+      - name: Build unsigned iOS Simulator application
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
+
+      - name: Export generated Xcode project
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dpa-cards-ios-xcode-project
+          path: ios/
+          if-no-files-found: warn
+          retention-days: 7
