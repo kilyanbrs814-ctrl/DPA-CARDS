@@ -23,8 +23,8 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
   const rawCert=Buffer.from(cert.replace(/-----[^-]+-----/g,'').replace(/\s/g,''),'base64');
   globalThis.fetch=async()=>new Response(rawCert);
   globalThis.Deno={env:{get:n=>({SUPABASE_URL:'https://test.supabase.co',SUPABASE_SERVICE_ROLE_KEY:'test',APPLE_PASS_CERT_PEM:cert,APPLE_PASS_PRIVATE_KEY_PEM:key}[n])},serve:fn=>{handler=fn;}};
-  let demo=true,reads=[],showName=false,showPanel=true;
-  const config=()=>({identity:{name:'PNG test'},assets:{logo:{path:base()+'/designer/logo-'+id+'.png'},stamp:{path:base()+'/designer/stamp-'+id+'.png'}},stamps:{icon:'custom',emoji:'🍔'},colors:{primary:'#000000',secondary:'#2448F0'},apple:{showBusinessName:showName,showStampPanel:showPanel},preview:{progress:3,goal:10}});
+  let demo=true,reads=[],showName=false,showPanel=true,customMode=false;
+  const config=()=>({identity:{name:'PNG test'},assets:{logo:{path:base()+'/designer/logo-'+id+'.png'},stamp:{path:base()+'/designer/stamp-'+id+'.png'},appleHeader:{path:base()+'/designer/appleHeader-'+id+'.png'}},stamps:{icon:'custom',emoji:'🍔'},colors:{primary:'#000000',secondary:'#2448F0'},apple:{showBusinessName:showName,showStampPanel:showPanel,headerMode:customMode?'custom':'classic',headerArtworkVersion:customMode?4:0},preview:{progress:3,goal:10}});
   const base=()=>demo?'tests/'+id:mid+'/'+pid;
   globalThis.__pngClient={
    rpc:async()=>({data:true}),
@@ -40,6 +40,8 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    .replace('npm:passkit-generator@3.6.1','passkit-generator');
   writeFileSync(mod,(await transform(code,{loader:'ts',format:'esm'})).code);
   await import(pathToFileURL(mod.pathname).href+'?test='+Date.now());
+  for(const custom of [false,true]){
+  customMode=custom;
   for(const nativeName of [false,true]){
    showName=nativeName;
    for(const panelVisible of [true,false]){
@@ -50,7 +52,7 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    assert.equal(res.status,200);assert.equal(res.headers.get('content-type'),'application/vnd.apple.pkpass');
    writeFileSync(join(dir,'pass.zip'),Buffer.from(await res.arrayBuffer()));
    const contents=JSON.parse(execFileSync('unzip',['-p',join(dir,'pass.zip'),'pass.json'],{encoding:'utf8'}));
-   assert.equal(contents.logoText,nativeName?'PNG test':undefined,'PassKit must own the optional native heading');
+   assert.equal(contents.logoText,nativeName&&!custom?'PNG test':undefined,'Classic native text must never overlap custom bitmap');
    assert.equal(contents.storeCard.secondaryFields[0].value,demo?'3':'6');
    assert.equal(contents.barcodes[0].message,demo?'DPA_TEST:'+id:'DPA1:'+pid);
    assert.equal(contents.barcodes[0].altText,'Par DPA Cards');
@@ -63,7 +65,7 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    assert.equal(jsQR(rgba,dim,dim).data,message);
    assert.equal(parseCode(message).kind,demo?'demo':'qr');
    if(!demo)assert.equal(contents.storeCard.headerFields[0].value,'9876');
-   assert.equal(reads.length,2,'stamps must still be downloaded when only the rectangle is hidden');
+   assert.equal(reads.length,nativeName&&custom?3:2,'custom header downloaded only when selected');
    execFileSync('unzip',['-o','-q',join(dir,'pass.zip'),'-d',join(dir,'unpacked')]);
    const manifest=JSON.parse(readFileSync(join(dir,'unpacked/manifest.json')));
    for(const name of ['icon.png','icon@2x.png','logo.png','logo@2x.png','strip.png','strip@2x.png','pass.json'])assert.ok(manifest[name]);
@@ -75,8 +77,8 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    assert.deepEqual(at(20,25),panelVisible?[36,72,240,255]:[0,0,0,255],'only the rectangle background changes');
    assert.ok(strip.pixels.some((v,i)=>i%4!==3&&v!==0),'signed strip retains stamp artwork');
    const logoFile=readFileSync(join(dir,'unpacked/logo.png'));
-   assert.equal(logoFile.readUInt32BE(16),nativeName?64:160,'logo width must leave room for native text');
-   assert.equal(logoFile.readUInt32BE(20),nativeName?48:50);
+   assert.equal(logoFile.readUInt32BE(16),nativeName&&!custom?64:160,'classic reserves logoText while custom has full header');
+   assert.equal(logoFile.readUInt32BE(20),nativeName&&!custom?48:50);
    const logo2=readFileSync(join(dir,'unpacked/logo@2x.png'));
    assert.equal(logo2.readUInt32BE(16),logoFile.readUInt32BE(16)*2);
    assert.equal(logo2.readUInt32BE(20),logoFile.readUInt32BE(20)*2);
@@ -84,6 +86,7 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    execFileSync('openssl',['smime','-verify','-inform','DER','-in',join(dir,'unpacked/signature'),'-content',join(dir,'unpacked/manifest.json'),'-noverify'],{stdio:'ignore'});
     }
    }
+  }
   }
  } finally {globalThis.fetch=originalFetch;delete globalThis.Deno;delete globalThis.__pngClient;rmSync(mod,{force:true});rmSync(dir,{recursive:true,force:true});}
 });
