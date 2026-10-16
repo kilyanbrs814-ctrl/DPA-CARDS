@@ -26,7 +26,9 @@ test('admin preview and save backend include emoji settings',()=>{
   assert.ok(!designer.includes('makeEmojiPicker(React)'),'old Unicode picker absent from generator');
   assert.ok(/'data-onecup-inspired':\s*true/.test(designer),'layout present');
   assert.ok(designer.includes("stamps.emoji"),'emoji used in card preview');
-  assert.ok(designer.includes("opacity:on?1:.22"),'same emoji grayscale when empty');
+  assert.ok(designer.includes("opacity:on?1:fade"),'unvalidated emojis use the editable grayscale opacity');
+  assert.ok(designer.includes("inactiveStampOpacity(st?.inactiveOpacity)/100"),'legacy 22% default is preserved via normalized setting');
+  assert.ok(server.includes("inactiveOpacity: int(s.inactiveOpacity, 0, 100, 22)"),'backend persists opacity between 0% and 100%');
   assert.ok(server.includes("libraryId: libraryStampId(s.libraryId)"),'backend persists approved PNG id');
   assert.ok(server.includes("emoji', 'none'"),'emoji variant accepted');
 });
