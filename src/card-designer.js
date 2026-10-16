@@ -24,6 +24,16 @@ export const STAMP_ICONS = [
 ];
 const HEX = /^#[0-9A-Fa-f]{6}$/;
 const ASSET_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(designer\/)?(logo|hero|background|stamp|appleStrip|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\.(png|jpg)$/;
+// Recommended source dimensions for EVERY upload in the card generator.
+// Cropped assets are exported to exactly the dimensions below. The original
+// logo and stamp keep their proportions; these sizes are recommendations only.
+export const RECOMMENDED_IMAGE_SIZES = Object.freeze({
+  logo: Object.freeze({ width: 660, height: 660, format: 'PNG transparent', note: 'Carré, important pour Google Wallet.' }),
+  hero: Object.freeze({ width: 1032, height: 812, format: 'PNG, JPEG ou WebP', note: 'Format paysage ; recadrage automatique.' }),
+  background: Object.freeze({ width: 680, height: 1120, format: 'PNG, JPEG ou WebP', note: 'Format portrait ; recadrage automatique.' }),
+  stamp: Object.freeze({ width: 256, height: 256, format: 'PNG transparent', note: 'Carré, sans fond pour un beau rendu.' }),
+  appleStrip: Object.freeze({ width: 1125, height: 432, format: 'PNG, JPEG ou WebP', note: 'Bandeau Apple Wallet pleine largeur (375 × 144 pt).' }),
+});
 // Demo data of the editor (the real card gets its own customer, balance and QR token).
 export const DEMO = { client: 'Nicolas Moreau', progress: 3, goal: 10, reward: '1 dessert offert', available: 1, qr: 'DPA1:DEMO-DPA-CARDS-PREVIEW', cardNumber: 'DPA-DEMO-0003' };
 
@@ -425,7 +435,12 @@ export function makeCardDesigner(React, api) {
   }
   function ImagePick({ label, asset, onPick, onRemove, busy, hint, testId, showBusinessName, onToggleBusinessName }) {
     const ref = useRef(null);
+    const dimensions = RECOMMENDED_IMAGE_SIZES[testId];
     return h(Field, { label, hint },
+      dimensions ? h('div', { 'data-recommended-size': testId, role: 'note',
+        style: { marginBottom: 10, padding: '9px 11px', borderRadius: 10, background: '#EEF1FF', color: '#1A36C4', fontSize: 13, lineHeight: 1.45 } },
+        h('div', { style: { fontWeight: 750 } }, 'Taille recommandée : ' + dimensions.width + ' × ' + dimensions.height + ' px'),
+        h('div', { style: { fontWeight: 500, marginTop: 2 } }, dimensions.format + ' · ' + dimensions.note)) : null,
       h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
         asset && asset.url ? h('img', { src: asset.url, alt: '', style: { width: 56, height: 56, objectFit: 'contain', borderRadius: 10, border: '1px solid #E4E1DA', background: 'repeating-conic-gradient(#ECEAE4 0% 25%, #FFFFFF 0% 50%) 0 0/12px 12px' } }) : null,
         h('input', { ref, type: 'file', accept: ['logo','stamp'].includes(testId)?'image/png':'image/png,image/jpeg,image/webp', 'data-upload': testId, style: { display: 'none' }, onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPick(f); } }),
@@ -439,9 +454,9 @@ export function makeCardDesigner(React, api) {
 
   const CROPS = {
     logo: { aspect: 1, outW: 660, outH: 660, mime: 'image/png', title: 'Recadrer le logo', hint: 'Format carré. Le logo n’est jamais déformé : il est affiché en entier sur la carte.' },
-    hero: { aspect: 1032 / 812, outW: 1032, outH: 812, mime: 'image/jpeg', title: 'Recadrer l’image principale', hint: 'L’image est ensuite cadrée pour chaque plateforme (réglage « Cadrage vertical »).' },
-    appleStrip: { aspect: 375 / 144, outW: 1125, outH: 432, mime: 'image/png', title: 'Recadrer le bandeau Apple Wallet', hint: 'Bandeau Apple Wallet pleine largeur (375 × 144), recadré au centre sans déformation.' },
-    background: { aspect: 340 / 560, outW: 680, outH: 1120, mime: 'image/jpeg', title: 'Recadrer l’image de fond', hint: 'Elle est assombrie par la couleur principale pour garder le texte lisible.' },
+    hero: { aspect: RECOMMENDED_IMAGE_SIZES.hero.width / RECOMMENDED_IMAGE_SIZES.hero.height, outW: RECOMMENDED_IMAGE_SIZES.hero.width, outH: RECOMMENDED_IMAGE_SIZES.hero.height, mime: 'image/jpeg', title: 'Recadrer l’image principale', hint: 'L’image est ensuite cadrée pour chaque plateforme (réglage « Cadrage vertical »).' },
+    appleStrip: { aspect: RECOMMENDED_IMAGE_SIZES.appleStrip.width / RECOMMENDED_IMAGE_SIZES.appleStrip.height, outW: RECOMMENDED_IMAGE_SIZES.appleStrip.width, outH: RECOMMENDED_IMAGE_SIZES.appleStrip.height, mime: 'image/png', title: 'Recadrer le bandeau Apple Wallet', hint: 'Bandeau Apple Wallet pleine largeur (375 × 144), recadré au centre sans déformation.' },
+    background: { aspect: RECOMMENDED_IMAGE_SIZES.background.width / RECOMMENDED_IMAGE_SIZES.background.height, outW: RECOMMENDED_IMAGE_SIZES.background.width, outH: RECOMMENDED_IMAGE_SIZES.background.height, mime: 'image/jpeg', title: 'Recadrer l’image de fond', hint: 'Elle est assombrie par la couleur principale pour garder le texte lisible.' },
     stamp: { aspect: 1, outW: 256, outH: 256, mime: 'image/png', title: 'Recadrer l’icône de tampon', hint: 'Une image PNG à fond transparent donne le meilleur rendu.' },
   };
   const DST = { submitted: 'À traiter', in_progress: 'En cours', delivered: 'Livré', cancelled: 'Annulé' };
