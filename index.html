@@ -78,6 +78,7 @@ a:hover{color:#1A36C4}
             <button type="submit" disabled="{{ busy }}" style="height:56px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#1A36C4"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ loginBtn }}</button>
           </form>
           <sc-if value="{{ isWeb }}"><p style="margin:32px 0 0;text-align:center;font-size:15px;color:#3E424A">Pas encore de compte ? <button type="button" onClick="{{ toSignup }}" style="border:0;background:none;padding:8px 2px;color:#2448F0;font-weight:700;font-size:15px" style-hover="text-decoration:underline">Créer mon compte</button></p></sc-if>
+          <sc-if value="{{ isNative }}"><p style="margin:18px 0 0;text-align:center;font-size:14px"><a href="/admin.html" style="color:#2448F0;font-weight:600;text-decoration:underline;text-underline-offset:3px">Accès administrateur</a></p></sc-if>
         </sc-if>
 
         <sc-if value="{{ s.signup }}" hint-placeholder-val="{{ false }}">
@@ -3160,7 +3161,7 @@ class Component extends DCLogic {
     const toastM=scr==='scanner'?'calc(220px + env(safe-area-inset-bottom))':(scr==='client'?'calc(160px + env(safe-area-inset-bottom))':'calc(96px + env(safe-area-inset-bottom))');
     return {
       s:S, isDesk, isMob, m, P, f:s.f, F, err, eb, inv, go, spin, scanLine, sheetAnim, busy:s.busy, notBusy:!s.busy,
-      showDemoHints:false, isWeb:!DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
+      showDemoHints:false, isWeb:!DPA_NATIVE_IOS, isNative:DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
       loginBtn:s.busy?'Connexion…':'Se connecter', signupBtn:s.busy?'Création du compte…':'Créer mon compte', forgotBtn:s.busy?'Envoi…':'Envoyer le lien',
       pwdType:s.showPwd?'text':'password', pwdIcon:s.showPwd?'visibility_off':'visibility', pwdAria:s.showPwd?'Masquer le mot de passe':'Afficher le mot de passe',
       togglePwd:()=>this.setState(x=>({showPwd:!x.showPwd})), remember:s.remember, toggleRemember:e=>this.setState({remember:e.target.checked}),
