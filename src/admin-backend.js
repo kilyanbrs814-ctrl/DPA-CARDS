@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { makeCardDesigner } from './card-designer.js';
 import { makeSales } from './sales.js';
+import { ADMIN_CALLBACK_URL, isNativeIOS, parseAdminAuthUrl, takePendingAdminAuth, listenForAdminDeepLinks } from './native-admin-link.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -20,7 +21,7 @@ const sb = createClient(URL_, KEY, {
     storageKey: 'dpa-admin-auth',
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: !isNativeIOS(),
   },
 });
 
@@ -113,7 +114,7 @@ form.addEventListener('submit', async (e) => {
   const { error } = await sb.auth.signInWithOtp({
     email: mail,
     options: {
-      emailRedirectTo: window.location.origin + '/admin.html',
+      emailRedirectTo: isNativeIOS() ? ADMIN_CALLBACK_URL : window.location.origin + '/admin.html',
       shouldCreateUser: true,
     },
   });
@@ -147,6 +148,41 @@ signout.addEventListener('click', async () => {
 sb.auth.onAuthStateChange(() => {
   setTimeout(refreshAccess, 0);
 });
+
+// Supabase returns to the iOS app using dpacards://auth/admin#access_token=….
+// The merchant and admin sessions must stay separate (admin uses dpa-admin-auth).
+// Handle both warm callbacks and cold starts, including the case where the app
+// was showing the merchant screen when the mail link was clicked.
+let lastAdminCallback = null;
+async function handleNativeAdminLogin(url) {
+  if (!isNativeIOS() || !url || url === lastAdminCallback) return;
+  const callback = parseAdminAuthUrl(url);
+  if (!callback) return;
+  lastAdminCallback = url;
+  if (callback.type === 'error') {
+    showLogin('Lien de connexion invalide ou expiré. Demandez un nouveau lien.');
+    return;
+  }
+  loading.style.display = 'block';
+  form.style.display = 'none';
+  app.style.display = 'none';
+  root.style.display = 'flex';
+  try {
+    const result = callback.type === 'tokens'
+      ? await sb.auth.setSession({ access_token: callback.accessToken, refresh_token: callback.refreshToken })
+      : await sb.auth.exchangeCodeForSession(callback.code);
+    if (result.error) throw result.error;
+    // Server-side admin_users validation still decides whether this user is admin.
+    await refreshAccess();
+  } catch (e) {
+    showLogin('Impossible de terminer la connexion. Le lien a peut-être expiré : demandez-en un nouveau.');
+  }
+}
+if (isNativeIOS()) {
+  const pending = takePendingAdminAuth();
+  if (pending) handleNativeAdminLogin(pending);
+  listenForAdminDeepLinks(handleNativeAdminLogin);
+}
 
 // Card designer: built on first use, once dc-runtime has loaded React.
 const designerApi = {
