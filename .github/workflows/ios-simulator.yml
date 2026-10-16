@@ -46,6 +46,8 @@ jobs:
         run: |
           npx cap add ios
           npx cap sync ios
+          swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName DPA Cards" ios/App/App/Info.plist || true
 
       - name: Declare QR camera usage
         run: |
