@@ -56,8 +56,8 @@ jobs:
           set -euo pipefail
           KEYCHAIN_PATH="$RUNNER_TEMP/dpa-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
-          echo "$CERT_B64" | base64 --decode > "$RUNNER_TEMP/distribution.p12"
-          echo "$PROFILE_B64" | base64 --decode > "$RUNNER_TEMP/dpa.mobileprovision"
+          echo "$CERT_B64" | base64 -D > "$RUNNER_TEMP/distribution.p12"
+          echo "$PROFILE_B64" | base64 -D > "$RUNNER_TEMP/dpa.mobileprovision"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
@@ -116,7 +116,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$HOME/.appstoreconnect/private_keys"
-          echo "$ASC_API_KEY_B64" | base64 --decode > "$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_API_KEY_ID.p8"
+          echo "$ASC_API_KEY_B64" | base64 -D > "$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_API_KEY_ID.p8"
           chmod 600 "$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_API_KEY_ID.p8"
           IPA="$(find "$RUNNER_TEMP/ipa" -maxdepth 1 -name '*.ipa' -print -quit)"
           xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$ASC_API_KEY_ID" --apiIssuer "$ASC_API_ISSUER_ID"
