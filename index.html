@@ -1781,6 +1781,7 @@ a:hover{color:#1A36C4}
       </div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <button type="button" onClick="{{ addToJoin }}" style="min-height:54px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">smartphone</span>Inscrire sur ce téléphone</button>
+        <button type="button" onClick="{{ downloadQr }}" aria-label="{{ qrDownloadLabel }}" disabled="{{ qrSaving }}" style="min-height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">download</span>{{ qrDownloadLabel }}</button>
         <button type="button" onClick="{{ copyLink }}" style="min-height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">content_copy</span>Copier le lien d’inscription</button>
       </div>
       <p style="margin:0;font-size:13px;color:#5E636B;text-align:center">{{ linkNote }}</p>
