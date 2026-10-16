@@ -102,7 +102,8 @@ test('legacy combined header images remain ignored in editor',async({page})=>{
  await expect(preview.getByRole('img',{name:'Logo et nom du commerce'})).toHaveCount(0);
  await page.getByRole('button',{name:/Enregistrer/}).click();
  const cfg=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
- expect(cfg.assets.appleHeader).toBeNull();
+ expect(cfg.apple.headerMode).toBe('classic');
+ expect(cfg.assets.appleHeader?.path).toContain('appleHeader-'); // Retained only for rollback; not displayed in Classic.
 });
 test('Apple stamp rectangle can be toggled off and on without moving counters or QR; Google stays unchanged',async({page})=>{
  await page.goto('/scripts/fixtures/designer.html');
