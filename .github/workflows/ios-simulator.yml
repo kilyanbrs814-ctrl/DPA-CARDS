@@ -9,6 +9,8 @@ on:
     paths:
       - index.html
       - src/**
+      - scripts/check-native-admin-link.test.mjs
+      - scripts/configure-ios-deeplink.swift
       - capacitor.config.json
       - .github/workflows/ios-simulator.yml
   workflow_dispatch:
