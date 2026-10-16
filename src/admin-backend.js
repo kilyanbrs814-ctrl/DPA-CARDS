@@ -87,14 +87,19 @@ async function isAuthorized(user) {
   return !!data;
 }
 
-async function refreshAccess() {
+// Avoid the initial (empty) session check racing with setSession after an iOS callback.
+let completingNativeLogin = false;
+async function refreshAccess(force = false) {
+  if (completingNativeLogin && !force) return;
   const { data: { session } } = await sb.auth.getSession();
+  if (completingNativeLogin && !force) return;
   if (!session?.user) {
     showLogin();
     return;
   }
-
-  if (await isAuthorized(session.user)) showApp();
+  const authorized = await isAuthorized(session.user);
+  if (completingNativeLogin && !force) return;
+  if (authorized) showApp();
   else showDenied();
 }
 
@@ -163,6 +168,11 @@ async function handleNativeAdminLogin(url) {
     showLogin('Lien de connexion invalide ou expiré. Demandez un nouveau lien.');
     return;
   }
+  if (callback.type === 'missing_credentials') {
+    showLogin('DPA Cards a bien reçu le lien, mais aucun jeton de connexion n’a été transmis. Vérifiez la configuration de l’e-mail Supabase et demandez un nouveau lien.');
+    return;
+  }
+  completingNativeLogin = true;
   loading.style.display = 'block';
   form.style.display = 'none';
   app.style.display = 'none';
@@ -173,15 +183,22 @@ async function handleNativeAdminLogin(url) {
       : await sb.auth.exchangeCodeForSession(callback.code);
     if (result.error) throw result.error;
     // Server-side admin_users validation still decides whether this user is admin.
-    await refreshAccess();
+    await refreshAccess(true);
   } catch (e) {
-    showLogin('Impossible de terminer la connexion. Le lien a peut-être expiré : demandez-en un nouveau.');
+    showLogin('DPA Cards a reçu le lien, mais n’a pas pu ouvrir la session administrateur. Demandez un nouveau lien et réessayez.');
+  } finally {
+    completingNativeLogin = false;
   }
 }
 if (isNativeIOS()) {
   const pending = takePendingAdminAuth();
   if (pending) handleNativeAdminLogin(pending);
-  listenForAdminDeepLinks(handleNativeAdminLogin);
+  // If this page stays open while switching to Mail, process the callback here.
+  if (!listenForAdminDeepLinks(handleNativeAdminLogin)) {
+    // Do not silently leave the user on a working-looking but broken form.
+    const previous = message.textContent;
+    if (!previous) message.textContent = 'Réception des liens iPhone indisponible. Mettez DPA Cards à jour via TestFlight.';
+  }
 }
 
 // Card designer: built on first use, once dc-runtime has loaded React.
