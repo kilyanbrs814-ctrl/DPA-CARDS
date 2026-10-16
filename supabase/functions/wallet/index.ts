@@ -41,7 +41,8 @@ import { loadRewardStar } from '../_shared/reward-star.js';
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 import { LOGO_PNG_BASE64 } from './logo.ts';
 import { sendEmail, simpleMail } from '../_shared/email.ts';
-import { decodePanelArt, makeGoogleStampHero } from '../apple-pass/real-strip.js';
+import { decodePanelArt } from '../apple-pass/real-strip.js';
+import { makeGoogleStampHero } from './google-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const ISSUER_ID = Deno.env.get('GOOGLE_WALLET_ISSUER_ID') ?? '';
@@ -185,7 +186,7 @@ const hasStampEmoji = (program: any) => program?.mode !== 'points' && hasSavedSt
 async function stampBoardUrl(id: string, revision = 0, test = false) {
   const tag=(test?'test-':'')+id;
   return SUPABASE_URL+'/functions/v1/wallet/stamp-board/'+
-    tag+'/'+await stampSignature(tag)+'.png?v='+Number(revision || 0);
+    tag+'/'+await stampSignature(tag)+'.png?render=google-v2&v='+Number(revision || 0);
 }
 function googleEmojiText(emoji: string, progress: number, goal: number) {
   const count=Math.max(1,Math.min(20,Number(goal)||10)), done=Math.max(0,Math.min(count,Number(progress)||0));
@@ -228,7 +229,18 @@ async function publicStampBoard(req: Request, path: string) {
     }
   }
   const finalStar=await loadRewardStar();
-  const png=await makeGoogleStampHero(design,progress,goal,mode,icon,finalStar);
+  let panelArt=null;
+  const artwork=design.assets?.googleStrip || (design.google?.reuseAppleStrip!==false ? design.assets?.appleStrip : null);
+  const artPath=artwork?.path;
+  const folder=isTest?'tests/'+id:owner.replace(/\/designer$/, '');
+  // Resolve only images owned by this card's program/test; never arbitrary URLs.
+  if(typeof artPath==='string' && designerPath(folder).test(artPath) && /\/(googleStrip|appleStrip)-[0-9a-f-]{36}\.(png|jpg)$/i.test(artPath)){
+    const {data,error}=await admin.storage.from('program-assets').download(artPath);
+    if(error || !data)return new Response('Image unavailable',{status:503});
+    try { panelArt=await decodePanelArt(new Uint8Array(await data.arrayBuffer())); }
+    catch { return new Response('Image unavailable',{status:503}); }
+  }
+  const png=await makeGoogleStampHero(design,progress,goal,mode,icon,finalStar,panelArt);
   return new Response(new Uint8Array(png),{
     status:200,headers:{'content-type':'image/png','cache-control':'public, max-age=300','x-content-type-options':'nosniff'}
   });
@@ -1169,7 +1181,7 @@ const savedEmoji = (value: unknown) => {
   return [...emoji].length <= 16 && /\p{Extended_Pictographic}/u.test(emoji) ? emoji : '';
 };
 
-const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'appleStrip', 'appleHeader', 'rewardLabel', 'businessFont', 'businessNameImage'] as const;
+const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'googleStrip', 'appleStrip', 'appleHeader', 'rewardLabel', 'businessFont', 'businessNameImage'] as const;
 type AssetKind = typeof ASSET_KINDS[number];
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '');
@@ -1178,7 +1190,7 @@ const pick = <T extends string>(v: unknown, list: readonly T[], dflt: T): T => (
 const int = (v: unknown, min: number, max: number, dflt: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt; };
 // Images of the program's own folder: the designer's uploads, or the logo / cover the program already uses.
 // `folder` = "<merchant>/<program>" for a real program, "tests/<test id>" for a test card (designer/ only).
-const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp|appleStrip|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\\.(png|jpg)$`);
+const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp|googleStrip|appleStrip|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\\.(png|jpg)$`);
 
 // Whitelist of the design document; anything else is dropped. Colours of a platform are optional overrides.
 function cleanDesign(raw: any, folder: string) {
@@ -1211,7 +1223,7 @@ function cleanDesign(raw: any, folder: string) {
     apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showStampPanel: r.apple?.showStampPanel !== false, showStamps: r.apple?.showStamps !== false, headerMode: r.apple?.headerMode==='custom'?'custom':'classic', headerArtworkVersion: int(r.apple?.headerArtworkVersion,0,4,0), showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64),
       rewardTextColor: HEX_RE.test(r.apple?.rewardTextColor??'')?String(r.apple.rewardTextColor).toUpperCase():'',
       businessNameFont: pick(r.apple?.businessNameFont,['system','hanken','space','playfair','custom'] as const,'system') },
-    google: platform(r.google),
+    google: { ...platform(r.google), showStamps:r.google?.showStamps!==false, reuseAppleStrip:r.google?.reuseAppleStrip!==false },
     // Editor only (demo customer, demo progress): never copied to the program.
     preview: { mode: pick(pv.mode, ['passages', 'points'] as const, 'passages'), goal: int(pv.goal, 1, 1000, 10), progress: int(pv.progress, 0, 100000, 3),
       reward: str(pv.reward, 80), available: int(pv.available, 0, 99, 1), client: str(pv.client, 60) },
@@ -1309,6 +1321,13 @@ async function validateDesignPng(config: any) {
     const bytes=new Uint8Array(await data.slice(0,4).arrayBuffer()),magic=String.fromCharCode(...bytes),ext=font.split('.').pop();
     const valid=ext==='otf'&&magic==='OTTO'||ext==='woff2'&&magic==='wOF2'||ext==='ttf'&&bytes[0]===0&&bytes[1]===1&&bytes[2]===0&&bytes[3]===0;
     if(!valid)throw new HttpError(422,'invalid_business_font');
+  }
+  const googleArt=config.assets?.googleStrip?.path;
+  if(googleArt){
+    const {data,error}=await admin.storage.from('program-assets').download(googleArt);
+    if(error || !data)throw new HttpError(422,'missing_googleStrip');
+    try { await decodePanelArt(new Uint8Array(await data.arrayBuffer())); }
+    catch { throw new HttpError(422,'invalid_googleStrip'); }
   }
   for(const kind of ['logo','stamp','appleHeader','rewardLabel','businessNameImage','appleStrip']) {
     const path=config.assets?.[kind]?.path;

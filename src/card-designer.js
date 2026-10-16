@@ -23,7 +23,7 @@ export const STAMP_ICONS = [
   ['icecream', 'Glace'], ['bakery_dining', 'Viennoiserie'], ['custom', 'Personnalisée'],
 ];
 const HEX = /^#[0-9A-Fa-f]{6}$/;
-const ASSET_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(designer\/)?(logo|hero|background|stamp|appleStrip|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\.(png|jpg)$/;
+const ASSET_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(designer\/)?(logo|hero|background|stamp|googleStrip|appleStrip|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\.(png|jpg)$/;
 // Recommended source dimensions for EVERY upload in the card generator.
 // Cropped assets are exported to exactly the dimensions below. The original
 // logo and stamp keep their proportions; these sizes are recommendations only.
@@ -32,6 +32,7 @@ export const RECOMMENDED_IMAGE_SIZES = Object.freeze({
   hero: Object.freeze({ width: 1032, height: 812, format: 'PNG, JPEG ou WebP', note: 'Format paysage ; recadrage automatique.' }),
   background: Object.freeze({ width: 680, height: 1120, format: 'PNG, JPEG ou WebP', note: 'Format portrait ; recadrage automatique.' }),
   stamp: Object.freeze({ width: 256, height: 256, format: 'PNG transparent', note: 'Carré, sans fond pour un beau rendu.' }),
+  googleStrip: Object.freeze({ width: 1032, height: 812, format: 'PNG, JPEG ou WebP', note: 'Image Google Wallet derrière les tampons.' }),
   appleStrip: Object.freeze({ width: 1125, height: 432, format: 'PNG, JPEG ou WebP', note: 'Bandeau Apple Wallet pleine largeur (375 × 144 pt).' }),
 });
 // Demo data of the editor (the real card gets its own customer, balance and QR token).
@@ -55,10 +56,10 @@ export function defaultDesign(project) {
     identity: { name: m.business_name || '', subtitle: m.activity || '' },
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
-    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null },
+    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, googleStrip: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg), size: 100, spacing: 100, inactiveOpacity: 22 },
     apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, headerMode: 'classic', showStampPanel: true, showStamps: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
-    google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
+    google: { colors: {}, showStamps: true, reuseAppleStrip: true, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
   };
 }
@@ -99,6 +100,7 @@ export function prepareDesign(cardDesign, program, merchant, assetUrl) {
   const withUrl = (a, fb) => (a && a.path ? { path: a.path, url: assetUrl(a.path), fallback: fb ? fb.url : null } : fb);
   d.assets = { logo: cardDesign.assets && Object.hasOwn(cardDesign.assets,'logo') ? withUrl(cardDesign.assets.logo,null) : base.assets.logo, hero: withUrl(cardDesign.assets && cardDesign.assets.hero, base.assets.hero),
     background: withUrl(cardDesign.assets && cardDesign.assets.background, null), stamp: withUrl(cardDesign.assets && cardDesign.assets.stamp, null),
+    googleStrip: withUrl(cardDesign.assets && cardDesign.assets.googleStrip, null),
     appleStrip: withUrl(cardDesign.assets && cardDesign.assets.appleStrip, null),
     appleHeader: withUrl(cardDesign.assets && cardDesign.assets.appleHeader, null),
     rewardLabel: withUrl(cardDesign.assets && cardDesign.assets.rewardLabel, null),
@@ -411,7 +413,21 @@ export function makeCardDesigner(React, api) {
     );
   }
   function AppleCard({design,data}){return h(WalletCard,{design,data,platform:'apple'});}
-  function GoogleCard({design,data}){return h(WalletCard,{design,data,platform:'google'});}
+  function GoogleCard({design,data}){
+    const d=effective(design,'google'),c=d.colors;
+    const art=d.assets.googleStrip || (d.opt.reuseAppleStrip!==false?d.assets.appleStrip:null);
+    const done=Math.max(0,Number(data.progress)||0),goal=Math.max(1,Number(data.goal)||10);
+    const points=data.mode==='points';
+    return h('div',{'data-layout':'google',style:{width:340,borderRadius:22,overflow:'hidden',background:c.primary,color:c.text,fontFamily:FONTS[d.font].css,boxShadow:'0 14px 36px rgba(20,22,28,.19)'}},
+      h('div',{style:{display:'flex',gap:12,alignItems:'center',padding:20}},h(Logo,{d,size:40,round:true}),h('strong',{style:{fontSize:20}},d.identity.name||'Nom du commerce')),
+      h('div',{style:{display:'flex',justifyContent:'space-between',padding:'8px 18px 24px'}},
+        h('div',null,h('div',null,points?'Points gagnés':'Passages effectués'),h('strong',{'data-field':'completed-count'},String(done))),
+        h('div',{style:{textAlign:'right'}},h('div',null,points?'Points restants':'Passages restants'),h('strong',{'data-field':'remaining-count'},String(Math.max(0,goal-done))))),
+      h('div',{'data-field':'qr',style:{display:'flex',justifyContent:'center',padding:'0 16px 24px'}},h('div',{style:{background:'#FFF',padding:12,borderRadius:14}},h(Qr,{value:data.qr,size:125}))),
+      h('div',{'data-google-stamp-panel':true,style:{position:'relative',width:340,height:340*812/1032,display:'grid',placeItems:'center',background:c.primary}},
+        art?.url && h('img',{src:art.url,alt:'Visuel Google Wallet',style:{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'contain'}}),
+        d.opt.showStamps!==false && h('div',{style:{position:'relative'}},h(Progress,{d,data,width:250,align:'center',dark:false,large:false}))))
+  }
 
   function CardPreview({ design, data, platform }) { return h(platform === 'google' ? GoogleCard : AppleCard, { design, data }); }
   // The card is drawn at 340 px and scaled to the width of its container (merchant screens use 280–330 px).
@@ -489,6 +505,7 @@ export function makeCardDesigner(React, api) {
   const CROPS = {
     logo: { aspect: 1, outW: 660, outH: 660, mime: 'image/png', title: 'Recadrer le logo', hint: 'Format carré. Le logo n’est jamais déformé : il est affiché en entier sur la carte.' },
     hero: { aspect: RECOMMENDED_IMAGE_SIZES.hero.width / RECOMMENDED_IMAGE_SIZES.hero.height, outW: RECOMMENDED_IMAGE_SIZES.hero.width, outH: RECOMMENDED_IMAGE_SIZES.hero.height, mime: 'image/jpeg', title: 'Recadrer l’image principale', hint: 'L’image est ensuite cadrée pour chaque plateforme (réglage « Cadrage vertical »).' },
+    googleStrip: { aspect: 1032/812, outW: 1032, outH: 812, mime: 'image/png', title: 'Recadrer l’image Google Wallet', hint: 'Image pleine largeur, derrière les tampons Google Wallet.' },
     appleStrip: { aspect: RECOMMENDED_IMAGE_SIZES.appleStrip.width / RECOMMENDED_IMAGE_SIZES.appleStrip.height, outW: RECOMMENDED_IMAGE_SIZES.appleStrip.width, outH: RECOMMENDED_IMAGE_SIZES.appleStrip.height, mime: 'image/png', title: 'Recadrer le bandeau Apple Wallet', hint: 'Bandeau Apple Wallet pleine largeur (375 × 144), recadré au centre sans déformation.' },
     background: { aspect: RECOMMENDED_IMAGE_SIZES.background.width / RECOMMENDED_IMAGE_SIZES.background.height, outW: RECOMMENDED_IMAGE_SIZES.background.width, outH: RECOMMENDED_IMAGE_SIZES.background.height, mime: 'image/jpeg', title: 'Recadrer l’image de fond', hint: 'Elle est assombrie par la couleur principale pour garder le texte lisible.' },
     stamp: { aspect: 1, outW: 256, outH: 256, mime: 'image/png', title: 'Recadrer l’icône de tampon', hint: 'Une image PNG à fond transparent donne le meilleur rendu.' },
@@ -970,6 +987,12 @@ export function makeCardDesigner(React, api) {
           hint: 'L’image couvre tout le bandeau Apple Wallet, bord à bord, derrière les tampons. Recadrage centré.' }),
         h(Check, { label: 'Afficher les tampons', checked: design.apple.showStamps!==false,
           onChange: v => set('apple.showStamps', v) })),
+      platform==='google' && h(Section, { title: 'Google Wallet' },
+        h(ImagePick, { label:'Image Google Wallet (facultatif)', testId:'googleStrip', asset:design.assets.googleStrip,
+          busy:busy==='up-googleStrip', onPick:pickFile('googleStrip'), onRemove:()=>set('assets.googleStrip',null),
+          hint:'1032 × 812 px. Image derrière les tampons, indépendante du bandeau Apple.' }),
+        h(Check,{label:'À défaut, reprendre le visuel Apple sans le modifier',checked:design.google.reuseAppleStrip!==false,onChange:v=>set('google.reuseAppleStrip',v)}),
+        h(Check,{label:'Afficher les tampons Google',checked:design.google.showStamps!==false,onChange:v=>set('google.showStamps',v)})),
       h(Section, { title: 'Typographie' },
         h(Select, { label: 'Police de la carte', value: design.font, options: Object.entries(FONTS).map(([k, f]) => [k, f.label]), onChange: v => set('font', v) })),
       h(Section, { title: 'Ajustements ' + pName },
