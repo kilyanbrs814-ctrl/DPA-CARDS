@@ -167,3 +167,31 @@ test('Apple header leaves room between merchant and last four digits',()=>{
   assert.equal(json.storeCard.headerFields[0].value,'0001');
   assert.equal(json.barcode.altText,'Par DPA Cards');
 });
+
+test('custom Apple header is opt-in, keeps QR and preserves instant return to native',()=>{
+  const p=structuredClone(program);
+  p.card_design.stamps.emoji='🍔';
+  p.card_design.apple.showBusinessName=true;
+  const path=folder+'/designer/appleHeader-'+token+'.png';
+  p.card_design.assets.appleHeader={path};
+  p.card_design.apple.headerArtworkVersion=4;
+  let {brand,json}=realApplePassData({program:p,merchant,customer,card,balance:4});
+  assert.equal(brand.appleHeader,null,'classic remains default');
+  assert.equal(json.logoText,'Boulangerie des Arts');
+  p.card_design.apple.headerMode='custom';
+  ({brand,json}=realApplePassData({program:p,merchant,customer,card,balance:4}));
+  assert.equal(brand.appleHeader,path);
+  assert.equal(json.logoText,undefined,'do not print native text over custom image');
+  assert.equal(json.storeCard.headerFields[0].value,'0001');
+  assert.equal(json.storeCard.secondaryFields[0].value,'4');
+  assert.equal(json.barcode.message,'DPA1:'+token);
+  p.card_design.apple.headerMode='classic';
+  ({brand,json}=realApplePassData({program:p,merchant,customer,card,balance:4}));
+  assert.equal(brand.appleHeader,null,'original image remains stored but unused');
+  assert.equal(json.logoText,'Boulangerie des Arts');
+  p.card_design.apple.headerMode='custom';
+  p.card_design.apple.headerArtworkVersion=3;
+  ({brand,json}=realApplePassData({program:p,merchant,customer,card,balance:4}));
+  assert.equal(brand.appleHeader,null,'old bitmap is ignored');
+  assert.equal(json.logoText,'Boulangerie des Arts');
+});
