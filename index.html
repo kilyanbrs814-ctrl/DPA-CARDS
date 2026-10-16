@@ -635,7 +635,7 @@ a:hover{color:#1A36C4}
         <div style="width:64px;height:64px;border-radius:18px;background:#EEF1FF;color:#2448F0;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:34px">lock</span></div>
         <h1 style="margin:0;font-weight:800;font-size:clamp(24px,5vw,30px);letter-spacing:-0.02em;line-height:1.15">{{ lockView.title }}</h1>
         <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5;max-width:460px">{{ lockView.text }}</p>
-        <button type="button" onClick="{{ toBilling }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px" style-hover="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:20px">lock_open</span>Choisir mon abonnement</button>
+        <sc-if value="{{ isWeb }}"><button type="button" onClick="{{ toBilling }}" style="margin-top:6px;min-height:54px;padding:0 22px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px" style-hover="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:20px">lock_open</span>Choisir mon abonnement</button></sc-if>
         <button type="button" onClick="{{ toHome }}" style="min-height:44px;padding:0 12px;border:0;background:none;color:#3E424A;font-weight:600;font-size:15px">Retour à l’accueil</button>
       </div>
     </sc-if>
@@ -3112,7 +3112,7 @@ class Component extends DCLogic {
       {icon:'storefront',label:'Informations du commerce',sub:m.business,run:openSec('business')},
       {icon:'lock',label:'Sécurité et mot de passe',sub:s.live?'Mot de passe, export des données, suppression du compte':'Modifier le mot de passe',run:openSec('security')},
       {icon:'help',label:'Aide et contact',sub:'Questions fréquentes, support',run:openSec('help')},
-      ...(s.live?[{icon:'credit_card',label:'Mon abonnement',sub:s.accessSource==='manual'?'Accès offert par DPA Cards · jusqu’au '+fmtFull(s.manualExpiresAt):s.subscription?(s.subscription.billing_mode==='prepaid'?'Engagement 12 mois · payé en une fois':s.subscription.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement')+' · '+(s.subscription.billing_mode==='prepaid'&&s.subscription.status==='active'&&!subOk(s.subscription)?SUB_ST.expired:(SUB_ST[s.subscription.status]||s.subscription.status)):'Offre, factures, moyen de paiement',run:openSec('billing')}]:[]),
+      ...(!DPA_NATIVE_IOS&&s.live?[{icon:'credit_card',label:'Mon abonnement',sub:s.accessSource==='manual'?'Accès offert par DPA Cards · jusqu’au '+fmtFull(s.manualExpiresAt):s.subscription?(s.subscription.billing_mode==='prepaid'?'Engagement 12 mois · payé en une fois':s.subscription.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement')+' · '+(s.subscription.billing_mode==='prepaid'&&s.subscription.status==='active'&&!subOk(s.subscription)?SUB_ST.expired:(SUB_ST[s.subscription.status]||s.subscription.status)):'Offre, factures, moyen de paiement',run:openSec('billing')}]:[]),
       {icon:'restart_alt',label:'Réinitialiser la démo',sub:'Revenir aux données BASH',run:()=>{ this.enterDemo(); this.showToast('Données de démonstration réinitialisées'); }}].filter(x=>!s.live||x.icon!=='restart_alt');
     const secTitle={profile:'Profil du responsable',business:'Informations du commerce',security:'Sécurité et mot de passe',help:'Aide et contact',billing:'Mon abonnement'}[s.section];
     const sec={profile:s.section==='profile',business:s.section==='business',security:s.section==='security',help:s.section==='help',billing:s.section==='billing',form:s.section!=='help'&&s.section!=='billing'};
@@ -3160,7 +3160,7 @@ class Component extends DCLogic {
     const toastM=scr==='scanner'?'calc(220px + env(safe-area-inset-bottom))':(scr==='client'?'calc(160px + env(safe-area-inset-bottom))':'calc(96px + env(safe-area-inset-bottom))');
     return {
       s:S, isDesk, isMob, m, P, f:s.f, F, err, eb, inv, go, spin, scanLine, sheetAnim, busy:s.busy, notBusy:!s.busy,
-      showDemoHints:false,
+      showDemoHints:false, isWeb:!DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
       loginBtn:s.busy?'Connexion…':'Se connecter', signupBtn:s.busy?'Création du compte…':'Créer mon compte', forgotBtn:s.busy?'Envoi…':'Envoyer le lien',
       pwdType:s.showPwd?'text':'password', pwdIcon:s.showPwd?'visibility_off':'visibility', pwdAria:s.showPwd?'Masquer le mot de passe':'Afficher le mot de passe',
       togglePwd:()=>this.setState(x=>({showPwd:!x.showPwd})), remember:s.remember, toggleRemember:e=>this.setState({remember:e.target.checked}),
@@ -3184,10 +3184,10 @@ class Component extends DCLogic {
       obDoneGo:()=>{ if(s.live&&!s.hasAccess) return this.go('billing'); this.go('home',{loadingHome:true}); setTimeout(()=>this.setState({loadingHome:false}),600); },
       qrBiz:locked?null:(this.api?this.realQr(pubUrl,200,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,200)), qrBizSm:locked?null:(this.api?this.realQr(pubUrl,168,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,168)), link, pubUrl, hasLink:!!link, noLink:!link,
       copyLink:()=>locked?this.go('invite'):this.copyJoinLink(),
-      lockBanner:locked&&S.app, toBilling:()=>this.go('billing'), canSkipBilling:locked&&!!s.program&&(s.program.designStatus!=='draft'||designUnpaid(s.designReq)),
+      lockBanner:!DPA_NATIVE_IOS&&locked&&S.app, toBilling:()=>this.go('billing'), canSkipBilling:locked&&!!s.program&&(s.program.designStatus!=='draft'||designUnpaid(s.designReq)),
       skipBilling:()=>{ this.go('home'); this.scrollTop(); },
-      lockView:{title:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[0],text:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[1]},
-      homeDesign:(()=>{ const r=s.designReq; if(!s.live||!S.home||!r) return {show:false};
+      lockView:DPA_NATIVE_IOS?{title:'Fonction indisponible',text:'Cette fonction n’est pas disponible avec l’accès actuel de ce compte.'}:{title:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[0],text:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[1]},
+      homeDesign:(()=>{ const r=s.designReq; if(DPA_NATIVE_IOS||!s.live||!S.home||!r) return {show:false};
         if(designUnpaid(r)){ const ask=!!s.designAsk, meta='Demande du '+fmtFull(r.createdAt)+' · En attente de paiement';
           const change={ask,alt:ask?'':'Je préfère personnaliser ma carte moi-même',altAct:()=>this.setState({designAsk:true}),keep:()=>this.setState({designAsk:false}),confirm:this.cancelDesignReq};
           if(s.hasAccess) return {show:true,icon:'brush',bg:'#FFF3DC',border:'#F2D49B',fg:'#8A5A00',title:'Votre création sur mesure attend son paiement',text:'Réglez la création de votre carte (29,90 € TTC, paiement unique) : DPA Cards commence dès le paiement confirmé.',meta,cta:ask?'':(s.busy?'Redirection…':'Payer mon design — 29,90 €'),spin:!!s.busy,act:this.resumeDesign,...change};
@@ -3219,7 +3219,7 @@ class Component extends DCLogic {
       d, D, dirty, notDirty:!dirty, draftCard, tabs, tabApple:s.tab==='apple', tabGoogle:s.tab==='google', tabGoogleClassic:s.tab==='google'&&!cdOn, tabGoogleCD:s.tab==='google'&&cdOn, dMode:mkMode('draft'), dGoalDown:stepGoal('draft',-1), dGoalUp:stepGoal('draft',1), dUnit:d.mode==='points'?'points':'passages',
       dBg:mkSw(BGS,'bg','draft'), dAccent:mkSw(ACCENTS,'accent','draft'), dPat:mkPat('draft'), saveCard:this.saveCard, saveLabel:s.busy?'Enregistrement…':'Enregistrer les modifications',
       resetDraft:()=>this.setState(x=>({draft:{...x.program}})), importLogo:()=>this.showToast(s.live?'L’import de logo n’est pas encore disponible. Utilisez les initiales.':'Démo : import d’image simulé, aucun fichier n’est envoyé.','info'),
-      moreItems, logout:()=>this.setState({modal:'logout'}), confirmLogout:()=>{ if(s.live) return this.logoutLive(); this.setState({...this.initState(),w:window.innerWidth,screen:'login'}); },
+      moreItems, logout:()=>DPA_NATIVE_IOS&&s.screen==='nativeAccess'?this.logoutLive():this.setState({modal:'logout'}), confirmLogout:()=>{ if(s.live) return this.logoutLive(); this.setState({...this.initState(),w:window.innerWidth,screen:'login'}); },
       sec, secTitle, sd:s.sd, SD, saveSection:this.saveSection, saveSecLabel:s.busy?'Enregistrement…':'Enregistrer', contactSupport:()=>this.showToast(s.live?'Le contact support n’est pas encore disponible depuis l’application.':'Démo : aucun message n’a été envoyé.','info'),
       consent:s.consent, toggleConsent:e=>this.setState({consent:e.target.checked,err:{...s.err,consent:null}}), submitJoin:this.submitJoin, joinBtn:s.busy?'Création de votre carte…':'Obtenir ma carte',
       openGWallet:()=>sel&&this.openGWallet(sel.id), openAWallet:()=>sel&&this.openAWallet(sel.id),
