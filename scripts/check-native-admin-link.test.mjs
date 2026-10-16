@@ -21,7 +21,7 @@ test('unrecognized paths and protocols cannot inject a session', () => {
     'https://cards.digitalprojectagency.fr/admin.html#access_token=abc&refresh_token=xyz',
     'dpacards://other/admin#access_token=abc&refresh_token=xyz',
     'dpacards://auth/merchant#access_token=abc&refresh_token=xyz',
-    'dpacards://auth/admin#access_token=abc',
+
     'not a URL',
     'dpacards://auth/admin#access_token=' + 'a'.repeat(16001),
   ]) assert.equal(parseAdminAuthUrl(value), null, value.slice(0, 100));
@@ -33,6 +33,7 @@ test('module can import in normal web tests without a window global', () => {
 test('admin callback with no credentials is reported, not discarded', () => {
   assert.deepEqual(parseAdminAuthUrl('dpacards://auth/admin'), { type: 'missing_credentials' });
   assert.deepEqual(parseAdminAuthUrl('dpacards://auth/admin/'), { type: 'missing_credentials' });
+  assert.deepEqual(parseAdminAuthUrl('dpacards://auth/admin#access_token=abc'), { type: 'missing_credentials' });
 });
 test('Capacitor App plugin receives warm links and cold-launch URLs', async () => {
   const before = globalThis.window;
