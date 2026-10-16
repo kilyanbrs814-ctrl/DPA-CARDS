@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { isSixDigitCode } from '../src/admin-otp.js';
 import test from 'node:test';
 import { ADMIN_CALLBACK_URL, parseAdminAuthUrl, isNativeIOS, listenForAdminDeepLinks, forwardAdminAuthToPage, takePendingAdminAuth } from '../src/native-admin-link.js';
 
@@ -83,4 +85,23 @@ test('native callback is preserved and forwarded to the packaged admin page', ()
     globalThis.window = before;
     globalThis.sessionStorage = beforeStorage;
   }
+});
+
+test('native administrator OTP only accepts exactly six digits', () => {
+  for (const value of ['123456', '000001', '123456 ', ' 000000']) assert.equal(isSixDigitCode(value), true);
+  for (const value of ['', '12345', '1234567', 'abcdef', '１２３４５６', '12345a', null]) assert.equal(isSixDigitCode(value), false);
+});
+test('iOS admin form has native OTP entry, code autofill and recovery actions', () => {
+  const html = readFileSync(new URL('../admin.html', import.meta.url), 'utf8');
+  for (const field of ['admin-otp-row', 'admin-otp-code', 'autocomplete="one-time-code"', 'admin-otp-resend', 'admin-otp-change']) {
+    assert.ok(html.includes(field), field);
+  }
+});
+test('native uses verified Supabase email OTP; browser retains email magic link', () => {
+  const js = readFileSync(new URL('../src/admin-backend.js', import.meta.url), 'utf8');
+  assert.ok(js.includes('sb.auth.verifyOtp({ email: nativeOtpEmail, token, type: \'email\' })'));
+  assert.ok(js.includes("window.location.origin + '/admin.html'"));
+  assert.ok(js.includes('if (nativeAdmin && nativeOtpEmail)'));
+  assert.ok(js.includes('await refreshAccess(true)'));
+  assert.ok(js.includes('showCodeEntry(mail)'));
 });
