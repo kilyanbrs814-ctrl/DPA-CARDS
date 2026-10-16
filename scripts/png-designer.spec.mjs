@@ -255,3 +255,18 @@ test('Custom Apple header saves at Retina 3x, then Classic restores native name 
  expect(again.apple.headerArtworkVersion).toBe(4);
  expect(again.assets.appleHeader.path).toBe(custom.assets.appleHeader.path);
 });
+
+test('Apple and Google test-add buttons use the supplied high-resolution clickable badges', async ({page}) => {
+ await page.goto('/scripts/fixtures/designer.html');
+ for (const [platform,attr] of [['google','data-test-wallet'],['apple','data-test-apple']]) {
+  const button=page.locator('button['+attr+']');
+  await expect(button).toBeVisible();
+  await expect(button).toHaveAttribute('aria-label','Ajouter à '+(platform==='apple'?'Apple':'Google')+' Wallet');
+  await expect(button.locator('img')).toHaveAttribute('src','/assets/wallet-badge-'+platform+'.png');
+  const image=button.locator('img');
+  await expect.poll(()=>image.evaluate(e=>e.complete&&e.naturalWidth===580&&e.naturalHeight===180)).toBe(true);
+  const b=await button.boundingBox();
+  expect(b.width).toBeLessThanOrEqual(260.1);
+  expect(b.height).toBeGreaterThan(50);
+ }
+});
