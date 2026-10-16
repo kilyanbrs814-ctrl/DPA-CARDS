@@ -147,8 +147,9 @@ export async function notoEmoji(value) {
   }
   return memo.get(name);
 }
-export function compositeEmoji(target,width,height,cx,cy,size,icon,completed) {
+export function compositeEmoji(target,width,height,cx,cy,size,icon,completed,inactiveOpacity=22) {
   if(!icon || !Number.isInteger(width)||!Number.isInteger(height))return;
+  const value=Number(inactiveOpacity),fade=Number.isFinite(value)?Math.max(0,Math.min(100,value))/100:.22;
   const ratio=Math.min(size/icon.width,size/icon.height);
   const w=Math.max(1,Math.floor(icon.width*ratio)),h=Math.max(1,Math.floor(icon.height*ratio));
   const x0=Math.round(cx-w/2),y0=Math.round(cy-h/2);
@@ -157,7 +158,7 @@ export function compositeEmoji(target,width,height,cx,cy,size,icon,completed) {
     if(dx<0||dy<0||dx>=width||dy>=height)continue;
     const sx=Math.min(icon.width-1,Math.floor(x/ratio)),sy=Math.min(icon.height-1,Math.floor(y/ratio));
     const si=4*(sy*icon.width+sx),di=4*(dy*width+dx);
-    const srcA=icon.pixels[si+3]/255*(completed?1:.22),inv=1-srcA;
+    const srcA=icon.pixels[si+3]/255*(completed?1:fade),inv=1-srcA;
     const gray=Math.round(.2126*icon.pixels[si]+.7152*icon.pixels[si+1]+.0722*icon.pixels[si+2]);
     for(let k=0;k<3;k++){
       const value=completed?icon.pixels[si+k]:gray;

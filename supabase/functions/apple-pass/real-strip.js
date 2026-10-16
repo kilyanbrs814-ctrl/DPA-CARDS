@@ -17,6 +17,10 @@ export function stampScale(size) {
 }
 // Scale center-to-center distances (never the bitmap or ring radius).
 // Invalid and legacy configs produce the same strip as before.
+export function stampOpacity(value) {
+ const n=Number(value);
+ return value==null||value===''||!Number.isFinite(n)?22:clamp(Math.round(n),0,100);
+}
 export function stampSpacing(spacing) {
   const n=Number(spacing);
   return spacing==null || spacing==='' || !Number.isFinite(n) ? 1 : clamp(n,50,120)/100;
@@ -113,6 +117,19 @@ function overlayPanel(pixels, width, height, art, left, top, right, bottom, radi
     for(let c=0;c<3;c++)pixels[dest+c]=Math.round(art.pixels[src+c]*a+pixels[dest+c]*(1-a));
   }
 }
+
+function drawFadedRing(pixels,width,height,cx,cy,outer,inner,ink,alpha) {
+ if(alpha<=0)return;
+ for(let y=Math.max(0,Math.floor(cy-outer));y<Math.min(height,Math.ceil(cy+outer));y++)
+  for(let x=Math.max(0,Math.floor(cx-outer));x<Math.min(width,Math.ceil(cx+outer));x++){
+   const r2=(x+.5-cx)**2+(y+.5-cy)**2;
+   if(r2>outer*outer||r2<=inner*inner)continue;
+   const dest=(y*width+x)*4;
+   for(let k=0;k<3;k++)pixels[dest+k]=Math.round(pixels[dest+k]*(1-alpha)+ink[k]*alpha);
+   pixels[dest+3]=255;
+  }
+}
+
 // Minimal emoji banner used by BOTH signed Apple test and customer passes.
 // The optional artwork fills the strip edge-to-edge; native Wallet controls its placement.
 // logo, number, counters and QR remain native Wallet fields.
@@ -159,6 +176,7 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
     const size=logicalSize*scale;
     const visualSize=Math.round(size*stampScale(stamps?.size));
     const spacing=stampSpacing(stamps?.spacing);
+    const inactiveOpacity=stampOpacity(stamps?.inactiveOpacity);
     const rowGap=(rewardArt?(rows===3?31:rows===2?49:0):(rows===3?40:rows===2?58:0))*scale;
     const cx=width/2,cy=height/2-(rewardArt?12*scale:0);
     for(let i=0;i<n;i++){
@@ -166,7 +184,7 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
       const x=Math.round(cx+(col-(rowCount-1)/2)*(size+gap*scale)*spacing);
       const y=Math.round(cy+(row-(rows-1)/2)*rowGap*spacing);
       const stamp=i===n-1&&finalStar?finalStar:icon;
-      if(stamp)compositeEmoji(pixels,width,height,x,y,visualSize,stamp,i<done);
+      if(stamp)compositeEmoji(pixels,width,height,x,y,visualSize,stamp,i<done,inactiveOpacity);
     }
   }
   overlayReward(pixels,width,height,scale,rewardArt);
@@ -207,19 +225,24 @@ export async function makeRealStrip(brand, balance, goal, scale = 1, customIcon=
   const center = 285 * scale;
   const bitmap = brand.emoji ? await notoEmoji(brand.emoji) : null;
   const stampFactor=stampScale(brand.stamps?.size);
+  const inactiveOpacity=stampOpacity(brand.stamps?.inactiveOpacity);
   for (let i = 0; i < maxStamps; i++) {
     const col = i % columns, row = Math.floor(i / columns);
     const x = Math.round(center + (col - (columns - 1) / 2) * dX);
     const y = Math.round(height / 2 - (rewardArt?14*scale:0) + (row - (rows - 1) / 2) * dY);
     if(i===maxStamps-1 && finalStar){
-      compositeEmoji(pixels,width,height,x,y,Math.round(25*scale*stampFactor),finalStar,i<done);
+      compositeEmoji(pixels,width,height,x,y,Math.round(25*scale*stampFactor),finalStar,i<done,inactiveOpacity);
     }else if (brand.emoji) {
       // With an emoji choice, never fall back to round stamps. A missing
       // open-source asset leaves a clean strip and native text fields intact.
-      if (bitmap) compositeEmoji(pixels,width,height,x,y,Math.round(25*scale*stampFactor),bitmap,i<done);
+      if (bitmap) compositeEmoji(pixels,width,height,x,y,Math.round(25*scale*stampFactor),bitmap,i<done,inactiveOpacity);
+    } else if(i<done){
+      circle(pixels,width,height,x,y,12*scale*stampFactor,accent);
+    } else if(inactiveOpacity>=22){
+      circle(pixels,width,height,x,y,12*scale*stampFactor,empty);
+      circle(pixels,width,height,x,y,9*scale*stampFactor,brand.showStampPanel===false?primary:secondary);
     } else {
-      circle(pixels, width, height, x, y, 12 * scale * stampFactor, i < done ? accent : empty);
-      if (i >= done) circle(pixels, width, height, x, y, 9 * scale * stampFactor, brand.showStampPanel===false ? primary : secondary);
+      drawFadedRing(pixels,width,height,x,y,12*scale*stampFactor,9*scale*stampFactor,empty,inactiveOpacity/22);
     }
   }
   overlayReward(pixels,width,height,scale,rewardArt,true);
@@ -327,13 +350,14 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
     const gapX = columns>1?Math.min(32,160/(columns-1)):0;
     const stampFactor=stampScale(config?.stamps?.size);
     const spacing=stampSpacing(config?.stamps?.spacing);
+    const inactiveOpacity=stampOpacity(config?.stamps?.inactiveOpacity);
     const gapY = rows===1?0:rows===2?(rewardArt?39:47):(rewardArt?30:35);
     for(let i=0;i<visible;i++){
       const row=Math.floor(i/columns),col=i%columns,nCols=Math.min(columns,visible-row*columns);
       const x=Math.round((281+(col-(nCols-1)/2)*gapX*spacing)*scale);
       const y=Math.round(((rewardArt?61:73)+(row-(rows-1)/2)*gapY*spacing)*scale);
       const stamp=i===visible-1&&finalStar?finalStar:emojiImage;
-      if(stamp)compositeEmoji(pixels,width,height,x,y,Math.round(25*scale*stampFactor),stamp,i<done);
+      if(stamp)compositeEmoji(pixels,width,height,x,y,Math.round(25*scale*stampFactor),stamp,i<done,inactiveOpacity);
     }
     overlayReward(pixels,width,height,scale,rewardArt);
     return demoPng(width,height,pixels);
@@ -345,6 +369,7 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
   const size = Math.min(13, 73 / Math.max(1, columns));
   const stampFactor=stampScale(config?.stamps?.size);
   const spacing=stampSpacing(config?.stamps?.spacing);
+  const inactiveOpacity=stampOpacity(config?.stamps?.inactiveOpacity);
   const gapX = columns > 1 ? Math.min(32, 160 / (columns - 1)) : 0;
   const gapY = rows === 1 ? 0 : rows === 2 ? (rewardArt?39:47) : (rewardArt?30:35);
   const centerX = 281, centerY = rewardArt?61:73;
@@ -354,16 +379,18 @@ export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardAr
     const cx = Math.round((centerX + (col - (nCols - 1)/2)*gapX*spacing)*scale);
     const cy = Math.round((centerY + (row - (rows - 1)/2)*gapY*spacing)*scale);
     const rr = Math.max(5, size) * scale * stampFactor;
-    if (i===visible-1&&finalStar)compositeEmoji(pixels,width,height,cx,cy,Math.round(rr*2),finalStar,i<done);
+    if (i===visible-1&&finalStar)compositeEmoji(pixels,width,height,cx,cy,Math.round(rr*2),finalStar,i<done,inactiveOpacity);
     else if (i < done) {
       circle(pixels,width,height,cx,cy,rr,filled);
       if (config?.stamps?.icon === 'check') {
         line(pixels,width,height,cx-5*scale*stampFactor,cy,cx-1*scale*stampFactor,cy+4*scale*stampFactor,1.3*scale*stampFactor,primary);
         line(pixels,width,height,cx-1*scale*stampFactor,cy+4*scale*stampFactor,cx+6*scale*stampFactor,cy-5*scale*stampFactor,1.3*scale*stampFactor,primary);
       }
-    } else {
+    } else if(inactiveOpacity>=22){
       circle(pixels,width,height,cx,cy,rr,empty);
       circle(pixels,width,height,cx,cy,Math.max(0,rr-2.4*scale*stampFactor),primary);
+    } else {
+      drawFadedRing(pixels,width,height,cx,cy,rr,Math.max(0,rr-2.4*scale*stampFactor),empty,inactiveOpacity/22);
     }
   }
   overlayReward(pixels,width,height,scale,rewardArt);
@@ -478,6 +505,7 @@ export async function makeGoogleStampHero(d, progress, goal, mode='passages', cu
   const n=Math.max(1,Math.min(20,target)),rows=n<=6?1:n<=14?2:3,cols=Math.ceil(n/rows);
   const stampFactor=stampScale(d?.stamps?.size);
   const spacing=stampSpacing(d?.stamps?.spacing);
+  const inactiveOpacity=stampOpacity(d?.stamps?.inactiveOpacity);
   for(let i=0;i<n;i++){
     const row=Math.floor(i/cols),col=i%cols;
     const rowCount=Math.min(cols,n-row*cols);
@@ -486,11 +514,14 @@ export async function makeGoogleStampHero(d, progress, goal, mode='passages', cu
     const spaceY=rows===1?0:rows===2?235:192;
     const y=Math.round(height/2+(row-(rows-1)/2)*spaceY*spacing);
     const stamp=i===n-1&&finalStar?finalStar:bitmap;
-    if(stamp)compositeEmoji(pixels,width,height,x,y,Math.round(130*stampFactor),stamp,i<done);
+    if(stamp)compositeEmoji(pixels,width,height,x,y,Math.round(130*stampFactor),stamp,i<done,inactiveOpacity);
     else {
       const ink=rgb(d?.stamps?.filled,'#F2C94C'),empty=rgb(d?.stamps?.empty,'#FFFFFF');
-      circle(pixels,width,height,x,y,52*stampFactor,i<done?ink:empty);
-      if(i>=done)circle(pixels,width,height,x,y,47*stampFactor,secondary);
+      if(i<done)circle(pixels,width,height,x,y,52*stampFactor,ink);
+      else if(inactiveOpacity>=22){
+        circle(pixels,width,height,x,y,52*stampFactor,empty);
+        circle(pixels,width,height,x,y,47*stampFactor,secondary);
+      } else drawFadedRing(pixels,width,height,x,y,52*stampFactor,47*stampFactor,empty,inactiveOpacity/22);
     }
   }
   return demoPng(width,height,pixels);

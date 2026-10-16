@@ -56,7 +56,7 @@ export function defaultDesign(project) {
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
     assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null },
-    stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg), size: 100, spacing: 100 },
+    stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg), size: 100, spacing: 100, inactiveOpacity: 22 },
     apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, headerMode: 'classic', showStampPanel: true, showStamps: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
@@ -77,11 +77,16 @@ export function stampSpacingPercent(raw) {
   return raw==null || raw==='' || !Number.isFinite(value) ? 100
     : Math.max(50,Math.min(120,Math.round(value)));
 }
+// Legacy unvalidated PNG/emoji stamps are grayscale with 22% opacity.
+export function inactiveStampOpacity(raw) {
+ const n=Number(raw);
+ return raw==null||raw===''||!Number.isFinite(n)?22:Math.max(0,Math.min(100,Math.round(n)));
+}
 export function normalize(config, project) {
   const d = defaultDesign(project), c = config || {};
   const plat = k => ({ ...d[k], ...(c[k] || {}), colors: { ...((c[k] || {}).colors || {}) } });
   return { ...d, ...c, identity: { ...d.identity, ...(c.identity || {}) }, colors: { ...d.colors, ...(c.colors || {}) },
-    assets: { ...d.assets, ...(c.assets || {}) }, stamps: { ...d.stamps, ...(c.stamps || {}), icon: c.stamps?.icon || (normalizeStampEmoji(c.stamps?.emoji) ? 'emoji' : d.stamps.icon), emoji: c.stamps && !Object.prototype.hasOwnProperty.call(c.stamps, 'emoji') ? '' : (c.stamps?.emoji ?? d.stamps.emoji), size: stampSizePercent(c.stamps?.size), spacing: stampSpacingPercent(c.stamps?.spacing) }, apple: plat('apple'), google: plat('google'),
+    assets: { ...d.assets, ...(c.assets || {}) }, stamps: { ...d.stamps, ...(c.stamps || {}), icon: c.stamps?.icon || (normalizeStampEmoji(c.stamps?.emoji) ? 'emoji' : d.stamps.icon), emoji: c.stamps && !Object.prototype.hasOwnProperty.call(c.stamps, 'emoji') ? '' : (c.stamps?.emoji ?? d.stamps.emoji), size: stampSizePercent(c.stamps?.size), spacing: stampSpacingPercent(c.stamps?.spacing), inactiveOpacity: inactiveStampOpacity(c.stamps?.inactiveOpacity) }, apple: plat('apple'), google: plat('google'),
     preview: { ...d.preview, ...(c.preview || {}) } };
 }
 // Real cards: the validated programs.card_design (paths only) → a renderable design. Missing parts fall
@@ -137,16 +142,17 @@ export function makeCardDesigner(React, api) {
 
   // ------------------------------------------------------------ stamps / points
   function Stamp({ on, st, size, stampUrl, final=false }) {
+    const fade=inactiveStampOpacity(st?.inactiveOpacity)/100;
     if(final) return h('img',{src:'/assets/stamps/reward-star.png',alt:on?'Récompense débloquée':'Récompense à débloquer',
-      'data-stamp':on?'filled-final-star':'empty-final-star',style:{width:size,height:size,display:'block',objectFit:'contain',flex:'none',opacity:on?1:.22,filter:on?'none':'grayscale(1)'}});
+      'data-stamp':on?'filled-final-star':'empty-final-star',style:{width:size,height:size,display:'block',objectFit:'contain',flex:'none',opacity:on?1:fade,filter:on?'none':'grayscale(1)'}});
     const libraryUrl = st?.icon === 'library' ? stampImageUrl(st.libraryId) : '';
     if (libraryUrl) return h('img', {
       src:libraryUrl, alt:on?'Tampon validé':'Tampon restant', 'data-stamp':on?'filled-library-png':'empty-library-png',
-      style:{width:size,height:size,objectFit:'contain',display:'block',flex:'none',opacity:on?1:.22,filter:on?'none':'grayscale(1)'}
+      style:{width:size,height:size,objectFit:'contain',display:'block',flex:'none',opacity:on?1:fade,filter:on?'none':'grayscale(1)'}
     });
     if(st?.icon==='custom' && stampUrl) return h('img', {
       src:stampUrl, alt:on?'Tampon validé':'Tampon restant', 'data-stamp':on?'filled-png':'empty-png',
-      style:{width:size,height:size,objectFit:'contain',display:'block',flex:'none',opacity:on?1:.22,filter:on?'none':'grayscale(1)'}
+      style:{width:size,height:size,objectFit:'contain',display:'block',flex:'none',opacity:on?1:fade,filter:on?'none':'grayscale(1)'}
     });
     const unicode = normalizeStampEmoji(st?.emoji);
     if (unicode) return h('span', {
@@ -154,12 +160,18 @@ export function makeCardDesigner(React, api) {
       role: 'img', 'aria-label': on ? 'Tampon validé' : 'Tampon restant',
       style: { width:size, height:size, display:'grid', placeItems:'center', flex:'none',
         fontFamily: "'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif",
-        fontSize:Math.round(size*.86), lineHeight:1, opacity:on?1:.22,
+        fontSize:Math.round(size*.86), lineHeight:1, opacity:on?1:fade,
         filter:on?'none':'grayscale(1)', overflow:'visible' }
     },unicode);
     const radius = st.shape === 'circle' ? '50%' : st.shape === 'rounded' ? '30%' : '4px';
     const base = { width: size, height: size, borderRadius: radius, flex: 'none', display: 'grid', placeItems: 'center', boxSizing: 'border-box' };
-    if (!on) return h('div', { 'data-stamp': 'empty', style: { ...base, ...(st.style === 'soft' ? { background: rgba(st.empty, 0.28) } : { border: `2px solid ${rgba(st.empty, 0.85)}` }) } });
+    if (!on) {
+      // Keep old outlined stamps unchanged at 22%; fade strokes below that.
+      const relative=Math.min(1,fade/.22);
+      return h('div', { 'data-stamp': 'empty', style: { ...base, ...(st.style === 'soft'
+        ? { background: rgba(st.empty,0.28*relative) }
+        : { border: `2px solid ${rgba(st.empty,0.85*relative)}` }) } });
+    }
     const custom = st.icon === 'custom' && stampUrl;
     return h('div', { 'data-stamp': 'filled', style: { ...base, background: custom ? 'transparent' : st.filled, color: onColor(st.filled) } },
       custom ? h('img', { src: stampUrl, alt: '', style: { width: '100%', height: '100%', objectFit: 'contain', display: 'block' } })
@@ -943,7 +955,14 @@ export function makeCardDesigner(React, api) {
             onChange:e=>set('stamps.spacing',+e.target.value),
             style:{width:'100%',accentColor:'#2448F0'}}),
           h('div',{style:{marginTop:5,fontSize:13,color:'#5E636B',lineHeight:1.4}},
-            '50 % = tampons resserrés au centre · 100 % = écartement actuel · 120 % = plus espacés. Les tampons se déplacent horizontalement et verticalement sans changer leur taille. Sans effet pour les cartes à points.'))),
+            '50 % = tampons resserrés au centre · 100 % = écartement actuel · 120 % = plus espacés. Les tampons se déplacent horizontalement et verticalement sans changer leur taille. Sans effet pour les cartes à points.')),
+        h(Field,{label:'Opacité des tampons non validés : '+inactiveStampOpacity(design.stamps.inactiveOpacity)+' %'},
+          h('input',{type:'range',min:0,max:100,step:1,value:inactiveStampOpacity(design.stamps.inactiveOpacity),
+            'data-stamp-opacity-control':true,'aria-label':'Opacité des tampons non validés',
+            onChange:e=>set('stamps.inactiveOpacity',+e.target.value),
+            style:{width:'100%',accentColor:'#2448F0'}}),
+          h('div',{style:{marginTop:5,fontSize:13,color:'#5E636B',lineHeight:1.4}},
+            '0 % = invisibles · 22 % = gris actuel · 100 % = gris bien visible. Les tampons validés restent en couleur.'))),
       platform==='apple' && h(Section, { title: 'Apple Wallet' },
         h(ImagePick, { label: 'Image du bandeau Apple Wallet (facultatif)', testId: 'appleStrip',
           asset: design.assets.appleStrip, busy: busy==='up-appleStrip', onPick: pickFile('appleStrip'),
