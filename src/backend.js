@@ -54,7 +54,11 @@ const sb = configured
     })
   : null;
 
-const redirectTo = () => window.location.origin + '/';
+// Authentication e-mails must never point at capacitor://localhost on iOS.
+// Open recovery/verification links on the existing HTTPS website, then return to the app to sign in.
+const redirectTo = () => window.location.protocol === 'capacitor:'
+  ? 'https://cards.digitalprojectagency.fr/'
+  : window.location.origin + '/';
 
 // ---------------------------------------------------------------- dates
 
