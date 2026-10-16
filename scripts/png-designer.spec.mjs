@@ -270,3 +270,25 @@ test('Apple and Google test-add buttons use the supplied high-resolution clickab
   expect(b.height).toBeGreaterThan(50);
  }
 });
+
+test('every card-designer image upload shows its recommended size before choosing a file',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const dimensions=[
+  ['logo','660 × 660 px'],
+  ['hero','1032 × 812 px'],
+  ['background','680 × 1120 px'],
+  ['stamp','256 × 256 px'],
+  ['appleStrip','1125 × 432 px'],
+ ];
+ for(const [kind,size] of dimensions){
+  const note=page.locator('[data-recommended-size="'+kind+'"]');
+  await expect(note).toBeVisible();
+  await expect(note).toContainText('Taille recommandée : '+size);
+  await expect(page.locator('[data-upload="'+kind+'"]')).toHaveCount(1);
+ }
+ await page.locator('[data-upload="logo"]').setInputFiles({name:'logo.png',mimeType:'image/png',buffer:fixture(80,80)});
+ await expect(page.locator('[data-recommended-size="logo"]')).toContainText('660 × 660 px');
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await page.reload();
+ for(const [kind,size] of dimensions)await expect(page.locator('[data-recommended-size="'+kind+'"]')).toContainText(size);
+});
