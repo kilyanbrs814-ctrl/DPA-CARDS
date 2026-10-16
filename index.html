@@ -211,6 +211,7 @@ a:hover{color:#1A36C4}
             <div style="display:flex;flex-wrap:wrap;gap:8px">
               <sc-for list="{{ obActs }}" as="a" hint-placeholder-count="6"><button type="button" onClick="{{ a.pick }}" aria-pressed="{{ a.pressed }}" style="min-height:44px;padding:0 16px;border-radius:999px;border:1.5px solid {{ a.border }};background:{{ a.bg }};color:{{ a.fg }};font-weight:600;font-size:15px">{{ a.label }}</button></sc-for>
             </div>
+            <sc-if value="{{ obOther }}" hint-placeholder-val="{{ false }}"><label for="ob-activity" style="display:block;font-weight:600;margin-top:14px;margin-bottom:8px">Votre profession</label><input id="ob-activity" value="{{ ob.otherActivity }}" onChange="{{ O.otherActivity }}" maxLength="120" placeholder="Ex. Fleuriste, tatoueur, toiletteur…" aria-invalid="{{ inv.obactivity }}" style="width:100%;height:54px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-size:16px"><sc-if value="{{ err.obactivity }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:8px;color:#B42318">{{ err.obactivity }}</div></sc-if></sc-if>
           </fieldset>
         </sc-if>
         <sc-if value="{{ obStep2 }}" hint-placeholder-val="{{ false }}">
@@ -339,6 +340,9 @@ a:hover{color:#1A36C4}
         </div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:clamp(20px,3vw,32px);background:#ECEAE4;border-radius:24px">
+        <div role="tablist" aria-label="Aperçus Wallet" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;background:#DEDBD3;border-radius:14px;width:100%"><sc-for list="{{ obPreviewTabs }}" as="t" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{ t.pressed }}" onClick="{{ t.pick }}" style="min-height:54px;padding:8px;border:0;border-radius:10px;background:{{ t.bg }};color:{{ t.fg }};box-shadow:{{ t.shadow }};font-weight:700;font-size:15px">{{ t.label }}</button></sc-for></div>
+        <sc-if value="{{ obPreviewApple }}" hint-placeholder-val="{{ true }}"><div aria-label="Aperçu de la carte Apple Wallet" style="width:100%;max-width:340px"><sc-if value="{{ obAppleCard }}" hint-placeholder-val="{{ false }}">{{ obAppleCard }}</sc-if><sc-if value="{{ !obAppleCard }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ obCard }}" hint-size="100%,470px"></dc-import></sc-if></div></sc-if>
+        <sc-if value="{{ obPreviewGoogle }}" hint-placeholder-val="{{ false }}">
         <div aria-label="Aperçu de la carte Google Wallet" style="width:100%;max-width:340px;border-radius:24px;overflow:hidden;background:{{ wp.bg }};color:{{ wp.fg }};box-shadow:0 12px 32px rgba(20,22,28,0.14), 0 1px 3px rgba(20,22,28,0.08);font-family:Roboto,'Hanken Grotesk',system-ui,sans-serif">
           <div style="display:flex;align-items:center;gap:10px;padding:16px 18px 0">
             <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex:none;background:{{ wp.logoBg }};display:grid;place-items:center;color:{{ wp.sub }}">{{ wp.logo }}</div>
@@ -355,6 +359,7 @@ a:hover{color:#1A36C4}
           </div>
           <sc-if value="{{ wp.hasHero }}" hint-placeholder-val="{{ false }}"><img src="{{ wp.hero }}" alt="" style="display:block;width:100%;aspect-ratio:1032/812;object-fit:cover"></sc-if>
         </div>
+        </sc-if>
         <div style="font-size:13px;color:#5E636B;text-align:center;max-width:320px;line-height:1.45">{{ wp.caption }}</div>
       </div>
     </div>
@@ -2106,7 +2111,7 @@ class Component extends DCLogic {
       merchant:{...M0}, sd:{...M0}, program:{...P0}, draft:{...P0}, clients:demoClients(),
       selId:null, notifs:demoNotifs(demoClients()), nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
       modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple',
-      ob:{step:1,biz:'',activity:'Restaurant',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
+      ob:{step:1,biz:'',activity:'Restaurant',otherActivity:'',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
       section:'profile', loadingHome:false, prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true, subscription:null, hasAccess:false, accessSource:'none', manualExpiresAt:null, billingPlan:null, tip:{open:null,pinned:false}, subVerify:null, billSum:null, billMsg:null,
       ...(JOIN_SLUG?{screen:'joinLoading',pubSlug:JOIN_SLUG,pubErr:null,pubWallet:null,pubApple:null,clients:[],notifs:[],consent:false,merchant:{...M0,business:'',slug:JOIN_SLUG}}:{}) };
   }
@@ -2277,7 +2282,7 @@ class Component extends DCLogic {
         const p=d.program, m=d.merchant;
         if(p.designStatus==='draft'&&!designUnpaid(d.designRequest)) this.setState({...base,screen:'ob',merchant:m,sd:{...m},program:p,draft:{...p},clients:d.clients,designReq:d.designRequest,
           ob:this.obStep3(m,p)});
-        else { const scr=SUB_RETURN==='success'?'subSuccess':(SUB_RETURN==='cancel'?'subCancel':'home');
+        else { const scr=SUB_RETURN==='success'?'subSuccess':(SUB_RETURN==='cancel'?'subCancel':(d.hasAccess!==true?'billing':'home'));
           this.setState({...base,screen:scr,loadingHome:false,merchant:m,sd:{...m},program:p,draft:{...p},clients:d.clients,designReq:d.designRequest});
           if(SUB_RETURN==='success') setTimeout(()=>this.verifySub(),0); }
       }
@@ -2286,7 +2291,7 @@ class Component extends DCLogic {
     }catch(e){ this._liveUid=null; useCalendar(false); this.setState({busy:false,screen:'login',err:{loginPwd:'Impossible de charger votre espace : '+api.errorMessage(e)}}); }
     finally{ this._opening=false; }
   }
-  obStep3(m,p,design){ return {...this.initState().ob,step:3,biz:m.business,activity:m.activity||'Restaurant',mode:p.mode,goal:p.goal,reward:p.reward,prog:p.name,hex:(p.bg||'#FFFFFF').toUpperCase(),drName:(m.first+' '+m.last).trim(),drEmail:m.email,...(design?{design}:{})}; }
+  obStep3(m,p,design){ return {...this.initState().ob,step:3,biz:m.business,activity:ACTIVITIES.includes(m.activity)?m.activity:'Autre',otherActivity:ACTIVITIES.includes(m.activity)?'':(m.activity||''),mode:p.mode,goal:p.goal,reward:p.reward,prog:p.name,hex:(p.bg||'#FFFFFF').toUpperCase(),drName:(m.first+' '+m.last).trim(),drEmail:m.email,...(design?{design}:{})}; }
   // Change of mind before paying the custom design: the unpaid request is cancelled (server side,
   // never a paid one) and the merchant customises the card at onboarding step 3. Subscription untouched.
   cancelDesignReq=async()=>{ const s=this.state, r=s.designReq; if(s.busy||!designUnpaid(r)) return; this.setState({busy:true});
@@ -2412,6 +2417,7 @@ class Component extends DCLogic {
       else this.setState(s=>({drLogo:files[0]||null,err:{...s.err,drfiles:null}})); }; }
   obNext=()=>{ const o=this.state.ob;
     if(o.step===1&&!this.validate([['obbiz',o.biz.trim(),'Indiquez le nom de votre commerce.']])) return;
+    if(o.step===1&&o.activity==='Autre'&&!this.validate([['obactivity',(o.otherActivity||'').trim(),'Indiquez votre profession.']])) return;
     if(o.step===2&&!this.validate([['obreward',o.reward.trim(),'Indiquez la récompense offerte.']])) return;
     if(o.step===1) return this.setState({ob:{...o,step:2}});
     if(!this.state.live) return;
@@ -2420,14 +2426,14 @@ class Component extends DCLogic {
     if(!o.design) return this.setState({err:{obdesign:'Choisissez comment créer votre carte.'}});
     return o.design==='custom'?this.obValidateCustom():this.obSubmitRequest(); };
   // Step 2 → 3: create the merchant and a draft program with a neutral look (idempotent).
-  async obCreateProgram(){ const s=this.state, o=s.ob, m=s.merchant; this.setState({busy:true});
+  async obCreateProgram(){ const s=this.state, o=s.ob, m=s.merchant, activity=o.activity==='Autre'?(o.otherActivity||'').trim():o.activity; this.setState({busy:true});
     try{ let program=s.program, merchant=m;
       if(!program||!m.id){
-        const r=await this.api.createMerchant({business:o.biz.trim(),first:(m.first||'').trim()||'Responsable',last:(m.last||'').trim(),activity:o.activity,slug:slugify(o.biz),
+        const r=await this.api.createMerchant({business:o.biz.trim(),first:(m.first||'').trim()||'Responsable',last:(m.last||'').trim(),activity,slug:slugify(o.biz),
           program:{name:'Club '+o.biz.trim(),mode:o.mode,goal:+o.goal,reward:o.reward.trim(),bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',logo:initials(o.biz).slice(0,4).toUpperCase(),conditions:'Une validation par visite.'}});
         merchant=this.api.toMerchant(r.merchant,m.email); program=r.program; }
       if(program.designStatus==='draft'&&(program.mode!==o.mode||+program.goal!==+o.goal||program.reward!==o.reward.trim())) program=await this.api.saveRules(program.id,{mode:o.mode,goal:o.goal,reward:o.reward});
-      if(o.biz.trim()!==merchant.business||o.activity!==merchant.activity){ const row=await this.api.saveMerchant(merchant.id,{business_name:o.biz.trim(),activity:o.activity}); merchant=this.api.toMerchant(row,m.email); }
+      if(o.biz.trim()!==merchant.business||activity!==merchant.activity){ const row=await this.api.saveMerchant(merchant.id,{business_name:o.biz.trim(),activity}); merchant=this.api.toMerchant(row,m.email); }
       if(program.designStatus!=='draft'){ this.setState({busy:false,merchant,sd:{...merchant},program,draft:{...program}}); return this.go(program.designStatus==='pending_dpa'?'designSent':'home'); }
       this.setState(x=>({busy:false,merchant,sd:{...merchant},program,draft:{...program},
         ob:{...x.ob,step:3,prog:x.ob.prog||program.name,hex:(program.bg||'#FFFFFF').toUpperCase(),drName:x.ob.drName||(merchant.first+' '+merchant.last).trim(),drEmail:x.ob.drEmail||merchant.email||''}}));
@@ -2439,7 +2445,7 @@ class Component extends DCLogic {
     this.setState({busy:true});
     try{ await this.saveDraftNow(); const r=await this.api.finalizeDesign();
       const d=await this.api.loadAll((await this.api.session()).user);
-      this.setState({busy:false,program:d.program,draft:{...d.program},merchant:d.merchant,sd:{...d.merchant},screen:'obDone'}); this.scrollTop();
+      this.setState({busy:false,program:d.program,draft:{...d.program},merchant:d.merchant,sd:{...d.merchant},hasAccess:d.hasAccess===true,subscription:d.subscription||null,screen:d.hasAccess===true?'obDone':'billing'}); this.scrollTop();
       if(r&&r.wallet==='retry') this.showToast('Carte validée. Google Wallet sera finalisé lors du premier ajout d’une carte client.','info'); }
     catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
   async obSubmitRequest(){ const s=this.state, o=s.ob;
@@ -2450,9 +2456,8 @@ class Component extends DCLogic {
         contactName:o.drName.trim(),contactEmail:o.drEmail.trim(),contactPhone:o.drPhone.trim()});
       this.settleReq('design');
       // Not an order yet: it becomes one once Stripe confirms the 29,90 € payment (server side).
+      if(!this.state.hasAccess){ this.setState({busy:false,designReq:req,screen:'billing'}); return this.scrollTop(); }
       if(req.paymentStatus==='paid'){ const d=await this.api.loadAll((await this.api.session()).user); this.setState({busy:false,program:d.program,draft:{...d.program},designReq:d.designRequest||req,screen:'designSent'}); return this.scrollTop(); }
-      // The design is paid after the offer: without a valid subscription, the offer page comes first.
-      if(!this.state.hasAccess){ this.setState({busy:false,designReq:req}); this.go('billing'); return this.scrollTop(); }
       const r=await this.api.billing.designCheckout(req.id); window.location.assign(r.url); }
     catch(e){ this.settleReq('design',e); this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
   clearDesignUrl(){ try{ history.replaceState(null,'','/'); }catch(e){} }
@@ -3044,14 +3049,14 @@ class Component extends DCLogic {
     const tabs=[{k:'apple',label:'Apple Wallet'},{k:'google',label:'Google Wallet'}].map(t=>{ const a=s.tab===t.k; return {...t,bg:a?'#FFFFFF':'transparent',fg:a?'#1C1F24':'#5E636B',shadow:a?'0 1px 3px rgba(20,22,28,0.14)':'none',pressed:a,pick:()=>this.setState({tab:t.k})}; });
 
     const o=s.ob;
-    const O={}; ['biz','logo','reward'].forEach(k=>O[k]=this.oh(k)); ['prog','hex','picker','drColors','drDesc','drName','drEmail','drPhone'].forEach(k=>O[k]=this.oh2(k)); O.biz=this.oh2('biz');
+    const O={}; ['biz','logo','reward','otherActivity'].forEach(k=>O[k]=this.oh(k)); ['prog','hex','picker','drColors','drDesc','drName','drEmail','drPhone'].forEach(k=>O[k]=this.oh2(k)); O.biz=this.oh2('biz');
     const pr=s.program||{}, hexOk=/^#[0-9A-F]{6}$/.test(o.hex||''), wbg=o.design==='dpa'?'#FFFFFF':(hexOk?o.hex:'#FFFFFF'), wdark=lum(wbg)<0.45;
     const wLogo=o.design!=='dpa'&&pr.logoUrl?React.createElement('img',{src:pr.logoUrl,alt:'',style:{width:'100%',height:'100%',objectFit:'cover',display:'block'}})
       :((o.biz||'').trim()?initials(o.biz).slice(0,2):React.createElement('span',{className:'material-symbols-rounded',style:{fontSize:22}},'storefront'));
     const wp={bg:wbg,fg:wdark?'#FFFFFF':'#1F1F1F',sub:wdark?'rgba(255,255,255,0.72)':'rgba(31,31,31,0.62)',logoBg:wdark?'rgba(255,255,255,0.16)':'#EFEDE8',
       logo:wLogo,issuer:(o.biz||'').trim()||'Nom du commerce',program:(o.design==='dpa'?'':(o.prog||'').trim())||'Nom du programme',unit:o.mode==='points'?'Points':'Passages',
       qr:qrSvg('preview',112),hasHero:o.design!=='dpa'&&!!pr.heroUrl,hero:pr.heroUrl||'',
-      caption:o.design==='dpa'?'Aperçu neutre : le design sera créé par DPA Cards.':'Aperçu Google Wallet. Le rendu final peut varier selon l’appareil et la version de l’application.'};
+      caption:o.design==='dpa'?'Aperçu neutre : le design sera créé par DPA Cards.':'Aperçus Apple Wallet et Google Wallet indicatifs. Le rendu final peut varier selon l’appareil et la version de l’application.'};
     const ib=s.imgBusy;
     const thumb=(url,icon)=>url?React.createElement('img',{src:url,alt:'',style:{width:'100%',height:'100%',objectFit:'cover',display:'block'}}):React.createElement('span',{className:'material-symbols-rounded',style:{fontSize:26}},icon);
     const dz={logoThumb:thumb(pr.logoUrl,'add_photo_alternate'),heroThumb:thumb(pr.heroUrl,'panorama'),hasLogo:!!pr.logoUrl&&!ib,hasHero:!!pr.heroUrl&&!ib,
@@ -3069,7 +3074,9 @@ class Component extends DCLogic {
       hint:s.crop.kind==='logo'?'Google Wallet affiche le logo dans un cercle. Gardez l’essentiel à l’intérieur du cercle pointillé.':'L’image occupe toute la largeur en bas de la carte (format 1032 × 812 px).',
       onCancel:()=>this.closeCrop(),onDone:b=>this.cropDone(s.crop.kind,b)}):null;
     const obP={name:'Club '+(o.biz||'Mon commerce'),mode:o.mode,goal:o.goal,reward:o.reward||'Votre récompense',bg:o.bg,accent:o.accent,pattern:o.pattern,logo:(o.logo||initials(o.biz)).slice(0,4).toUpperCase()};
-    const obCard=this.cardProps(obP,o.biz||'Mon commerce','Client exemple',`0 / ${o.goal}`,'DPA 0000 0000',qrSvg('onb',96),false);
+    const obCard=this.cardProps({...obP,...pr,name:o.prog||obP.name,bg:wbg,mode:o.mode,goal:o.goal,reward:o.reward||'Votre récompense'},o.biz||'Mon commerce','Client exemple',`0 / ${o.goal}`,'DPA 0000 0000',qrSvg('onb',96),true);
+    const obAppleProgram={...obP,...pr,name:o.prog||obP.name,bg:wbg,mode:o.mode,goal:o.goal,reward:o.reward||'Votre récompense'};
+    const obAppleCard=o.design!=='dpa'&&pr.cardDesign?this.designCard(obAppleProgram,'apple',null,o.biz||'Mon commerce'):null;
     const obSteps=[{n:1,label:'Mon commerce'},{n:2,label:'Mon programme'},{n:3,label:'Ma carte'}].map(x=>({...x,bg:x.n<=o.step?'#2448F0':'#E3E1DA',fg:x.n<=o.step?'#1C1F24':'#6B6F76',current:x.n===o.step}));
     const obActs=ACTIVITIES.map(a=>{ const on=o.activity===a; return {label:a,bg:on?'#1C1F24':'#FFFFFF',fg:on?'#FFFFFF':'#1C1F24',border:on?'#1C1F24':'#D4D1C9',pressed:on,pick:()=>this.setState(x=>({ob:{...x.ob,activity:a}}))}; });
 
@@ -3151,7 +3158,7 @@ class Component extends DCLogic {
       joinBanner:s.demo?'Aperçu de la page publique · démonstration, aucune donnée n’est collectée':'Inscription sur cet appareil · le client est enregistré dans votre espace',
       logoutNote:s.demo?'Vous devrez vous reconnecter pour scanner des cartes. Les données de démonstration seront réinitialisées.':'Vous devrez vous reconnecter pour scanner des cartes. Vos données restent enregistrées.',
       authCard,
-      ob:o, O, obSteps, obActs, obCard, obStep1:o.step===1, obStep2:o.step===2, obStep3:o.step===3, obNotFirst:o.step>1, obNext:this.obNext, obBack:()=>this.setState(x=>({ob:{...x.ob,step:x.ob.step-1},err:{}})),
+      ob:o, O, obOther:o.activity==='Autre', obPreviewApple:s.tab==='apple', obPreviewGoogle:s.tab!=='apple', obPreviewTabs:tabs.map(t=>({...t,label:'Aperçu '+t.label})), obAppleCard, obSteps, obActs, obCard, obStep1:o.step===1, obStep2:o.step===2, obStep3:o.step===3, obNotFirst:o.step>1, obNext:this.obNext, obBack:()=>this.setState(x=>({ob:{...x.ob,step:x.ob.step-1},err:{}})),
       obNextLabel:o.step===3?(o.design==='custom'?(s.busy?'Validation…':'Valider ma carte'):o.design==='dpa'?(s.hasAccess?(s.busy?'Redirection vers le paiement…':'Commander mon design — 29,90 €'):(s.busy?'Enregistrement…':'Enregistrer ma demande et choisir mon offre')):'Continuer'):(s.busy?'Enregistrement…':'Continuer'),
       obDpaNote:s.hasAccess?'Paiement unique de 29,90 € TTC par carte bancaire (Stripe). Votre demande est transmise à DPA Cards dès le paiement confirmé.':'Paiement unique de 29,90 € TTC, proposé juste après le paiement de votre offre. Si vous choisissez votre offre plus tard, aucun paiement de design n’est demandé d’ici là.',
       obChoices, obCustom:o.design==='custom', obDpa:o.design==='dpa', wp, dz, dr:drV, dReq, designPending:!!s.live&&pr.designStatus==='pending_dpa'&&!!rq, cropEl,
