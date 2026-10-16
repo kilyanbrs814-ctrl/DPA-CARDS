@@ -78,7 +78,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   // Use this test card's own saved designer config, not DPA's default template.
   const d = t.config || {}, pv = d.preview || {};
   const name = String(d.identity?.name || t.name || 'DPA Cards').slice(0, 40);
-  const composedPath=d.apple?.showBusinessName === true && d.apple?.headerArtworkVersion===2 ? testAssetPath(d.assets?.appleHeader,testId,'appleHeader') : null;
+  const composedPath=d.apple?.showBusinessName === true && [2,3].includes(d.apple?.headerArtworkVersion) ? testAssetPath(d.assets?.appleHeader,testId,'appleHeader') : null;
   const primary = d.apple?.colors?.primary || d.colors?.primary || '#2448F0';
   const accent = d.colors?.accent || '#F2C94C';
   const label = String(d.apple?.label || d.label || (pv.mode === 'points' ? 'POINTS' : 'TAMPONS')).slice(0, 16);

@@ -234,11 +234,11 @@ export function makeCardDesigner(React, api) {
             minWidth: 0
           }
         },
-          platform==='apple' && o.showBusinessName && o.headerArtworkVersion===APPLE_WORDMARK_VERSION && d.assets.appleHeader?.url
+          platform==='apple' && o.showBusinessName && [2,3].includes(o.headerArtworkVersion) && d.assets.appleHeader?.url
             ? h(Img,{asset:d.assets.appleHeader,alt:'Logo et nom du commerce',style:{width:160,height:50,objectFit:'contain',objectPosition:'left center',flexShrink:0}})
-            : platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
-          platform==='apple' && o.showBusinessName && (o.headerArtworkVersion!==APPLE_WORDMARK_VERSION || !d.assets.appleHeader?.url) && d.assets.businessNameImage?.url && h(Img,{asset:d.assets.businessNameImage,alt:'Image du nom du commerce',style:{width:100,height:44,maxWidth:'100%',objectFit:'contain',objectPosition:'left center',flexShrink:1}}),
-          platform==='apple' && o.showBusinessName && (o.headerArtworkVersion!==APPLE_WORDMARK_VERSION || !d.assets.appleHeader?.url) && !d.assets.businessNameImage?.url && h('div',{
+            : platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?51:145,height:o.showBusinessName?50:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
+          platform==='apple' && o.showBusinessName && (![2,3].includes(o.headerArtworkVersion) || !d.assets.appleHeader?.url) && d.assets.businessNameImage?.url && h(Img,{asset:d.assets.businessNameImage,alt:'Image du nom du commerce',style:{width:109,height:48,maxWidth:'100%',objectFit:'contain',objectPosition:'left center',flexShrink:1}}),
+          platform==='apple' && o.showBusinessName && (![2,3].includes(o.headerArtworkVersion) || !d.assets.appleHeader?.url) && !d.assets.businessNameImage?.url && h('div',{
             'data-field':'apple-native-business-name',
             style:{...ellipsis,minWidth:0,fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:21,fontWeight:700,lineHeight:1.1}
           },d.identity.name||'Nom du commerce'),

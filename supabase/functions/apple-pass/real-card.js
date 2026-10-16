@@ -78,7 +78,7 @@ export function realAppleBrand(program, merchant, card) {
     showStamps: apple.showStamps !== false,
     appleStrip: assetPath(assets.appleStrip, card, 'appleStrip'),
     // Ignore legacy pre-single-line header PNGs; they must be rebuilt on next save.
-    appleHeader: apple.showBusinessName === true && apple.headerArtworkVersion===2 ? assetPath(assets.appleHeader,card,'appleHeader') : null,
+    appleHeader: apple.showBusinessName === true && [2,3].includes(apple.headerArtworkVersion) ? assetPath(assets.appleHeader,card,'appleHeader') : null,
     rewardEnabled: apple.showReward === true,
     rewardLabel: apple.showReward === true ? assetPath(assets.rewardLabel,card,'rewardLabel') : null,
     logo: Object.hasOwn(assets,'logo') ? assetPath(assets.logo, card, 'logo') : assetPath(program?.logo_path, card, 'logo'),

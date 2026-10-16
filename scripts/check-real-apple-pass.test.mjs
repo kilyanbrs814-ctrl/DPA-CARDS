@@ -87,7 +87,7 @@ test('precomposed Apple header replaces native small text without changing numbe
   assert.equal(json.organizationName,'Boulangerie des Arts');
   assert.equal(json.barcode.message,'DPA1:'+token);
 });
-test('stale wrapped Apple merchant header is ignored until a single-line 2nd-generation PNG is saved',()=>{
+test('legacy v2 remains valid, v1 is ignored, and v3 header works',()=>{
   const p=structuredClone(program);
   p.card_design.apple.showBusinessName=true;
   const path=folder+'/designer/appleHeader-'+token+'.png';
@@ -101,6 +101,10 @@ test('stale wrapped Apple merchant header is ignored until a single-line 2nd-gen
   assert.equal(refreshed.json.logoText,undefined,'rendered 1-line PNG replaces native text');
   assert.equal(refreshed.json.barcode.message,stale.json.barcode.message);
   assert.equal(refreshed.json.storeCard.headerFields[0].value,stale.json.storeCard.headerFields[0].value);
+  p.card_design.apple.headerArtworkVersion=3;
+  const enlarged=realApplePassData({program:p,merchant,customer,card,balance:3});
+  assert.equal(enlarged.brand.appleHeader,path);
+  assert.equal(enlarged.json.logoText,undefined);
 });
 test('branded background is preferred over hero when specifically selected', () => {
   const p=structuredClone(program);

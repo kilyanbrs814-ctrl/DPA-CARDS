@@ -155,7 +155,7 @@ test('optional name-only transparent PNG sits beside original logo, persists and
    return {hasName:!!saved.config.assets.businessNameImage?.path,headerVersion:saved.config.apple.headerArtworkVersion,
       width:bitmap.width,height:bitmap.height,logoInk,nameInk};
  });
- expect(data).toMatchObject({hasName:true,headerVersion:2,width:480,height:150});
+ expect(data).toMatchObject({hasName:true,headerVersion:3,width:480,height:150});
  expect(data.logoInk).toBeGreaterThan(30);
  expect(data.nameInk).toBeGreaterThan(30);
  await page.reload();
@@ -289,4 +289,36 @@ test('Apple strip upload exports exactly the portrait or landscape area shown in
     expect(result.height).toBe(432);
     expect(result.averageChannelError).toBeLessThan(19);
   }
+});
+
+test('Apple v3 makes logo and transparent PNG name taller without growing the fixed header',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const bounds=await page.evaluate(async()=>{
+  const {createAppleWordmark,APPLE_WORDMARK_VERSION}=await import('/src/apple-wordmark.js');
+  const logo=document.createElement('canvas');logo.width=90;logo.height=90;
+  const lc=logo.getContext('2d');lc.fillStyle='#FF6A33';lc.fillRect(10,10,70,70);
+  const name=document.createElement('canvas');name.width=900;name.height=300;
+  const nc=name.getContext('2d');nc.fillStyle='#18E064';nc.fillRect(10,10,880,280);
+  const d={identity:{name:'Barber Factory'},colors:{primary:'#10436B',text:'#FFFFFF'},apple:{showBusinessName:true,colors:{}},
+   assets:{logo:{url:logo.toDataURL('image/png')},businessNameImage:{url:name.toDataURL('image/png')}}};
+  const blob=await createAppleWordmark(d),bmp=await createImageBitmap(blob);
+  const cv=document.createElement('canvas');cv.width=bmp.width;cv.height=bmp.height;
+  const c=cv.getContext('2d');c.drawImage(bmp,0,0);
+  const data=c.getImageData(0,0,cv.width,cv.height).data;
+  const box=check=>{
+   let minX=cv.width,minY=cv.height,maxX=-1,maxY=-1;
+   for(let y=0;y<cv.height;y++)for(let x=0;x<cv.width;x++){
+    const i=(y*cv.width+x)*4;
+    if(data[i+3]<25||!check(data[i],data[i+1]))continue;
+    minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);
+   }
+   return {minX,maxX,minY,maxY,height:maxY-minY+1};
+  };
+  return {version:APPLE_WORDMARK_VERSION,width:bmp.width,height:bmp.height,logo:box((r,g)=>r>g*2),name:box((r,g)=>g>r*2)};
+ });
+ expect(bounds).toMatchObject({version:3,width:480,height:150});
+ expect(bounds.logo.height).toBeGreaterThanOrEqual(144);
+ expect(bounds.name.height).toBeGreaterThanOrEqual(133);
+ expect(bounds.logo.maxX).toBeLessThan(bounds.name.minX);
+ expect(bounds.name.maxY).toBeLessThan(150);
 });

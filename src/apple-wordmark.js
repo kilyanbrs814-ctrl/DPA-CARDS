@@ -2,8 +2,8 @@
 // admin's browser, NOT during pass signing (Supabase Edge CPU is tightly limited).
 // The complete brand is centered vertically in Apple's existing 160x50pt logo slot.
 // No native logoText is emitted for these cards: native text size is not configurable.
-// Increment when saved rasterized headers must be rebuilt (legacy assets may wrap).
-export const APPLE_WORDMARK_VERSION=2;
+// Rebuild on next save: use more of the existing 160×50pt header slot.
+export const APPLE_WORDMARK_VERSION=3;
 const WIDTH=160,HEIGHT=50,SCALE=3;
 const hex=v=>/^#[0-9a-f]{6}$/i.test(v||'')?v:'#FFFFFF';
 const luminance=color=>{
@@ -46,11 +46,14 @@ export async function resolveBusinessFont(design){
 }
 function singleLine(ctx,name,available,family){
   const apply=size=>{ctx.font=`700 ${size}px ${family}`;};
-  for(let size=23;size>=11;size--){apply(size);if(ctx.measureText(name).width<=available)return {text:name,size};}
-  apply(11);
+  for(let size=29;size>=21;size--){apply(size);if(ctx.measureText(name).width<=available)return {text:name,size};}
+  // Keep letters legible rather than falling back to 11pt.
+  // Canvas fillText(maxWidth) condenses the name horizontally when needed.
+  apply(21);
   let shortened=name;
-  while(shortened.length>1&&ctx.measureText(shortened+'…').width>available)shortened=shortened.slice(0,-1).trimEnd();
-  return {text:shortened===name?name:shortened+'…',size:11};
+  while(shortened.length>1&&ctx.measureText(shortened+'…').width>available*1.35)
+    shortened=shortened.slice(0,-1).trimEnd();
+  return {text:shortened===name?name:shortened+'…',size:21};
 }
 
 async function imageFromUrl(url){
@@ -92,14 +95,15 @@ export async function createAppleWordmark(design) {
     }
     if(x1>=x0){
       const sw=x1-x0+1,sh=y1-y0+1;
-      const factor=Math.min(46/sw,46/sh);
+      // Fit the visible artwork into the entire native 50pt height.
+      const factor=Math.min(50/sw,50/sh);
       const dw=sw*factor,dh=sh*factor;
-      ctx.drawImage(source,x0,y0,sw,sh,2+(46-dw)/2,(HEIGHT-dh)/2,dw,dh);
-      textLeft=54;
+      ctx.drawImage(source,x0,y0,sw,sh,(50-dw)/2,(HEIGHT-dh)/2,dw,dh);
+      textLeft=51;
     }
     if(typeof img.close==='function')img.close();
   }
-  const area=WIDTH-textLeft-2;
+  const area=WIDTH-textLeft;
   // The original logo stays separate in the editor. Apple's fixed header
   // receives one combined 160×50pt bitmap, so no native logoText can wrap.
   if(design?.assets?.businessNameImage?.url) {
@@ -118,15 +122,18 @@ export async function createAppleWordmark(design) {
       if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;
     }
     if(!transparent||x1<x0)throw new Error('Importez un PNG du nom avec fond transparent et lettres visibles.');
-    const w=x1-x0+1,h=y1-y0+1,ratio=Math.min(area/w,44/h);
-    const dw=w*ratio,dh=h*ratio;
+    const w=x1-x0+1,h=y1-y0+1,fit=Math.min(area/w,48/h);
+    const dw=w*fit;
+    // A wide transparent wordmark otherwise appears only ~35pt tall.
+    // Cap vertical adjustment at 35% to retain recognizable lettering.
+    const dh=Math.min(48,h*fit*1.35);
     ctx.drawImage(source,x0,y0,w,h,textLeft,(HEIGHT-dh)/2,dw,dh);
     if(typeof wordmark.close==='function')wordmark.close();
   } else {
     const family=await resolveBusinessFont(design);
     // Without a custom PNG, render the saved text and chosen font on one line.
     if(design?.apple?.businessNameFont!=='custom' && document.fonts?.load)
-      await document.fonts.load('700 23px '+family);
+      await document.fonts.load('700 29px '+family);
     const {text,size}=singleLine(ctx,name,area,family);
     ctx.font=`700 ${size}px ${family}`;
     ctx.fillStyle=foreground(design);ctx.textAlign='left';ctx.textBaseline='middle';
