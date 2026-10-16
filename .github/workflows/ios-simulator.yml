@@ -3,6 +3,14 @@ name: Prepare iOS simulator build
 # Manual workflow: validates that the existing Vite application can be bundled
 # into an unsigned Capacitor iOS simulator app. Does NOT publish to Apple.
 on:
+  push:
+    branches:
+      - feat/ios-app-store-preparation
+    paths:
+      - index.html
+      - src/**
+      - capacitor.config.json
+      - .github/workflows/ios-simulator.yml
   workflow_dispatch:
 
 permissions:
@@ -28,6 +36,9 @@ jobs:
       - name: Install temporary Capacitor 8 toolchain
         run: npm install --no-save --package-lock=false @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8
 
+      - name: Validate web routing
+        run: npm run test:static
+
       - name: Build bundled web assets
         run: npm run build
 
@@ -42,7 +53,7 @@ jobs:
 
       - name: Build unsigned iOS Simulator application
         run: |
-          xcodebuild -workspace ios/App/App.xcworkspace \
+          xcodebuild -project ios/App/App.xcodeproj \
             -scheme App \
             -configuration Debug \
             -sdk iphonesimulator \
