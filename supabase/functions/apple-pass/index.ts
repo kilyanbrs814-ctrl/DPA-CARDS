@@ -78,6 +78,8 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   // Use this test card's own saved designer config, not DPA's default template.
   const d = t.config || {}, pv = d.preview || {};
   const name = String(d.identity?.name || t.name || 'DPA Cards').slice(0, 40);
+  const composedPath=d.apple?.headerMode==='custom' && d.apple?.showBusinessName===true && d.apple?.headerArtworkVersion===4
+    ? testAssetPath(d.assets?.appleHeader,testId,'appleHeader') : null;
   const primary = d.apple?.colors?.primary || d.colors?.primary || '#2448F0';
   const accent = d.colors?.accent || '#F2C94C';
   const label = String(d.apple?.label || d.label || (pv.mode === 'points' ? 'POINTS' : 'TAMPONS')).slice(0, 16);
@@ -91,7 +93,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
     // installed card with the same serial even when its design has changed.
     serialNumber: 'test-' + t.id + '-' + crypto.randomUUID(),
     organizationName: name,
-    ...(d.apple?.showBusinessName === true ? { logoText: appleHeaderName(name) } : {}),
+    ...(d.apple?.showBusinessName === true && !composedPath ? { logoText: appleHeaderName(name) } : {}),
     description: 'Démonstration DPA Cards – sans valeur commerciale',
     backgroundColor: rgb(primary), foregroundColor: textColor(primary),
     labelColor: textColor(primary),
@@ -142,10 +144,11 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
 
   const testAsset = (kind: string) => testAssetPath(d.assets?.[kind],testId,kind);
   const uploaded=await realLogo(testAsset('logo'));
-  // Only the independently uploaded brand logo is a header image.
-  const compact=d.apple?.showBusinessName===true;
-  images['logo.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,uploaded,1,compact));
-  images['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,uploaded,2,compact));
+  const composed=composedPath ? await realLogo(composedPath) : null;
+  if(composedPath && !composed)throw new SafeError(422,'invalid_apple_header');
+  const compact=d.apple?.showBusinessName===true && !composedPath;
+  images['logo.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,composed||uploaded,1,compact));
+  images['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(name,accent,primary,composed||uploaded,2,compact));
   const stampBytes=d.stamps?.icon==='custom' ? await realLogo(testAsset('stamp')) : null;
   const selectedLibrary=d.stamps?.icon==='library'?libraryStampId(d.stamps.libraryId):'';
   const stamp=stampBytes ? await decodePng(stampBytes) : selectedLibrary ? await loadLibraryStamp(selectedLibrary) : null;
@@ -239,14 +242,15 @@ async function createPass(token: string) {
   });
   const fallback = Buffer.from(ICON_B64, 'base64');
   const logo = await realLogo(brand.logo);
-  // Ignore old composed image, which could contain small and blurry raster text.
-  const compact=brand.showBusinessName;
+  const composed=brand.appleHeader ? await realLogo(brand.appleHeader) : null;
+  if(brand.appleHeader && !composed)throw new SafeError(422,'invalid_apple_header');
+  const compact=brand.showBusinessName && !brand.appleHeader;
   const assets: Record<string, Uint8Array> = {
     'icon.png': fallback, 'icon@2x.png': Buffer.from(await makeDemoLogo('DPA',brand.accent,2,'icon')),
     ...(logo ? { 'logo.png': logo, 'logo@2x.png': logo } : {}),
   };
-  assets['logo.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,logo,1,compact));
-  assets['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,logo,2,compact));
+  assets['logo.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,composed||logo,1,compact));
+  assets['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,composed||logo,2,compact));
   const stampBytes=brand.stamp ? await realLogo(brand.stamp) : null;
   const stamp=stampBytes ? await decodePng(stampBytes) : brand.libraryId ? await loadLibraryStamp(brand.libraryId) : null;
   if((brand.stamp || brand.libraryId) && !stamp) throw new SafeError(422,'invalid_stamp');
