@@ -324,8 +324,9 @@ test('Apple emojis are 50pt and 2x artwork doubles pixels rather than getting sm
 
 test('Apple header text uses native PassKit logoText only when the design opts in',()=>{
   const source=readFileSync(new URL('../supabase/functions/apple-pass/index.ts', import.meta.url),'utf8');
-  assert.ok(source.includes("d.apple?.showBusinessName === true && !composedPath ? { logoText: appleHeaderName(name) }"),'legacy native name is shortened so it cannot wrap');
-  assert.ok(source.includes("const headerLogo=composed || uploaded"),'new passes use the combined image');
+  assert.ok(source.includes("d.apple?.showBusinessName === true ? { logoText: appleHeaderName(name) }"),'opt-in emits native iOS merchant text');
+  assert.ok(!source.includes('composedPath'),'never substitute raster text in place of the native header');
+  assert.ok(source.includes("makeAppleHeaderLogo(name,accent,primary,uploaded,1,compact)"),'only independently uploaded logo is an image');
   assert.ok(!source.includes("json.logoText = ''"),'empty logoText is rejected by passkit-generator Joi schema');
   const json={organizationName:'Commerce',storeCard:{headerFields:[]}};
   assert.equal(Object.hasOwn(json,'logoText'),false,'existing cards remain logo-only by default');
