@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -15,7 +15,8 @@
 <script>window.dpaReady=new Promise(function(r){window.__dpaResolve=r;});
 // Public sign-up page /join/<slug>: dc-runtime fetches sibling components relative to the
 // page ("./LoyaltyCard.dc.html"), which would resolve under /join/. Point it at the root copy.
-if(/^\/(join|subscription|design)\//.test(location.pathname)) window.__resources={'./LoyaltyCard.dc.html':'/LoyaltyCard.dc.html'};</script>
+if(/^\/(join|subscription|design)\//.test(location.pathname)) window.__resources={'./LoyaltyCard.dc.html':'/LoyaltyCard.dc.html'};
+if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa-native-ios');</script>
 <script src="/support.js"></script>
 <!-- Supabase client (bundled by Vite), hands its API to the logic script via window.dpaReady. -->
 <script type="module" src="/src/backend.js"></script>
@@ -29,6 +30,7 @@ if(/^\/(join|subscription|design)\//.test(location.pathname)) window.__resources
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block">
 <style>
 *{box-sizing:border-box}
+html.dpa-native-ios body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
 html,body{margin:0;background:#F6F5F1;color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 input,textarea,select,button{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -1987,6 +1989,7 @@ const JOIN_SLUG=(()=>{ try{ const r=/^\/join\/([^\/]+)\/?$/.exec(window.location
 // Printed QR codes point to the canonical production domain on any deployed preview.
 // Local dev keeps its own origin for testing; no link depends on Vercel.
 const PUBLIC_SITE=/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)?window.location.origin:'https://cards.digitalprojectagency.fr';
+const DPA_NATIVE_IOS=window.location.protocol==='capacitor:';
 function joinUrl(slug){ return PUBLIC_SITE+'/join/'+slug; }
 // Return from Stripe Checkout: /subscription/success?session_id=… or /subscription/cancel.
 const SUB_RETURN=(()=>{ try{ const r=/^\/subscription\/(success|cancel)\/?$/.exec(window.location.pathname); return r?r[1]:null; }catch(e){ return null; } })();
@@ -2938,9 +2941,9 @@ class Component extends DCLogic {
 
   renderVals(){
     const s=this.state, W=s.w, isDesk=W>=1024, isMob=!isDesk, scr=s.screen;
-    const names=['login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','joinLoading','joinMissing','notifs','notifNew','billing','subSuccess','subCancel','locked','designPaid','designCancel'];
+    const names=['nativeAccess','login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','joinLoading','joinMissing','notifs','notifNew','billing','subSuccess','subCancel','locked','designPaid','designCancel'];
     const S={}; names.forEach(k=>S[k]=scr===k);
-    S.auth=S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.bill=S.billing||S.subSuccess||S.subCancel||S.designPaid||S.designCancel; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState&&!S.bill;
+    S.auth=S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.bill=S.nativeAccess||S.billing||S.subSuccess||S.subCancel||S.designPaid||S.designCancel; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState&&!S.bill;
     // Belt and braces: a business screen never renders without a valid subscription.
     const locked=!!s.live&&!s.hasAccess;
     let lockKind=s.screen==='locked'?s.lockKind:null;
