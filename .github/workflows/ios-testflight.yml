@@ -5,6 +5,9 @@ name: Upload signed iOS build to TestFlight
 # the separate iOS test branch. No production web files are deployed.
 # Only runs after Apple signing materials are configured in GitHub Actions secrets.
 on:
+  push:
+    branches: [build/testflight-mobile-fixes-20261016]
+    paths: [.github/workflows/ios-testflight.yml]
   workflow_dispatch:
 
 permissions:
@@ -38,7 +41,7 @@ jobs:
       # This permits a TestFlight build without merging or deploying the branch.
       - uses: actions/checkout@v4
         with:
-          ref: feat/ios-app-store-preparation
+          ref: f1ca37eb67c2008526498a372dd46e26968d5164
 
       - uses: actions/setup-node@v4
         with:
