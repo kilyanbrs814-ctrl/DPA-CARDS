@@ -72,8 +72,9 @@ export function realAppleBrand(program, merchant, card) {
     showStampPanel: apple.showStampPanel !== false,
     showStamps: apple.showStamps !== false,
     appleStrip: assetPath(assets.appleStrip, card, 'appleStrip'),
-    // Old rasterized names never replace native Apple typography, even if saved.
-    appleHeader: null,
+    // Explicit new custom mode only. Legacy combined PNGs never override native text.
+    appleHeader: apple.headerMode==='custom' && apple.showBusinessName===true && apple.headerArtworkVersion===4
+      ? assetPath(assets.appleHeader,card,'appleHeader') : null,
     rewardEnabled: apple.showReward === true,
     rewardLabel: apple.showReward === true ? assetPath(assets.rewardLabel,card,'rewardLabel') : null,
     logo: Object.hasOwn(assets,'logo') ? assetPath(assets.logo, card, 'logo') : assetPath(program?.logo_path, card, 'logo'),
@@ -98,7 +99,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     serialNumber: card.id,
     organizationName: brand.issuer,
     // Native PassKit logoText is rendered by iOS with its own crisp system font.
-    ...(brand.showBusinessName ? { logoText: appleHeaderName(brand.issuer) } : {}),
+    ...(brand.showBusinessName && !brand.appleHeader ? { logoText: appleHeaderName(brand.issuer) } : {}),
     description: 'Carte de fidélité ' + brand.issuer,
 
     backgroundColor: toRgb(brand.primary),
