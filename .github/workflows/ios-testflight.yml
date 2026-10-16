@@ -3,9 +3,6 @@ name: Upload signed iOS build to TestFlight
 # Deliberately manual: never uploads an unreviewed build automatically.
 # Only runs after Apple signing materials are configured in GitHub Actions secrets.
 on:
-  push:
-    branches: [build/testflight-mobile-fixes-20261016]
-    paths: [.github/workflows/ios-testflight.yml]
   workflow_dispatch:
 
 permissions:
@@ -37,7 +34,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: f715de468f1a73680a19ddea845e02427fa51e64
+          ref: feat/ios-app-store-preparation
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
