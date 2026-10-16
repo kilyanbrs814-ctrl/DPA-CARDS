@@ -2,16 +2,20 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<script src="/vendor/react.production.min.js"></script>
+<script src="/vendor/react-dom.production.min.js"></script>
 <script src="/support.js"></script>
 <script>window.dpaAdminReady=new Promise(function(r){window.__dpaAdminResolve=r;});</script>
 <script type="module" src="/src/admin-backend.js"></script>
+<link rel="stylesheet" href="/src/mobile-layout.css">
+<script>if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa-native-ios');</script>
 </head>
 <body>
-<div id="admin-auth-root" style="min-height:100vh;background:#F6F5F1;color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px">
+<div id="admin-auth-root" style="min-height:var(--dpa-page-height,100dvh);background:#F6F5F1;color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px">
   <div style="width:100%;max-width:420px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:28px;box-shadow:0 12px 36px rgba(20,22,28,.08)">
     <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:42px;width:auto;display:block;margin-bottom:26px">
     <div id="admin-auth-loading">
@@ -49,7 +53,7 @@
 <div id="admin-app" style="display:none">
 <x-dc>
 <helmet>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block">
@@ -79,7 +83,7 @@ a:hover{color:#1A36C4}
 }
 </style>
 </helmet>
-<div style="min-height:100vh;background:#F6F5F1;color:#1C1F24">
+<div style="min-height:var(--dpa-page-height,100dvh);background:#F6F5F1;color:#1C1F24">
   <header class="dpa-admin-header" style="position:sticky;top:0;z-index:20;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:10px clamp(16px,4vw,40px);background:#1C1F24;color:#FFFFFF">
     <div class="dpa-admin-brand" style="display:flex;align-items:center;gap:14px;min-width:0">
       <div style="background:#FFFFFF;border-radius:10px;padding:5px 8px;line-height:0"><img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:30px;width:auto;display:block"></div>

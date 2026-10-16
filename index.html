@@ -20,17 +20,19 @@ if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa
 <script src="/support.js"></script>
 <!-- Supabase client (bundled by Vite), hands its API to the logic script via window.dpaReady. -->
 <script type="module" src="/src/backend.js"></script>
+<link rel="stylesheet" href="/src/mobile-layout.css">
+<script>if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa-native-ios');</script>
 </head>
 <body>
 <x-dc>
 <helmet>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block">
 <style>
 *{box-sizing:border-box}
-html.dpa-native-ios body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+
 html,body{margin:0;background:#F6F5F1;color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 input,textarea,select,button{font:inherit;color:inherit}
 button{cursor:pointer}
@@ -44,14 +46,14 @@ a:hover{color:#1A36C4}
 @keyframes dpaUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 </style>
 </helmet>
-<div style="min-height:100vh;background:#F6F5F1;color:#1C1F24">
+<div style="min-height:var(--dpa-page-height,100dvh);background:#F6F5F1;color:#1C1F24">
 <sc-if value="{{ s.auth }}" hint-placeholder-val="{{ true }}">
-<div style="min-height:100vh;display:flex">
+<div class="dpa-auth-shell" style="min-height:var(--dpa-page-height,100dvh);display:flex">
   <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:clamp(20px,5vw,56px)">
     <div style="display:flex;align-items:center;gap:10px">
       <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:44px;width:auto;display:block">
     </div>
-    <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:40px 0">
+    <div class="dpa-auth-center" style="flex:1;display:flex;align-items:center;justify-content:center;padding:40px 0">
       <div style="width:100%;max-width:420px">
 
         <sc-if value="{{ s.login }}" hint-placeholder-val="{{ true }}">
@@ -148,11 +150,11 @@ a:hover{color:#1A36C4}
         </sc-if>
 
         <sc-if value="{{ s.reset }}" hint-placeholder-val="{{ false }}">
-          <h1 style="font-weight:800;font-size:clamp(30px,6vw,38px);line-height:1.08;letter-spacing:-0.03em;margin:0 0 10px">Nouveau mot de passe</h1>
-          <p style="margin:0 0 28px;color:#5E636B;font-size:16px;line-height:1.5">Choisissez un nouveau mot de passe pour votre compte.</p>
+          <h1 style="font-weight:800;font-size:clamp(30px,6vw,38px);line-height:1.08;letter-spacing:-0.03em;margin:0 0 10px">Créer mon mot de passe</h1>
+          <p style="margin:0 0 28px;color:#5E636B;font-size:16px;line-height:1.5">Choisissez le mot de passe qui vous permettra d’accéder à votre compte DPA Cards.</p>
           <form onSubmit="{{ submitReset }}" noValidate="{{ true }}" style="display:flex;flex-direction:column;gap:20px">
             <div>
-              <label for="rn" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Nouveau mot de passe</label>
+              <label for="rn" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Mot de passe</label>
               <input id="rn" type="password" autoComplete="new-password" value="{{ f.pwdNew }}" onChange="{{ F.pwdNew }}" aria-invalid="{{ inv.pwdNew }}" aria-describedby="rn-err" style="width:100%;height:54px;padding:0 16px;border:1.5px solid {{ eb.pwdNew }};border-radius:12px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
               <sc-if value="{{ err.pwdNew }}" hint-placeholder-val="{{ false }}"><div id="rn-err" role="alert" style="display:flex;gap:6px;align-items:center;margin-top:8px;color:#B42318;font-size:14px;font-weight:500"><span class="material-symbols-rounded" style="font-size:18px">error</span>{{ err.pwdNew }}</div></sc-if>
             </div>
@@ -182,7 +184,7 @@ a:hover{color:#1A36C4}
   </div>
 </sc-if>
 <sc-if value="{{ s.onb }}" hint-placeholder-val="{{ false }}">
-<div style="min-height:100vh;display:flex;flex-direction:column">
+<div style="min-height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid #E4E1DA;background:#F6F5F1">
     <div style="display:flex;align-items:center;gap:10px">
       <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:38px;width:auto;display:block">
@@ -400,7 +402,7 @@ a:hover{color:#1A36C4}
 </div>
 </sc-if>
 <sc-if value="{{ s.bill }}" hint-placeholder-val="{{ false }}">
-<div style="min-height:100vh;display:flex;flex-direction:column;background:#F6F5F1">
+<div style="min-height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column;background:#F6F5F1">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid #E4E1DA;background:#F6F5F1">
     <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:38px;width:auto;display:block">
     <div style="display:flex;align-items:center;gap:12px;font-size:14px;color:#5E636B"><span style="overflow-wrap:anywhere">{{ m.business }}</span><button type="button" onClick="{{ logout }}" style="min-height:40px;padding:0 12px;border:1.5px solid #D4D1C9;border-radius:10px;background:#FFFFFF;font-weight:600;font-size:14px;flex:none">Se déconnecter</button></div>
@@ -511,7 +513,7 @@ a:hover{color:#1A36C4}
 </div>
 </sc-if>
 <sc-if value="{{ s.pub }}" hint-placeholder-val="{{ false }}">
-<div style="min-height:100vh;background:#EFEDE8;display:flex;flex-direction:column">
+<div style="min-height:var(--dpa-page-height,100dvh);background:#EFEDE8;display:flex;flex-direction:column">
   <sc-if value="{{ notPublic }}" hint-placeholder-val="{{ true }}">
   <div role="note" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px clamp(16px,3vw,32px);background:#1C1F24;color:#FFFFFF;font-size:14px">
     <div style="display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:18px;color:#FFD66B">visibility</span>{{ joinBanner }}</div>
@@ -560,7 +562,7 @@ a:hover{color:#1A36C4}
 </div>
 </sc-if>
 <sc-if value="{{ s.pubState }}" hint-placeholder-val="{{ false }}">
-<div style="min-height:100vh;background:#EFEDE8;display:flex;flex-direction:column">
+<div style="min-height:var(--dpa-page-height,100dvh);background:#EFEDE8;display:flex;flex-direction:column">
   <div style="flex:1;width:100%;max-width:440px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;justify-content:center">
     <sc-if value="{{ s.joinLoading }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;align-items:center;justify-content:center;gap:10px;color:#3E424A;font-size:16px;min-height:120px">{{ spin }}Chargement du programme…</div></sc-if>
     <sc-if value="{{ s.joinMissing }}" hint-placeholder-val="{{ false }}">
@@ -576,9 +578,9 @@ a:hover{color:#1A36C4}
 </div>
 </sc-if>
 <sc-if value="{{ s.app }}" hint-placeholder-val="{{ false }}">
-<div style="display:flex;min-height:100vh">
+<div style="display:flex;min-height:var(--dpa-page-height,100dvh)">
   <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
-    <aside style="width:264px;flex:none;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:24px;padding:24px 16px;border-right:1px solid #E4E1DA;background:#F1EFEA">
+    <aside style="width:264px;flex:none;position:sticky;top:0;height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column;gap:24px;padding:24px 16px;border-right:1px solid #E4E1DA;background:#F1EFEA">
       <div style="display:flex;align-items:center;gap:10px;padding:0 8px">
         <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:40px;width:auto;display:block">
       </div>
@@ -600,7 +602,7 @@ a:hover{color:#1A36C4}
   </sc-if>
   <main style="flex:1;min-width:0;padding-bottom:{{ mainPadB }}">
     <sc-if value="{{ mShowBar }}" hint-placeholder-val="{{ false }}">
-      <header style="position:sticky;top:0;z-index:20;padding-top:env(safe-area-inset-top);background:rgba(246,245,241,0.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid #E4E1DA">
+      <header class="dpa-mobile-header" style="position:sticky;top:0;z-index:20;padding-top:var(--dpa-safe-top,env(safe-area-inset-top));background:rgba(246,245,241,0.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid #E4E1DA">
         <div style="max-width:640px;margin:0 auto;height:56px;padding:0 8px;display:flex;align-items:center;gap:4px">
           <sc-if value="{{ mBar.hasBack }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ mBar.back }}" aria-label="Retour" style="width:44px;height:44px;flex:none;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;color:#1C1F24" style-active="background:#ECEAE4"><span class="material-symbols-rounded" style="font-size:26px">arrow_back</span></button></sc-if>
           <sc-if value="{{ mBar.logo }}" hint-placeholder-val="{{ false }}"><img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:34px;width:auto;display:block;margin-left:8px"></sc-if>
@@ -925,7 +927,7 @@ a:hover{color:#1A36C4}
     </div>
     </sc-if>
 <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
-    <div style="position:fixed;inset:0;z-index:40;background:#0E1013;color:#FFFFFF;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)">
+    <div style="position:fixed;inset:0;z-index:40;background:#0E1013;color:#FFFFFF;display:flex;flex-direction:column;padding-top:var(--dpa-safe-top,env(safe-area-inset-top));padding-bottom:var(--dpa-safe-bottom,env(safe-area-inset-bottom))">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;height:60px;padding:0 12px;flex:none">
         <button type="button" onClick="{{ closeScanner }}" aria-label="Fermer le scanner" style="width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,0.12);color:#FFFFFF;display:grid;place-items:center" style-active="background:rgba(255,255,255,0.22)"><span class="material-symbols-rounded" style="font-size:24px">close</span></button>
         <h1 style="margin:0;font-weight:700;font-size:17px">Scanner une carte</h1>
@@ -1040,7 +1042,7 @@ a:hover{color:#1A36C4}
       </sc-if>
     </div>
     <sc-if value="{{ scanV.found }}" hint-placeholder-val="{{ false }}">
-    <div style="position:fixed;inset:0;z-index:41;background:#F6F5F1;color:#1C1F24;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);animation:dpaUp .22s ease-out">
+    <div style="position:fixed;inset:0;z-index:41;background:#F6F5F1;color:#1C1F24;display:flex;flex-direction:column;padding-top:var(--dpa-safe-top,env(safe-area-inset-top));animation:dpaUp .22s ease-out">
       <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;height:60px;padding:0 12px;width:100%;max-width:640px;margin:0 auto">
         <button type="button" onClick="{{ resetScan }}" disabled="{{ busy }}" aria-label="Scanner une autre carte" style="width:44px;height:44px;border:0;border-radius:12px;background:transparent;display:grid;place-items:center" style-active="background:#ECEAE4"><span class="material-symbols-rounded" style="font-size:26px">arrow_back</span></button>
         <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#E4F3EB;color:#1F6B45;font-weight:700;font-size:13px"><span class="material-symbols-rounded" style="font-size:18px">verified</span>Carte reconnue</span>
@@ -1063,7 +1065,7 @@ a:hover{color:#1A36C4}
         <sc-if value="{{ scanV.used }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;align-items:center;gap:12px;padding:16px;border-radius:16px;background:#E4F3EB;color:#17583A;font-weight:700;font-size:16px;animation:dpaUp .2s ease-out"><span class="material-symbols-rounded" style="font-size:28px">task_alt</span>{{ scanV.msg }}</div></sc-if>
         <sc-if value="{{ sc.hasReward }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:16px;border:1.5px solid #1F7A4F;background:#F2FAF5;color:#17583A;font-size:15px"><span class="material-symbols-rounded" style="font-size:24px">celebration</span><div><strong>Récompense disponible :</strong> {{ P.reward }}</div></div></sc-if>
       </div>
-      <div style="flex:none;background:#FFFFFF;border-top:1px solid #E4E1DA;padding:12px 16px calc(12px + env(safe-area-inset-bottom))">
+      <div style="flex:none;background:#FFFFFF;border-top:1px solid #E4E1DA;padding:12px 16px calc(12px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))">
         <div style="max-width:608px;margin:0 auto;display:flex;flex-direction:column;gap:10px">
           <sc-for list="{{ scanActs }}" as="b" hint-placeholder-count="2">
             <button type="button" onClick="{{ b.run }}" disabled="{{ b.disabled }}" aria-busy="{{ b.busy }}" style="min-height:58px;padding:0 20px;border-radius:16px;border:{{ b.border }};background:{{ b.bg }};color:{{ b.fg }};opacity:{{ b.opacity }};font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px" style-active="filter:brightness(0.92)">
@@ -1127,7 +1129,7 @@ a:hover{color:#1A36C4}
     </sc-if>
 <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
     <div style="max-width:640px;margin:0 auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px">
-      <div role="search" style="position:sticky;top:calc(56px + env(safe-area-inset-top));z-index:15;margin:0 -16px;padding:10px 16px 8px;background:#F6F5F1">
+      <div role="search" class="dpa-client-search" style="position:sticky;top:calc(56px + var(--dpa-safe-top,env(safe-area-inset-top)));z-index:15;margin:0 -16px;padding:10px 16px 8px;background:#F6F5F1">
         <div style="position:relative">
           <label for="cqm" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Rechercher un client</label>
           <span class="material-symbols-rounded" style="position:absolute;left:14px;top:13px;font-size:22px;color:#5E636B">search</span>
@@ -1263,7 +1265,7 @@ a:hover{color:#1A36C4}
       </dl>
       <div style="max-width:280px;width:100%;align-self:center"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ selCard }}" hint-size="100%,400px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdSel }}</sc-if><div style="margin-top:10px;text-align:center;font-size:13px;color:#5E636B">Carte du client · aperçu indicatif</div><sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openGWallet }}" style="margin:6px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#2448F0;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">account_balance_wallet</span>Ajouter à Google Wallet</button></sc-if><sc-if value="{{ isLive }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openAWallet }}" style="margin:6px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#1C1F24;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">wallet</span>Ajouter à Apple Wallet</button></sc-if><sc-if value="{{ canDelClient }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ askDelClient }}" style="margin:2px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#B42318;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">delete</span>Supprimer le client</button></sc-if></div>
     </div>
-    <div style="position:fixed;left:0;right:0;bottom:calc(72px + env(safe-area-inset-bottom));z-index:25;background:rgba(246,245,241,0.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid #E4E1DA">
+    <div style="position:fixed;left:0;right:0;bottom:calc(72px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)));z-index:25;background:rgba(246,245,241,0.96);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-top:1px solid #E4E1DA">
       <div style="max-width:640px;margin:0 auto;padding:10px 16px;display:flex;gap:10px">
         <sc-for list="{{ mSelActs }}" as="b" hint-placeholder-count="1">
           <button type="button" onClick="{{ b.run }}" disabled="{{ b.disabled }}" aria-busy="{{ b.busy }}" style="flex:1;min-width:0;min-height:56px;padding:0 12px;border-radius:16px;border:{{ b.border }};background:{{ b.bg }};color:{{ b.fg }};opacity:{{ b.opacity }};font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .15s ease" style-active="filter:brightness(0.92)">
@@ -1643,7 +1645,7 @@ a:hover{color:#1A36C4}
         </div>
       </div>
       <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
-      <div style="position:sticky;bottom:0;z-index:15;margin:0 -20px -20px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:rgba(255,255,255,0.97);border-top:1px solid #E4E1DA;display:flex;gap:10px">
+      <div style="position:sticky;bottom:0;z-index:15;margin:0 -20px -20px;padding:12px 16px calc(12px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)));background:rgba(255,255,255,0.97);border-top:1px solid #E4E1DA;display:flex;gap:10px">
         <button type="button" onClick="{{ nSaveDraft }}" disabled="{{ busy }}" style="flex:1;min-width:0;min-height:56px;border:1.5px solid #D4D1C9;border-radius:16px;background:#FFFFFF;font-weight:600;font-size:16px">Brouillon</button>
         <button type="button" onClick="{{ nReview }}" disabled="{{ busy }}" style="flex:2;min-width:0;min-height:56px;border:0;border-radius:16px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 10px" style-active="background:#1A36C4"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ nReviewLabel }}</button>
       </div>
@@ -1752,7 +1754,7 @@ a:hover{color:#1A36C4}
   </main>
 </div>
 <sc-if value="{{ mShowNav }}" hint-placeholder-val="{{ false }}">
-  <nav aria-label="Navigation principale" style="position:fixed;left:0;right:0;bottom:0;z-index:30;background:#FFFFFF;border-top:1px solid #E4E1DA;padding:6px 6px calc(6px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(5,minmax(0,1fr))">
+  <nav aria-label="Navigation principale" style="position:fixed;left:0;right:0;bottom:0;z-index:30;background:#FFFFFF;border-top:1px solid #E4E1DA;padding:6px 6px calc(6px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)));display:grid;grid-template-columns:repeat(5,minmax(0,1fr))">
     <sc-for list="{{ mobNav }}" as="n" hint-placeholder-count="5">
       <button type="button" onClick="{{ n.go }}" aria-current="{{ n.current }}" style="min-height:60px;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:4px 0">
         <span style="width:{{ n.iconW }};height:{{ n.iconH }};margin-top:{{ n.iconMt }};border-radius:999px;background:{{ n.iconBg }};color:{{ n.iconColor }};box-shadow:{{ n.iconShadow }};display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:24px;font-variation-settings:{{ n.iconFill }}">{{ n.icon }}</span></span>
@@ -1764,7 +1766,7 @@ a:hover{color:#1A36C4}
 </sc-if>
 <sc-if value="{{ mod.any }}" hint-placeholder-val="{{ false }}">
 <div onClick="{{ closeModal }}" style="position:fixed;inset:0;z-index:50;background:rgba(20,22,28,0.5);display:flex;align-items:{{ modalAlign }};justify-content:center;padding:0">
-  <div role="dialog" aria-modal="true" aria-labelledby="dlg-t" onClick="{{ stop }}" style="width:100%;max-width:460px;background:#FFFFFF;border-radius:{{ modalRadius }};padding:24px 22px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 50px rgba(20,22,28,0.25);animation:dpaUp .2s ease-out;max-height:92vh;overflow:auto">
+  <div role="dialog" aria-modal="true" aria-labelledby="dlg-t" onClick="{{ stop }}" style="width:100%;max-width:460px;background:#FFFFFF;border-radius:{{ modalRadius }};padding:24px 22px calc(24px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)));display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 50px rgba(20,22,28,0.25);animation:dpaUp .2s ease-out;max-height:92vh;overflow:auto">
     <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}"><div aria-hidden="true" style="width:40px;height:5px;border-radius:3px;background:#D4D1C9;align-self:center;margin:-10px 0 -4px;flex:none"></div></sc-if>
     <sc-if value="{{ mod.addClient }}" hint-placeholder-val="{{ false }}">
       <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Ajouter un client</h2>
@@ -1998,7 +2000,7 @@ function slugify(t){ return (t||'commerce').toLowerCase().normalize('NFD').repla
 const JOIN_SLUG=(()=>{ try{ const r=/^\/join\/([^\/]+)\/?$/.exec(window.location.pathname); return r?decodeURIComponent(r[1]).toLowerCase():null; }catch(e){ return null; } })();
 // Printed QR codes point to the canonical production domain on any deployed preview.
 // Local dev keeps its own origin for testing; no link depends on Vercel.
-const PUBLIC_SITE=/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)?window.location.origin:'https://cards.digitalprojectagency.fr';
+const PUBLIC_SITE=/^https?:$/.test(window.location.protocol)&&/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)?window.location.origin:'https://cards.digitalprojectagency.fr';
 const DPA_NATIVE_IOS=window.location.protocol==='capacitor:';
 function joinUrl(slug){ return PUBLIC_SITE+'/join/'+slug; }
 // Return from Stripe Checkout: /subscription/success?session_id=… or /subscription/cancel.
@@ -2269,7 +2271,7 @@ class Component extends DCLogic {
     this._authSub=api.onAuth((ev,session)=>setTimeout(()=>this.onAuthEvent(ev,session),0));
   }
   onAuthEvent(ev,session){
-    if(this.state.demo) return;
+    if(this.state.demo||this._settingPassword) return;
     if(ev==='PASSWORD_RECOVERY'||(session&&this.api.recoveryPending)){ this._liveUid=null; this.setState({screen:'reset',busy:false,err:{},f:{...this.state.f,pwdNew:'',pwdConf:''}}); return; }
     if(ev==='SIGNED_OUT'){ if(this.state.live) this.resetToLogin(); return; }
     if(session&&(ev==='INITIAL_SESSION'||ev==='SIGNED_IN')&&!this._opening&&this._liveUid!==session.user.id) this.openLive(session);
@@ -2401,9 +2403,14 @@ class Component extends DCLogic {
     if(!this.validate([['pwdNew',f.pwdNew.length>=8,'Au moins 8 caractères.'],['pwdConf',f.pwdConf===f.pwdNew&&f.pwdConf,'Les deux mots de passe ne correspondent pas.']])) return;
     this.setState({busy:true});
     this.ready().then(async api=>{ if(!api) return this.noBackend('pwdNew');
-      try{ const {error}=await api.updatePassword(f.pwdNew); if(error) return this.setState({busy:false,err:api.authErrors(error,'reset')});
-        api.clearRecovery(); const ses=await api.session(); this.showToast('Mot de passe modifié'); if(ses) await this.openLive(ses); else this.resetToLogin(); }
-      catch(e){ this.setState({busy:false,err:api.authErrors(e,'reset')}); } }); };
+      this._settingPassword=true;
+      try{ const result=await api.completePasswordSetup(f.pwdNew);
+        if(result.error) return this.setState({busy:false,err:api.authErrors(result.error,'reset')});
+        api.clearRecovery();
+        if(result.session) await this.openLive(result.session);
+        else { this.resetToLogin({f:{...this.initState().f,loginEmail:result.email||''},toast:{msg:'Mot de passe enregistré. Connectez-vous à votre compte.',kind:'ok'}}); this.armToast(); } }
+      catch(e){ this.setState({busy:false,err:api.authErrors(e,'reset')}); }
+      finally{ this._settingPassword=false; } }); };
   oh2(k){ return this._h['o2'+k] ||= e=>{ const v=e.target.value; this.setState(s=>{ const ob={...s.ob,[k]:v}; const err={...s.err,['ob'+k]:null};
       if(k==='picker'){ ob.hex=v.toUpperCase(); delete ob.picker; err.obhex=null; }
       if(k==='hex'){ const h=v.trim().toUpperCase(); ob.hex=h.startsWith('#')?h:'#'+h; }
@@ -3158,7 +3165,7 @@ class Component extends DCLogic {
     const mqs=(s.mq||'').trim().toLowerCase(), mqd=mqs.replace(/\D/g,'');
     const mResults=views.filter(v=>!mqs||v.full.toLowerCase().includes(mqs)||(mqd.length>=2&&v.card.replace(/\D/g,'').includes(mqd))).slice(0,30).map((v,i)=>({...v,bt:bt(i),pick:()=>this.setState({modal:null,mq:'',scan:{st:'found',id:v.id,added:false,used:false,msg:''}})}));
     const wrapRun=o=>({...o,run:()=>{ this.setState({modal:null}); o.run(); }});
-    const toastM=scr==='scanner'?'calc(220px + env(safe-area-inset-bottom))':(scr==='client'?'calc(160px + env(safe-area-inset-bottom))':'calc(96px + env(safe-area-inset-bottom))');
+    const toastM=scr==='scanner'?'calc(220px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))':(scr==='client'?'calc(160px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))':'calc(96px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))');
     return {
       s:S, isDesk, isMob, m, P, f:s.f, F, err, eb, inv, go, spin, scanLine, sheetAnim, busy:s.busy, notBusy:!s.busy,
       showDemoHints:false, isWeb:!DPA_NATIVE_IOS, isNative:DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
@@ -3241,7 +3248,7 @@ class Component extends DCLogic {
       joined, joinCard, hasJoined:!!joined, hasCD:cdOn, noCD:!cdOn, cdHome, cdSel, cdJoin, cdDraftA, cdDraftG, openWallet:k=>()=>this.setState({modal:'wallet',target:k}), openApple:()=>{ if(s.pubSlug) return this.openPublicApple(); if(s.live&&s.joinedId) return this.openAWallet(s.joinedId); this.setState({modal:'wallet',target:'apple'}); }, openGoogle:()=>{ if(s.pubSlug) return this.openPublicWallet(); if(s.live&&s.joinedId) return this.openGWallet(s.joinedId); this.setState({modal:'wallet',target:'google'}); },
       mod, closeModal, stop:e=>e.stopPropagation(), rwC, confirmReward:this.confirmReward, rewardBtn:s.busy?'Validation…':'Confirmer', corrE:corrE?{...corrE,when:`${fmtDate(corrE.date)}, ${corrE.time}`}:null, corrName:corrC?corrC.first+' '+corrC.last:'', motifs, confirmCorr:this.confirmCorr, corrBtn:s.busy?'Correction…':'Confirmer la correction', walletName,
       modalAlign:isDesk?'center':'flex-end', modalRadius:isDesk?'20px':'22px 22px 0 0', toast:s.toast, toastBottom:isDesk?'28px':toastM, toastIcon:s.toast&&s.toast.kind==='info'?'info':(s.toast&&s.toast.kind==='error'?'error':'check_circle'), toastIconColor:s.toast&&s.toast.kind==='info'?'#9DB0FF':(s.toast&&s.toast.kind==='error'?'#FF9B8F':'#7FE0AE'),
-      prevOrder:isDesk?'2':'0', mainPadB:isDesk?'48px':(mShowNav?(scr==='client'?'calc(170px + env(safe-area-inset-bottom))':'calc(96px + env(safe-area-inset-bottom))'):'0px'), toNotifs:go('notifs'), ...nv,
+      prevOrder:isDesk?'2':'0', mainPadB:isDesk?'48px':(mShowNav?(scr==='client'?'var(--dpa-client-bottom,calc(170px + var(--dpa-safe-bottom)))':'var(--dpa-main-bottom,calc(96px + var(--dpa-safe-bottom)))'):'0px'), toNotifs:go('notifs'), ...nv,
       mShowBar, mShowNav, mBar:mb, mStats, mActivities:activities.map((a,i)=>({...a,bt:bt(i)})), mFilters:filters.map(f=>({...f,label:shortF[f.k]})), mList:list.map((v,i)=>({...v,bt:bt(i)})),
       mListCount:list.length+' client'+(list.length>1?'s':''), mSelActs, mResults, mNoResults:mResults.length===0, mq:s.mq, setMq:e=>this.setState({mq:e.target.value}),
       noDemoHints:true,

@@ -1,3 +1,5 @@
+import { publicSiteUrl } from './public-site.js';
+import { completePasswordSetup } from './password-setup.js';
 // Supabase access for the DPA Cards logic script.
 //
 // The <x-dc> document is compiled at runtime by dc-runtime and cannot import
@@ -60,9 +62,7 @@ const sb = configured
 
 // Authentication e-mails must never point at capacitor://localhost on iOS.
 // Open recovery/verification links on the existing HTTPS website, then return to the app to sign in.
-const redirectTo = () => window.location.protocol === 'capacitor:'
-  ? 'https://cards.digitalprojectagency.fr/'
-  : window.location.origin + '/';
+const redirectTo = () => publicSiteUrl(window.location) + '/';
 
 // ---------------------------------------------------------------- dates
 
@@ -347,6 +347,8 @@ const api = {
   },
   resendSignup(email) { return sb.auth.resend({ type: 'signup', email, options: { emailRedirectTo: redirectTo() } }); },
   forgot(email) { return sb.auth.resetPasswordForEmail(email, { redirectTo: redirectTo() }); },
+  completePasswordSetup: password => completePasswordSetup(sb.auth, password),
+  publicSite: publicSiteUrl(window.location),
   updatePassword(password) { return sb.auth.updateUser({ password }); },
   updateEmail(email) { return sb.auth.updateUser({ email }, { emailRedirectTo: redirectTo() }); },
   signOut() { return sb.auth.signOut({ scope: 'local' }); },
