@@ -1,10 +1,11 @@
 name: Upload signed iOS build to TestFlight
 
-# Deliberately manual: only the account owner initiates a TestFlight upload.
-# This workflow is on main so GitHub can display Run workflow, but only checks out
-# the separate iOS test branch. No production web files are deployed.
+# Deliberately manual: never uploads an unreviewed build automatically.
 # Only runs after Apple signing materials are configured in GitHub Actions secrets.
 on:
+  push:
+    branches: [build/testflight-mobile-fixes-20261016]
+    paths: [.github/workflows/ios-testflight.yml]
   workflow_dispatch:
 
 permissions:
@@ -34,12 +35,7 @@ jobs:
             fi
           done
 
-      # Checkout the isolated iOS preparation branch, NOT the production site.
-      # This permits a TestFlight build without merging or deploying the branch.
       - uses: actions/checkout@v4
-        with:
-          ref: feat/ios-app-store-preparation
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -107,15 +103,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          node scripts/configure-ios-signing.mjs ios/App/App.xcodeproj/project.pbxproj
           xcodebuild -project ios/App/App.xcodeproj \
             -scheme App -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/DPA-Cards.xcarchive" \
-            DEVELOPMENT_TEAM="$APP_TEAM_ID" \
-            PRODUCT_BUNDLE_IDENTIFIER="$APP_BUNDLE_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY='Apple Distribution' \
-            PROVISIONING_PROFILE_SPECIFIER="$IOS_PROFILE_NAME" \
             MARKETING_VERSION='1.0.0' \
             CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
             archive
