@@ -366,3 +366,40 @@ test('stamp spacing slider compresses and expands the two rows around their cent
  const afterG=await Promise.all([google.nth(0).boundingBox(),google.nth(4).boundingBox()]);
  expect(afterG[1].x-afterG[0].x).toBeLessThan(beforeG[1].x-beforeG[0].x);
 });
+
+test('inactive opacity slider live adjusts only gray stamps on Apple and Google and saves chosen value',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const opacity=page.locator('[data-stamp-opacity-control]');
+ await expect(opacity).toHaveValue('22');
+ await expect(page.getByText('Opacité des tampons non validés : 22 %')).toBeVisible();
+ const apple=page.locator('[data-layout="apple"]').first();
+ const unearned=apple.locator('[data-stamp="empty-final-star"]');
+ const earned=apple.locator('[data-stamp^="filled"]').first();
+ await expect(unearned).toHaveCSS('opacity','0.22');
+ await expect(unearned).toHaveCSS('filter','grayscale(1)');
+ await expect(earned).toHaveCSS('opacity','1');
+ await opacity.fill('5');
+ await expect(page.getByText('Opacité des tampons non validés : 5 %')).toBeVisible();
+ await expect(unearned).toHaveCSS('opacity','0.05');
+ await expect(earned).toHaveCSS('opacity','1');
+ await opacity.fill('100');
+ await expect(unearned).toHaveCSS('opacity','1');
+ await expect(unearned).toHaveCSS('filter','grayscale(1)');
+ await expect(earned).toHaveCSS('filter','none');
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
+ expect(stored.stamps.inactiveOpacity).toBe(100);
+ await page.reload();
+ await expect(opacity).toHaveValue('100');
+ await page.getByRole('tab',{name:'Google Wallet'}).click();
+ const google=page.locator('[data-layout="google"]').first();
+ const gray=google.locator('[data-stamp="empty-final-star"]');
+ await expect(gray).toHaveCSS('opacity','1');
+ await opacity.fill('0');
+ await expect(gray).toHaveCSS('opacity','0');
+ await expect(google.locator('[data-stamp^="filled"]').first()).toHaveCSS('opacity','1');
+ // The stamp size and position controls remain independent.
+ await expect(page.locator('[data-stamp-size-control]')).toHaveValue('100');
+ await expect(page.locator('[data-stamp-spacing-control]')).toHaveValue('100');
+});

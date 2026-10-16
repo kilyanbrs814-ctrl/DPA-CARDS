@@ -87,3 +87,18 @@ test('tampon spacing is optional, safely clamped and saved independently of size
  assert.equal(actual.stamps.spacing,75);
  assert.equal(actual.stamps.size,115);
 });
+
+test('unvalidated grayscale opacity normalizes securely and survives design hydration',()=>{
+ const project={merchant:{},program:{goal:10,mode:'passages'}};
+ assert.equal(normalize({},project).stamps.inactiveOpacity,22);
+ assert.equal(normalize({stamps:{inactiveOpacity:0}},project).stamps.inactiveOpacity,0);
+ assert.equal(normalize({stamps:{inactiveOpacity:100}},project).stamps.inactiveOpacity,100);
+ assert.equal(normalize({stamps:{inactiveOpacity:'bad'}},project).stamps.inactiveOpacity,22);
+ assert.equal(normalize({stamps:{inactiveOpacity:-300}},project).stamps.inactiveOpacity,0);
+ assert.equal(normalize({stamps:{inactiveOpacity:700}},project).stamps.inactiveOpacity,100);
+ const data={stamps:{size:120,spacing:65,inactiveOpacity:73}};
+ const hydrated=prepareDesign(data, {}, {}, v=>v);
+ assert.equal(hydrated.stamps.size,120);
+ assert.equal(hydrated.stamps.spacing,65);
+ assert.equal(hydrated.stamps.inactiveOpacity,73);
+});

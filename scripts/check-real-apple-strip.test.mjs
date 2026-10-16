@@ -465,3 +465,52 @@ test('tampon spacing changes geometry on Apple and Google, defaults to byte-iden
   assert.deepEqual(await makeDemoStrip({...points,stamps:{...points.stamps,spacing:50}},1),
     await makeDemoStrip({...points,stamps:{...points.stamps,spacing:120}},1));
 });
+
+test('configurable unvalidated opacity keeps 22% original, accepts 0 and 100, leaves completed color untouched',async()=>{
+ const {stampOpacity}=await import('../supabase/functions/apple-pass/real-strip.js');
+ assert.equal(stampOpacity(undefined),22);
+ assert.equal(stampOpacity('oops'),22);
+ assert.equal(stampOpacity(-2),0);
+ assert.equal(stampOpacity(200),100);
+ const source={colors:{primary:'#181818',secondary:'#414B65'},stamps:{icon:'none',filled:'#FF6600',empty:'#FFFFFF'},preview:{goal:10,progress:3,mode:'passages'}};
+ const orig=await makeDemoStrip(source,1);
+ assert.deepEqual(orig,await makeDemoStrip({...source,stamps:{...source.stamps,inactiveOpacity:22}},1),'existing card identical');
+ const hidden=await makeDemoStrip({...source,stamps:{...source.stamps,inactiveOpacity:0}},1);
+ const bright=await makeDemoStrip({...source,stamps:{...source.stamps,inactiveOpacity:100}},1);
+ assert.notDeepEqual(hidden,orig,'rings at 0% invisible');
+ const custom={width:1,height:1,pixels:new Uint8Array([220,40,10,255])};
+ const d={...source,stamps:{icon:'custom',inactiveOpacity:22}};
+ const legacy=await makeDemoStrip(d,1,custom);
+ assert.deepEqual(legacy,await makeDemoStrip({...d,stamps:{...d.stamps,inactiveOpacity:22}},1,custom));
+ const zero=await makeDemoStrip({...d,stamps:{...d.stamps,inactiveOpacity:0}},1,custom);
+ const half=await makeDemoStrip({...d,stamps:{...d.stamps,inactiveOpacity:50}},1,custom);
+ const full=await makeDemoStrip({...d,stamps:{...d.stamps,inactiveOpacity:100}},1,custom);
+ assert.notDeepEqual(zero,half);
+ assert.notDeepEqual(half,full);
+ const x=310,y=43;
+ const sample=async bytes=>{const img=await decodePng(bytes);return [...img.pixels.slice((y*img.width+x)*4,(y*img.width+x)*4+3)];};
+ assert.deepEqual(await sample(zero),[24,24,24]);
+ const doneColor=async(bytes)=>{const im=await decodePng(bytes),cx=187,cy=43;return [...im.pixels.slice((cy*im.width+cx)*4,(cy*im.width+cx)*4+3)];};
+ assert.deepEqual(await doneColor(zero),await doneColor(full),'validated icons unchanged');
+ const real={...source.colors,stamps:{icon:'custom'},mode:'passages'};
+ assert.deepEqual(await makeRealStrip(real,3,10,1,custom),
+  await makeRealStrip({...real,stamps:{...real.stamps,inactiveOpacity:22}},3,10,1,custom));
+ assert.notDeepEqual(await makeRealStrip({...real,stamps:{...real.stamps,inactiveOpacity:0}},3,10,1,custom),
+  await makeRealStrip({...real,stamps:{...real.stamps,inactiveOpacity:100}},3,10,1,custom));
+ assert.deepEqual(await makeGoogleStampHero(d,3,10,'passages',custom),
+  await makeGoogleStampHero({...d,stamps:{...d.stamps,inactiveOpacity:22}},3,10,'passages',custom));
+ assert.notDeepEqual(await makeGoogleStampHero({...d,stamps:{...d.stamps,inactiveOpacity:0}},3,10,'passages',custom),
+  await makeGoogleStampHero({...d,stamps:{...d.stamps,inactiveOpacity:100}},3,10,'passages',custom));
+ // Progress-as-points is a native numeric/bar mode: the new setting must not affect it.
+ const points={...source,preview:{goal:100,progress:12,mode:'points'}};
+ assert.deepEqual(await makeDemoStrip({...points,stamps:{...points.stamps,inactiveOpacity:0}},1),
+  await makeDemoStrip({...points,stamps:{...points.stamps,inactiveOpacity:100}},1));
+ const p=new Uint8Array(5*5*4).fill(30),q=p.slice(),t=p.slice();
+ compositeEmoji(p,5,5,2,2,1,custom,false,0);
+ compositeEmoji(q,5,5,2,2,1,custom,false,100);
+ compositeEmoji(t,5,5,2,2,1,custom,true,0);
+ assert.deepEqual([...p.slice((2*5+2)*4,(2*5+2)*4+3)],[30,30,30]);
+ assert.notDeepEqual(q,p);
+ const done=p.slice();compositeEmoji(done,5,5,2,2,1,custom,true,100);
+ assert.deepEqual(t,done,'earned icons remain fully colored regardless of inactive opacity');
+});
