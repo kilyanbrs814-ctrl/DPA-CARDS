@@ -292,3 +292,37 @@ test('every card-designer image upload shows its recommended size before choosin
  await page.reload();
  for(const [kind,size] of dimensions)await expect(page.locator('[data-recommended-size="'+kind+'"]')).toContainText(size);
 });
+
+test('tampons slider updates preview at once on both platforms and survives save/reload',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const slider=page.locator('[data-stamp-size-control]');
+ await expect(slider).toHaveValue('100');
+ await expect(page.getByText('Taille des tampons : 100 %')).toBeVisible();
+ const apple=page.locator('[data-layout="apple"]').first();
+ const first=apple.locator('[data-stamp-slot] [data-stamp]').first();
+ await expect(first).toHaveAttribute('data-stamp',/filled/);
+ const original=await first.boundingBox();
+ await slider.fill('60');
+ await expect(page.getByText('Taille des tampons : 60 %')).toBeVisible();
+ const small=await first.boundingBox();
+ expect(small.width).toBeLessThan(original.width);
+ const panel=apple.locator('[data-apple-stamp-panel]').first();
+ const panelRect=await panel.boundingBox();
+ await slider.fill('120');
+ const large=await first.boundingBox();
+ expect(large.width).toBeGreaterThan(original.width);
+ expect((await panel.boundingBox()).height).toBe(panelRect.height);
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ const json=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
+ expect(json.stamps.size).toBe(120);
+ await page.reload();
+ await expect(slider).toHaveValue('120');
+ await page.getByRole('tab',{name:'Google Wallet'}).click();
+ const google=page.locator('[data-layout="google"]').first().locator('[data-stamp-slot] [data-stamp]').first();
+ await expect(google).toBeVisible();
+ const bigGoogle=await google.boundingBox();
+ await slider.fill('50');
+ const littleGoogle=await google.boundingBox();
+ expect(littleGoogle.width).toBeLessThan(bigGoogle.width);
+});

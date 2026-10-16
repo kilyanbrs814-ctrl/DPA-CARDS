@@ -63,3 +63,15 @@ test('real and demo assets cannot reference another merchant, program, test, or 
  for(const path of [testStamp.replace(id,pid),stamp,'https://example.com/a.png',`tests/${id}/designer/../stamp-${pid}.png`])assert.equal(testAssetPath(path,id,'stamp'),null);
  assert.equal(assetPath(testStamp,card,'stamp'),null);
 });
+
+test('tampon scaling defaults to 100%, bounds unsafe values and survives config hydration',()=>{
+ const project={merchant:{},program:{goal:10,mode:'passages'}};
+ assert.equal(normalize({},project).stamps.size,100);
+ assert.equal(normalize({stamps:{size:50}},project).stamps.size,50);
+ assert.equal(normalize({stamps:{size:120}},project).stamps.size,120);
+ assert.equal(normalize({stamps:{size:'abc'}},project).stamps.size,100);
+ assert.equal(normalize({stamps:{size:999}},project).stamps.size,120);
+ const config=JSON.parse(JSON.stringify({stamps:{size:75},preview:{goal:10}}));
+ const saved=prepareDesign(config,{}, {},p=>p);
+ assert.equal(saved.stamps.size,75);
+});

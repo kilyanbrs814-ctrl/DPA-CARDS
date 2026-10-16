@@ -56,18 +56,25 @@ export function defaultDesign(project) {
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
     assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null },
-    stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
+    stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg), size: 100 },
     apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, headerMode: 'classic', showStampPanel: true, showStamps: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
   };
 }
 // Saved documents may predate a field: fill the gaps from the defaults.
+// Stamp size is a percentage of each Wallet's original stamp dimensions.
+// Missing/invalid legacy settings render at precisely the previous 100% size.
+export function stampSizePercent(raw) {
+  const value=Number(raw);
+  return raw==null || raw==='' || !Number.isFinite(value) ? 100
+    : Math.max(50,Math.min(120,Math.round(value)));
+}
 export function normalize(config, project) {
   const d = defaultDesign(project), c = config || {};
   const plat = k => ({ ...d[k], ...(c[k] || {}), colors: { ...((c[k] || {}).colors || {}) } });
   return { ...d, ...c, identity: { ...d.identity, ...(c.identity || {}) }, colors: { ...d.colors, ...(c.colors || {}) },
-    assets: { ...d.assets, ...(c.assets || {}) }, stamps: { ...d.stamps, ...(c.stamps || {}), icon: c.stamps?.icon || (normalizeStampEmoji(c.stamps?.emoji) ? 'emoji' : d.stamps.icon), emoji: c.stamps && !Object.prototype.hasOwnProperty.call(c.stamps, 'emoji') ? '' : (c.stamps?.emoji ?? d.stamps.emoji) }, apple: plat('apple'), google: plat('google'),
+    assets: { ...d.assets, ...(c.assets || {}) }, stamps: { ...d.stamps, ...(c.stamps || {}), icon: c.stamps?.icon || (normalizeStampEmoji(c.stamps?.emoji) ? 'emoji' : d.stamps.icon), emoji: c.stamps && !Object.prototype.hasOwnProperty.call(c.stamps, 'emoji') ? '' : (c.stamps?.emoji ?? d.stamps.emoji), size: stampSizePercent(c.stamps?.size) }, apple: plat('apple'), google: plat('google'),
     preview: { ...d.preview, ...(c.preview || {}) } };
 }
 // Real cards: the validated programs.card_design (paths only) → a renderable design. Missing parts fall
@@ -165,9 +172,12 @@ export function makeCardDesigner(React, api) {
     const rows = goal <= 6 ? 1 : goal <= 14 ? 2 : 3, per = Math.ceil(goal / rows), gap = 8;
     const size = Math.max(14, Math.min(large?50:34, Math.floor((width - (per - 1) * gap) / per)));
     const stampUrl = d.assets.stamp && d.assets.stamp.url;
+    const visibleSize=Math.max(7,Math.round(size*stampSizePercent(d.stamps?.size)/100));
     const lines = Array.from({ length: rows }, (_, r) => Array.from({ length: Math.min(per, goal - r * per) }, (_, i) => r * per + i));
     return h('div', { 'data-progress': 'stamps', 'data-done': done, 'data-goal': goal, style: { display: 'flex', flexDirection: 'column', gap, alignItems: align === 'center' ? 'center' : 'flex-start' } },
-      lines.map((l, r) => h('div', { key: r, style: { display: 'flex', gap } }, l.map(i => h(Stamp, { key: i, on: i < done, st: d.stamps, size, stampUrl, final:i===goal-1 })))));
+      lines.map((l, r) => h('div', { key: r, style: { display: 'flex', gap } }, l.map(i =>
+        h('div',{key:i,'data-stamp-slot':true,style:{width:size,height:size,flex:'none',display:'grid',placeItems:'center',overflow:'visible'}},
+          h(Stamp, { on: i < done, st: d.stamps, size:visibleSize, stampUrl, final:i===goal-1 }))))));
   }
 
   // An image that cannot load falls back to the program's own image, then to `fallback` (never a broken icon).
@@ -907,7 +917,14 @@ export function makeCardDesigner(React, api) {
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, background: '#1C1F24' } },
           h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }), h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }),
           h(Stamp, { on: false, st: design.stamps, size: 34, stampUrl:design.assets.stamp?.url }), h('span', { style: { color: '#FFFFFF', fontSize: 13, opacity: 0.8 } }, 'Rempli · Rempli · Vide')),
-        h(ImagePick, { label: 'Ou importer un tampon PNG personnalisé', testId: 'stamp', asset: design.assets.stamp, busy: busy === 'up-stamp', onPick: pickFile('stamp'), onRemove: () => { set('assets.stamp', null); if (design.stamps.icon === 'custom') { set('stamps.icon', 'library'); set('stamps.libraryId', 'cafe'); } }, hint: 'Un seul PNG transparent : passages effectués en couleur, restants grisés à 22 %. 2 Mo maximum.' })),
+        h(ImagePick, { label: 'Ou importer un tampon PNG personnalisé', testId: 'stamp', asset: design.assets.stamp, busy: busy === 'up-stamp', onPick: pickFile('stamp'), onRemove: () => { set('assets.stamp', null); if (design.stamps.icon === 'custom') { set('stamps.icon', 'library'); set('stamps.libraryId', 'cafe'); } }, hint: 'Un seul PNG transparent : passages effectués en couleur, restants grisés à 22 %. 2 Mo maximum.' }),
+        h(Field,{label:'Taille des tampons : '+stampSizePercent(design.stamps.size)+' %'},
+          h('input',{type:'range',min:50,max:120,step:5,value:stampSizePercent(design.stamps.size),
+            'data-stamp-size-control':true,'aria-label':'Taille des tampons',
+            onChange:e=>set('stamps.size',+e.target.value),
+            style:{width:'100%',accentColor:'#2448F0'}}),
+          h('div',{style:{marginTop:5,fontSize:13,color:'#5E636B',lineHeight:1.4}},
+            '100 % = taille actuelle. Les tampons restent aux mêmes emplacements ; seul leur diamètre change sur Apple Wallet et Google Wallet. Sans effet pour les cartes à points.'))),
       platform==='apple' && h(Section, { title: 'Apple Wallet' },
         h(ImagePick, { label: 'Image du bandeau Apple Wallet (facultatif)', testId: 'appleStrip',
           asset: design.assets.appleStrip, busy: busy==='up-appleStrip', onPick: pickFile('appleStrip'),

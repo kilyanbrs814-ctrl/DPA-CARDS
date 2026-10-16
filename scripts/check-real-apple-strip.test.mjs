@@ -415,3 +415,31 @@ test('Apple panel settings survive reload and asset paths remain scoped to their
     assert.equal(testAssetPath(testPath,pid,'appleStrip'),null);
   }
 });
+
+test('tampon size slider changes signed and demonstration Apple PNG, Google PNG; 100% preserves old outputs',async()=>{
+  const {stampScale}=await import('../supabase/functions/apple-pass/real-strip.js');
+  assert.equal(stampScale(undefined),1);
+  assert.equal(stampScale('oops'),1);
+  assert.equal(stampScale(-100),0.5);
+  assert.equal(stampScale(999),1.2);
+  const {decodePng}=await import('../supabase/functions/_shared/png.js');
+  const d={colors:{primary:'#181818',secondary:'#414B65'},stamps:{icon:'none',filled:'#FF6600',empty:'#FFFFFF'},preview:{goal:10,progress:3,mode:'passages'}};
+  const plain=await makeDemoStrip(d,1);
+  assert.deepEqual(plain,await makeDemoStrip({...d,stamps:{...d.stamps,size:100}},1),'legacy 100% bitmap unchanged');
+  const small=await makeDemoStrip({...d,stamps:{...d.stamps,size:50}},1);
+  const big=await makeDemoStrip({...d,stamps:{...d.stamps,size:120}},1);
+  assert.notDeepEqual(small,big,'circle diameters change');
+  assert.equal((await decodePng(small)).width,375);
+  const realBase={primary:'#181818',secondary:'#414B65',stamps:d.stamps,mode:'passages'};
+  assert.deepEqual(await makeRealStrip(realBase,3,10,1),await makeRealStrip({...realBase,stamps:{...d.stamps,size:100}},3,10,1));
+  assert.notDeepEqual(await makeRealStrip({...realBase,stamps:{...d.stamps,size:60}},3,10,1),
+    await makeRealStrip({...realBase,stamps:{...d.stamps,size:120}},3,10,1));
+  const googleSmall=await makeGoogleStampHero({...d,stamps:{...d.stamps,size:50}},3,10);
+  const googleLarge=await makeGoogleStampHero({...d,stamps:{...d.stamps,size:120}},3,10);
+  assert.notDeepEqual(googleSmall,googleLarge);
+  assert.deepEqual([(await decodePng(googleSmall)).width,(await decodePng(googleSmall)).height],[1032,812]);
+  assert.deepEqual(await makeGoogleStampHero(d,3,10),await makeGoogleStampHero({...d,stamps:{...d.stamps,size:100}},3,10));
+  const points={...d,preview:{goal:100,progress:30,mode:'points'}};
+  assert.deepEqual(await makeDemoStrip({...points,stamps:{...points.stamps,size:50}},1),
+    await makeDemoStrip({...points,stamps:{...points.stamps,size:120}},1),'points mode unchanged');
+});
