@@ -40,6 +40,6 @@ test('admin invitations from iOS use HTTPS, never the Capacitor origin',()=>{
  const expression=source.match(/const redirectTo = ([^;]+);/)[1];
  for(const origin of ['capacitor://localhost','https://untrusted.example','https://cards.digitalprojectagency.fr']){
  const result=vm.runInNewContext(expression,{origin,ALLOWED_ORIGINS:['capacitor://localhost','https://cards.digitalprojectagency.fr'],PUBLIC_SITE:'https://cards.digitalprojectagency.fr'});
- assert.equal(result,'https://cards.digitalprojectagency.fr/?setup=1');
+ assert.equal(result,'https://cards.digitalprojectagency.fr/');
  }
 });

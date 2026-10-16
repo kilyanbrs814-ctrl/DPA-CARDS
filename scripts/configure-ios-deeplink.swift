@@ -11,6 +11,7 @@ var originalFormat = PropertyListSerialization.PropertyListFormat.xml
 guard var root = try PropertyListSerialization.propertyList(from: data, options: [], format: &originalFormat) as? [String: Any] else {
   fatalError("Invalid Info.plist")
 }
+root["NSPhotoLibraryAddUsageDescription"] = "DPA Cards enregistre le QR code de votre commerce dans Photos pour vous permettre de le partager ou de l’imprimer."
 var types = root["CFBundleURLTypes"] as? [[String: Any]] ?? []
 let hasScheme = types.contains { type in
   (type["CFBundleURLSchemes"] as? [String] ?? []).contains("dpacards")
@@ -22,7 +23,7 @@ if !hasScheme {
     "CFBundleURLSchemes": ["dpacards"]
   ])
   root["CFBundleURLTypes"] = types
-  let result = try PropertyListSerialization.data(fromPropertyList: root, format: originalFormat, options: 0)
-  try result.write(to: url, options: .atomic)
 }
+let result = try PropertyListSerialization.data(fromPropertyList: root, format: originalFormat, options: 0)
+try result.write(to: url, options: .atomic)
 print("DPA Cards iOS auth redirect scheme configured: dpacards://auth/admin")

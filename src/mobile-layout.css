@@ -13,3 +13,7 @@ html.dpa-native-ios main{--dpa-main-bottom:96px;--dpa-client-bottom:170px}
  .dpa-auth-center h1{font-size:30px!important}
  .dpa-auth-center form{gap:16px!important}
 }
+
+/* Opaque system-area cover: scrolled content must never show behind the clock. */
+html.dpa-native-ios::before{content:"";position:fixed;top:0;left:0;right:0;height:var(--dpa-safe-top);background:#F6F5F1;z-index:35;pointer-events:none}
+html.dpa-native-ios .dpa-mobile-header{background:#F6F5F1!important}

@@ -17,6 +17,7 @@
 // page ("./LoyaltyCard.dc.html"), which would resolve under /join/. Point it at the root copy.
 if(/^\/(join|subscription|design)\//.test(location.pathname)) window.__resources={'./LoyaltyCard.dc.html':'/LoyaltyCard.dc.html'};
 if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa-native-ios');</script>
+<script>if(location.protocol==='https:'&&location.hostname.endsWith('.vercel.app')) location.replace('https://cards.digitalprojectagency.fr'+location.pathname+location.search+location.hash);</script>
 <script src="/support.js"></script>
 <!-- Supabase client (bundled by Vite), hands its API to the logic script via window.dpaReady. -->
 <script type="module" src="/src/backend.js"></script>
@@ -149,6 +150,7 @@ a:hover{color:#1A36C4}
           </div>
         </sc-if>
 
+        <sc-if value="{{ s.workspaceError }}" hint-placeholder-val="{{ false }}"><h1 style="margin:0 0 12px;font-size:28px">Connexion réussie</h1><p role="alert" style="line-height:1.5">Votre mot de passe est correct. {{ workspaceError }}</p><button type="button" onClick="{{ retryWorkspace }}" disabled="{{ busy }}" style="width:100%;min-height:54px;background:#2448F0;color:white;border:0;border-radius:14px;font-weight:700">{{ workspaceRetryLabel }}</button><button type="button" onClick="{{ logout }}" style="margin-top:12px;min-height:44px;background:none;border:0;color:#2448F0">Se déconnecter</button></sc-if>
         <sc-if value="{{ s.reset }}" hint-placeholder-val="{{ false }}">
           <h1 style="font-weight:800;font-size:clamp(30px,6vw,38px);line-height:1.08;letter-spacing:-0.03em;margin:0 0 10px">Créer mon mot de passe</h1>
           <p style="margin:0 0 28px;color:#5E636B;font-size:16px;line-height:1.5">Choisissez le mot de passe qui vous permettra d’accéder à votre compte DPA Cards.</p>
@@ -522,12 +524,12 @@ a:hover{color:#1A36C4}
   </sc-if>
   <div style="flex:1;width:100%;max-width:440px;margin:0 auto;padding:24px 16px 48px">
     <div style="background:#FFFFFF;border-radius:24px;overflow:hidden;box-shadow:0 1px 3px rgba(20,22,28,0.06)">
-      <div style="background:{{ P.bg }};padding:28px 24px 24px;color:#1E1418">
-        <div style="width:56px;height:56px;border-radius:14px;background:{{ P.accent }};display:grid;place-items:center;font-weight:800;font-size:13px;margin-bottom:18px">{{ P.logo }}</div>
+      <div style="background:{{ joinPage.bg }};padding:28px 24px 24px;color:{{ joinPage.fg }}">
+        <div style="width:56px;height:56px;border-radius:14px;background:#FFFFFF;color:#1C1F24;display:grid;place-items:center;font-weight:800;font-size:13px;margin-bottom:18px"><sc-if value="{{ joinLogo }}"><img src="{{ joinLogo }}" alt="Logo du commerce" style="width:100%;height:100%;object-fit:contain"></sc-if><sc-if value="{{ !joinLogo }}">{{ P.logo }}</sc-if></div>
         <div style="font-weight:700;font-size:15px">{{ m.business }}</div>
-        <sc-if value="{{ s.join }}" hint-placeholder-val="{{ true }}"><h1 style="margin:6px 0 0;font-weight:800;font-size:30px;letter-spacing:-0.02em;line-height:1.1">Rejoignez le {{ P.name }}</h1></sc-if>
+        <sc-if value="{{ s.join }}" hint-placeholder-val="{{ true }}"><h1 style="margin:6px 0 0;font-weight:800;font-size:30px;letter-spacing:-0.02em;line-height:1.1">{{ joinPage.title }}</h1></sc-if>
         <sc-if value="{{ s.joinDone }}" hint-placeholder-val="{{ false }}"><h1 style="margin:6px 0 0;font-weight:800;font-size:30px;letter-spacing:-0.02em;line-height:1.1">Votre carte est prête</h1></sc-if>
-        <div style="margin-top:10px;font-size:16px;font-weight:500">{{ ruleText }}</div>
+        <sc-if value="{{ joinPage.description }}"><p style="margin:10px 0 0;font-size:15px;line-height:1.5">{{ joinPage.description }}</p></sc-if><div style="margin-top:10px;font-size:16px;font-weight:500">{{ ruleText }}</div>
       </div>
       <sc-if value="{{ s.join }}" hint-placeholder-val="{{ true }}">
         <form onSubmit="{{ submitJoin }}" noValidate="{{ true }}" style="padding:24px;display:flex;flex-direction:column;gap:18px">
@@ -543,7 +545,7 @@ a:hover{color:#1A36C4}
           </div>
           <label style="display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.45;color:#3E424A;cursor:pointer"><input type="checkbox" checked="{{ consent }}" onChange="{{ toggleConsent }}" style="width:20px;height:20px;accent-color:#1C1F24;margin:1px 0 0;flex:none"><span>J’accepte les conditions du programme et l’utilisation de mon prénom (et de mon e-mail si je le renseigne) par {{ m.business }} pour gérer ma carte de fidélité. DPA Cards fournit l’infrastructure technique de ce programme. <a href="/confidentialite" target="_blank" rel="noopener">Politique de confidentialité</a></span></label>
           <sc-if value="{{ err.consent }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:-8px;color:#B42318;font-size:14px;font-weight:500">{{ err.consent }}</div></sc-if>
-          <button type="submit" disabled="{{ busy }}" style="height:56px;border:0;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ joinBtn }}</button>
+          <button type="submit" disabled="{{ busy }}" style="height:56px;border:0;border-radius:14px;background:{{ joinPage.button }};color:{{ joinButtonFg }};font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ joinBtn }}</button>
           <p style="margin:0;font-size:13px;color:#5E636B;line-height:1.45">{{ P.conditions }}</p>
         </form>
       </sc-if>
@@ -763,6 +765,7 @@ a:hover{color:#1A36C4}
       </section>
     </div>
     </sc-if>
+    <sc-if value="{{ canEditRegistration }}"><section style="max-width:1080px;margin:0 auto 24px;padding:0 16px"><div style="padding:20px;border:1px solid #E4E1DA;border-radius:20px;background:white"><h2 style="margin:0 0 8px;font-size:20px">Page d’inscription</h2><p style="margin:0 0 16px;line-height:1.5;color:#5E636B">Personnalisez la page ouverte par vos clients après avoir scanné votre QR code.</p><button type="button" onClick="{{ toRegistration }}" style="min-height:48px;padding:0 16px;border:0;border-radius:12px;background:#2448F0;color:white;font-weight:700">Modifier ma page d’inscription</button></div></section></sc-if>
     </sc-if>
 
     <sc-if value="{{ s.scanner }}" hint-placeholder-val="{{ false }}">
@@ -1355,6 +1358,7 @@ a:hover{color:#1A36C4}
     </div>
     </sc-if>
 
+    <sc-if value="{{ s.registration }}"><div style="max-width:720px;margin:0 auto;padding:24px 16px;display:flex;flex-direction:column;gap:18px"><h1 style="margin:0;font-size:26px">Ma page d’inscription</h1><p style="margin:0;color:#5E636B;line-height:1.5">Ces modifications s’appliquent à la page accessible depuis votre QR code.</p><label style="font-weight:600">Titre<input aria-label="Titre de la page" value="{{ registrationDraft.title }}" onChange="{{ registrationTitle }}" maxLength="120" style="display:block;margin-top:8px;width:100%;min-height:50px;padding:12px;border:1px solid #D4D1C9;border-radius:12px;background:white"></label><label style="font-weight:600">Texte de présentation<textarea aria-label="Texte de présentation" value="{{ registrationDraft.description }}" onChange="{{ registrationDescription }}" maxLength="400" rows="3" style="display:block;margin-top:8px;width:100%;padding:12px;border:1px solid #D4D1C9;border-radius:12px;background:white"></textarea></label><div style="display:flex;gap:20px;flex-wrap:wrap"><label>Fond de l’en-tête<input aria-label="Fond de l’en-tête" type="color" value="{{ registrationDraft.bg }}" onChange="{{ registrationBg }}" style="display:block;width:70px;height:46px;margin-top:8px"></label><label>Texte de l’en-tête<input aria-label="Texte de l’en-tête" type="color" value="{{ registrationDraft.fg }}" onChange="{{ registrationFg }}" style="display:block;width:70px;height:46px;margin-top:8px"></label><label>Bouton<input aria-label="Couleur du bouton" type="color" value="{{ registrationDraft.button }}" onChange="{{ registrationButton }}" style="display:block;width:70px;height:46px;margin-top:8px"></label></div><div aria-label="Aperçu de la page d’inscription" style="border:1px solid #E4E1DA;border-radius:20px;overflow:hidden;background:white"><div style="padding:24px;background:{{ registrationPreview.bg }};color:{{ registrationPreview.fg }}"><sc-if value="{{ joinLogo }}"><img src="{{ joinLogo }}" alt="Logo du commerce" style="width:56px;height:56px;object-fit:contain;background:white;border-radius:12px;margin-bottom:12px"></sc-if><div style="font-size:14px;font-weight:600">{{ m.business }}</div><h2 style="margin:8px 0;font-size:25px">{{ registrationPreview.title }}</h2><p style="margin:8px 0;line-height:1.5">{{ registrationPreview.description }}</p><div>{{ ruleText }}</div></div><div style="padding:20px;color:#5E636B">Prénom · E-mail facultatif</div></div><button type="button" onClick="{{ saveRegistration }}" disabled="{{ busy }}" style="min-height:54px;padding:12px;border:0;border-radius:14px;background:#2448F0;color:white;font-weight:700">Enregistrer ma page</button><button type="button" onClick="{{ toJoin }}" style="min-height:46px;border:1px solid #D4D1C9;border-radius:12px;background:white;font-weight:600">Voir la page d’inscription</button></div></sc-if>
     <sc-if value="{{ s.invite }}" hint-placeholder-val="{{ false }}">
     <div style="max-width:1060px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:22px">
       <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}"><div><h1 style="margin:0;font-weight:800;font-size:clamp(28px,5vw,36px);letter-spacing:-0.03em">Inviter mes clients</h1><div style="margin-top:4px;color:#5E636B;font-size:15px">Affichez ce QR code au comptoir ou partagez le lien.</div></div></sc-if>
@@ -1369,7 +1373,7 @@ a:hover{color:#1A36C4}
             <button type="button" onClick="{{ copyLink }}" style="height:44px;padding:0 14px;border:0;border-radius:10px;background:#1C1F24;color:#FFFFFF;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;flex:none"><span class="material-symbols-rounded" style="font-size:18px">content_copy</span>Copier le lien</button>
           </div>
           <div style="width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
-            <button type="button" onClick="{{ downloadQr }}" style="min-height:50px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">download</span>Télécharger le QR code</button>
+            <button type="button" onClick="{{ downloadQr }}" aria-label="{{ qrDownloadLabel }}" disabled="{{ qrSaving }}" style="min-height:50px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">download</span> {{ qrDownloadLabel }}</button>
             <button type="button" onClick="{{ toJoin }}" style="min-height:50px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px" style-hover="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:20px">open_in_new</span>Voir la page d’inscription</button>
           </div>
           <div style="font-size:13px;color:#5E636B">{{ linkNote }}</div>
@@ -2261,7 +2265,7 @@ class Component extends DCLogic {
     this._autoReady=setTimeout(()=>{ const s=this.state; if(s.screen!=='scanner'||s.busy||s.modal||s.scan.st!=='found'||s.scan.id!==id) return;
       const c=s.clients.find(x=>x.id===id); if(!c) return; const done=s.scan.used||(s.scan.added&&c.balance<+s.program.goal);
       if(done) this.resetScan(); },3500); }
-  ready(){ if(!this._ready) this._ready=Promise.race([window.dpaReady||Promise.resolve(null),new Promise(r=>setTimeout(()=>r(null),10000))]).then(a=>{ this.api=a&&a.configured?a:null; return this.api; }); return this._ready; }
+  ready(){ if(!this._ready) this._ready=Promise.race([window.dpaReady||Promise.resolve(null),new Promise(r=>setTimeout(()=>r(null),10000))]).then(a=>{ this.utils=a;this.api=a&&a.configured?a:null; return this.api; }); return this._ready; }
   noBackend(field){ this.setState({busy:false,err:{[field]:'Service de connexion indisponible : configuration Supabase manquante ou réseau injoignable.'}}); }
   async bootLive(){
     const api=await this.ready(); if(!api) return;
@@ -2274,11 +2278,11 @@ class Component extends DCLogic {
     if(this.state.demo||this._settingPassword) return;
     if(ev==='PASSWORD_RECOVERY'||(session&&this.api.recoveryPending)){ this._liveUid=null; this.setState({screen:'reset',busy:false,err:{},f:{...this.state.f,pwdNew:'',pwdConf:''}}); return; }
     if(ev==='SIGNED_OUT'){ if(this.state.live) this.resetToLogin(); return; }
-    if(session&&(ev==='INITIAL_SESSION'||ev==='SIGNED_IN')&&!this._opening&&this._liveUid!==session.user.id) this.openLive(session);
+    if(session&&this.state.screen!=='workspaceError'&&(ev==='INITIAL_SESSION'||ev==='SIGNED_IN')&&!this._opening&&this._liveUid!==session.user.id) this.openLive(session);
   }
   resetToLogin(extra={}){ this._liveUid=null; this._req={}; useCalendar(false); this.setState({...this.initState(),w:window.innerWidth,remember:this.state.remember,screen:'login',...extra}); this.scrollTop(); }
   async openLive(session){
-    const api=this.api, user=session.user; this._opening=true; this._liveUid=user.id; this._req={}; useCalendar(true);
+    const api=this.api, user=session.user; this._lastWorkspaceSession=session; this._opening=true; this._liveUid=user.id; this._req={}; useCalendar(true);
     this.setState({busy:true,err:{}});
     try{
       const d=await api.loadAll(user);
@@ -2306,7 +2310,7 @@ class Component extends DCLogic {
       }
       if(DESIGN_RETURN&&d.merchant){ this.setState({screen:DESIGN_RETURN==='success'?'designPaid':'designCancel',designVerify:{st:'loading'}}); if(DESIGN_RETURN==='success') setTimeout(()=>this.verifyDesign(),0); }
       this.scrollTop();
-    }catch(e){ this._liveUid=null; useCalendar(false); this.setState({busy:false,screen:'login',err:{loginPwd:'Impossible de charger votre espace : '+api.errorMessage(e)}}); }
+    }catch(e){ this._liveUid=null; useCalendar(false); this.setState({busy:false,screen:'workspaceError',workspaceError:api.errorMessage(e),err:{}}); }
     finally{ this._opening=false; }
   }
   obStep3(m,p,design){ return {...this.initState().ob,step:3,biz:m.business,activity:m.activity||'Restaurant',mode:p.mode,goal:p.goal,reward:p.reward,prog:p.name,hex:(p.bg||'#FFFFFF').toUpperCase(),drName:(m.first+' '+m.last).trim(),drEmail:m.email,...(design?{design}:{})}; }
@@ -2356,6 +2360,7 @@ class Component extends DCLogic {
     if(this.state.live&&LOCKED_SCREENS.includes(screen)&&!this.state.hasAccess){ extra={...extra,lockKind:screen}; screen='locked'; }
     if(screen==='settings'&&extra.section==='billing') setTimeout(()=>this.loadBillingSummary(),0);
     const s=this.state, n={screen,err:{},...extra};
+    if(screen==='registration') n.registrationDraft=this.registrationConfig(s.program);
     if(screen==='scanner'&&!extra.keepScan){ const ist=this.initialScanState(s); n.scan={st:ist,id:null,added:false,used:false,msg:''}; n.pos={loading:false,err:null};
       if(this.scanMode()==='camera'){ n.cam=this._camAuthorized?'ok':null; n.camErr=null; n.camErrName=null; this._camCooldown=null; } }
     if(screen==='scanner'&&s.screen!=='scanner') n.prevScreen=s.screen;
@@ -2645,9 +2650,18 @@ class Component extends DCLogic {
     this.api.publicJoin(s.pubSlug,this.pubReqId(),s.f.joinFirst.trim(),s.f.joinEmail.trim())
       .then(r=>{ this.setState({busy:false,pubWallet:r.wallet}); if(r.wallet.url) open(r.wallet.url); else this.showToast(this.api.errorMessage(new Error(r.wallet.error||'wallet_unavailable')),'error'); })
       .catch(e=>{ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); }); }
-  async downloadJoinQr(){ const m=this.state.merchant;
-    try{ const href=await this.api.qrPng(joinUrl(m.slug)); const a=document.createElement('a'); a.href=href; a.download='qr-inscription-'+m.slug+'.png'; document.body.appendChild(a); a.click(); a.remove(); }
-    catch(e){ this.showToast('Le QR code n’a pas pu être généré. Réessayez.','error'); } }
+  async downloadJoinQr(){ const m=this.state.merchant;if(this.state.qrSaving)return;this.setState({qrSaving:true});
+    try{ const href=await this.api.qrPng(joinUrl(m.slug));
+      if(DPA_NATIVE_IOS){await this.api.saveQrToPhotos(href);this.showToast('QR code enregistré dans Photos.');}
+      else {const a=document.createElement('a');a.href=href;a.download='qr-inscription-'+m.slug+'.png';document.body.appendChild(a);a.click();a.remove();} }
+    catch(e){this.showToast(e.code==='accessDenied'?'Autorisez l’ajout de photos pour DPA Cards dans les réglages de votre iPhone.':'Le QR code n’a pas pu être enregistré. Réessayez.','error');}
+    finally{this.setState({qrSaving:false});} }
+  registrationConfig(p){const a=this.api||this.utils;return a&&a.registrationPage?a.registrationPage(p):{title:'Rejoignez le '+p.name,description:'',bg:p.bg,fg:lum(p.bg)<0.45?'#FFFFFF':'#1C1F24',button:'#1C1F24'};}
+  registrationChange(k){return e=>this.setState(s=>({registrationDraft:{...s.registrationDraft,[k]:e.target.value}}));}
+  saveRegistration=async()=>{if(this.state.busy)return;this.setState({busy:true});
+    try{const p=this.state.live?await this.api.saveRegistrationPage(this.state.program.id,this.state.registrationDraft):{...this.state.program,registrationPage:{...this.state.registrationDraft}};
+      this.setState({busy:false,program:p,draft:{...p},registrationDraft:this.registrationConfig(p)});this.showToast('Page d’inscription enregistrée.');}
+    catch(e){this.setState({busy:false});this.showToast(this.api.errorMessage(e),'error');}};
   copyJoinLink(){ const url=joinUrl(this.state.merchant.slug);
     const ok=()=>this.showToast('Lien copié'), ko=()=>this.showToast('Copie impossible sur ce navigateur. Lien : '+url,'info');
     try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok,ko); else ko(); }catch(e){ ko(); } }
@@ -2969,9 +2983,9 @@ class Component extends DCLogic {
 
   renderVals(){
     const s=this.state, W=s.w, isDesk=W>=1024, isMob=!isDesk, scr=s.screen;
-    const names=['nativeAccess','login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','joinLoading','joinMissing','notifs','notifNew','billing','subSuccess','subCancel','locked','designPaid','designCancel'];
+    const names=['workspaceError','registration','nativeAccess','login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','joinLoading','joinMissing','notifs','notifNew','billing','subSuccess','subCancel','locked','designPaid','designCancel'];
     const S={}; names.forEach(k=>S[k]=scr===k);
-    S.auth=S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.bill=S.nativeAccess||S.billing||S.subSuccess||S.subCancel||S.designPaid||S.designCancel; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState&&!S.bill;
+    S.auth=S.workspaceError||S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.bill=S.nativeAccess||S.billing||S.subSuccess||S.subCancel||S.designPaid||S.designCancel; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState&&!S.bill;
     // Belt and braces: a business screen never renders without a valid subscription.
     const locked=!!s.live&&!s.hasAccess;
     let lockKind=s.screen==='locked'?s.lockKind:null;
@@ -3105,7 +3119,7 @@ class Component extends DCLogic {
     const obActs=ACTIVITIES.map(a=>{ const on=o.activity===a; return {label:a,bg:on?'#1C1F24':'#FFFFFF',fg:on?'#FFFFFF':'#1C1F24',border:on?'#1C1F24':'#D4D1C9',pressed:on,pick:()=>this.setState(x=>({ob:{...x.ob,activity:a}}))}; });
 
     const navDef=[{k:'home',label:'Accueil',icon:'home'},{k:'clients',label:'Clients',icon:'group'},{k:'scanner',label:'Scanner',icon:'qr_code_scanner'},{k:'notifs',label:'Notifications',icon:'notifications'},{k:'more',label:'Réglages',icon:'settings'}];
-    const activeKey=scr==='client'?'clients':(scr==='notifNew'?'notifs':(['invite','settings','card'].includes(scr)?'more':scr));
+    const activeKey=scr==='client'?'clients':(scr==='notifNew'?'notifs':(['invite','settings','card','registration'].includes(scr)?'more':scr));
     const mobNav=navDef.map(n=>{ const a=activeKey===n.k, c=n.k==='scanner';
       return {...n,current:a?'page':undefined,labelColor:a?'#2448F0':'#5E636B',iconColor:c?'#FFFFFF':(a?'#2448F0':'#5E636B'),iconBg:c?'#2448F0':(a?'#E8EDFF':'transparent'),iconW:c?'56px':'52px',iconH:c?'56px':'32px',iconMt:c?'-26px':'0px',iconShadow:c?'0 6px 16px rgba(36,72,240,0.35)':'none',iconFill:a?"'FILL' 1":"'FILL' 0",go:go(n.k)}; });
     const deskDef=[{k:'home',label:'Accueil',icon:'home'},{k:'clients',label:'Clients',icon:'group'},{k:'scanner',label:'Scanner',icon:'qr_code_scanner'},{k:'notifs',label:'Notifications',icon:'notifications'},{k:'invite',label:'Inviter mes clients',icon:'qr_code_2'},{k:'more',label:'Paramètres',icon:'settings'}];
@@ -3149,7 +3163,7 @@ class Component extends DCLogic {
     const nv=this.nVals(s,isDesk,m,P,goal);
     const bt=i=>i?'1px solid #EFEDE8':'0';
     const mShowBar=isMob&&S.app&&!S.scanner, mShowNav=isMob&&S.app&&!['scanner','notifNew','settings'].includes(scr);
-    const mBarMap={home:{logo:true,demo:!!s.demo,support:true},clients:{title:'Clients',addClient:true},client:{title:sel?sel.full:'Client',back:go('clients')},notifs:{title:'Notifications',create:true},notifNew:{title:nv.nHeading,back:go('notifs')},more:{title:'Réglages'},settings:{title:secTitle,back:go('more')},invite:{title:'Inviter mes clients',back:go('more')},card:{title:'Ma carte',back:go('home')}};
+    const mBarMap={home:{logo:true,demo:!!s.demo,support:true},clients:{title:'Clients',addClient:true},client:{title:sel?sel.full:'Client',back:go('clients')},notifs:{title:'Notifications',create:true},notifNew:{title:nv.nHeading,back:go('notifs')},more:{title:'Réglages'},settings:{title:secTitle,back:go('more')},invite:{title:'Inviter mes clients',back:go('more')},registration:{title:'Page d’inscription',back:go('home')},card:{title:'Ma carte',back:go('home')}};
     mBarMap.locked={title:'Fonction verrouillée',back:go('home')};
     const mb={logo:false,support:false,back:null,title:'',demo:false,addClient:false,create:false,...(mBarMap[scr]||{})}; mb.hasBack=!!mb.back; mb.hasTitle=!!mb.title;
     const mStats=[{label:'Passages aujourd’hui',value:stats[1].value},{label:'Récompenses disponibles',value:stats[2].value},{label:'Clients inscrits',value:stats[0].value}];
@@ -3169,6 +3183,9 @@ class Component extends DCLogic {
     return {
       s:S, isDesk, isMob, m, P, f:s.f, F, err, eb, inv, go, spin, scanLine, sheetAnim, busy:s.busy, notBusy:!s.busy,
       showDemoHints:false, isWeb:!DPA_NATIVE_IOS, isNative:DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
+      workspaceError:s.workspaceError||'Les données de votre espace n’ont pas pu être récupérées. Réessayez.', workspaceRetryLabel:s.busy?'Chargement…':'Réessayer d’ouvrir mon espace',retryWorkspace:()=>this._lastWorkspaceSession?this.openLive(this._lastWorkspaceSession):this.resetToLogin(),
+      joinPage:this.registrationConfig(P),joinLogo:P.registrationLogoUrl||P.logoUrl||'',joinButtonFg:lum((P.registrationPage||{}).button||'#1C1F24')<0.45?'#FFFFFF':'#1C1F24',
+      registrationDraft:s.registrationDraft||{},registrationPreview:this.registrationConfig({...P,registrationPage:s.registrationDraft||{}}),registrationTitle:this.registrationChange('title'),registrationDescription:this.registrationChange('description'),registrationBg:this.registrationChange('bg'),registrationFg:this.registrationChange('fg'),registrationButton:this.registrationChange('button'),saveRegistration:this.saveRegistration,toRegistration:()=>this.go('registration'),canEditRegistration:(s.demo||s.role==='owner')&&!locked,qrSaving:!!s.qrSaving,qrDownloadLabel:s.qrSaving?'Enregistrement…':(DPA_NATIVE_IOS?'Enregistrer dans Photos':'Télécharger le QR code'),
       loginBtn:s.busy?'Connexion…':'Se connecter', signupBtn:s.busy?'Création du compte…':'Créer mon compte', forgotBtn:s.busy?'Envoi…':'Envoyer le lien',
       pwdType:s.showPwd?'text':'password', pwdIcon:s.showPwd?'visibility_off':'visibility', pwdAria:s.showPwd?'Masquer le mot de passe':'Afficher le mot de passe',
       togglePwd:()=>this.setState(x=>({showPwd:!x.showPwd})), remember:s.remember, toggleRemember:e=>this.setState({remember:e.target.checked}),
