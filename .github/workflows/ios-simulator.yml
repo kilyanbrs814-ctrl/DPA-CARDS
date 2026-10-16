@@ -36,11 +36,11 @@ jobs:
       - name: Install temporary Capacitor 8 toolchain
         run: npm install --no-save --package-lock=false @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8
 
-      - name: Validate web routing
-        run: npm run test:static
-
       - name: Build bundled web assets
         run: npm run build
+
+      - name: Validate web routing
+        run: npm run test:static
 
       - name: Generate and synchronize iOS project
         run: |
