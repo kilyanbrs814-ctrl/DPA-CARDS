@@ -7,7 +7,8 @@ html.dpa-native-ios .dpa-mobile-header{top:var(--dpa-safe-top)!important;padding
 html.dpa-native-ios .dpa-client-search{top:calc(56px + var(--dpa-safe-top))!important}
 html.dpa-native-ios main{--dpa-main-bottom:96px;--dpa-client-bottom:170px}
 @media(max-width:767px){
- .dpa-auth-center{padding:20px 0!important}
+ .dpa-auth-center{padding:16px 0!important}
+ .dpa-auth-center h1+p{margin-bottom:20px!important;font-size:16px!important}
  .dpa-auth-shell>div{padding:16px!important}
  .dpa-auth-center h1{font-size:30px!important}
  .dpa-auth-center form{gap:16px!important}
