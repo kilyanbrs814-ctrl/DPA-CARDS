@@ -53,6 +53,7 @@ const ALLOWED_ORIGINS = (Deno.env.get('WALLET_ALLOWED_ORIGINS') ?? 'https://card
   .split(',').map(s => s.trim()).filter(Boolean);
 // Allow the new custom domain even if the production secret still contains an older origin.
 if (!ALLOWED_ORIGINS.includes('https://cards.digitalprojectagency.fr')) ALLOWED_ORIGINS.push('https://cards.digitalprojectagency.fr');
+if (!ALLOWED_ORIGINS.includes('capacitor://localhost')) ALLOWED_ORIGINS.push('capacitor://localhost');
 
 function envKey(jsonVar: string, legacyVar: string): string {
   try {
@@ -1534,7 +1535,7 @@ async function adminMerchantAccess(req: Request): Promise<Response> {
   const email = (await admin.auth.admin.getUserById(m.created_by)).data.user?.email;
   if (!email) throw new HttpError(409, 'owner_missing');
   const origin = req.headers.get('origin') ?? '';
-  const redirectTo = (ALLOWED_ORIGINS.includes(origin) ? origin : PUBLIC_SITE) + '/';
+  const redirectTo = (/^https:\/\//.test(origin) && ALLOWED_ORIGINS.includes(origin) ? origin : PUBLIC_SITE) + '/?setup=1';
   const anon = createClient(SUPABASE_URL, PUBLISHABLE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
   const { error } = await anon.auth.resetPasswordForEmail(email, { redirectTo });
   const errCode = error ? String((error as any).code || error.message || 'email_failed').slice(0, 300) : null;

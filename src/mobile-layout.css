@@ -1,0 +1,13 @@
+/* Shared viewport frame: reserve iPhone system areas once, including admin. */
+:root{--dpa-page-height:100dvh;--dpa-safe-top:env(safe-area-inset-top,0px);--dpa-safe-bottom:env(safe-area-inset-bottom,0px)}
+html.dpa-native-ios{--dpa-safe-top:calc(env(safe-area-inset-top,0px) + 8px);--dpa-safe-bottom:calc(env(safe-area-inset-bottom,0px) + 8px);--dpa-page-height:calc(100dvh - var(--dpa-safe-top) - var(--dpa-safe-bottom))}
+html.dpa-native-ios body{padding:var(--dpa-safe-top) 0 var(--dpa-safe-bottom);box-sizing:border-box;min-height:100dvh}
+html.dpa-native-ios .dpa-mobile-header{top:var(--dpa-safe-top);padding-top:0!important}
+html.dpa-native-ios .dpa-client-search{top:calc(56px + var(--dpa-safe-top))!important}
+html.dpa-native-ios main{--dpa-main-bottom:96px;--dpa-client-bottom:170px}
+@media(max-width:767px){
+ .dpa-auth-center{padding:24px 0!important}
+ .dpa-auth-shell{padding:20px!important}
+ .dpa-auth-center h1{font-size:30px!important}
+ .dpa-auth-center form{gap:16px!important}
+}
