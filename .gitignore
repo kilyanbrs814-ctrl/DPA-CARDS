@@ -19,3 +19,9 @@ supabase-email-backup-*.json
 
 test-results/
 playwright-report/
+
+# iOS distribution materials — local only, never version-control them.
+*.mobileprovision
+*.certSigningRequest
+*.csr
+*.cer
