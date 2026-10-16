@@ -1,4 +1,5 @@
 import { preparePngUpload } from './png-upload.js';
+import { createAppleWordmark, APPLE_WORDMARK_VERSION } from './apple-wordmark.js';
 import { createRewardLabel, rewardLabelColor } from './apple-reward-label.js';
 // Card designer (admin): one design project per program, rendered in two layouts —
 // Apple Wallet (full rectangle, rounded corners only) and Google Wallet (its own layout).
@@ -46,7 +47,7 @@ export function defaultDesign(project) {
     font: 'hanken', label: '',
     assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg) },
-    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, showStampPanel: true, showStamps: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
+    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, headerMode: 'classic', showStampPanel: true, showStamps: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
   };
@@ -232,9 +233,17 @@ export function makeCardDesigner(React, api) {
             minWidth: 0
           }
         },
-          // Native PassKit logoText (iOS controls its font and spacing), NOT a name PNG.
-          platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
-          platform==='apple' && o.showBusinessName && h('div',{
+          // The optional custom mode is one 160x50pt image; Classic keeps iOS text.
+          platform==='apple' && o.showBusinessName && o.headerMode==='custom' && o.headerArtworkVersion===APPLE_WORDMARK_VERSION && d.assets.appleHeader?.url
+            ? h(Img,{asset:d.assets.appleHeader,alt:'Logo, nom et activité du commerce',style:{width:160,height:50,objectFit:'contain',objectPosition:'left center',flexShrink:0}})
+            : platform==='apple' && o.showBusinessName && o.headerMode==='custom'
+              ? h('div',{'data-field':'apple-custom-business-header',style:{width:160,height:50,display:'flex',alignItems:'center',gap:4,flexShrink:0,overflow:'hidden'}},
+                  h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:48,height:48,objectFit:'contain',flexShrink:0}}),
+                  h('div',{style:{minWidth:0,flex:1,overflow:'hidden',lineHeight:1.12}},
+                    h('div',{style:{...ellipsis,fontWeight:750,fontSize:15}},d.identity.name||'Nom du commerce'),
+                    o.showSubtitle!==false && d.identity.subtitle && h('div',{style:{...ellipsis,fontSize:8,fontWeight:500,marginTop:4,textTransform:'uppercase'}},d.identity.subtitle)))
+              : platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
+          platform==='apple' && o.showBusinessName && o.headerMode!=='custom' && h('div',{
             'data-field':'apple-native-business-name',
             style:{...ellipsis,minWidth:0,whiteSpace:'nowrap',fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:20,fontWeight:700,lineHeight:1.1}
           },d.identity.name||'Nom du commerce'),
@@ -592,20 +601,30 @@ export function makeCardDesigner(React, api) {
       const n = JSON.parse(JSON.stringify(d)); let o = n; const ks = path.split('.');
       ks.slice(0, -1).forEach(k => { o[k] = o[k] || {}; o = o[k]; });
       o[ks[ks.length - 1]] = value;
-      // The Apple name toggle selects native PassKit text, not a baked image.
-      if(path==='apple.showBusinessName') { n.assets.appleHeader=null; n.apple.headerArtworkVersion=0; }
+      // Recompose only when bitmap content changes; preserve custom art when
+      // switching Classic / Custom so reverting remains instantaneous.
+      if(['identity.name','identity.subtitle','assets.logo','apple.showSubtitle'].includes(path)
+        || path.startsWith('colors.') || path.startsWith('apple.colors.')) {
+        n.assets.appleHeader=null;n.apple.headerArtworkVersion=0;
+      }
+      if(path==='apple.headerMode' && value==='custom')n.apple.showBusinessName=true;
       if(path==='apple.showReward'||path==='apple.rewardText'||path==='apple.rewardTextColor'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
         n.assets.rewardLabel=null;
       return n;
     });
     const forSave=async()=>{
       const next=JSON.parse(JSON.stringify(design));
-      // The old combined header and name-font assets are no longer used.
-      next.assets.appleHeader=null;
-      next.assets.businessNameImage=null;
-      next.assets.businessFont=null;
-      next.apple.headerArtworkVersion=0;
-      next.apple.businessNameFont='system';
+      // Keep the existing native header by default. The composed bitmap is
+      // generated ONLY for the selected custom mode, never during signing.
+      next.apple.headerMode=next.apple.headerMode==='custom'?'custom':'classic';
+      if(next.apple.headerMode==='custom' && next.apple.showBusinessName===true
+        && (!next.assets.appleHeader?.path || next.apple.headerArtworkVersion!==APPLE_WORDMARK_VERSION)) {
+        const artwork=await createAppleWordmark(next);
+        const asset=isTest ? await api.testUpload(project.test.id,'appleHeader',artwork)
+          : await api.upload(project.program.id,'appleHeader',artwork);
+        next.assets.appleHeader=asset;
+        next.apple.headerArtworkVersion=APPLE_WORDMARK_VERSION;
+      }
       if(next.apple?.showReward===true&&!next.assets?.rewardLabel?.path){
         const bitmap=await createRewardLabel(next);
         const asset=isTest ? await api.testUpload(project.test.id,'rewardLabel',bitmap)
@@ -685,7 +704,7 @@ export function makeCardDesigner(React, api) {
     const testApple = async () => {
       if (busy) return; setBusy('apple');
       try {
-        if (dirty || (design.apple?.showReward && !design.assets?.rewardLabel?.path)) { const next=await forSave(); const saved = await api.testSave(project.test.id, testName, next);
+        if (dirty || (design.apple?.headerMode==='custom' && design.apple?.showBusinessName && (!design.assets?.appleHeader?.path || design.apple?.headerArtworkVersion!==APPLE_WORDMARK_VERSION)) || (design.apple?.showReward && !design.assets?.rewardLabel?.path)) { const next=await forSave(); const saved = await api.testSave(project.test.id, testName, next);
           setProject(p => ({ ...p, test: saved.test })); setDesign(next); setSaved(savedMark(next)); }
         const result = await api.testApple(project.test.id);
         if (!result.url) throw new Error('apple_wallet_unavailable');
@@ -834,9 +853,17 @@ export function makeCardDesigner(React, api) {
       h(Section, { title: 'Identité' },
         h(Text, { label: 'Nom du commerce', value: design.identity.name, max: 40, onChange: v => set('identity.name', v) }),
         h(Text, { label: 'Activité / sous-titre (facultatif)', value: design.identity.subtitle, max: 40, onChange: v => set('identity.subtitle', v) }),
-        h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), showBusinessName: design.apple.showBusinessName === true, onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true), hint: 'PNG transparent, 2 Mo maximum. Gardez seulement le logo, même si celui-ci contient des lettres. Le bouton ajoute séparément le nom du commerce avec la typographie native Apple Wallet.' })),
-      h(Section, { title: 'Nom du commerce sur Apple Wallet' },
-        h('div',{style:{fontSize:13,color:'#5E636B'}},'Activez « Afficher le nom du commerce » à côté du logo. Apple Wallet affiche le nom défini dans « Identité » avec sa police système, net et séparé du logo. Aucune autre image ni police n’est nécessaire.')),
+        h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), showBusinessName: design.apple.showBusinessName === true, onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true), hint: 'PNG transparent, 2 Mo maximum. Votre logo reste inchangé. « Afficher le nom du commerce » fonctionne dans les deux styles.' })),
+      h(Section, { title: 'En-tête Apple Wallet' },
+        h(Select,{label:'Style de l’en-tête',value:design.apple.headerMode==='custom'?'custom':'classic',
+          options:[['classic','Classique — texte natif Apple (actuel)'],['custom','Personnalisé — logo, nom et activité']],
+          onChange:v=>set('apple.headerMode',v)}),
+        h('div',{style:{fontSize:13,color:'#5E636B',lineHeight:1.55}},
+          design.apple.headerMode==='custom'
+            ? 'Logo, nom du commerce et activité (facultative) sont réunis dans une image Retina, sans changer la hauteur de la carte. L’activité vient du champ « Activité / sous-titre ». Pour revenir au résultat actuel, choisissez « Classique ».'
+            : 'Design actuel : logo PNG à gauche, nom affiché en texte natif Apple Wallet. Vous pouvez essayer le mode personnalisé et revenir ici à tout moment.'),
+        design.apple.headerMode==='custom' && design.apple.showBusinessName!==true &&
+          h('div',{style:{fontSize:12,color:'#A15A12'}},'Activez « Afficher le nom du commerce » pour voir également l’activité.')),
       h(Section, { title: 'Couleurs' },
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           h(Color, { label: 'Couleur principale (fond)', value: design.colors.primary, onChange: v => set('colors.primary', v) }),
