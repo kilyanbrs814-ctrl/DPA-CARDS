@@ -10,6 +10,7 @@ const required = [
   'index.html', 'admin.html', '_redirects',
   'mentions-legales.html', 'confidentialite.html', 'cgv.html',
   'support.js', 'LoyaltyCard.dc.html',
+  'assets/wallet-badge-apple.png', 'assets/wallet-badge-google.png',
 ];
 for (const f of required) {
   assert.ok(existsSync(join(dist, f)), 'Required output missing: ' + f);
@@ -40,4 +41,21 @@ assert.ok(index.includes('cards.digitalprojectagency.fr'), 'Public QR origin not
 assert.ok(!index.includes('dpa-cards.vercel.app'), 'Legacy Vercel hostname still in site output');
 const admin = readFileSync(join(dist, 'admin.html'), 'utf8');
 assert.ok(admin.includes('admin-auth'), 'Admin page appears invalid');
+// The two original 580x180 user-supplied badges are served locally, without
+// a third-party runtime dependency. Native click handlers must remain attached.
+for (const [platform,action,expectedLength] of [
+  ['apple','openApple',16402],['google','openGoogle',32925],
+]) {
+  const file='assets/wallet-badge-'+platform+'.png';
+  const badge=readFileSync(join(dist,file));
+  assert.equal(badge.length,expectedLength,'Unexpected modification to '+file);
+  assert.equal(badge.toString('hex',0,8),'89504e470d0a1a0a','Not a PNG: '+file);
+  assert.equal(badge.readUInt32BE(16),580,'Unexpected badge width: '+file);
+  assert.equal(badge.readUInt32BE(20),180,'Unexpected badge height: '+file);
+  assert.ok(index.includes('onClick="{{ '+action+' }}" aria-label="Ajouter à '+
+    (platform==='apple'?'Apple':'Google')+' Wallet"'),'Original join action changed: '+action);
+  assert.ok(index.includes('src="/'+file+'"'),'Wallet badge missing from join page: '+file);
+}
+assert.ok(index.includes('href="{{ gw.url }}"'),'Google Wallet handoff link missing');
+
 console.log('Static host checks passed: ' + required.length + ' assets, ' + expected.size + ' rewrites and 3 legal HTML pages, canonical domain.');
