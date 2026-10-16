@@ -40,6 +40,23 @@ const otpResend = document.getElementById('admin-otp-resend');
 const otpChange = document.getElementById('admin-otp-change');
 const nativeAdmin = isNativeIOS();
 let nativeOtpEmail = null;
+const ERROR_COLOR = '#C62828';
+const NORMAL_COLOR = '#5E636B';
+// Surface failed authentication as a red, accessible error message.
+function setAuthMessage(text, isError = false) {
+  message.textContent = text;
+  message.style.color = isError ? ERROR_COLOR : NORMAL_COLOR;
+  message.setAttribute('role', isError ? 'alert' : 'status');
+  otpCode.style.borderColor = isError && nativeAdmin ? ERROR_COLOR : '#D4D1C9';
+}
+if (nativeAdmin) {
+  otpCode.addEventListener('input', () => {
+    // Paste from the e-mail may include invisible spaces, but never transform digits.
+    const normalized = otpCode.value.replace(/[^0-9]/g, '').slice(0, 6);
+    if (otpCode.value !== normalized) otpCode.value = normalized;
+    if (message.getAttribute('role') === 'alert') setAuthMessage('');
+  });
+}
 if (nativeAdmin) {
   help.textContent = 'Recevez un code à 6 chiffres par e-mail, puis saisissez-le ici pour ouvrir votre tableau de bord. Pas besoin de quitter l’application.';
   submit.textContent = 'Recevoir mon code';
@@ -54,7 +71,7 @@ function showCodeEntry(mail) {
   otpCode.value = '';
   submit.textContent = 'Valider le code';
   help.textContent = 'Entrez le code à 6 chiffres reçu par e-mail. N’ouvrez pas le lien : copiez uniquement les chiffres.';
-  message.textContent = 'Code envoyé. Vérifiez votre boîte de réception.';
+  setAuthMessage('Code envoyé. Vérifiez votre boîte de réception.');
   otpCode.focus();
 }
 function resetCodeEntry() {
@@ -77,7 +94,7 @@ function showLogin(msg = '') {
   form.style.display = 'flex';
   app.style.display = 'none';
   root.style.display = 'flex';
-  message.textContent = msg;
+  setAuthMessage(msg, /invalide|expiré|erreur|impossible|refusé|indisponible/i.test(msg));
 }
 
 function showDenied() {
@@ -156,13 +173,13 @@ form.addEventListener('submit', async e => {
   e.preventDefault();
   const mail = email.value.trim().toLowerCase();
   if (!ALLOWED.has(mail)) {
-    message.textContent = 'Cette adresse n’est pas autorisée.';
+    setAuthMessage('Cette adresse n’est pas autorisée.', true);
     return;
   }
   if (nativeAdmin && nativeOtpEmail) {
     const token = otpCode.value.trim();
     if (!isSixDigitCode(token)) {
-      message.textContent = 'Saisissez les 6 chiffres figurant dans votre e-mail.';
+      setAuthMessage('Saisissez les 6 chiffres figurant dans votre e-mail.', true);
       otpCode.focus();
       return;
     }
@@ -170,16 +187,24 @@ form.addEventListener('submit', async e => {
     submit.textContent = 'Vérification…';
     completingNativeLogin = true;
     try {
-      const { error } = await sb.auth.verifyOtp({ email: nativeOtpEmail, token, type: 'email' });
+      const { data, error } = await sb.auth.verifyOtp({ email: nativeOtpEmail, token, type: 'email' });
       if (error) {
-        message.textContent = 'Code incorrect ou expiré. Vérifiez votre e-mail, ou demandez un nouveau code.';
+        const expired = error.code === 'otp_expired';
+        setAuthMessage(
+          expired
+            ? 'Code refusé par Supabase (OTP expiré ou invalide). Le code peut avoir été invalidé avant sa saisie. Demandez-en un nouveau et utilisez uniquement le dernier e-mail.'
+            : 'Code incorrect ou expiré. Vérifiez les 6 chiffres du dernier e-mail reçu.',
+          true,
+        );
+      } else if (!data?.session?.access_token) {
+        setAuthMessage('Code reconnu, mais aucune session administrateur n’a été créée. Réessayez avec un nouveau code.', true);
       } else {
         // The admin client uses an isolated storageKey and all permissions are
         // still checked against admin_users before displaying the dashboard.
         await refreshAccess(true);
       }
     } catch {
-      message.textContent = 'Impossible de vérifier le code. Vérifiez votre connexion et réessayez.';
+      setAuthMessage('Impossible de vérifier le code. Vérifiez votre connexion et réessayez.', true);
     } finally {
       completingNativeLogin = false;
       submit.disabled = false;
@@ -189,18 +214,18 @@ form.addEventListener('submit', async e => {
   }
   submit.disabled = true;
   submit.textContent = 'Envoi…';
-  message.textContent = '';
+  setAuthMessage('');
   try {
     const error = await sendAdminCode(mail);
     if (error) {
-      message.textContent = linkErrorMessage(error);
+      setAuthMessage(linkErrorMessage(error), true);
     } else if (nativeAdmin) {
       showCodeEntry(mail);
     } else {
-      message.textContent = 'Lien envoyé. Ouvrez l’e-mail reçu pour vous connecter.';
+      setAuthMessage('Lien envoyé. Ouvrez l’e-mail reçu pour vous connecter.');
     }
   } catch {
-    message.textContent = 'Service de connexion indisponible. Réessayez dans quelques instants.';
+    setAuthMessage('Service de connexion indisponible. Réessayez dans quelques instants.', true);
   } finally {
     submit.disabled = false;
     submit.textContent = nativeAdmin ? (nativeOtpEmail ? 'Valider le code' : 'Recevoir mon code') : 'Recevoir le lien de connexion';
@@ -210,23 +235,23 @@ form.addEventListener('submit', async e => {
 if (nativeAdmin) {
   otpChange.addEventListener('click', () => {
     resetCodeEntry();
-    message.textContent = '';
+    setAuthMessage('');
     email.focus();
   });
   otpResend.addEventListener('click', async () => {
     if (!nativeOtpEmail) return;
     otpResend.disabled = true;
-    message.textContent = '';
+    setAuthMessage('');
     try {
       const error = await sendAdminCode(nativeOtpEmail);
-      if (error) message.textContent = linkErrorMessage(error);
+      if (error) setAuthMessage(linkErrorMessage(error), true);
       else {
         otpCode.value = '';
-        message.textContent = 'Nouveau code envoyé. Utilisez le dernier e-mail reçu.';
+        setAuthMessage('Nouveau code envoyé. Utilisez le dernier e-mail reçu.');
         otpCode.focus();
       }
     } catch {
-      message.textContent = 'Impossible de renvoyer le code. Réessayez plus tard.';
+      setAuthMessage('Impossible de renvoyer le code. Réessayez plus tard.', true);
     } finally { otpResend.disabled = false; }
   });
 }
@@ -296,7 +321,7 @@ if (isNativeIOS()) {
   if (!listenForAdminDeepLinks(handleNativeAdminLogin)) {
     // Do not silently leave the user on a working-looking but broken form.
     const previous = message.textContent;
-    if (!previous) message.textContent = 'Réception des liens iPhone indisponible. Mettez DPA Cards à jour via TestFlight.';
+    if (!previous) setAuthMessage('Réception des liens iPhone indisponible. Mettez DPA Cards à jour via TestFlight.', true);
   }
 }
 
