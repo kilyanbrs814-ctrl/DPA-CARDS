@@ -106,7 +106,7 @@ export function profileBilling(d: any) {
   const q=op.quote,origin=siteOrigin(req),metadata={type:'merchant_profile',profile_operation:op.id,merchant_id:op.merchant_id,account_id:op.account_id};
   const items:any[]=[{price_data:{currency:'eur',unit_amount:op.activation_cents,product_data:{name:`Activation du commerce n°${op.ordinal}`}},quantity:1}];
   if(q.proration_collection==='now' && q.proration_cents>0)items.push({price_data:{currency:'eur',unit_amount:q.proration_cents,product_data:{name:'Complément au prorata de la période prépayée restante'}},quantity:1});
-  const cs=found||await s.checkout.sessions.create({mode:'payment',customer:c.row.stripe_customer_id,line_items:items,metadata,
+  const cs=found||await s.checkout.sessions.create({mode:'payment',customer:c.row.stripe_customer_id,payment_method_types:['card','sepa_debit'],line_items:items,metadata,
    payment_intent_data:{metadata},invoice_creation:{enabled:true,invoice_data:{metadata}},locale:'fr',
    success_url:`${origin}/?profile_payment=return`,cancel_url:`${origin}/?profile_payment=cancel`,
    custom_text:{submit:{message:`Activation unique : ${(q.activation_cents/100).toFixed(2)} €. Nouveau total : ${(q.new_monthly_cents/100).toFixed(2)} €/mois pour ${q.new_count} commerces. ${q.proration_collection==='next_invoice'?'Prorata sur la prochaine facture.':'Complément de période prépayée inclus.'}`}}
@@ -194,5 +194,21 @@ export function profileBilling(d: any) {
   if(cs.status!=='expired')throw new HttpError(409,'payment_processing');
   await save(op.id,{status:'cancelled'});return json(req,200,{});
  }
- return {quote,accept,resume,cancel,confirm,finish};
+ // Stripe's signed asynchronous failure event is final. Release the durable
+ // operation so the customer can retry instead of being stuck on "processing".
+ async function failed(cs:any) {
+  const id=cs.metadata?.profile_operation;
+  if(!id)return null;
+  const op=check(await admin.from('merchant_profile_operations').select('*').eq('id',id).maybeSingle());
+  if(!op || op.stripe_session_id!==cs.id)return null;
+  if(op.status==='complete'||op.status==='cancelled'||op.status==='paid')return op;
+  if(cs.payment_status==='paid')return confirm(cs);
+  if(cs.status!=='complete' || cs.payment_status!=='unpaid')return op;
+  if(op.status!=='accepted')return op;
+  const row=await admin.from('merchant_profile_operations').update({status:'cancelled'})
+    .eq('id',op.id).eq('stripe_session_id',cs.id).eq('status','accepted').select().maybeSingle();
+  check(row);
+  return row.data||op;
+ }
+ return {quote,accept,resume,cancel,confirm,finish,failed};
 }

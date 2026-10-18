@@ -134,8 +134,35 @@ async function billingQuantity(merchantId:string) {
  return {quantity:Math.max(1,activations.length),setup:activations.some(x=>x.merchant_id===merchantId)?0:5000};
 }
 
-async function initialQuote(req:Request):Promise<Response> {
- const {merchantId}=await member(req);const body=await req.json();
+type CheckoutActor = {user: {id: string; email?: string | null}; merchantId: string; adminCheckout?: boolean};
+
+// Director can start a Stripe-hosted checkout in front of a merchant.
+// Only the prepared PRIMARY merchant may be sold this way: not an arbitrary
+// shop, user ID, amount, or account provided by a browser.
+async function adminCheckoutActor(req: Request): Promise<CheckoutActor> {
+ const auth=req.headers.get('authorization')??'';
+ if(!/^Bearer\s+\S+/.test(auth))throw new HttpError(401,'not_authenticated');
+ const token=auth.replace(/^Bearer\s+/,'');
+ const sb=createClient(SUPABASE_URL,PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+ const {data:{user},error}=await sb.auth.getUser(token);
+ if(error||!user?.email_confirmed_at||!user.email)throw new HttpError(403,'not_admin');
+ const {data:director}=await admin.from('admin_users').select('role').eq('email',user.email.trim().toLowerCase()).maybeSingle();
+ if(director?.role!=='director')throw new HttpError(403,'not_director');
+ const body=await req.clone().json().catch(()=>({}));
+ const merchantId=String(body?.merchant_id??'');
+ if(!UUID.test(merchantId))throw new HttpError(400,'invalid_merchant');
+ const {data:m}=await admin.from('merchants').select('id,created_by,billing_account_id').eq('id',merchantId).maybeSingle();
+ const {data:prepared}=await admin.from('admin_created_merchants').select('merchant_id').eq('merchant_id',merchantId).maybeSingle();
+ if(!m||!prepared)throw new HttpError(403,'not_admin_created');
+ const {data:account}=await admin.from('merchant_billing_accounts').select('owner_id,primary_merchant_id').eq('id',m.billing_account_id).maybeSingle();
+ if(!account||account.primary_merchant_id!==merchantId||account.owner_id!==m.created_by)throw new HttpError(409,'not_primary_merchant');
+ const {data:owner}=await admin.auth.admin.getUserById(m.created_by);
+ if(!owner.user?.email)throw new HttpError(409,'owner_missing');
+ return {user:{id:owner.user.id,email:owner.user.email},merchantId,adminCheckout:true};
+}
+
+async function initialQuote(req:Request,actor?:CheckoutActor):Promise<Response> {
+ const {merchantId}=actor??await member(req);const body=await req.json();
  const plan=PLANS[body.plan as PlanType];if(!plan)throw new HttpError(422,'invalid_plan');
  const b=await billingQuantity(merchantId),row=await rowOf(merchantId),pre=body.billing==='prepaid';
  if(pre && body.plan!=='commitment')throw new HttpError(422,'invalid_plan');
@@ -331,6 +358,29 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
   return {paid:true,row:synced};
 }
 
+// Once Stripe definitively fails a deferred SEPA charge, release the initial
+// checkout claim. Never release it merely because the redirect says "unpaid":
+// the bank may still be processing the payment.
+async function failInitialAsyncCheckout(session: Stripe.Checkout.Session) {
+  const id = session.metadata?.initial_claim;
+  if (!id || session.mode !== 'payment') return;
+  const s = requireStripe();
+  const latest = await s.checkout.sessions.retrieve(session.id);
+  if (latest.payment_status === 'paid') {
+    await ensureSubscription(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
+    return;
+  }
+  if (latest.status !== 'complete' || latest.payment_status !== 'unpaid') return;
+  const { data: claim, error } = await admin.from('merchant_initial_checkouts')
+    .select('id,stripe_session_id').eq('id',id).is('closed_at',null).maybeSingle();
+  if (error) throw new Error('db_checkout_claim');
+  if (!claim || claim.stripe_session_id !== session.id) return;
+  const { error: ce } = await admin.from('merchant_initial_checkouts')
+    .update({closed_at: new Date().toISOString()}).eq('id',id)
+    .eq('stripe_session_id',session.id).is('closed_at',null);
+  if (ce) throw new Error('db_checkout_claim');
+}
+
 // ---------------------------------------------------------------- commitment paid in one go (prepaid)
 // One Checkout payment (mode=payment, no saved card, no subscription): the commitment's setup fee
 // once + its monthly price × its months, both taken from the verified Stripe prices, never from
@@ -374,7 +424,7 @@ function prepaidError(error: { message?: string; code?: string }): never {
   throw new Error('db_prepaid');
 }
 
-async function checkoutPrepaid(req: Request, user: { id: string; email?: string | null }, merchantId: string, claim:any): Promise<Response> {
+async function checkoutPrepaid(req: Request, user: { id: string; email?: string | null }, merchantId: string, claim:any,adminCheckout=false): Promise<Response> {
   const s = requireStripe();
   const plan = PLANS[PREPAID_PLAN];
   const ids = await priceIds();
@@ -403,6 +453,7 @@ async function checkoutPrepaid(req: Request, user: { id: string; email?: string 
     const session = await s.checkout.sessions.create({
       mode: 'payment',
       customer,
+      payment_method_types: ['card', 'sepa_debit'],
       line_items: [
         ...(setup?[{price:setupPrice.id,quantity:1}]:[]),
         { price_data: { currency: 'eur', unit_amount: monthly, product_data: { name: `Offre avec engagement — mensualité (${months} mois payés en une fois)` }, ...taxBehavior }, quantity: months },
@@ -413,8 +464,8 @@ async function checkoutPrepaid(req: Request, user: { id: string; email?: string 
       locale: 'fr',
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
       custom_text: { submit: { message: `Paiement unique de ${eur(purchase.total_cents)} : ${months} × ${eur(monthly)} + ${eur(setup)} de mise en place. Accès de ${months} mois à partir de la confirmation du paiement. Aucun prélèvement mensuel, aucun renouvellement automatique.` } },
-      success_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/subscription/cancel`,
+      success_url: adminCheckout ? `${origin}/activation-result.html?status=success` : `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: adminCheckout ? `${origin}/activation-result.html?status=cancel` : `${origin}/subscription/cancel`,
     }, { idempotencyKey: `dpa-prepaid-${purchase.id}` });
     const { error: ae } = await admin.rpc('prepaid_attach_session', { p_id: purchase.id, p_session: session.id, p_customer: customer });
     if (ae) throw new Error('db_prepaid');
@@ -478,9 +529,9 @@ async function prepaidOf(merchantId: string, id?: string | null) {
 
 // ---------------------------------------------------------------- routes
 
-async function checkout(req: Request): Promise<Response> {
+async function checkout(req: Request, actor?: CheckoutActor): Promise<Response> {
   const s = requireStripe();
-  const { user, merchantId } = await member(req);
+  const { user, merchantId } = actor??await member(req);
   const body = await req.json().catch(() => ({}));
   const planType = String(body?.plan ?? '') as PlanType;
   if(body.confirmed!==true)throw new HttpError(422,'confirmation_required');
@@ -523,7 +574,7 @@ async function checkout(req: Request): Promise<Response> {
     await admin.from('merchant_initial_checkouts').update({closed_at:new Date().toISOString()}).eq('id',claim.id);
     throw new HttpError(409,'quote_changed');
   }
-  if (billing === 'prepaid') return await checkoutPrepaid(req, user, merchantId,claim);
+  if (billing === 'prepaid') return await checkoutPrepaid(req, user, merchantId,claim,actor?.adminCheckout===true);
 
   const plan = PLANS[planType];
   const ids = await priceIds();
@@ -564,6 +615,10 @@ async function checkout(req: Request): Promise<Response> {
   const session = await s.checkout.sessions.create({
     mode: commerce.setup?'payment':'setup',
     customer,
+    // Show both card and SEPA debit in Stripe-hosted Checkout.
+    // Checkout collects the card details or IBAN and mandate securely; the
+    // merchant never gives this information to the DPA Cards admin interface.
+    payment_method_types: ['card', 'sepa_debit'],
     // Save a reusable method for the existing off-session subscription flow.
     ...(commerce.setup?{line_items:[{price_data:{currency:'eur',unit_amount:commerce.setup,product:typeof setupPrice.product==='string'?setupPrice.product:setupPrice.product.id},quantity:1}],
       payment_intent_data:{setup_future_usage:'off_session' as const,metadata,description:'DPA Cards — frais d’activation'},
@@ -571,8 +626,8 @@ async function checkout(req: Request): Promise<Response> {
     metadata,
     locale: 'fr',
     custom_text: { submit: { message: `Aujourd’hui : ${eur(commerce.setup)} d’activation. Votre abonnement à ${eur(monthlyPrice.unit_amount!*commerce.quantity)}/mois pour ${commerce.quantity} commerce(s) commence après ${TRIAL_DAYS} jours d’essai gratuit, au prorata jusqu’au 1er du mois suivant, puis chaque 1er du mois${plan.commitmentMonths ? ', avec un engagement de 12 mois' : ', sans engagement'}.` } },
-    success_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/subscription/cancel`,
+    success_url: actor?.adminCheckout ? `${origin}/activation-result.html?status=success` : `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: actor?.adminCheckout ? `${origin}/activation-result.html?status=cancel` : `${origin}/subscription/cancel`,
   },{idempotencyKey:`dpa-initial-checkout-${claim.id}`});
   const {error:attachError}=await admin.from('merchant_initial_checkouts').update({stripe_session_id:session.id}).eq('id',claim.id);
   if(attachError)throw new Error('db_checkout_claim');
@@ -597,7 +652,9 @@ async function verify(req: Request): Promise<Response> {
       access: r.paid && access === true && r.row?.prepaid_purchase_id === r.purchase?.id, subscription: r.row, prepaid: await prepaidOf(merchantId, r.purchase?.id) });
   }
   const r = await ensureSubscription(session);
-  return json(req, 200, { paid: r.paid, status: r.row?.status ?? 'incomplete', access: !!r.row && ACCESS.includes(r.row.status), subscription: r.row });
+  const pending = !r.paid && session.status === 'complete' && session.mode === 'payment' && session.payment_status !== 'paid';
+  return json(req, 200, { paid: r.paid, pending, status: r.row?.status ?? 'incomplete',
+    access: !!r.row && ACCESS.includes(r.row.status), subscription: r.row });
 }
 
 async function summary(req: Request): Promise<Response> {
@@ -851,7 +908,9 @@ async function webhook(req: Request): Promise<Response> {
     case 'checkout.session.expired': {
       const session = event.data.object as Stripe.Checkout.Session;
       if(session.metadata?.type==='merchant_profile'){
-        if(event.type==='checkout.session.completed'||event.type==='checkout.session.async_payment_succeeded')await profiles.confirm(await s.checkout.sessions.retrieve(session.id));
+        const latest=await s.checkout.sessions.retrieve(session.id);
+        if(event.type==='checkout.session.async_payment_failed')await profiles.failed(latest);
+        else if(event.type==='checkout.session.completed'||event.type==='checkout.session.async_payment_succeeded')await profiles.confirm(latest);
         break;
       }
       if (session.metadata?.billing_mode === 'prepaid') {
@@ -862,7 +921,11 @@ async function webhook(req: Request): Promise<Response> {
         } else await confirmPrepaid(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
         break;
       }
-      if (event.type === 'checkout.session.async_payment_failed' || event.type === 'checkout.session.expired') break;
+      if (event.type === 'checkout.session.async_payment_failed') {
+        await failInitialAsyncCheckout(session);
+        break;
+      }
+      if (event.type === 'checkout.session.expired') break;
       if (session.metadata?.type === 'custom_design') await confirmDesign(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
       else if (['payment','setup'].includes(session.mode) && session.metadata?.merchant_id && session.metadata?.plan_type) await ensureSubscription(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent','setup_intent'] }));
       break;
@@ -919,6 +982,8 @@ Deno.serve(async (req) => {
   try {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
     if (req.method === 'POST' && path.endsWith('/webhook')) return await webhook(req);
+    if (req.method === 'POST' && path.endsWith('/admin-initial-quote')) return await initialQuote(req,await adminCheckoutActor(req));
+    if (req.method === 'POST' && path.endsWith('/admin-checkout')) return await checkout(req,await adminCheckoutActor(req));
     if (req.method === 'POST' && path.endsWith('/initial-quote')) return await initialQuote(req);
     if (req.method === 'POST' && path.endsWith('/profile-quote')) return await profiles.quote(req);
     if (req.method === 'POST' && path.endsWith('/profile-accept')) return await profiles.accept(req);

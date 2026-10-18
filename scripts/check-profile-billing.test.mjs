@@ -41,7 +41,7 @@ function harness({prepaid=false,status='accepted'}={}) {
   priceIds:async()=>({monthly_no_commitment:'price_20'}),syncSubscription:async()=>{calls.syncs++;if(failSync){failSync=false;throw Error('connection interrupted');}},HttpError,
   json:(req,status,body)=>body,siteOrigin:()=> 'https://cards.example.com'});
  const request=(body={})=>new Request('https://example.test',{method:'POST',body:JSON.stringify(body)});
- return {api,op,row,q,sub,calls,request,paid:()=>{cs.payment_status='paid';cs.status='complete';return structuredClone(cs)},interrupt:()=>failSync=true};
+ return {api,op,row,q,sub,calls,request,paid:()=>{cs.payment_status='paid';cs.status='complete';return structuredClone(cs)},fail:()=>{cs.payment_status='unpaid';cs.status='complete';return structuredClone(cs)},interrupt:()=>failSync=true};
 }
 
 test('double accept reuses one Checkout; unpaid/abandoned flow never grants access',async()=>{
@@ -79,4 +79,15 @@ test('a contract changed during Checkout is refunded instead of leaving paid ina
  h.sub.status='canceled';const result=await h.api.confirm(cs);
  assert.equal(result.status,'cancelled');assert.equal(result.stripe_refund_id,'re_profile');
  await h.api.confirm(cs);assert.equal(h.calls.refunds,1);assert.equal(h.calls.activations,0);
+});
+
+test('a failed delayed SEPA activation releases the profile operation for retry',async()=>{
+ const h=harness();await h.api.accept(h.request({operation_id:'op_2',confirmed:true}));
+ const cs=h.fail();
+ await h.api.failed(cs);
+ assert.equal(h.op.status,'cancelled');
+ assert.equal(h.calls.activations,0);
+ assert.equal(h.calls.updates,0);
+ await h.api.failed(cs);
+ assert.equal(h.calls.activations,0);
 });

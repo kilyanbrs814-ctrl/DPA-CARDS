@@ -1282,7 +1282,13 @@ async function adminCardDesigner(req: Request): Promise<Response> {
     admin.from('admin_created_merchants').select('created_at, access_sent_at, access_sent_count, access_last_error').eq('merchant_id', merchantId).maybeSingle(),
     ownerEmails([created_by]),
   ]);
-  const account = { owner_email: emails[created_by] ?? null, public_url: `${PUBLIC_SITE}/join/${merchant.slug}`, subscription_status: sub?.status ?? null, admin_created: prepared ?? null };
+  const {data: activation, error: activationError} = await admin.from('merchant_activations')
+    .select('source, amount_cents, confirmed_at').eq('merchant_id', merchantId).maybeSingle();
+  if (activationError) throw new Error('db_activations');
+  const account = { owner_email: emails[created_by] ?? null, public_url: `${PUBLIC_SITE}/join/${merchant.slug}`,
+    subscription_status: sub?.status ?? null, admin_created: prepared ?? null,
+    activation: activation ?? null,
+    can_record_onsite: user.dpaRole === 'director' && !!prepared && !activation };
   let q = admin.from('programs').select(PROGRAM_SELECT).eq('merchant_id', merchantId);
   q = programId ? q.eq('id', programId) : q.eq('is_active', true);
   const { data: program } = await q.maybeSingle();
@@ -1551,6 +1557,29 @@ async function adminMerchantAccess(req: Request): Promise<Response> {
   return json(req, 200, { sent: true, email, sent_at: now });
 }
 
+// A contactless activation is paid OUTSIDE DPA Cards (terminal receipt).
+// Recording is director-only, auditable and never creates a Stripe charge.
+async function adminOnsiteActivation(req: Request): Promise<Response> {
+  const user = await requireDirector(req);
+  const b = await req.json().catch(() => ({}));
+  const merchantId = String(b?.merchant_id ?? '');
+  const reference = str(b?.receipt_ref, 100);
+  if (!UUID_RE.test(merchantId) || reference.length < 6 || b?.confirmed !== true)
+    throw new HttpError(422, 'invalid_receipt');
+  const { data, error } = await admin.rpc('record_onsite_initial_activation', {
+    p_merchant: merchantId, p_receipt_ref: reference, p_actor: user.id,
+  });
+  if (error) {
+    const known = ['already_activated', 'checkout_in_progress', 'first_activation_only',
+      'not_admin_created', 'merchant_not_found', 'invalid_receipt'];
+    const code = known.find(k => (error.message ?? '').includes(k));
+    if (code) throw new HttpError(409, code);
+    console.error('wallet error', 'admin-onsite-activation', error.code);
+    throw new Error('db_onsite_activation');
+  }
+  return json(req, 200, data);
+}
+
 // ---------------------------------------------------------------- admin: test cards ("Créer une carte test")
 // Demo cards made with the same designer, linked to no merchant, program, customer or subscription
 // (test_card_designs). Images: program-assets/tests/<id>/designer/. QR: DPA_TEST:<qr_token>, which the
@@ -1644,6 +1673,75 @@ async function adminTestCardDuplicate(req: Request): Promise<Response> {
   if (error) throw new Error('db_test_cards');
   return json(req, 200, { test: testView(data) });
 }
+
+/**
+ * Apply a demo card's ARTWORK to a real merchant program.
+ * Demo QR, demo scans, test Wallet objects and demo balances are never migrated.
+ * Asset copies have their own permanent program paths, so the demo can be deleted later.
+ * Existing merchants require a second explicit overwrite confirmation in the UI.
+ */
+async function adminTestCardAssign(req: Request): Promise<Response> {
+  const user = await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const t = await testRow(body?.id, user);
+  const merchantId = String(body?.merchant_id ?? '');
+  if (!UUID_RE.test(merchantId) || body?.overwrite !== true) throw new HttpError(422, 'confirmation_required');
+  await assertAdminMerchant(user, merchantId);
+  const { data: programs, error: pe } = await admin.from('programs').select(PROGRAM_SELECT)
+    .eq('merchant_id', merchantId).eq('is_active', true).limit(2);
+  if (pe) throw new Error('db_programs');
+  if (!programs?.length || programs.length !== 1) throw new HttpError(409, 'program_not_found');
+  const program = programs[0];
+  const source = cleanDesign(t.config, testFolder(t.id));
+  const assets: Record<string, any> = { ...source.assets };
+  const copied: string[] = [];
+  let applied = false;
+  try {
+    for (const kind of ASSET_KINDS) {
+      const original = assets[kind]?.path;
+      if (!original) continue;
+      if (!original.startsWith(`${testFolder(t.id)}/`)) throw new HttpError(422, 'invalid_design_asset');
+      const ext = original.split('.').pop();
+      if (!['png', 'jpg', 'ttf', 'otf', 'woff2'].includes(ext ?? '')) throw new HttpError(422, 'invalid_design_asset');
+      const dest = `${merchantId}/${program.id}/designer/${kind}-${crypto.randomUUID()}.${ext}`;
+      const { error } = await admin.storage.from('program-assets').copy(original, dest);
+      if (error) throw new HttpError(409, 'demo_asset_copy_failed');
+      copied.push(dest);
+      assets[kind] = { path: dest };
+    }
+    // The merchant's loyalty conditions prevail over the demo preview.
+    const config = cleanDesign({ ...source, assets, preview: {
+      ...source.preview, mode: program.mode, goal: program.goal, reward: program.reward,
+      progress: 0, available: 0
+    } }, `${merchantId}/${program.id}`);
+    await validateDesignPng(config);
+    const { preview: _preview, ...cardDesign } = config;
+    const now = new Date().toISOString();
+    const patch = {
+      card_design: cardDesign, card_design_validated_at: now,
+      bg: config.colors.primary, accent: config.colors.secondary,
+      logo_path: assets.logo?.path ?? null, hero_path: assets.hero?.path ?? null,
+      design_status: 'validated', design_mode: 'dpa', design_validated_at: now
+    };
+    const { error: ue } = await admin.from('programs').update(patch).eq('id', program.id);
+    if (ue) throw new Error('db_programs');
+    applied = true;
+    const { error: de } = await admin.from('card_designs').upsert({
+      merchant_id: merchantId, program_id: program.id, design_request_id: null,
+      config, status: 'validated', validated_at: now, updated_by: user.id,
+      google_sync_status: 'pending', google_sync_error: null
+    }, { onConflict: 'program_id' });
+    if (de) throw new Error('db_card_designs');
+    const google = await syncDesignToGoogle(program.id);
+    return json(req, 200, { assigned: true, merchant_id: merchantId, program_id: program.id,
+      source_test_id: t.id, google, demo_preserved: true, demo_balance_copied: false });
+  } finally {
+    // Remove only orphan copies. Once the real program points to them, keep them
+    // even if the draft update fails, so live Wallet cards never lose artwork.
+    if (!applied && copied.length) await admin.storage.from('program-assets').remove(copied);
+  }
+}
+
 // Removes the test card, its images and deactivates its Google Wallet demo object. Nothing else is touched.
 async function adminTestCardDelete(req: Request): Promise<Response> {
   const user=await requireAdmin(req);
@@ -1878,6 +1976,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-card-google-sync')) return await adminCardGoogleSync(req);
     if (req.method === 'POST' && path.endsWith('/admin-merchant-create')) return await adminMerchantCreate(req);
     if (req.method === 'POST' && path.endsWith('/admin-merchant-access')) return await adminMerchantAccess(req);
+    if (req.method === 'POST' && path.endsWith('/admin-onsite-activation')) return await adminOnsiteActivation(req);
     if (req.method === 'POST' && path.endsWith('/admin-sales')) return await adminSales(req);
     if (req.method === 'POST' && path.endsWith('/admin-sales-attribute')) return await adminSalesAttribute(req);
     if (req.method === 'POST' && path.endsWith('/admin-sales-rule')) return await adminSalesRule(req);
@@ -1894,6 +1993,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-test-card-upload')) return await adminTestCardUpload(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-duplicate')) return await adminTestCardDuplicate(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-delete')) return await adminTestCardDelete(req);
+    if (req.method === 'POST' && path.endsWith('/admin-test-card-assign')) return await adminTestCardAssign(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-new-qr')) return await adminTestCardNewQr(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-wallet')) return await adminTestCardWallet(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-apple')) return await adminTestCardApple(req);
