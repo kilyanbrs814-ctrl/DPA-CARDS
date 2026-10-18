@@ -194,5 +194,21 @@ export function profileBilling(d: any) {
   if(cs.status!=='expired')throw new HttpError(409,'payment_processing');
   await save(op.id,{status:'cancelled'});return json(req,200,{});
  }
- return {quote,accept,resume,cancel,confirm,finish};
+ // Stripe's signed asynchronous failure event is final. Release the durable
+ // operation so the customer can retry instead of being stuck on "processing".
+ async function failed(cs:any) {
+  const id=cs.metadata?.profile_operation;
+  if(!id)return null;
+  const op=check(await admin.from('merchant_profile_operations').select('*').eq('id',id).maybeSingle());
+  if(!op || op.stripe_session_id!==cs.id)return null;
+  if(op.status==='complete'||op.status==='cancelled'||op.status==='paid')return op;
+  if(cs.payment_status==='paid')return confirm(cs);
+  if(cs.status!=='complete' || cs.payment_status!=='unpaid')return op;
+  if(op.status!=='accepted')return op;
+  const row=await admin.from('merchant_profile_operations').update({status:'cancelled'})
+    .eq('id',op.id).eq('stripe_session_id',cs.id).eq('status','accepted').select().maybeSingle();
+  check(row);
+  return row.data||op;
+ }
+ return {quote,accept,resume,cancel,confirm,finish,failed};
 }
