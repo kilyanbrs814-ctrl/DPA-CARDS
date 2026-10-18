@@ -331,6 +331,29 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
   return {paid:true,row:synced};
 }
 
+// Once Stripe definitively fails a deferred SEPA charge, release the initial
+// checkout claim. Never release it merely because the redirect says "unpaid":
+// the bank may still be processing the payment.
+async function failInitialAsyncCheckout(session: Stripe.Checkout.Session) {
+  const id = session.metadata?.initial_claim;
+  if (!id || session.mode !== 'payment') return;
+  const s = requireStripe();
+  const latest = await s.checkout.sessions.retrieve(session.id);
+  if (latest.payment_status === 'paid') {
+    await ensureSubscription(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
+    return;
+  }
+  if (latest.status !== 'complete' || latest.payment_status !== 'unpaid') return;
+  const { data: claim, error } = await admin.from('merchant_initial_checkouts')
+    .select('id,stripe_session_id').eq('id',id).is('closed_at',null).maybeSingle();
+  if (error) throw new Error('db_checkout_claim');
+  if (!claim || claim.stripe_session_id !== session.id) return;
+  const { error: ce } = await admin.from('merchant_initial_checkouts')
+    .update({closed_at: new Date().toISOString()}).eq('id',id)
+    .eq('stripe_session_id',session.id).is('closed_at',null);
+  if (ce) throw new Error('db_checkout_claim');
+}
+
 // ---------------------------------------------------------------- commitment paid in one go (prepaid)
 // One Checkout payment (mode=payment, no saved card, no subscription): the commitment's setup fee
 // once + its monthly price × its months, both taken from the verified Stripe prices, never from
@@ -858,7 +881,9 @@ async function webhook(req: Request): Promise<Response> {
     case 'checkout.session.expired': {
       const session = event.data.object as Stripe.Checkout.Session;
       if(session.metadata?.type==='merchant_profile'){
-        if(event.type==='checkout.session.completed'||event.type==='checkout.session.async_payment_succeeded')await profiles.confirm(await s.checkout.sessions.retrieve(session.id));
+        const latest=await s.checkout.sessions.retrieve(session.id);
+        if(event.type==='checkout.session.async_payment_failed')await profiles.failed(latest);
+        else if(event.type==='checkout.session.completed'||event.type==='checkout.session.async_payment_succeeded')await profiles.confirm(latest);
         break;
       }
       if (session.metadata?.billing_mode === 'prepaid') {
@@ -869,7 +894,11 @@ async function webhook(req: Request): Promise<Response> {
         } else await confirmPrepaid(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
         break;
       }
-      if (event.type === 'checkout.session.async_payment_failed' || event.type === 'checkout.session.expired') break;
+      if (event.type === 'checkout.session.async_payment_failed') {
+        await failInitialAsyncCheckout(session);
+        break;
+      }
+      if (event.type === 'checkout.session.expired') break;
       if (session.metadata?.type === 'custom_design') await confirmDesign(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
       else if (['payment','setup'].includes(session.mode) && session.metadata?.merchant_id && session.metadata?.plan_type) await ensureSubscription(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent','setup_intent'] }));
       break;
