@@ -7,6 +7,10 @@ import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 // This is the first-install endpoint: live Wallet updates require a separate
 // Apple PassKit web service + APNs registration, not implemented here.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { passAuthToken, passServiceUrl } from './auth.js';
+import { handlePasskit } from './web-service.js';
+import { processPassUpdates } from './push.js';
+import { notifyApple } from './campaigns.js';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
 import { realApplePassData, visibleCardNumber, testAssetPath, appleHeaderName } from './real-card.js';
@@ -223,8 +227,15 @@ async function createPass(token: string) {
     return createDemoPass(demoLink.test_card_id, keyPem, certPem);
   }
 
+  return createRealPass(link.card_id);
+}
+
+async function createRealPass(cardId: string) {
+  const keyPem = Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM') || '';
+  const certPem = Deno.env.get('APPLE_PASS_CERT_PEM') || '';
+  if (!keyPem || !certPem) throw new SafeError(503, 'apple_wallet_not_configured');
   const { data: card, error: cardError } = await supabase.from('cards')
-    .select('id, merchant_id, customer_id, program_id, card_number, qr_token').eq('id', link.card_id).maybeSingle();
+    .select('id, merchant_id, customer_id, program_id, card_number, qr_token').eq('id', cardId).maybeSingle();
   if (cardError || !card) throw new SafeError(404, 'card_not_found');
   const [access, programResult, merchantResult, customerResult, eventResult] = await Promise.all([
     supabase.rpc('merchant_has_access', { p_merchant: card.merchant_id }),
@@ -272,8 +283,23 @@ async function createPass(token: string) {
   } catch {
     console.error('apple-pass real strip unavailable');
   }
+  const {data:notice,error:noticeError}=await supabase.from('apple_wallet_changes')
+    .select('message_text,changed_at').eq('card_id',card.id).maybeSingle();
+  if(noticeError)throw new Error('db_apple_changes');
+  const nextJson: any = {
+    ...json, webServiceURL:passServiceUrl(SUPABASE_URL),
+    authenticationToken:await passAuthToken(card.id,keyPem),
+  };
+  if(notice?.message_text && nextJson.storeCard) {
+    nextJson.storeCard = {...nextJson.storeCard,backFields:[
+      ...(nextJson.storeCard.backFields||[]),
+      {key:'notice',label:'MESSAGE DU COMMERCE',
+       value:notice.message_text+' · '+new Date(notice.changed_at).toISOString(),
+       changeMessage:'%@'},
+    ]};
+  }
   const pass = new PKPass({
-    ...assets, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8'),
+    ...assets, 'pass.json': Buffer.from(JSON.stringify(nextJson), 'utf8'),
   }, {
     wwdr: await wwdrCert(),
     signerCert: certPem.replace(/\\n/g, '\n'),
@@ -282,6 +308,13 @@ async function createPass(token: string) {
   return { pkpass: await pass.getAsBuffer(), cardId: card.id, merchantId: card.merchant_id };
 }
 Deno.serve(async req => {
+  if (new URL(req.url).pathname.endsWith('/apple-pass/notify')) return notifyApple(req,{admin:supabase});
+  if (new URL(req.url).pathname.endsWith('/apple-pass/push') && req.method === 'POST') {
+    return processPassUpdates(req,{admin:supabase});
+  }
+  if (new URL(req.url).pathname.includes('/apple-pass/v1/')) {
+    return handlePasskit(req,{admin:supabase,signerKey:Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM')||'',renderPass:createRealPass});
+  }
   if (req.method !== 'GET') return reply(405, 'method_not_allowed');
   try {
     const token = new URL(req.url).searchParams.get('token') || '';
