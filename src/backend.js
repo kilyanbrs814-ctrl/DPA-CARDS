@@ -60,6 +60,11 @@ const scopedTables = new Set(['programs','customers','cards','card_events','wall
 async function profileFetch(input, init = {}) {
   const url = new URL(typeof input === 'string' ? input : input.url);
   const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+  // Web clients opt in to the multi-commerce membership view. Legacy packaged
+  // iPhone versions send no such header and keep only their original workspace.
+  if (window.location.protocol !== 'capacitor:' && url.origin === new URL(URL_).origin) {
+    headers.set('x-dpa-web-profiles', '1');
+  }
   if (activeMerchantId && url.origin === new URL(URL_).origin) {
     headers.set('x-merchant-id', activeMerchantId);
     const table = url.pathname.replace('/rest/v1/','');
@@ -319,7 +324,7 @@ async function listProfiles() {
   // client without commerce filters; the same auth session and RLS still apply.
   const {data:{session}}=await sb.auth.getSession();
   const res=await fetch(`${URL_}/rest/v1/merchants?select=id,business_name,slug,billing_account_id,programs(logo_path)&order=created_at`,
-    {headers:{apikey:KEY,Authorization:`Bearer ${session.access_token}`}});
+    {headers:{apikey:KEY,Authorization:`Bearer ${session.access_token}`,'x-dpa-web-profiles':'1'}});
   if(!res.ok)throw new Error('workspace_members_unavailable');
   return (await res.json()).filter(m=>memberships.some(mm=>mm.merchant_id===m.id)).map(m=>({id:m.id,name:m.business_name,
     logo:assetUrl(m.programs?.find(p=>p.logo_path)?.logo_path),role:memberships.find(mm=>mm.merchant_id===m.id)?.role}));
