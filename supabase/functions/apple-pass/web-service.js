@@ -9,7 +9,7 @@ const empty=status=>new Response(null,{status,headers:{'cache-control':'no-store
 const bad=(status,message)=>json(status,{error:message});
 function segments(req){
   const p=new URL(req.url).pathname;
-  const i=p.indexOf('/v1/');
+  const i=p.lastIndexOf('/v1/');
   return i<0?[]:p.slice(i+4).split('/').map(x=>{try{return decodeURIComponent(x)}catch{return ''}});
 }
 async function authorized(admin,cardId,req,signerKey){
