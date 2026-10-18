@@ -1667,6 +1667,39 @@ async function adminTestCardNewQr(req: Request): Promise<Response> {
 }
 
 // Authenticated scanners can operate only on a disposable test-card QR.
+// Admin Scanner can identify real cards belonging to the administrator's
+// permitted shops, and separately operates on isolated demo cards.
+async function adminScanLookup(req: Request): Promise<Response> {
+  const user=await requireAdmin(req);
+  const b=await req.json().catch(()=>({}));
+  const raw=String(b.code||'').trim();
+  if(/^DPA_TEST:/i.test(raw)) {
+    const demo=await scanTestRow(req,raw);
+    return json(req,200,{kind:'test',card:scannerTestView(demo)});
+  }
+  const found=/^DPA1:([0-9a-f-]{36})$/i.exec(raw);
+  if(!found||!UUID_RE.test(found[1]))throw new HttpError(400,'invalid_qr');
+  const {data:card,error}=await admin.from('cards')
+    .select('id,merchant_id,card_number,customers(first_name,last_name),merchants(business_name),programs(name,mode,goal,reward)')
+    .eq('qr_token',found[1]).maybeSingle();
+  if(error)throw new Error('db_admin_scan');
+  if(!card)throw new HttpError(404,'card_not_found');
+  await assertAdminMerchant(user,card.merchant_id);
+  const {data:latest,error:le}=await admin.from('card_events')
+    .select('balance_after').eq('card_id',card.id).order('seq',{ascending:false}).limit(1).maybeSingle();
+  if(le)throw new Error('db_admin_scan_balance');
+  return json(req,200,{kind:'real',card:{
+    card_id:card.id,merchant_id:card.merchant_id,number:card.card_number,
+    merchant:card.merchants?.business_name||'Commerce',name:[card.customers?.first_name,card.customers?.last_name].filter(Boolean).join(' ')||'Client',
+    program:card.programs?.name||'Fidélité',goal:card.programs?.goal||10,mode:card.programs?.mode||'passages',reward:card.programs?.reward||'Récompense',
+    progress:latest?.balance_after||0,
+  }});
+}
+async function adminScanAddTest(req: Request): Promise<Response> {
+  await requireAdmin(req);
+  return testScanAdd(req);
+}
+
 // No merchant_id, real card, customer, balance or card_events are referenced.
 const TEST_QR_RE = /^DPA_TEST:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
 async function scanTestRow(req: Request, code: unknown) {
@@ -1847,6 +1880,8 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-sales-validate')) return await adminSalesValidate(req);
     if (req.method === 'POST' && path.endsWith('/admin-sales-cancel')) return await adminSalesCancel(req);
     if (req.method === 'POST' && path.endsWith('/admin-sales-payout')) return await adminSalesPayout(req);
+    if (req.method === 'POST' && path.endsWith('/admin-scan-lookup')) return await adminScanLookup(req);
+    if (req.method === 'POST' && path.endsWith('/admin-scan-test-add')) return await adminScanAddTest(req);
     if (req.method === 'POST' && path.endsWith('/test-scan-lookup')) return await testScanLookup(req);
     if (req.method === 'POST' && path.endsWith('/test-scan-add')) return await testScanAdd(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-cards')) return await adminTestCards(req);
