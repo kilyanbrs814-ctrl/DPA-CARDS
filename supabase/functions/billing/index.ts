@@ -403,6 +403,7 @@ async function checkoutPrepaid(req: Request, user: { id: string; email?: string 
     const session = await s.checkout.sessions.create({
       mode: 'payment',
       customer,
+      payment_method_types: ['card', 'sepa_debit'],
       line_items: [
         ...(setup?[{price:setupPrice.id,quantity:1}]:[]),
         { price_data: { currency: 'eur', unit_amount: monthly, product_data: { name: `Offre avec engagement — mensualité (${months} mois payés en une fois)` }, ...taxBehavior }, quantity: months },
