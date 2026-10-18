@@ -564,6 +564,10 @@ async function checkout(req: Request): Promise<Response> {
   const session = await s.checkout.sessions.create({
     mode: commerce.setup?'payment':'setup',
     customer,
+    // Show both card and SEPA debit in Stripe-hosted Checkout.
+    // Checkout collects the card details or IBAN and mandate securely; the
+    // merchant never gives this information to the DPA Cards admin interface.
+    payment_method_types: ['card', 'sepa_debit'],
     // Save a reusable method for the existing off-session subscription flow.
     ...(commerce.setup?{line_items:[{price_data:{currency:'eur',unit_amount:commerce.setup,product:typeof setupPrice.product==='string'?setupPrice.product:setupPrice.product.id},quantity:1}],
       payment_intent_data:{setup_future_usage:'off_session' as const,metadata,description:'DPA Cards — frais d’activation'},
