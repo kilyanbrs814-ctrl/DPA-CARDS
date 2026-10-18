@@ -596,7 +596,9 @@ export function makeCardDesigner(React, api) {
         h(Input, { id: 'nc-conditions', label: 'Conditions (facultatif)', value: f.conditions, max: 600, onChange: up('conditions'), multi: true })),
       h(Section, { title: 'Compte' },
         h('div', { style: { fontSize: 15 } }, 'E-mail de connexion : ', h('strong', null, f.email.trim() || '—')),
-        h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45 } }, 'Aucun mot de passe à saisir : le commerçant choisira le sien grâce au lien « Envoyer l’accès au commerçant », quand vous le déciderez.')),
+        h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45 } }, 'Aucun mot de passe à saisir : le commerçant choisira le sien grâce au lien « Envoyer l’accès au commerçant », quand vous le déciderez.'),
+        h('div', { style: { fontSize: 13, color: '#2448F0', lineHeight: 1.5 } },
+          'Paiement : après création, les frais d’activation sont réglés en ligne ou enregistrés après encaissement sans-contact réel. Le commerçant autorise ensuite ses mensualités par carte ou SEPA directement sur Stripe.')),
       ask ? h('div', { role: 'alertdialog', 'aria-label': 'Confirmation', style: { display: 'flex', flexDirection: 'column', gap: 10, padding: 14, borderRadius: 14, background: '#FFF3DC', color: '#5C4200', fontSize: 15 } }, ask.text,
         h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
           h('button', { type: 'button', onClick: () => submit(ask.opts), disabled: busy, style: { minHeight: 44, padding: '0 14px', border: 0, borderRadius: 12, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700 } }, ask.label),
@@ -631,7 +633,16 @@ export function makeCardDesigner(React, api) {
     const [testName, setTestName] = useState('');
     const [tests, setTests] = useState(null);
     const [askDelete, setAskDelete] = useState(null);
+    const [assignTest, setAssignTest] = useState(null);
+    const [assignTarget, setAssignTarget] = useState('');
+    const [onsiteOpen, setOnsiteOpen] = useState(false);
+    const [onsiteRef, setOnsiteRef] = useState('');
+    const [onsiteChecked, setOnsiteChecked] = useState(false);
+    const [salePlan, setSalePlan] = useState('no_commitment');
+    const [saleBilling, setSaleBilling] = useState('monthly');
+    const [saleLink, setSaleLink] = useState('');
     const key = target ? (target.testId ? 't:' + target.testId : target.requestId ? 'r:' + target.requestId : target.merchantId ? 'm:' + target.merchantId : '') : '';
+    useEffect(() => { setSaleLink(''); setSalePlan('no_commitment'); setSaleBilling('monthly'); setOnsiteOpen(false); }, [key]);
     useEffect(loadFonts, []);
     const refreshTests = () => api.testList().then(r => setTests(r.tests || [])).catch(() => setTests(t => t || []));
     useEffect(() => { refreshTests(); }, [key]);
@@ -803,7 +814,81 @@ export function makeCardDesigner(React, api) {
       catch (e) { setAskAccess(false); const d = e && e.info && e.info.detail; toast(e && e.code === 'access_email_failed' ? 'Envoi impossible : ' + (ACCESS_ERR[d] || d || 'erreur du service e-mail') : errText(e)); }
       finally { setBusy(null); }
     };
-    const onCreated = r => { setAdding(false); setCreated(r); setProject(null); setDesign(null); onTarget({ merchantId: r.merchant.id, requestId: null }); if (onMerchantsChanged) onMerchantsChanged(); };
+    const refreshSaleStatus = async () => {
+      if(busy || !project?.merchant?.id)return;
+      setBusy('sale-status');
+      try {
+        const r=await api.load({merchantId:project.merchant.id});
+        setProject(p=>({...p,account:r.account || p.account}));
+        toast(['active','trialing'].includes(r.account?.subscription_status)?'Abonnement confirmé par Stripe.':
+          'Statut mis à jour. Le paiement ou le mandat peut encore être en cours de confirmation.');
+      } catch(e) { toast(errText(e)); }
+      finally { setBusy(null); }
+    };
+    const createSaleLink = async () => {
+      if(busy || !project?.merchant?.id) return;
+      setBusy('stripe-sale'); setSaleLink('');
+      try {
+        const r=await api.paymentQuote(project.merchant.id,salePlan,saleBilling);
+        const q=r.quote;
+        if(!q) throw new Error('quote_unavailable');
+        const checkout=await api.paymentCheckout(project.merchant.id,salePlan,saleBilling,q);
+        if(!checkout?.url || !/^https:\/\/checkout\.stripe\.com\//.test(checkout.url))throw new Error('invalid_checkout_url');
+        setSaleLink(checkout.url);
+        toast('Lien Stripe prêt : le commerçant choisit carte bancaire ou IBAN directement sur la page sécurisée.');
+      } catch(e) { toast(errText(e)); }
+      finally { setBusy(null); }
+    };
+    const copySaleLink = async () => {
+      if(!saleLink)return;
+      try {
+        await navigator.clipboard.writeText(saleLink);
+        toast('Lien de paiement sécurisé copié.');
+      } catch(e) { toast('Copie impossible : ouvrez le paiement sur cet appareil.'); }
+    };
+    const recordOnsite = async () => {
+      if (busy || !project?.merchant?.id || !onsiteChecked || onsiteRef.trim().length < 6) return;
+      setBusy('onsite');
+      try {
+        await api.recordOnsiteActivation(project.merchant.id, onsiteRef.trim());
+        setProject(prev => ({ ...prev, account: { ...prev.account,
+          can_record_onsite: false, activation: {source:'onsite',amount_cents:5000,confirmed_at:new Date().toISOString()} } }));
+        setOnsiteOpen(false); setOnsiteRef(''); setOnsiteChecked(false);
+        toast('50 € encaissés sur place : référence enregistrée. Le commerçant doit encore autoriser son abonnement sur le site.');
+      } catch (e) { toast(e?.code==='already_activated'?'Activation déjà comptabilisée pour ce commerce.':errText(e)); }
+      finally { setBusy(null); }
+    };
+    const onCreated = async r => {
+      setAdding(false); setCreated(r);
+      if (assignTest) {
+        setBusy('assign');
+        try {
+          await api.testAssign(assignTest, r.merchant.id);
+          toast('Compte créé et design de démonstration attribué au commerce.');
+        } catch (e) {
+          toast('Compte créé, mais la carte n’a pas été attribuée. Rouvrez la carte test pour réessayer.');
+        } finally { setBusy(null); setAssignTest(null); setAssignTarget(''); }
+      }
+      setProject(null); setDesign(null);
+      onTarget({ merchantId: r.merchant.id, requestId: null });
+      if (onMerchantsChanged) onMerchantsChanged();
+    };
+    const assignExisting = async () => {
+      if (busy || !assignTest || !assignTarget) return;
+      if (dirty) return toast('Enregistrez la carte test avant son attribution.');
+      const targetMerchant = merchants.find(m => m.id === assignTarget);
+      if (!targetMerchant || !targetMerchant.program) return toast('Choisissez un commerce avec programme de fidélité.');
+      if (!window.confirm('Appliquer le design de cette carte test à « ' + targetMerchant.name + ' » ? Son design actuel sera remplacé. Les tampons test et le QR de démonstration ne seront jamais transférés.')) return;
+      setBusy('assign');
+      try {
+        const r = await api.testAssign(assignTest, assignTarget);
+        setAssignTest(null); setAssignTarget('');
+        onTarget({ merchantId: r.merchant_id, requestId: null });
+        toast(r.google?.status==='error'?'Design attribué. Synchronisation Google Wallet à réessayer.':'Design attribué au commerce.');
+        if (onMerchantsChanged) onMerchantsChanged();
+      } catch (e) { toast(errText(e)); }
+      finally { setBusy(null); }
+    };
 
     const desk = width >= 1024, two = width >= 900;
     const list = created && !merchants.some(m => m.id === created.merchant.id) ? [...merchants, { id: created.merchant.id, name: created.merchant.business_name, program: true }] : merchants;
@@ -892,12 +977,62 @@ export function makeCardDesigner(React, api) {
       h('div', { style: { fontWeight: 800, fontSize: 16 } }, `Progression : ${project.test.progress || 0} / ${pv.goal} passages`),
       h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, smallBtn('Actualiser les passages', refreshTest), smallBtn(busy === 'qr' ? 'Génération…' : 'Générer un nouveau QR', newQr), smallBtn('Dupliquer', () => duplicateTest(project.test.id)),
         smallBtn('Supprimer', () => setAskDelete(project.test), { style: { border: 0, background: 'none', color: '#B42318' } })),
+      h('button', { type: 'button', disabled: !!busy, onClick: () => { setAssignTest(project.test.id); setAssignTarget(''); },
+        'data-assign-test-card': project.test.id, style: { minHeight: 48, padding: '0 18px', border: 0, borderRadius: 12,
+          background: '#2448F0', color: '#FFFFFF', fontWeight: 750, fontSize: 15 } }, 'Attribuer cette carte à un commerce'),
       project.test.google_synced_at ? h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Carte Google Wallet de démonstration mise à jour le ' + fmtDate(project.test.google_synced_at)) : null) : null;
     const params = h('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
       testSection, !isTest && h(Section, { title: 'Projet' },
         h('div', { style: { fontSize: 15 } }, h('strong', null, project.merchant.business_name), ' · ', pg.name, ' · ', `${pg.goal} ${pg.mode === 'points' ? 'points' : 'passages'} = ${pg.reward}`),
         h('div', { style: { fontSize: 13, color: '#5E636B' } }, applied),
         accessBlock,
+        ac && h(Section, { title: 'Activation et prélèvements' },
+          acc.activation ? h('p', { style: { margin: 0, fontSize: 14, lineHeight: 1.5 } },
+            acc.activation.source === 'onsite' ? 'Activation de 50 € enregistrée sur place : aucun second frais d’activation.' :
+              'Activation déjà comptabilisée : ' + acc.activation.source) :
+            h('p', { style: { margin: 0, fontSize: 14, lineHeight: 1.5 } },
+              '50 € d’activation à régler en ligne sur DPA Cards, ou par sans-contact sur votre terminal.'),
+          h('p', { style: { margin: 0, fontSize: 13, color: '#5E636B', lineHeight: 1.5 } },
+            'Abonnement : le commerçant choisit carte bancaire ou mandat SEPA/IBAN sur Stripe. Les coordonnées bancaires ne sont pas saisies dans cette administration.'),
+          acc.can_record_onsite && h('button', { type: 'button', 'data-onsite-activation': true,
+            disabled: !!busy, onClick: () => { setOnsiteRef(''); setOnsiteChecked(false); setOnsiteOpen(true); },
+            style: { minHeight: 46, border: '1.5px solid #2448F0', borderRadius: 12, background: '#FFFFFF', color: '#2448F0', fontWeight: 750 } },
+            'J’ai encaissé 50 € en sans-contact'),
+          h('button', { type: 'button', disabled: !!busy, onClick: refreshSaleStatus,
+            style: { minHeight: 42, border: '1px solid #D4D1C9', borderRadius: 10, background: '#FFFFFF', fontWeight: 700 } },
+            busy==='sale-status'?'Actualisation…':'Actualiser le statut de paiement'),
+          !['active','trialing'].includes(acc.subscription_status) && h('div', {
+            'data-admin-stripe-checkout': true, style: { display: 'flex', flexDirection: 'column', gap: 12,
+              borderTop: '1px solid #E4E1DA', paddingTop: 14 } },
+            h('h3', { style: { margin: 0, fontWeight: 800, fontSize: 16 } }, 'Configurer le paiement avec le commerçant'),
+            h('p', { style: { margin: 0, fontSize: 13, color: '#5E636B', lineHeight: 1.5 } },
+              'Générez un lien Stripe à utiliser en face à face ou à transmettre au commerçant. Stripe demande son consentement et recueille sa carte ou son mandat SEPA.'),
+            h(Select, { label: 'Offre', value: salePlan,
+              options: [['no_commitment','20 €/mois sans engagement'],['commitment','20 €/mois avec engagement de 12 mois']],
+              onChange: v => { setSalePlan(v); if(v==='no_commitment')setSaleBilling('monthly');setSaleLink(''); } }),
+            salePlan==='commitment' && h(Select, { label: 'Règlement de l’engagement', value: saleBilling,
+              options: [['monthly','20 €/mois'],['prepaid','Engagement réglé en une fois']],
+              onChange: v => { setSaleBilling(v); setSaleLink(''); } }),
+            h('p', { style: { margin: 0, fontSize: 14 } },
+              acc.activation ? '50 € d’activation déjà enregistrés : aucune seconde facturation.' :
+                '50 € d’activation seront demandés sur Stripe.'),
+            h('button', { type: 'button', disabled: !!busy, onClick: createSaleLink,
+              style: { minHeight: 46, padding: '0 14px', border: 0, borderRadius: 12,
+                background: '#2448F0', color: '#FFFFFF', fontWeight: 750 } },
+              busy==='stripe-sale'?'Création du paiement sécurisé…':'Créer le lien de paiement sécurisé'),
+            saleLink && h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10,
+              padding: 12, border: '1px solid #D4D1C9', borderRadius: 12 } },
+              h('a', { href: saleLink, target: '_blank', rel: 'noopener noreferrer',
+                style: { minHeight: 46, padding: '12px 14px', display: 'inline-flex',
+                  justifyContent: 'center', alignItems: 'center', background: '#1C1F24',
+                  color: '#FFFFFF', borderRadius: 10, textDecoration: 'none', fontWeight: 700 } },
+                'Ouvrir Stripe avec le commerçant'),
+              h('button', { type: 'button', onClick: copySaleLink,
+                style: { minHeight: 44, border: '1.5px solid #D4D1C9', borderRadius: 10,
+                  background: '#FFFFFF', fontWeight: 700 } }, 'Copier le lien à envoyer au commerçant'),
+              h('p', { style: { margin: 0, color: '#5E636B', fontSize: 12, lineHeight: 1.5 } },
+                'Une validation Stripe peut être immédiate ou différée (SEPA). Le statut du commerçant est mis à jour par les événements Stripe.'))
+          )),
         pg.card_design_validated_at && project.draft && project.draft.google_sync_status ? (() => {
           const g = project.draft, G = { synced: ['Google Wallet à jour' + (g.google_synced_at ? ' (' + fmtDate(g.google_synced_at) + ')' : ''), '#E4F3EB', '#1F6B45'],
             no_class: ['Google Wallet : aucune carte ajoutée pour l’instant, le design sera utilisé à la première', '#EFEDE8', '#3E424A'],
@@ -1055,6 +1190,44 @@ export function makeCardDesigner(React, api) {
       isTest ? h('div', { role: 'note', 'data-test-mode': true, style: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: '#1A36C4', color: '#FFFFFF' } }, icon('science', 24),
         h('div', null, h('div', { style: { fontWeight: 800, fontSize: 16, letterSpacing: '0.06em' } }, 'MODE TEST'), h('div', { style: { fontSize: 14, opacity: 0.9 } }, 'Carte de démonstration : aucun commerce, aucun compte, aucun client, aucun abonnement.'))) : null,
       actions, deleteDialog,
+      onsiteOpen && !isTest ? modal([
+        h('h2', { key: 'title', style: { margin: 0, fontSize: 22, fontWeight: 800 } }, 'Enregistrer les 50 € encaissés sur place'),
+        h('p', { key: 'body', style: { fontSize: 14, lineHeight: 1.55, color: '#3E424A' } },
+          'Ce bouton n’encaisse pas de paiement. Utilisez-le uniquement après un paiement sans-contact réel sur votre terminal. Vérifiez le reçu. Aucun second paiement des 50 € ne sera demandé.'),
+        h('label', { key: 'ref', style: { display: 'flex', flexDirection: 'column', gap: 8, fontWeight: 700 } },
+          'Référence de transaction du terminal',
+          h('input', { type: 'text', required: true, maxLength: 100, minLength: 6, value: onsiteRef,
+            placeholder: 'Référence imprimée sur le reçu', onChange: e => setOnsiteRef(e.target.value),
+            style: { padding: '12px 14px', minHeight: 48, border: '1px solid #D4D1C9', borderRadius: 12, fontSize: 15 } })),
+        h('label', { key: 'confirm', style: { display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 14, lineHeight: 1.5 } },
+          h('input', { type: 'checkbox', checked: onsiteChecked, onChange: e => setOnsiteChecked(e.target.checked),
+            style: { width: 22, height: 22, flexShrink: 0 } }),
+          'Je certifie avoir encaissé 50 € pour ce commerce et vérifié le reçu.'),
+        h('button', { key: 'save', type: 'button', disabled: !!busy || !onsiteChecked || onsiteRef.trim().length < 6,
+          onClick: recordOnsite, style: { minHeight: 48, padding: '0 16px', border: 0, borderRadius: 12,
+            background: '#2448F0', color: '#FFFFFF', fontWeight: 750 } },
+          busy === 'onsite' ? 'Vérification…' : 'Enregistrer le paiement sur place'),
+        h('button', { key: 'cancel', type: 'button', disabled: !!busy, onClick: () => setOnsiteOpen(false),
+          style: { minHeight: 44, border: 0, background: '#FFFFFF', fontWeight: 650 } }, 'Annuler')
+      ], () => !busy && setOnsiteOpen(false), 'Paiement sans-contact déjà effectué') : null,
+      assignTest && isTest && assignTest===project.test.id ? modal([
+        h('h2', { key: 'title', style: { margin: 0, fontSize: 22, fontWeight: 800 } }, 'Attribuer cette carte test'),
+        h('p', { key: 'note', style: { margin: 0, color: '#3E424A', fontSize: 14, lineHeight: 1.5 } },
+          'Le design et ses images sont copiés sur une vraie carte de commerce. Le QR DPA_TEST, les passages fictifs et les cartes Wallet de démonstration restent séparés. Aucun abonnement ni paiement n’est créé automatiquement.'),
+        dirty ? h('p', { key: 'dirty', role: 'alert', style: { color: '#B42318', fontSize: 14 } },
+          'Enregistrez d’abord vos modifications, puis recommencez.') : null,
+        h(Select, { key: 'merchant', label: 'Commerce déjà existant', value: assignTarget,
+          options: [['', 'Sélectionner un commerce…'], ...list.filter(m => m.program).map(m => [m.id, m.name])], onChange: setAssignTarget }),
+        h('button', { key: 'existing', type: 'button', disabled: !!busy || dirty || !assignTarget, onClick: assignExisting,
+          style: { minHeight: 48, border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 750 } },
+          busy==='assign'?'Attribution…':'Attribuer au commerce sélectionné'),
+        h('div', { key: 'separator', style: { textAlign: 'center', color: '#5E636B' } }, 'ou'),
+        h('button', { key: 'create', type: 'button', disabled: !!busy || dirty, onClick: () => { setAdding(true); setAssignTarget(''); },
+          style: { minHeight: 48, border: '1.5px solid #1C1F24', borderRadius: 12, background: '#FFFFFF', fontWeight: 750 } },
+          'Créer un nouveau compte commerçant'),
+        h('button', { key: 'cancel', type: 'button', disabled: !!busy, onClick: () => { setAssignTest(null); setAssignTarget(''); },
+          style: { minHeight: 44, border: 0, background: 'none', color: '#3E424A' } }, 'Annuler')
+      ], () => { if(!busy){ setAssignTest(null); setAssignTarget(''); } }, 'Attribuer une carte test') : null,
       h('div', { style: two ? { display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(380px, 1fr)', gap: 24, alignItems: 'start' } : { display: 'flex', flexDirection: 'column', gap: 18 } },
         two ? params : preview, two ? preview : params),
       isTest ? testsPanel : null,
