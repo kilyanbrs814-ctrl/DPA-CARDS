@@ -47,6 +47,7 @@ a:hover{color:#1A36C4}
 </style>
 </helmet>
 <div style="min-height:var(--dpa-page-height,100dvh);background:#F6F5F1;color:#1C1F24">
+{{ profileControl }}
 <sc-if value="{{ s.auth }}" hint-placeholder-val="{{ true }}">
 <div class="dpa-auth-shell" style="min-height:var(--dpa-page-height,100dvh);display:flex">
   <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:clamp(20px,5vw,56px)">
@@ -428,8 +429,8 @@ a:hover{color:#1A36C4}
   <div style="flex:1;width:100%;max-width:1000px;margin:0 auto;padding:clamp(24px,5vw,56px) 16px 48px;display:flex;flex-direction:column;gap:30px">
     <div style="text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center">
       <span style="padding:5px 12px;border-radius:999px;background:#E8EDFF;color:#1A36C4;font-size:13px;font-weight:700">Dernière étape</span>
-      <h1 style="margin:0;font-weight:800;font-size:clamp(30px,6vw,42px);letter-spacing:-0.03em;line-height:1.05">Choisissez votre offre</h1>
-      <p style="margin:0;color:#4A4E55;font-size:17px;line-height:1.5">15 jours d’essai gratuit sur votre abonnement.</p>
+      <h1 style="margin:0;font-weight:800;font-size:clamp(30px,6vw,42px);letter-spacing:-0.03em;line-height:1.05">{{ offerTitle }}</h1>
+      <p style="margin:0;color:#4A4E55;font-size:17px;line-height:1.5">{{ offerSubtitle }}</p>
       <sc-if value="{{ canSkipBilling }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ skipBilling }}" style="min-height:44px;padding:0 12px;border:0;background:none;color:#2448F0;font-weight:600;font-size:15px;text-decoration:underline;text-underline-offset:3px">Choisir mon offre plus tard</button></sc-if>
     </div>
     <sc-if value="{{ billDesignNote }}" hint-placeholder-val="{{ false }}">
@@ -2020,10 +2021,10 @@ function joinUrl(slug){ return PUBLIC_SITE+'/join/'+slug; }
 const SUB_RETURN=(()=>{ try{ const r=/^\/subscription\/(success|cancel)\/?$/.exec(window.location.pathname); return r?r[1]:null; }catch(e){ return null; } })();
 // Display only: prices, trial and billing dates are decided by the server and Stripe.
 const PLAN_UI=[
-  {key:'no_commitment',title:'Sans engagement',setup:'49 €',monthly:'24,90 €',lead:['15 jours gratuits','Sans engagement']},
-  {key:'commitment',title:'Engagement 12 mois',badge:'Meilleure offre',setup:'29 €',monthly:'19,90 €',saving:'Économisez 80 € sur la première année',lead:['15 jours gratuits','Engagement 12 mois','Exactement les mêmes fonctionnalités'],
+  {key:'no_commitment',title:'Sans engagement',setup:'50 €',monthly:'20 €',lead:['15 jours gratuits','Sans engagement']},
+  {key:'commitment',title:'Engagement 12 mois',setup:'50 €',monthly:'20 €',lead:['15 jours gratuits','Engagement 12 mois','Exactement les mêmes fonctionnalités'],
    // "Paiement en une fois": 12 × the monthly price + the setup fee once, no discount (amounts in cents, display only).
-   prepaid:{months:12,monthlyCents:1990,setupCents:2900,lead:['Payé en une fois','Engagement 12 mois','Exactement les mêmes fonctionnalités']}}];
+   prepaid:{months:12,monthlyCents:2000,setupCents:5000,lead:['Payé en une fois','Engagement 12 mois','Exactement les mêmes fonctionnalités']}}];
 const PLAN_FEATURES=['Cartes de fidélité digitales','Google Wallet','Apple Wallet (dès sa disponibilité)','Scanner QR','Gestion des clients','Récompenses','Notifications','Tableau de bord','Support'];
 const SUB_ST={trialing:'Essai gratuit',active:'Actif',past_due:'Paiement en retard',unpaid:'Impayé',canceled:'Résilié',incomplete:'Paiement non finalisé',incomplete_expired:'Expiré',paused:'Suspendu',expired:'Offre terminée'};
 const PREPAID_ST={paid:'Payé',partially_refunded:'Payé · remboursé en partie',refunded:'Remboursé',processing:'En cours de traitement',failed:'Échoué'};
@@ -2295,7 +2296,7 @@ class Component extends DCLogic {
     this.setState({busy:true,err:{}});
     try{
       const d=await api.loadAll(user);
-      const base={busy:false,live:true,demo:false,role:d.role||'owner',subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
+      const base={billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
         f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
       if(DPA_NATIVE_IOS&&(!d.merchant||!d.program||d.hasAccess!==true||d.program.designStatus==='draft')){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
@@ -2319,6 +2320,14 @@ class Component extends DCLogic {
     finally{ this._opening=false; }
   }
   obStep3(m,p,design){ return {...this.initState().ob,step:3,biz:m.business,activity:ACTIVITIES.includes(m.activity)?m.activity:'Autre',otherActivity:ACTIVITIES.includes(m.activity)?'':(m.activity||''),mode:p.mode,goal:p.goal,reward:p.reward,prog:p.name,hex:(p.bg||'#FFFFFF').toUpperCase(),drName:(m.first+' '+m.last).trim(),drEmail:m.email,...(design?{design}:{})}; }
+  beginAddProfile=()=>{
+    if(DPA_NATIVE_IOS||this.state.busy||this.state.role!=='owner')return;
+    this.stopCamera();
+    const old=this.state.merchant, blank={...old,id:null,business:'',slug:'',activity:'',address:'',phone:''};
+    this._req={};this._cdKey=null;
+    this.setState({addingProfile:this.api.uuid(),screen:'ob',ob:{...this.initState().ob},merchant:blank,sd:{...blank},program:{...P0},draft:{...P0},clients:[],notifs:[],designReq:null,hasAccess:false,nf:null,nsel:null,selId:null,joinedId:null,modal:null,scan:{st:'permission',id:null,added:false,used:false,msg:''},q:'',filter:'all',err:{},drLogo:null,drRefs:[],crop:null});
+    this.scrollTop();
+  };
   // Change of mind before paying the custom design: the unpaid request is cancelled (server side,
   // never a paid one) and the merchant customises the card at onboarding step 3. Subscription untouched.
   cancelDesignReq=async()=>{ const s=this.state, r=s.designReq; if(s.busy||!designUnpaid(r)) return; this.setState({busy:true});
@@ -2356,7 +2365,7 @@ class Component extends DCLogic {
     finally{this._accessBusy=false;}
   };
   go(screen,extra={}){
-    // App iPhone gratuite et compagnon uniquement : création et paiements sur le web.
+    // Native iOS is a free companion only for previously activated web accounts.
     if(DPA_NATIVE_IOS){
       if(['signup','signupSent','ob','obDone','designSent','billing','subSuccess','subCancel','designPaid','designCancel'].includes(screen)
          ||(screen==='settings'&&extra.section==='billing'))
@@ -2470,9 +2479,10 @@ class Component extends DCLogic {
   async obCreateProgram(){ const s=this.state, o=s.ob, m=s.merchant, activity=o.activity==='Autre'?(o.otherActivity||'').trim():o.activity; this.setState({busy:true});
     try{ let program=s.program, merchant=m;
       if(!program||!m.id){
-        const r=await this.api.createMerchant({business:o.biz.trim(),first:(m.first||'').trim()||'Responsable',last:(m.last||'').trim(),activity,slug:slugify(o.biz),
+        const r=await this.api.createMerchant({requestId:s.addingProfile,business:o.biz.trim(),first:(m.first||'').trim()||'Responsable',last:(m.last||'').trim(),activity,slug:slugify(o.biz),
           program:{name:'Club '+o.biz.trim(),mode:o.mode,goal:+o.goal,reward:o.reward.trim(),bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',logo:initials(o.biz).slice(0,4).toUpperCase(),conditions:'Une validation par visite.'}});
-        merchant=this.api.toMerchant(r.merchant,m.email); program=r.program; }
+        merchant=this.api.toMerchant(r.merchant,m.email); program=r.program;
+        if(s.addingProfile || this.api.switchProfile){window.location.replace('/');return;}}
       if(program.designStatus==='draft'&&(program.mode!==o.mode||+program.goal!==+o.goal||program.reward!==o.reward.trim())) program=await this.api.saveRules(program.id,{mode:o.mode,goal:o.goal,reward:o.reward});
       if(o.biz.trim()!==merchant.business||activity!==merchant.activity){ const row=await this.api.saveMerchant(merchant.id,{business_name:o.biz.trim(),activity}); merchant=this.api.toMerchant(row,m.email); }
       if(program.designStatus!=='draft'){ this.setState({busy:false,merchant,sd:{...merchant},program,draft:{...program}}); return this.go(program.designStatus==='pending_dpa'?'designSent':'home'); }
@@ -2676,8 +2686,8 @@ class Component extends DCLogic {
     const ok=()=>this.showToast('Lien copié'), ko=()=>this.showToast('Copie impossible sur ce navigateur. Lien : '+url,'info');
     try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok,ko); else ko(); }catch(e){ ko(); } }
   // ---- subscription (Stripe). The page only names a plan; the billing Edge Function does the rest.
-  choosePlan=async(plan,billing)=>{ if(DPA_NATIVE_IOS||this.state.busy) return; this.setState({busy:true,billingPlan:plan});
-    try{ const r=await this.api.billing.checkout(plan,billing); window.location.assign(r.url); }
+  choosePlan=async(plan,billing)=>{ if(DPA_NATIVE_IOS)return; if(this.state.busy) return; this.setState({busy:true,billingPlan:plan});
+    try{ this.setState({busy:false,initialChoice:{plan,billing}}); }
     catch(e){ this.setState({busy:false,billingPlan:null});
       if(e.code==='already_subscribed'){ await this.refreshSub(); return this.go('home'); }
       this.showToast(this.api.errorMessage(e),'error'); } };
@@ -2892,18 +2902,19 @@ class Component extends DCLogic {
   billingVals(s){
     const sub=s.subscription, tip=s.tip||{};
     const setTip=(k,pinned)=>this.setState({tip:{open:k,pinned}});
-    const plans=PLAN_UI.map(p=>{ const best=!!p.badge, open=tip.open===p.key, busy=s.busy&&s.billingPlan===p.key;
+    const plans=(s.billingMerchantId&&s.merchant.id!==s.billingMerchantId&&!s.selectedActivated?[]:PLAN_UI).map(p=>{ const best=!!p.badge, open=tip.open===p.key, busy=s.busy&&s.billingPlan===p.key;
       const issue=!!(sub&&sub.stripe_subscription_id&&['past_due','unpaid','paused'].includes(sub.status));
       // Commitment offer: "Paiement mensuel" (unchanged) or "Paiement en une fois" (prepaid, no renewal).
       const pp=p.prepaid, pre=!!pp&&s.billMode==='prepaid';
-      const base=pp?pp.monthlyCents*pp.months:0, total=pp?base+pp.setupCents:0, start=new Date(), end=pp?addMonthsCal(start,pp.months):null;
+      const qty=Math.max(1,s.billedCount||0),setup=s.selectedActivated?0:5000,monthly=qty*2000;
+      const base=pp?monthly*pp.months:0, total=pp?base+setup:0, start=new Date(), end=pp?addMonthsCal(start,pp.months):null;
       const modes=pp?[['monthly','Paiement mensuel'],['prepaid','Paiement en une fois']].map(([k,l])=>{ const on=(s.billMode||'monthly')===k;
         return {label:l,on,bg:on?'#FFFFFF':'transparent',color:on?'#1C1F24':'#4A4E55',weight:on?700:600,shadow:on?'0 1px 4px rgba(20,22,28,0.14)':'none',pick:()=>this.setState({billMode:k})}; }):[];
-      return {hid:'plan-'+p.key,title:p.title,badge:p.badge||'',setup:p.setup,saving:p.saving||'',
-        big:pre?eur(total):p.monthly,unit:pre?'en une fois':'/mois',setupSuffix:pre?' de mise en place inclus':' de mise en place',
+      return {hid:'plan-'+p.key,title:p.title,badge:p.badge||'',setup:eur(setup),saving:p.saving||'',
+        big:pre?eur(total):eur(monthly),unit:pre?'en une fois':'/mois',setupSuffix:pre?' d’activation inclus':' d’activation',
         hasModes:!!pp,modes,pre,
-        preRows:pre?[{k:'À payer maintenant',v:eur(total)},{k:'Dont frais de mise en place',v:eur(pp.setupCents)+' (une seule fois)'},
-          {k:'Dont '+pp.months+' mensualités',v:pp.months+' × '+eur(pp.monthlyCents)+' = '+eur(base)},
+        preRows:pre?[{k:'À payer maintenant',v:eur(total)},{k:'Dont frais d’activation',v:eur(setup)+' (une seule fois)'},
+          {k:'Dont '+pp.months+' mensualités',v:pp.months+' × '+eur(monthly)+' = '+eur(base)},
           {k:'Durée couverte',v:pp.months+' mois, du '+fmtFull(start.toISOString())+' au '+fmtFull(end.toISOString())},
           {k:'Prélèvements mensuels',v:'Aucun'},{k:'Renouvellement',v:'Aucun renouvellement automatique'}]:[],
         preNote:pre?'Votre accès de '+pp.months+' mois commence à la confirmation du paiement (sans essai gratuit). À l’échéance, rien n’est prélevé : l’offre s’arrête et vous pourrez en choisir une nouvelle. Vos données sont conservées.':'',
@@ -2937,7 +2948,10 @@ class Component extends DCLogic {
     const pre=!!(ss&&ss.billing_mode==='prepaid'), pp=sum.prepaid||null;
     const rows=pre?[
       {k:'Offre',v:'Offre avec engagement — payée en une fois'},
-      {k:'Montant payé',v:pp?eur(pp.total_cents)+' (dont '+eur(pp.setup_cents)+' de mise en place)':(sum.loading?'…':'—')},
+      {k:'Montant payé initialement',v:pp?eur(pp.total_cents)+' (dont '+eur(pp.setup_cents)+' d’activation)':(sum.loading?'…':'—')},
+      {k:'Ajouts payés pendant la période',v:eur(sum.prepaid_additions_cents||0)},
+      {k:'Montant payé total de la période',v:pp?eur(pp.total_cents+(sum.prepaid_additions_cents||0)):'—'},
+      {k:'Tarif mensuel cumulé de référence',v:eur(ss.monthly_amount_cents)},
       {k:'Statut du paiement',v:pp?(PREPAID_ST[pp.status]||pp.status)+(pp.dispute_status==='open'?' · contestation en cours':pp.dispute_status==='lost'?' · contesté':''):(sum.loading?'…':'—')},
       {k:'Accès',v:subOk(ss)?'Actif':(SUB_ST[ss.status==='active'?'expired':ss.status]||ss.status)},
       {k:'Date de début',v:fmtFull(ss.current_period_start)},
@@ -2953,6 +2967,7 @@ class Component extends DCLogic {
       {k:'Moyen de paiement',v:pm?(String(pm.brand||'Carte').toUpperCase()+' •••• '+pm.last4+' · exp. '+String(pm.exp_month).padStart(2,'0')+'/'+String(pm.exp_year).slice(-2)):(sum.loading?'…':'—')}]
       :[{k:'Abonnement',v:'Aucun abonnement'}];
     const IST={paid:'Payée',open:'À payer',void:'Annulée',uncollectible:'Irrécouvrable'};
+    if(ss)rows.unshift({k:'Commerces facturés sur le compte',v:String(sum.commerce_count??s.billedCount??1)});
     const invoices=(sum.invoices||[]).map(i=>({date:fmtFull(i.date),amount:eur(i.amount_cents),number:i.number||'Facture',status:IST[i.status]||i.status,url:i.url||'',hasUrl:!!i.url}));
     if(s.accessSource==='manual'&&s.hasAccess)rows.unshift({k:'Accès DPA Cards',v:'Activé manuellement jusqu’au '+fmtFull(s.manualExpiresAt)+' (indépendant de Stripe)'});
     const msg=s.billMsg||(sum.error||'');
@@ -3194,6 +3209,11 @@ class Component extends DCLogic {
     const toastM=scr==='scanner'?'calc(220px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))':(scr==='client'?'calc(160px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))':'calc(96px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))');
     return {
       s:S, isDesk, isMob, m, P, f:s.f, F, err, eb, inv, go, spin, scanLine, sheetAnim, busy:s.busy, notBusy:!s.busy,
+      offerTitle:s.billingMerchantId&&m.id!==s.billingMerchantId&&!s.selectedActivated?'Activez votre nouveau commerce':'Choisissez votre offre',
+      offerSubtitle:s.billingMerchantId&&m.id!==s.billingMerchantId&&!s.selectedActivated?'Utilisez « Activer ce commerce » pour vérifier les montants et confirmer l’ajout à votre facturation existante.':'15 jours d’essai gratuit sur votre abonnement initial.',
+      profileControl:!DPA_NATIVE_IOS&&s.live&&this.api&&s.profiles&&s.profiles.length?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,onAdd:this.beginAddProfile,
+        needsActivation:!DPA_NATIVE_IOS&&!!m.id&&m.id!==s.billingMerchantId&&!s.selectedActivated&&!s.hasAccess&&P&&(P.designStatus!=='draft'||designUnpaid(s.designReq)),
+        onActivated:async()=>{const session=await this.api.session();await this.openLive(session);},initialChoice:s.initialChoice,onInitialDone:()=>this.setState({initialChoice:null})}):null,
       showDemoHints:false, isWeb:!DPA_NATIVE_IOS, isNative:DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
       workspaceError:s.workspaceError||'Les données de votre espace n’ont pas pu être récupérées. Réessayez.', workspaceRetryLabel:s.busy?'Chargement…':'Réessayer d’ouvrir mon espace',retryWorkspace:()=>this._lastWorkspaceSession?this.openLive(this._lastWorkspaceSession):this.resetToLogin(),
       joinPage:this.registrationConfig(P),joinLogo:P.registrationLogoUrl||P.logoUrl||'',joinButtonFg:lum((P.registrationPage||{}).button||'#1C1F24')<0.45?'#FFFFFF':'#1C1F24',
@@ -3221,11 +3241,12 @@ class Component extends DCLogic {
       obDoneGo:()=>{ if(s.live&&!s.hasAccess) return this.go('billing'); this.go('home',{loadingHome:true}); setTimeout(()=>this.setState({loadingHome:false}),600); },
       qrBiz:locked?null:(this.api?this.realQr(pubUrl,200,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,200)), qrBizSm:locked?null:(this.api?this.realQr(pubUrl,168,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,168)), link, pubUrl, hasLink:!!link, noLink:!link,
       copyLink:()=>locked?this.go('invite'):this.copyJoinLink(),
-      lockBanner:!DPA_NATIVE_IOS&&locked&&S.app, toBilling:()=>this.go('billing'), canSkipBilling:locked&&!!s.program&&(s.program.designStatus!=='draft'||designUnpaid(s.designReq)),
+      lockBanner:locked&&S.app, toBilling:()=>this.go('billing'), canSkipBilling:locked&&!!s.program&&(s.program.designStatus!=='draft'||designUnpaid(s.designReq)),
       skipBilling:()=>{ this.go('home'); this.scrollTop(); },
       lockView:{title:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[0],text:(LOCK_TEXT[lockKind]||LOCK_TEXT.invite)[1]},
-      homeDesign:(()=>{ const r=s.designReq; if(DPA_NATIVE_IOS||!s.live||!S.home||!r) return {show:false};
+      homeDesign:(()=>{ const r=s.designReq; if(!s.live||!S.home||!r) return {show:false};
         if(designUnpaid(r)){ const ask=!!s.designAsk, meta='Demande du '+fmtFull(r.createdAt)+' · En attente de paiement';
+          if(DPA_NATIVE_IOS)return {show:true,icon:'brush',bg:'#FFF3DC',border:'#F2D49B',fg:'#8A5A00',title:'Création sur mesure en attente',text:'Contactez l’assistance pour suivre cette demande.',meta};
           const change={ask,alt:ask?'':'Je préfère personnaliser ma carte moi-même',altAct:()=>this.setState({designAsk:true}),keep:()=>this.setState({designAsk:false}),confirm:this.cancelDesignReq};
           if(s.hasAccess) return {show:true,icon:'brush',bg:'#FFF3DC',border:'#F2D49B',fg:'#8A5A00',title:'Votre création sur mesure attend son paiement',text:'Réglez la création de votre carte (29,90 € TTC, paiement unique) : DPA Cards commence dès le paiement confirmé.',meta,cta:ask?'':(s.busy?'Redirection…':'Payer mon design — 29,90 €'),spin:!!s.busy,act:this.resumeDesign,...change};
           return {show:true,icon:'brush',bg:'#FFF3DC',border:'#F2D49B',fg:'#8A5A00',title:'Demande de design en attente',text:'Choisissez d’abord votre offre : le paiement de votre création sur mesure (29,90 € TTC) vous sera proposé juste après. Aucun paiement de design n’est demandé d’ici là.',meta,cta:ask?'':'Choisir mon offre',spin:false,act:()=>this.go('billing'),...change}; }

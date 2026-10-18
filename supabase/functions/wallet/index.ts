@@ -1,4 +1,5 @@
 import { decodePng } from '../_shared/png.js';
+import { selectedMembership } from '../_shared/merchant-context.ts';
 import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 import { loadRewardStar } from '../_shared/reward-star.js';
 // DPA Cards — Google Wallet Edge Function.
@@ -71,7 +72,7 @@ const admin = createClient(SUPABASE_URL, SECRET_KEY, { auth: { persistSession: f
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
   return ALLOWED_ORIGINS.includes(origin)
-    ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info',
+    ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info, x-merchant-id',
         'access-control-allow-methods': 'POST, OPTIONS', vary: 'Origin' }
     : {};
 }
@@ -380,7 +381,7 @@ async function authUser(req: Request) {
   const auth = req.headers.get('authorization') ?? '';
   if (!/^Bearer\s+\S+/.test(auth)) throw new HttpError(401, 'not_authenticated');
   const userClient: SupabaseClient = createClient(SUPABASE_URL, PUBLISHABLE_KEY, {
-    global: { headers: { Authorization: auth } }, auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: auth,...(req.headers.get('x-merchant-id')?{'x-merchant-id':req.headers.get('x-merchant-id')!}:{}) } }, auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: { user } } = await userClient.auth.getUser(auth.replace(/^Bearer\s+/, ''));
   if (!user) throw new HttpError(401, 'not_authenticated');
@@ -427,7 +428,7 @@ async function checkImage(path: string, kind: 'logo' | 'hero', merchantId: strin
 // Validate a draft design once, lock it, then create the program's Wallet class from it.
 async function finalizeDesign(req: Request): Promise<Response> {
   const { user, userClient } = await authUser(req);
-  const { data: member } = await admin.from('merchant_members').select('merchant_id, role').eq('user_id', user.id).maybeSingle();
+  const member = await selectedMembership(admin,req,user.id);
   if (!member || member.role !== 'owner') throw new HttpError(403, 'forbidden');
   // Read through the caller's session (RLS) — the browser sends no ids at all.
   const { data: found } = await userClient.from('programs').select('*').eq('merchant_id', member.merchant_id).eq('is_active', true).maybeSingle();
@@ -493,6 +494,7 @@ async function saveLink(req: Request): Promise<Response> {
   // Read through the caller's own session: RLS only returns cards of their merchant.
   const { data: card } = await userClient.from('cards').select(CARD_SELECT).eq('id', cardId).maybeSingle();
   if (!card) throw new HttpError(404, 'card_not_found');
+  if(req.headers.get('x-merchant-id') && req.headers.get('x-merchant-id')!==card.merchant_id)throw new HttpError(404,'card_not_found');
   // Explicit membership check on top of RLS.
   const { data: member } = await admin.from('merchant_members').select('role')
     .eq('merchant_id', card.merchant_id).eq('user_id', user.id).maybeSingle();
@@ -529,6 +531,7 @@ async function appleLink(req: Request): Promise<Response> {
   if (!UUID_RE.test(cardId)) throw new HttpError(400, 'invalid_card');
   const { data: card } = await userClient.from('cards').select('id, merchant_id').eq('id', cardId).maybeSingle();
   if (!card) throw new HttpError(404, 'card_not_found');
+  if(req.headers.get('x-merchant-id') && req.headers.get('x-merchant-id')!==card.merchant_id)throw new HttpError(404,'card_not_found');
   const { data: member } = await admin.from('merchant_members').select('role')
     .eq('merchant_id', card.merchant_id).eq('user_id', user.id).maybeSingle();
   if (!member) throw new HttpError(403, 'forbidden');
@@ -639,7 +642,7 @@ async function addMessage(objectId: string, message: Record<string, unknown>): P
 
 async function notify(req: Request): Promise<Response> {
   const { user } = await authUser(req);
-  const { data: member } = await admin.from('merchant_members').select('merchant_id').eq('user_id', user.id).maybeSingle();
+  const member = await selectedMembership(admin,req,user.id);
   if (!member) throw new HttpError(403, 'forbidden');
   const merchantId: string = member.merchant_id;
   await requireAccess(merchantId);
@@ -778,7 +781,7 @@ async function requireAccess(merchantId: string) {
 
 async function ownerOf(req: Request) {
   const { user } = await authUser(req);
-  const { data: member } = await admin.from('merchant_members').select('merchant_id, role').eq('user_id', user.id).maybeSingle();
+  const member = await selectedMembership(admin,req,user.id);
   return { user, member: member as { merchant_id: string; role: string } | null };
 }
 
@@ -826,6 +829,9 @@ async function listMerchantFiles(bucket: string, merchantId: string): Promise<st
 
 async function deleteAccount(req: Request): Promise<Response> {
   const { user, member } = await ownerOf(req);
+  const {count,error:ce}=await admin.from('merchant_members').select('*',{count:'exact',head:true}).eq('user_id',user.id);
+  if(ce)throw new Error('db_members');
+  if((count??0)>1)throw new HttpError(409,'multi_profile_account_delete_requires_support');
   const body = await req.json().catch(() => ({}));
   if (String(body?.confirm ?? '') !== 'SUPPRIMER') throw new HttpError(422, 'confirmation_required');
   if (member && member.role !== 'owner') throw new HttpError(403, 'owner_only');

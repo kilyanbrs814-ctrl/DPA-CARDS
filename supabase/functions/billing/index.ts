@@ -26,6 +26,8 @@
 import Stripe from 'npm:stripe@17.7.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { ADMIN_ALERT_EMAIL, sendEmail, simpleMail } from '../_shared/email.ts';
+import { selectedMembership } from '../_shared/merchant-context.ts';
+import { profileBilling } from './profiles.ts';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 // The canonical URL is configurable so Stripe returns remain correct after the DNS cutover.
@@ -53,10 +55,10 @@ const cryptoProvider = Stripe.createSubtleCryptoProvider();
 // Prices are created by scripts/stripe-setup.mjs; the amount is checked here, so an old or
 // wrong price is never used. Custom design: 29,90 € TTC one-time, never an amount from the browser.
 const PRICES = {
-  setup_no_commitment: { lookup: 'dpa_setup_no_commitment', cents: 4900, recurring: false },
-  monthly_no_commitment: { lookup: 'dpa_monthly_no_commitment', cents: 2490, recurring: true },
-  setup_commitment: { lookup: 'dpa_setup_commitment', cents: 2900, recurring: false },
-  monthly_commitment: { lookup: 'dpa_monthly_commitment', cents: 1990, recurring: true },
+  setup_no_commitment: { lookup: 'dpa_setup_no_commitment', cents: 5000, recurring: false },
+  monthly_no_commitment: { lookup: 'dpa_monthly_no_commitment', cents: 2000, recurring: true },
+  setup_commitment: { lookup: 'dpa_setup_commitment', cents: 5000, recurring: false },
+  monthly_commitment: { lookup: 'dpa_monthly_commitment', cents: 2000, recurring: true },
   custom_design: { lookup: 'dpa_custom_design', cents: 2990, recurring: false },
 } as const;
 type PriceName = keyof typeof PRICES;
@@ -92,7 +94,7 @@ async function priceIds(): Promise<Record<PriceName, string>> {
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
   return ALLOWED_ORIGINS.includes(origin)
-    ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info', 'access-control-allow-methods': 'POST, OPTIONS', vary: 'Origin' }
+    ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info, x-merchant-id', 'access-control-allow-methods': 'POST, OPTIONS', vary: 'Origin' }
     : {};
 }
 const json = (req: Request, status: number, body: unknown) =>
@@ -102,22 +104,61 @@ const siteOrigin = (req: Request) => { const o = req.headers.get('origin') ?? ''
 const requireStripe = () => { if (!stripe) throw new HttpError(503, 'billing_not_configured'); return stripe; };
 const iso = (s?: number | null) => (s ? new Date(s * 1000).toISOString() : null);
 
-async function member(req: Request, ownerOnly = true) {
+async function member(req: Request, ownerOnly = true, accountWide = true) {
   const auth = req.headers.get('authorization') ?? '';
   if (!/^Bearer\s+\S+/.test(auth)) throw new HttpError(401, 'not_authenticated');
   const userClient = createClient(SUPABASE_URL, PUBLISHABLE_KEY, { global: { headers: { Authorization: auth } }, auth: { persistSession: false, autoRefreshToken: false } });
   const { data: { user } } = await userClient.auth.getUser(auth.replace(/^Bearer\s+/, ''));
   if (!user) throw new HttpError(401, 'not_authenticated');
-  const { data: m } = await admin.from('merchant_members').select('merchant_id, role').eq('user_id', user.id).maybeSingle();
+  const m = await selectedMembership(admin,req,user.id);
   if (!m) throw new HttpError(403, 'no_merchant');
   if (ownerOnly && m.role !== 'owner') throw new HttpError(403, 'owner_only');
-  return { user, merchantId: m.merchant_id as string };
+  if(!accountWide)return {user,merchantId:m.merchant_id as string};
+  const {data:merchant}=await admin.from('merchants').select('billing_account_id').eq('id',m.merchant_id).single();
+  const {data:account}=await admin.from('merchant_billing_accounts').select('owner_id,primary_merchant_id').eq('id',merchant?.billing_account_id).single();
+  if(!account || (ownerOnly && account.owner_id!==user.id))throw new HttpError(403,'owner_only');
+  return {user,merchantId:account.primary_merchant_id as string};
 }
 
 async function rowOf(merchantId: string) {
   const { data, error } = await admin.from('subscriptions').select('*').eq('merchant_id', merchantId).maybeSingle();
   if (error) throw new Error('db_subscriptions');
   return data;
+}
+
+async function billingQuantity(merchantId:string) {
+ const {data:m,error:me}=await admin.from('merchants').select('billing_account_id').eq('id',merchantId).single();
+ if(me)throw new Error('db_profiles');
+ const {data:activations,error}=await admin.from('merchant_activations').select('merchant_id').eq('account_id',m.billing_account_id);
+ if(error)throw new Error('db_profiles');
+ return {quantity:Math.max(1,activations.length),setup:activations.some(x=>x.merchant_id===merchantId)?0:5000};
+}
+
+async function initialQuote(req:Request):Promise<Response> {
+ const {merchantId}=await member(req);const body=await req.json();
+ const plan=PLANS[body.plan as PlanType];if(!plan)throw new HttpError(422,'invalid_plan');
+ const b=await billingQuantity(merchantId),row=await rowOf(merchantId),pre=body.billing==='prepaid';
+ if(pre && body.plan!=='commitment')throw new HttpError(422,'invalid_plan');
+ const {data:m}=await admin.from('merchants').select('billing_account_id').eq('id',merchantId).single();
+ const {data:open,error:oe}=await admin.from('merchant_initial_checkouts').select('*').eq('account_id',m?.billing_account_id).is('closed_at',null).maybeSingle();
+ if(oe)throw new Error('db_checkout_claim');
+ if(open && (open.plan!==body.plan || open.billing!==(pre?'prepaid':'monthly'))){
+  if(!open.stripe_session_id)throw new HttpError(409,'checkout_in_progress');
+  const s=requireStripe();let cs=await s.checkout.sessions.retrieve(open.stripe_session_id);
+  if(cs.status==='open'){try{cs=await s.checkout.sessions.expire(cs.id);}catch{cs=await s.checkout.sessions.retrieve(cs.id);}}
+  if(cs.payment_status==='paid'||(cs.mode==='setup'&&cs.status==='complete')){
+   if(cs.metadata?.billing_mode==='prepaid')await confirmPrepaid(cs);else await ensureSubscription(cs);
+   throw new HttpError(409,'already_subscribed');
+  }
+  if(cs.status!=='expired')throw new HttpError(409,'payment_processing');
+  const {error}=await admin.from('merchant_initial_checkouts').update({closed_at:new Date().toISOString()}).eq('id',open.id);
+  if(error)throw new Error('db_checkout_claim');
+ }
+ return json(req,200,{quote:{current_count:b.setup?0:b.quantity,new_count:b.quantity,activation_cents:b.setup,
+  current_monthly_cents:row&&ACCESS.includes(row.status)?row.monthly_amount_cents:0,new_monthly_cents:b.quantity*2000,
+  monthly_difference_cents:b.quantity*2000-(row&&ACCESS.includes(row.status)?row.monthly_amount_cents:0),proration_cents:0,
+  immediate_cents:b.setup+(pre?b.quantity*2000*plan.commitmentMonths:0),effective_at:new Date().toISOString(),
+  proration_collection:pre?'now':'after_trial',billing:pre?'prepaid':'monthly',quantity:b.quantity,setup:b.setup}});
 }
 
 // ---------------------------------------------------------------- dates (Europe/Paris)
@@ -160,7 +201,7 @@ async function syncSubscription(sub: Stripe.Subscription, extra: Record<string, 
     stripe_subscription_id: sub.id,
     stripe_customer_id: typeof sub.customer === 'string' ? sub.customer : sub.customer?.id,
     stripe_price_id: price?.id ?? null,
-    monthly_amount_cents: price?.unit_amount ?? null,
+    monthly_amount_cents: price?.unit_amount!=null ? price.unit_amount*(sub.items.data[0].quantity??1) : null,
     status: sub.status,
     trial_start: iso(sub.trial_start), trial_end: iso(sub.trial_end),
     current_period_start: iso(start), current_period_end: iso(end),
@@ -221,7 +262,7 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
   const merchantId = session.metadata?.merchant_id;
   const planType = session.metadata?.plan_type as PlanType;
   if (!merchantId || !(planType in PLANS)) throw new HttpError(400, 'invalid_session');
-  if (session.payment_status !== 'paid') return { paid: false, row: await rowOf(merchantId) };
+  if (session.payment_status !== 'paid' && !(session.mode==='setup'&&session.status==='complete')) return { paid: false, row: await rowOf(merchantId) };
   // The setup fee's invoice (Checkout creates it): recorded here too, in case its webhook is late.
   // Same invoice id as the webhook, so it is never counted twice; a ledger hiccup never blocks the subscription.
   if (session.invoice) {
@@ -229,9 +270,22 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
     catch (e) { console.error('billing error', 'setup ledger', (e as Error).message); }
   }
 
-  const row = await rowOf(merchantId);
+  let row = await rowOf(merchantId);
+  if(session.metadata?.initial_claim && row && !row.stripe_subscription_id && row.status==='incomplete') {
+    const {data:claim}=await admin.from('merchant_initial_checkouts').select('*').eq('id',session.metadata.initial_claim).eq('billing','monthly').single();
+    const {data:account}=claim?await admin.from('merchant_billing_accounts').select('primary_merchant_id').eq('id',claim.account_id).single():{data:null};
+    if(account?.primary_merchant_id!==merchantId || (claim.stripe_session_id && claim.stripe_session_id!==session.id))throw new HttpError(403,'invalid_session');
+    const {error}=await admin.from('subscriptions').update({stripe_checkout_session_id:session.id}).eq('merchant_id',merchantId).eq('status','incomplete').is('stripe_subscription_id',null);
+    if(error)throw new Error('db_subscriptions');
+    row=await rowOf(merchantId);
+  }
   if (row?.stripe_subscription_id) {
     const sub = await s.subscriptions.retrieve(row.stripe_subscription_id);
+    const payment=(typeof session.payment_intent==='string'?session.payment_intent:session.payment_intent?.id)||null;
+    const {error}=await admin.rpc('profile_confirm_initial',{p_merchant:merchantId,p_payment:payment,p_amount:session.amount_total});
+    if(error)throw new Error('db_initial_activation');
+    const {error:closeError}=await admin.from('merchant_initial_checkouts').update({closed_at:new Date().toISOString()}).eq('stripe_session_id',session.id);
+    if(closeError)throw new Error('db_checkout_claim');
     return { paid: true, row: await syncSubscription(sub) };
   }
   // Never a monthly subscription on top of a prepaid period (old checkout tab paid meanwhile): manual follow-up.
@@ -242,12 +296,14 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
   const pi = typeof session.payment_intent === 'string'
     ? await s.paymentIntents.retrieve(session.payment_intent)
     : session.payment_intent as Stripe.PaymentIntent;
-  const paymentMethod = typeof pi?.payment_method === 'string' ? pi.payment_method : pi?.payment_method?.id;
+  const setupIntent=!pi&&session.setup_intent?(typeof session.setup_intent==='string'?await s.setupIntents.retrieve(session.setup_intent):session.setup_intent):null;
+  const paymentMethod = typeof pi?.payment_method === 'string' ? pi.payment_method : pi?.payment_method?.id || (typeof setupIntent?.payment_method==='string'?setupIntent.payment_method:setupIntent?.payment_method?.id);
   const customer = typeof session.customer === 'string' ? session.customer : session.customer?.id;
   if (!customer || !paymentMethod) throw new HttpError(409, 'payment_method_missing');
 
   const plan = PLANS[planType];
-  const monthlyPrice = (await priceIds())[plan.monthly];
+  // A pre-deployment checkout retains its explicitly accepted price.
+  const monthlyPrice = row?.stripe_price_id || (await priceIds())[plan.monthly];
   const trialEnd = (session.created ?? Math.floor(Date.now() / 1000)) + TRIAL_DAYS * 86400;
   const safeTrialEnd = Math.max(trialEnd, Math.floor(Date.now() / 1000) + 3600);
   const anchor = firstOfNextMonthParis(safeTrialEnd);
@@ -260,14 +316,19 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
   await s.customers.update(customer, { invoice_settings: { default_payment_method: paymentMethod } });
   const sub = await s.subscriptions.create({
     customer,
-    items: [{ price: monthlyPrice }],
+    items: [{ price: monthlyPrice,quantity:Number(session.metadata?.commerce_quantity||1) }],
     default_payment_method: paymentMethod,
     trial_end: safeTrialEnd,
     billing_cycle_anchor: anchor,
     proration_behavior: 'create_prorations',
     metadata,
   }, { idempotencyKey: `dpa-sub-${session.id}` });
-  return { paid: true, row: await syncSubscription(sub, { stripe_setup_payment_intent_id: pi?.id ?? null, setup_paid_at: new Date().toISOString() }) };
+  const synced=await syncSubscription(sub, { stripe_setup_payment_intent_id: pi?.id ?? null, setup_paid_at: new Date().toISOString() });
+  const {error:activationError}=await admin.rpc('profile_confirm_initial',{p_merchant:merchantId,p_payment:pi?.id||setupIntent?.id,p_amount:session.amount_total??0});
+  if(activationError)throw new Error('db_initial_activation');
+  const {error:closeError}=await admin.from('merchant_initial_checkouts').update({closed_at:new Date().toISOString()}).eq('stripe_session_id',session.id);
+  if(closeError)throw new Error('db_checkout_claim');
+  return {paid:true,row:synced};
 }
 
 // ---------------------------------------------------------------- commitment paid in one go (prepaid)
@@ -313,13 +374,14 @@ function prepaidError(error: { message?: string; code?: string }): never {
   throw new Error('db_prepaid');
 }
 
-async function checkoutPrepaid(req: Request, user: { id: string; email?: string | null }, merchantId: string): Promise<Response> {
+async function checkoutPrepaid(req: Request, user: { id: string; email?: string | null }, merchantId: string, claim:any): Promise<Response> {
   const s = requireStripe();
   const plan = PLANS[PREPAID_PLAN];
   const ids = await priceIds();
   const [setupPrice, monthlyPrice] = await Promise.all([s.prices.retrieve(ids[plan.setup]), s.prices.retrieve(ids[plan.monthly])]);
   // priceIds() already checked these amounts against PRICES; the purchase is computed from them only.
-  const monthly = monthlyPrice.unit_amount!, setup = setupPrice.unit_amount!, months = plan.commitmentMonths;
+  const commerce=await billingQuantity(merchantId);
+  const monthly = monthlyPrice.unit_amount!*commerce.quantity, setup = commerce.setup, months = plan.commitmentMonths;
 
   const { error: xe } = await admin.rpc('prepaid_expire', { p_merchant: merchantId });
   if (xe) throw new Error('db_prepaid');
@@ -336,14 +398,13 @@ async function checkoutPrepaid(req: Request, user: { id: string; email?: string 
     const customer = await customerFor(s, merchantId, user.email, merchant?.business_name);
     const eur = (c: number) => (c / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
     const origin = siteOrigin(req);
-    const metadata = { merchant_id: merchantId, plan_type: PREPAID_PLAN, billing_mode: 'prepaid', purchase_id: purchase.id, user_id: user.id };
+    const metadata = { merchant_id: merchantId, plan_type: PREPAID_PLAN, billing_mode: 'prepaid', purchase_id: purchase.id, user_id: user.id,initial_claim:claim.id };
     const taxBehavior = monthlyPrice.tax_behavior && monthlyPrice.tax_behavior !== 'unspecified' ? { tax_behavior: monthlyPrice.tax_behavior } : {};
     const session = await s.checkout.sessions.create({
       mode: 'payment',
       customer,
-      payment_method_types: ['card'],
       line_items: [
-        { price: setupPrice.id, quantity: 1 },
+        ...(setup?[{price:setupPrice.id,quantity:1}]:[]),
         { price_data: { currency: 'eur', unit_amount: monthly, product_data: { name: `Offre avec engagement — mensualité (${months} mois payés en une fois)` }, ...taxBehavior }, quantity: months },
       ],
       payment_intent_data: { metadata, description: `DPA Cards — offre avec engagement payée en une fois (${months} mois)` },
@@ -357,6 +418,8 @@ async function checkoutPrepaid(req: Request, user: { id: string; email?: string 
     }, { idempotencyKey: `dpa-prepaid-${purchase.id}` });
     const { error: ae } = await admin.rpc('prepaid_attach_session', { p_id: purchase.id, p_session: session.id, p_customer: customer });
     if (ae) throw new Error('db_prepaid');
+    const {error:claimError}=await admin.from('merchant_initial_checkouts').update({stripe_session_id:session.id}).eq('id',claim.id);
+    if(claimError)throw new Error('db_checkout_claim');
     return json(req, 200, { url: session.url });
   } catch (e) {
     await admin.rpc('prepaid_mark', { p_id: purchase.id, p_status: 'canceled' });
@@ -396,6 +459,12 @@ async function confirmPrepaid(session: Stripe.Checkout.Session) {
     catch (e) { console.error('billing error', 'prepaid ledger', (e as Error).message); }
   }
   if (data.purchase?.conflict) console.error('billing error', 'prepaid paid while another offer is valid', p.id);
+  if(!data.purchase?.conflict){
+   const {error:ae}=await admin.rpc('profile_confirm_initial',{p_merchant:merchantId,p_payment:pi,p_amount:p.setup_cents});
+   if(ae)throw new Error('db_initial_activation');
+   const {error:closeError}=await admin.from('merchant_initial_checkouts').update({closed_at:new Date().toISOString()}).eq('stripe_session_id',session.id);
+   if(closeError)throw new Error('db_checkout_claim');
+  }
   return { paid: true, pending: false, purchase: data.purchase, row: data.subscription };
 }
 
@@ -414,12 +483,47 @@ async function checkout(req: Request): Promise<Response> {
   const { user, merchantId } = await member(req);
   const body = await req.json().catch(() => ({}));
   const planType = String(body?.plan ?? '') as PlanType;
+  if(body.confirmed!==true)throw new HttpError(422,'confirmation_required');
+  const commerce=await billingQuantity(merchantId);
+  if(body.quote?.quantity!==commerce.quantity || body.quote?.setup!==commerce.setup)throw new HttpError(409,'quote_changed');
   if (!(planType in PLANS)) throw new HttpError(422, 'invalid_plan');
   const billing = String(body?.billing ?? 'monthly');
   if (!['monthly', 'prepaid'].includes(billing) || (billing === 'prepaid' && planType !== PREPAID_PLAN)) throw new HttpError(422, 'invalid_plan');
   const { data: program } = await admin.from('programs').select('id').eq('merchant_id', merchantId).eq('is_active', true).maybeSingle();
   if (!program) throw new HttpError(409, 'onboarding_incomplete');
-  if (billing === 'prepaid') return await checkoutPrepaid(req, user, merchantId);
+  await admin.rpc('prepaid_expire',{p_merchant:merchantId});
+  const current=await rowOf(merchantId);
+  if(current&&ACCESS.includes(current.status))throw new HttpError(409,'already_subscribed');
+  if(current?.stripe_subscription_id&&['past_due','unpaid','paused'].includes(current.status))throw new HttpError(409,'payment_issue');
+  const {data:claim,error:claimError}=await admin.rpc('claim_initial_checkout',{p_merchant:merchantId,p_plan:planType,p_billing:billing,p_quantity:commerce.quantity,p_setup:commerce.setup});
+  if(claimError)throw new HttpError(409,'checkout_in_progress');
+  if(!claim.stripe_session_id && current?.stripe_customer_id){
+    for await(const candidate of s.checkout.sessions.list({customer:current.stripe_customer_id,limit:100})){
+      if(candidate.metadata?.initial_claim===claim.id){
+        claim.stripe_session_id=candidate.id;
+        const {error}=await admin.from('merchant_initial_checkouts').update({stripe_session_id:candidate.id}).eq('id',claim.id);
+        if(error)throw new Error('db_checkout_claim');break;
+      }
+      if(candidate.created*1000<Date.parse(claim.created_at)-300000)break;
+    }
+  }
+  if(claim.stripe_session_id){
+    const prior=await s.checkout.sessions.retrieve(claim.stripe_session_id);
+    if(prior.payment_status==='paid'||prior.payment_status==='no_payment_required'){
+      if(billing==='prepaid')await confirmPrepaid(prior);else await ensureSubscription(prior);
+      throw new HttpError(409,'already_subscribed');
+    }
+    if(prior.status==='open')return json(req,200,{url:prior.url});
+    if(prior.status==='complete')throw new HttpError(409,'payment_processing');
+    await admin.from('merchant_initial_checkouts').update({closed_at:new Date().toISOString()}).eq('id',claim.id);
+    throw new HttpError(409,'quote_changed');
+  }
+  if(Date.now()-Date.parse(claim.created_at)>23*3600000){
+    if(!current?.stripe_customer_id)throw new HttpError(409,'payment_processing');
+    await admin.from('merchant_initial_checkouts').update({closed_at:new Date().toISOString()}).eq('id',claim.id);
+    throw new HttpError(409,'quote_changed');
+  }
+  if (billing === 'prepaid') return await checkoutPrepaid(req, user, merchantId,claim);
 
   const plan = PLANS[planType];
   const ids = await priceIds();
@@ -430,6 +534,7 @@ async function checkout(req: Request): Promise<Response> {
   if (existing && ACCESS.includes(existing.status)) throw new HttpError(409, 'already_subscribed');
   // A subscription that still exists at Stripe but is unpaid is settled in the portal, never duplicated.
   if (existing?.stripe_subscription_id && ['past_due', 'unpaid', 'paused'].includes(existing.status)) throw new HttpError(409, 'payment_issue');
+  await expireOpenMonthly(existing);
   // A prepaid attempt still open is closed first (or confirmed if it was paid meanwhile: then no second offer).
   await settleOpenPrepaid(merchantId);
   const settled = await rowOf(merchantId);
@@ -445,41 +550,34 @@ async function checkout(req: Request): Promise<Response> {
   const [setupPrice, monthlyPrice] = await Promise.all([s.prices.retrieve(setupId), s.prices.retrieve(monthlyId)]);
   const eur = (c: number | null) => ((c ?? 0) / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
   const origin = siteOrigin(req);
-  const metadata = { merchant_id: merchantId, plan_type: planType, user_id: user.id };
+  // Reserve the incomplete row BEFORE Checkout can deliver a webhook. A late
+  // response may attach a session but can never overwrite an active subscription.
+  const pendingRow={merchant_id:merchantId,stripe_customer_id:customer,plan_type:planType,commitment_months:plan.commitmentMonths,
+    stripe_setup_price_id:setupId,stripe_price_id:monthlyId,setup_amount_cents:commerce.setup,monthly_amount_cents:monthlyPrice.unit_amount!*commerce.quantity,
+    status:'incomplete',stripe_subscription_id:null,stripe_checkout_session_id:null,stripe_setup_payment_intent_id:null,setup_paid_at:null,
+    trial_start:null,trial_end:null,current_period_start:null,current_period_end:null,billing_cycle_anchor:null,commitment_start:null,commitment_end:null,
+    cancel_at_period_end:false,cancel_at:null,canceled_at:null,cancel_requested_at:null,latest_invoice_status:null,billing_mode:'monthly',prepaid_purchase_id:null};
+  const reserved=existing?await admin.from('subscriptions').update(pendingRow).eq('merchant_id',merchantId).eq('status',existing.status)
+    :await admin.from('subscriptions').upsert(pendingRow,{onConflict:'merchant_id',ignoreDuplicates:true});
+  if(reserved.error)throw new Error('db_subscriptions');
+  const metadata = { merchant_id: merchantId, plan_type: planType, user_id: user.id,commerce_quantity:String(commerce.quantity),initial_claim:claim.id };
   const session = await s.checkout.sessions.create({
-    mode: 'payment',
+    mode: commerce.setup?'payment':'setup',
     customer,
-    // Card only: the subscription is later charged off-session on this saved card, which
-    // methods like Klarna or Satispay (enabled by default on the account) do not allow.
-    payment_method_types: ['card'],
-    line_items: [{ price: setupId, quantity: 1 }],
-    payment_intent_data: { setup_future_usage: 'off_session', metadata, description: 'DPA Cards — frais de mise en place' },
-    invoice_creation: { enabled: true, invoice_data: { metadata, description: 'Frais de mise en place DPA Cards' } },
+    // Save a reusable method for the existing off-session subscription flow.
+    ...(commerce.setup?{line_items:[{price_data:{currency:'eur',unit_amount:commerce.setup,product:typeof setupPrice.product==='string'?setupPrice.product:setupPrice.product.id},quantity:1}],
+      payment_intent_data:{setup_future_usage:'off_session' as const,metadata,description:'DPA Cards — frais d’activation'},
+      invoice_creation:{enabled:true,invoice_data:{metadata,description:'Activation DPA Cards'}}}:{setup_intent_data:{metadata}}),
     metadata,
     locale: 'fr',
-    custom_text: { submit: { message: `Aujourd’hui : frais de mise en place. Votre abonnement à ${eur(monthlyPrice.unit_amount)}/mois commence après ${TRIAL_DAYS} jours d’essai gratuit, au prorata jusqu’au 1er du mois suivant, puis chaque 1er du mois${plan.commitmentMonths ? ', avec un engagement de 12 mois' : ', sans engagement'}.` } },
+    custom_text: { submit: { message: `Aujourd’hui : ${eur(commerce.setup)} d’activation. Votre abonnement à ${eur(monthlyPrice.unit_amount!*commerce.quantity)}/mois pour ${commerce.quantity} commerce(s) commence après ${TRIAL_DAYS} jours d’essai gratuit, au prorata jusqu’au 1er du mois suivant, puis chaque 1er du mois${plan.commitmentMonths ? ', avec un engagement de 12 mois' : ', sans engagement'}.` } },
     success_url: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/subscription/cancel`,
-  });
-  const row = {
-    merchant_id: merchantId, stripe_customer_id: customer, stripe_checkout_session_id: session.id, plan_type: planType,
-    commitment_months: plan.commitmentMonths, stripe_setup_price_id: setupId, stripe_price_id: monthlyId,
-    setup_amount_cents: setupPrice.unit_amount, monthly_amount_cents: monthlyPrice.unit_amount,
-  };
-  if (existing) {
-    // An unpaid attempt, or a subscription that has ended: start again from a clean row.
-    const reset = {
-      status: 'incomplete', stripe_subscription_id: null, stripe_setup_payment_intent_id: null, setup_paid_at: null,
-      trial_start: null, trial_end: null, current_period_start: null, current_period_end: null, billing_cycle_anchor: null,
-      commitment_start: null, commitment_end: null, cancel_at_period_end: false, cancel_at: null, canceled_at: null,
-      cancel_requested_at: null, latest_invoice_status: null, billing_mode: 'monthly', prepaid_purchase_id: null,
-    };
-    const { error } = await admin.from('subscriptions').update({ ...row, ...reset }).eq('merchant_id', merchantId);
-    if (error) throw new Error('db_subscriptions');
-  } else {
-    const { error } = await admin.from('subscriptions').insert({ ...row, status: 'incomplete' });
-    if (error) throw new Error('db_subscriptions');
-  }
+  },{idempotencyKey:`dpa-initial-checkout-${claim.id}`});
+  const {error:attachError}=await admin.from('merchant_initial_checkouts').update({stripe_session_id:session.id}).eq('id',claim.id);
+  if(attachError)throw new Error('db_checkout_claim');
+  const {error:subscriptionAttachError}=await admin.from('subscriptions').update({stripe_checkout_session_id:session.id}).eq('merchant_id',merchantId).eq('status','incomplete').is('stripe_subscription_id',null);
+  if(subscriptionAttachError)throw new Error('db_subscriptions');
   return json(req, 200, { url: session.url });
 }
 
@@ -508,6 +606,16 @@ async function summary(req: Request): Promise<Response> {
   const row = await rowOf(merchantId);
   const out: Record<string, unknown> = { subscription: row, payment_method: null, invoices: [], upcoming: null,
     prepaid: row?.billing_mode === 'prepaid' ? await prepaidOf(merchantId, row.prepaid_purchase_id) : null };
+  const {data:merchant}=await admin.from('merchants').select('billing_account_id').eq('id',merchantId).single();
+  const {data:activations,error:activationError}=await admin.from('merchant_activations').select('merchant_id').eq('account_id',merchant?.billing_account_id);
+  if(activationError)throw new Error('db_profiles');
+  out.commerce_count=activations?.length||0;
+  const {data:additions,error:additionError}=await admin.from('merchant_profile_operations').select('ordinal,activation_cents,quote,confirmed_at')
+    .eq('account_id',merchant?.billing_account_id).eq('status','complete').order('confirmed_at',{ascending:false});
+  if(additionError)throw new Error('db_profiles');
+  out.profile_additions=additions;
+  out.prepaid_additions_cents=(additions||[]).filter(x=>x.quote.billing_mode==='prepaid'&&x.quote.prepaid_purchase_id===row?.prepaid_purchase_id)
+    .reduce((total,x)=>total+x.quote.immediate_cents,0);
   if (stripe && row?.stripe_customer_id) {
     try {
       const customer = await stripe.customers.retrieve(row.stripe_customer_id, { expand: ['invoice_settings.default_payment_method'] }) as Stripe.Customer;
@@ -568,7 +676,7 @@ async function customerFor(s: Stripe, merchantId: string, email?: string | null,
 }
 
 async function designCheckout(req: Request): Promise<Response> {
-  const { user, merchantId } = await member(req);
+  const { user, merchantId } = await member(req,true,false);
   // A director-granted manual entitlement also permits ordering the independent
   // paid custom design. It does NOT waive the 29,90 € Stripe design charge.
   const {data:hasAccess,error:accessError}=await admin.rpc('merchant_has_access',{p_merchant:merchantId});
@@ -615,7 +723,7 @@ async function designCheckout(req: Request): Promise<Response> {
 // be paid; one paid in the meantime becomes an order instead. A paid request (submitted,
 // in_progress, delivered) is never touched here, and the subscription is not involved.
 async function designCancel(req: Request): Promise<Response> {
-  const { merchantId } = await member(req);
+  const { merchantId } = await member(req,true,false);
   const body = await req.json().catch(() => ({}));
   const id = String(body?.design_request_id ?? '');
   if (!UUID.test(id)) throw new HttpError(400, 'invalid_request');
@@ -712,7 +820,7 @@ async function confirmDesign(session: Stripe.Checkout.Session) {
 
 async function designVerify(req: Request): Promise<Response> {
   const s = requireStripe();
-  const { merchantId } = await member(req, false);
+  const { merchantId } = await member(req, false,false);
   const body = await req.json().catch(() => ({}));
   const id = String(body?.session_id ?? '');
   if (!/^cs_(test|live)_[A-Za-z0-9]+$/.test(id)) throw new HttpError(400, 'invalid_session');
@@ -742,6 +850,10 @@ async function webhook(req: Request): Promise<Response> {
     case 'checkout.session.async_payment_failed':
     case 'checkout.session.expired': {
       const session = event.data.object as Stripe.Checkout.Session;
+      if(session.metadata?.type==='merchant_profile'){
+        if(event.type==='checkout.session.completed'||event.type==='checkout.session.async_payment_succeeded')await profiles.confirm(await s.checkout.sessions.retrieve(session.id));
+        break;
+      }
       if (session.metadata?.billing_mode === 'prepaid') {
         // Paid / processing / expired: read again from Stripe (never from the event alone).
         if (event.type === 'checkout.session.async_payment_failed') {
@@ -752,7 +864,7 @@ async function webhook(req: Request): Promise<Response> {
       }
       if (event.type === 'checkout.session.async_payment_failed' || event.type === 'checkout.session.expired') break;
       if (session.metadata?.type === 'custom_design') await confirmDesign(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
-      else if (session.mode === 'payment' && session.metadata?.merchant_id && session.metadata?.plan_type) await ensureSubscription(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent'] }));
+      else if (['payment','setup'].includes(session.mode) && session.metadata?.merchant_id && session.metadata?.plan_type) await ensureSubscription(await s.checkout.sessions.retrieve(session.id, { expand: ['payment_intent','setup_intent'] }));
       break;
     }
     case 'customer.subscription.created':
@@ -801,11 +913,17 @@ async function webhook(req: Request): Promise<Response> {
   return new Response(JSON.stringify({ received: true }), { status: 200, headers: { 'content-type': 'application/json' } });
 }
 
+const profiles=profileBilling({admin,requireStripe,member,priceIds,rowOf,syncSubscription,HttpError,json,siteOrigin});
 Deno.serve(async (req) => {
   const path = new URL(req.url).pathname;
   try {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
     if (req.method === 'POST' && path.endsWith('/webhook')) return await webhook(req);
+    if (req.method === 'POST' && path.endsWith('/initial-quote')) return await initialQuote(req);
+    if (req.method === 'POST' && path.endsWith('/profile-quote')) return await profiles.quote(req);
+    if (req.method === 'POST' && path.endsWith('/profile-accept')) return await profiles.accept(req);
+    if (req.method === 'POST' && path.endsWith('/profile-resume')) return await profiles.resume(req);
+    if (req.method === 'POST' && path.endsWith('/profile-cancel')) return await profiles.cancel(req);
     if (req.method === 'POST' && path.endsWith('/checkout')) return await checkout(req);
     if (req.method === 'POST' && path.endsWith('/verify')) return await verify(req);
     if (req.method === 'POST' && path.endsWith('/summary')) return await summary(req);

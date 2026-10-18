@@ -1,0 +1,50 @@
+name: Validate unsigned iPhone merchant profiles
+
+# Validation only: no certificate, no StoreKit sale, no App Store upload.
+on:
+  push:
+    branches: [feat/merchant-profiles]
+    paths:
+      - index.html
+      - src/**
+      - package.json
+      - package-lock.json
+      - capacitor.config.json
+      - .github/workflows/ios-profile-simulator.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-profiles:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Validate source and build merchant UI
+        run: |
+          npm ci
+          npm run test:profiles
+          npm run build
+      - name: Generate Capacitor iOS project
+        run: |
+          npm install --no-save --package-lock=false @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8 @capacitor/app@8
+          npx cap add ios
+          npx cap sync ios
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string DPA Cards utilise la caméra pour scanner les QR codes des cartes de fidélité." ios/App/App/Info.plist
+      - name: Build unsigned iOS Simulator app
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+      - name: Save generated project for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dpa-profiles-ios-xcode-project
+          path: ios/
+          retention-days: 7
+          if-no-files-found: warn
