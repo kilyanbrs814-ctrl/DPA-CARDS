@@ -116,6 +116,53 @@ $;
 revoke all on function app_private.apple_wallet_retry_due() from public,anon,authenticated;
 select cron.schedule('apple-pass-retry','*/5 * * * *',$select app_private.apple_wallet_retry_due()$);
 
+-- Merchants only receive the card IDs of their own confirmed Apple Wallet
+-- registrations. No APNs token or device-library identifier is disclosed.
+create function public.apple_wallet_registered_cards(p_merchant uuid)
+returns table(card_id uuid)
+language sql stable security definer set search_path='' as $
+  select distinct r.card_id
+  from public.apple_wallet_registrations r
+  join public.cards c on c.id=r.card_id
+  where c.merchant_id=p_merchant and
+    exists(select 1 from public.merchant_members m
+      where m.merchant_id=c.merchant_id and m.user_id=auth.uid())
+$;
+revoke all on function public.apple_wallet_registered_cards(uuid) from public,anon,authenticated;
+grant execute on function public.apple_wallet_registered_cards(uuid) to authenticated;
+
+-- Service-only dispatcher; caller must have already validated merchant,
+-- subscription and audience. A queued push is not a delivered notification.
+create function public.apple_wallet_queue_notice(p_card uuid,p_message text)
+returns boolean language plpgsql security invoker set search_path='' as $
+begin
+  if not exists(select 1 from public.apple_wallet_registrations where card_id=p_card)
+    then return false; end if;
+  if char_length(btrim(p_message))<1 or char_length(p_message)>200 then
+    raise exception 'invalid_message'; end if;
+  perform app_private.apple_wallet_bump(p_card,p_message);
+  perform app_private.apple_wallet_kick();
+  return true;
+end;
+$;
+revoke all on function public.apple_wallet_queue_notice(uuid,text) from public,anon,authenticated;
+grant execute on function public.apple_wallet_queue_notice(uuid,text) to service_role;
+
+-- Existing Google campaigns are untouched. New campaigns may target Apple
+-- devices, Google passes, or both. Delivery counters are platform-specific.
+alter table public.notifications drop constraint notifications_platform_check;
+alter table public.notifications add constraint notifications_platform_check check(platform in ('apple','google','both'));
+alter table public.notifications add column apple_queued_count integer not null default 0;
+alter table public.notifications add column google_sent_count integer not null default 0;
+alter table public.notification_deliveries drop constraint notification_deliveries_platform_check;
+alter table public.notification_deliveries add constraint notification_deliveries_platform_check check(platform in ('apple','google'));
+alter table public.notification_deliveries drop constraint notification_deliveries_status_check;
+alter table public.notification_deliveries add constraint notification_deliveries_status_check check(status in ('sent','queued','failed','quota_exceeded','no_wallet'));
+alter table public.notification_deliveries drop constraint notification_deliveries_pkey;
+alter table public.notification_deliveries add primary key(notification_id,card_id,platform);
+grant insert(merchant_id,title,body,kind,audience,card_ids,notify,platform) on public.notifications to authenticated;
+grant update(title,body,kind,audience,card_ids,notify,platform) on public.notifications to authenticated;
+
 -- Existing signed passes (prior to this feature) are not claimed as installed.
 -- Once re-added, the PassKit registration endpoint stores a real device token.
 commit;
