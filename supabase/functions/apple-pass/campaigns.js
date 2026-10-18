@@ -1,8 +1,10 @@
 // Merchant campaign dispatch for confirmed Apple Wallet installations.
 // HTTP POST /apple-pass/notify is authenticated with the merchant's Supabase JWT.
 // Queueing an APNs update is not proof it appeared on the customer's device.
-const ORIGIN='https://cards.digitalprojectagency.fr';
-const opts=req=>({origin:req.headers.get('origin')===ORIGIN?ORIGIN:'null',
+// The merchant dashboard runs both in the Cloudflare site and the signed
+// Capacitor iPhone companion; never permit arbitrary origins.
+const ALLOWED_ORIGINS=new Set(['https://cards.digitalprojectagency.fr','capacitor://localhost']);
+const opts=req=>({origin:ALLOWED_ORIGINS.has(req.headers.get('origin'))?req.headers.get('origin'):'null',
   headers:'authorization, apikey, content-type, x-client-info, x-merchant-id',
   methods:'POST, OPTIONS'});
 const cors=req=>{
