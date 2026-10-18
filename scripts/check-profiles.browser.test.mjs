@@ -35,3 +35,42 @@ test('web profiles: header, selector, always-visible addition, new onboarding an
   assert.deepEqual(errors,[]);
  }finally{await browser.close();await server.close();}
 });
+
+
+test('native iPhone profile selector is visible; unconfigured Apple purchases never open Stripe',async()=>{
+ const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=server.resolvedUrls.local[0];
+ const browser=await chromium.launch({headless:true});
+ try{
+  const page=await browser.newPage({viewport:{width:393,height:852}});
+  await page.route(url,async route=>{
+   const response=await route.fetch();let body=await response.text();
+   assert.ok(body.includes("const DPA_NATIVE_IOS=window.location.protocol==='capacitor:';"));
+   body=body.replace("const DPA_NATIVE_IOS=window.location.protocol==='capacitor:';","const DPA_NATIVE_IOS=true;");
+   body=body.replace('componentDidMount(){','componentDidMount(){window.__testApp=this;');
+   await route.fulfill({response,body});
+  });
+  await page.goto(url);await page.waitForFunction(()=>window.__testApp);
+  await page.evaluate(async()=>{
+   const a=window.__testApp;
+   a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),
+    switchProfile:id=>{window.__nativeSelected=id;},
+    billing:{profileQuote:async()=>{window.__stripeQuoteCalled=true;throw Error('unexpected Stripe quote');},
+     profileAccept:async()=>{window.__stripePaymentCalled=true;throw Error('unexpected Stripe purchase');}}};
+   a.enterDemo();a.setState({live:true,demo:false,role:'owner',hasAccess:true,billingMerchantId:'primary',
+    merchant:{...a.state.merchant,id:'primary',business:'Premier commerce'},
+    profiles:[{id:'primary',name:'Premier commerce',role:'owner'},{id:'second',name:'Deuxième commerce',role:'owner'}]});
+  });
+  await page.getByRole('button',{name:'Changer de profil',exact:true}).click();
+  const dialog=page.getByRole('dialog');
+  await dialog.getByRole('button',{name:'Deuxième commerce',exact:true}).click();
+  assert.equal(await page.evaluate(()=>window.__nativeSelected),'second');
+  await dialog.getByRole('button',{name:'Ajouter un profil',exact:true}).click();
+  assert.equal(await page.evaluate(()=>window.__testApp.state.screen),'ob');
+  await page.evaluate(()=>{const a=window.__testApp;a.setState({screen:'home',
+   merchant:{...a.state.merchant,id:'second',business:'Deuxième commerce'},
+   program:{...a.state.program,designStatus:'validated'},hasAccess:false,addingProfile:null});});
+  await page.getByRole('button',{name:'Activer ce commerce',exact:true}).click();
+  await dialog.getByText(/Achats intégrés Apple non configurés/).waitFor();
+  assert.equal(await page.evaluate(()=>!!window.__stripeQuoteCalled||!!window.__stripePaymentCalled),false);
+ }finally{await browser.close();await server.close();}
+});
