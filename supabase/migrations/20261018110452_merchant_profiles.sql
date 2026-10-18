@@ -80,8 +80,9 @@ end; $$;
 revoke all on function app_private.attach_billing_account() from public,anon,authenticated;
 create trigger merchants_billing_account before insert on public.merchants for each row execute function app_private.attach_billing_account();
 
--- Explicit per-request context; stale native/web clients with exactly one
--- membership still work. Ambiguous requests never pick an arbitrary commerce.
+-- Explicit per-request context; owners on older native builds without the
+-- header continue on their original merchant. Ambiguous unrelated memberships
+-- remain rejected. New builds send the selected merchant explicitly.
 create function app_private.selected_merchant(p_owner boolean default false) returns uuid
 language plpgsql stable security invoker set search_path='' as $$
 declare requested text; selected uuid; n integer;
@@ -93,7 +94,17 @@ begin
  else
   select count(*),(array_agg(mm.merchant_id))[1] into n,selected from public.merchant_members mm
   where mm.user_id=(select auth.uid()) and (not p_owner or mm.role='owner');
-  if n>1 then raise exception 'profile_required' using errcode='42501'; end if;
+  if n>1 then
+   -- Legacy iOS builds do not send x-merchant-id. Retain their original
+   -- commerce when this user owns the account; never select a new draft.
+   -- Modern clients must still send the selected profile explicitly.
+   select mm.merchant_id into selected
+   from public.merchant_billing_accounts ba
+   join public.merchant_members mm on mm.merchant_id=ba.primary_merchant_id
+   where ba.owner_id=(select auth.uid()) and mm.user_id=(select auth.uid())
+    and (not p_owner or mm.role='owner');
+   if selected is null then raise exception 'profile_required' using errcode='42501'; end if;
+  end if;
  end if;
  if selected is null then raise exception 'forbidden' using errcode='42501'; end if;
  return selected;
