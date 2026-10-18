@@ -2400,7 +2400,7 @@ class Component extends DCLogic {
       api.setRemember(this.state.remember);
       try{ const {data,error}=await api.signIn(em.trim(),pw); if(error) return this.setState({busy:false,err:api.authErrors(error,'login')}); await this.openLive(data.session); }
       catch(e){ this.setState({busy:false,err:api.authErrors(e,'login')}); } }); };
-  signup=e=>{ e&&e.preventDefault(); const f=this.state.f;
+  signup=e=>{ e&&e.preventDefault(); if(DPA_NATIVE_IOS)return; const f=this.state.f;
     if(!this.validate([['suBiz',f.suBiz.trim(),'Indiquez le nom de votre commerce.'],['suFirst',f.suFirst.trim(),'Indiquez votre prénom.'],['suLast',f.suLast.trim(),'Indiquez votre nom.'],['suEmail',EMAIL.test(f.suEmail),f.suEmail?"Cette adresse e-mail n'est pas valide.":'Saisissez votre adresse e-mail.'],['suPwd',f.suPwd.length>=8,'Le mot de passe doit contenir au moins 8 caractères.']])) return;
     this.setState({busy:true,err:{}});
     this.ready().then(async api=>{ if(!api) return this.noBackend('suEmail');
@@ -2513,7 +2513,7 @@ class Component extends DCLogic {
     catch(e){ this.settleReq('design',e); this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
   clearDesignUrl(){ try{ history.replaceState(null,'','/'); }catch(e){} }
   // Back from Stripe: the server checks the session with Stripe before the request becomes an order.
-  async verifyDesign(){ const id=new URLSearchParams(window.location.search).get('session_id');
+  async verifyDesign(){ if(DPA_NATIVE_IOS)return; const id=new URLSearchParams(window.location.search).get('session_id');
     if(!id){ this.clearDesignUrl(); return this.setState({designVerify:{st:'error',msg:'Session de paiement introuvable.'}}); }
     for(let i=0;i<8;i++){
       try{ const r=await this.api.billing.designVerify(id);
@@ -2694,7 +2694,7 @@ class Component extends DCLogic {
   async refreshSub(){ try{ const [sub,a]=await Promise.all([this.api.billing.refresh(this.state.merchant.id),this.api.access()]); this.setState({subscription:sub,hasAccess:a.has_access===true,accessSource:a.source||'none',manualExpiresAt:a.manual_expires_at||null}); return sub; }catch(e){ return this.state.subscription; } }
   clearSubUrl(){ try{ history.replaceState(null,'','/'); }catch(e){} }
   // Back from Stripe: the page never trusts the URL; the server asks Stripe whether the session is paid.
-  async verifySub(){ const id=new URLSearchParams(window.location.search).get('session_id');
+  async verifySub(){ if(DPA_NATIVE_IOS)return; const id=new URLSearchParams(window.location.search).get('session_id');
     if(!id){ this.clearSubUrl(); return this.go('billing'); }
     this.setState({screen:'subSuccess',subVerify:{st:'loading'}});
     for(let i=0;i<8;i++){
@@ -2712,14 +2712,14 @@ class Component extends DCLogic {
   loadBillingSummary=async()=>{ if(!this.api) return; this.setState({billSum:{loading:true}});
     try{ const r=await this.api.billing.summary(); this.setState(x=>({billSum:{loading:false,...r},subscription:r.subscription||x.subscription})); }
     catch(e){ this.setState({billSum:{loading:false,error:this.api.errorMessage(e)}}); } };
-  openPortal=async()=>{ if(this.state.busy) return; this.setState({busy:true});
+  openPortal=async()=>{ if(DPA_NATIVE_IOS||this.state.busy) return; this.setState({busy:true});
     try{ const r=await this.api.billing.portal(); window.location.assign(r.url); }
     catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } };
   // During a 12-month commitment nothing is cancelled: the server records the request and answers with the end date.
-  askCancelSub=()=>{ const sub=this.state.subscription;
+  askCancelSub=()=>{ if(DPA_NATIVE_IOS)return; const sub=this.state.subscription;
     if(sub&&sub.plan_type==='commitment'&&sub.commitment_end&&new Date(sub.commitment_end)>new Date()) return this.cancelSub();
     this.setState({modal:'cancelSub'}); };
-  cancelSub=async()=>{ if(this.state.busy) return; this.setState({busy:true,billMsg:null});
+  cancelSub=async()=>{ if(DPA_NATIVE_IOS||this.state.busy) return; this.setState({busy:true,billMsg:null});
     try{ const r=await this.api.billing.cancel(); this.setState({busy:false,modal:null,subscription:r.subscription});
       this.showToast('Résiliation enregistrée : votre abonnement prendra fin le '+fmtFull(r.subscription&&r.subscription.current_period_end)+'.'); this.loadBillingSummary(); }
     catch(e){ this.setState({busy:false,modal:null});
