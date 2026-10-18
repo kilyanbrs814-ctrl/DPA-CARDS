@@ -631,6 +631,8 @@ export function makeCardDesigner(React, api) {
     const [testName, setTestName] = useState('');
     const [tests, setTests] = useState(null);
     const [askDelete, setAskDelete] = useState(null);
+    const [assignTest, setAssignTest] = useState(null);
+    const [assignTarget, setAssignTarget] = useState('');
     const [rewardPickerOpen, setRewardPickerOpen] = useState(false);
     const key = target ? (target.testId ? 't:' + target.testId : target.requestId ? 'r:' + target.requestId : target.merchantId ? 'm:' + target.merchantId : '') : '';
     useEffect(loadFonts, []);
@@ -804,7 +806,37 @@ export function makeCardDesigner(React, api) {
       catch (e) { setAskAccess(false); const d = e && e.info && e.info.detail; toast(e && e.code === 'access_email_failed' ? 'Envoi impossible : ' + (ACCESS_ERR[d] || d || 'erreur du service e-mail') : errText(e)); }
       finally { setBusy(null); }
     };
-    const onCreated = r => { setAdding(false); setCreated(r); setProject(null); setDesign(null); onTarget({ merchantId: r.merchant.id, requestId: null }); if (onMerchantsChanged) onMerchantsChanged(); };
+    const onCreated = async r => {
+      setAdding(false); setCreated(r);
+      if (assignTest) {
+        setBusy('assign');
+        try {
+          await api.testAssign(assignTest, r.merchant.id);
+          toast('Compte créé et design de démonstration attribué au commerce.');
+        } catch (e) {
+          toast('Compte créé, mais la carte n’a pas été attribuée. Rouvrez la carte test pour réessayer.');
+        } finally { setBusy(null); setAssignTest(null); setAssignTarget(''); }
+      }
+      setProject(null); setDesign(null);
+      onTarget({ merchantId: r.merchant.id, requestId: null });
+      if (onMerchantsChanged) onMerchantsChanged();
+    };
+    const assignExisting = async () => {
+      if (busy || !assignTest || !assignTarget) return;
+      if (dirty) return toast('Enregistrez la carte test avant son attribution.');
+      const targetMerchant = merchants.find(m => m.id === assignTarget);
+      if (!targetMerchant || !targetMerchant.program) return toast('Choisissez un commerce avec programme de fidélité.');
+      if (!window.confirm('Appliquer le design de cette carte test à « ' + targetMerchant.name + ' » ? Son design actuel sera remplacé. Les tampons test et le QR de démonstration ne seront jamais transférés.')) return;
+      setBusy('assign');
+      try {
+        const r = await api.testAssign(assignTest, assignTarget);
+        setAssignTest(null); setAssignTarget('');
+        onTarget({ merchantId: r.merchant_id, requestId: null });
+        toast(r.google?.status==='error'?'Design attribué. Synchronisation Google Wallet à réessayer.':'Design attribué au commerce.');
+        if (onMerchantsChanged) onMerchantsChanged();
+      } catch (e) { toast(errText(e)); }
+      finally { setBusy(null); }
+    };
 
     const desk = width >= 1024, two = width >= 900;
     const list = created && !merchants.some(m => m.id === created.merchant.id) ? [...merchants, { id: created.merchant.id, name: created.merchant.business_name, program: true }] : merchants;
@@ -893,6 +925,9 @@ export function makeCardDesigner(React, api) {
       h('div', { style: { fontWeight: 800, fontSize: 16 } }, `Progression : ${project.test.progress || 0} / ${pv.goal} passages`),
       h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, smallBtn('Actualiser les passages', refreshTest), smallBtn(busy === 'qr' ? 'Génération…' : 'Générer un nouveau QR', newQr), smallBtn('Dupliquer', () => duplicateTest(project.test.id)),
         smallBtn('Supprimer', () => setAskDelete(project.test), { style: { border: 0, background: 'none', color: '#B42318' } })),
+      h('button', { type: 'button', disabled: !!busy, onClick: () => { setAssignTest(project.test.id); setAssignTarget(''); },
+        'data-assign-test-card': project.test.id, style: { minHeight: 48, padding: '0 18px', border: 0, borderRadius: 12,
+          background: '#2448F0', color: '#FFFFFF', fontWeight: 750, fontSize: 15 } }, 'Attribuer cette carte à un commerce'),
       project.test.google_synced_at ? h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Carte Google Wallet de démonstration mise à jour le ' + fmtDate(project.test.google_synced_at)) : null) : null;
     const params = h('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
       testSection, !isTest && h(Section, { title: 'Projet' },
@@ -1067,6 +1102,24 @@ export function makeCardDesigner(React, api) {
       isTest ? h('div', { role: 'note', 'data-test-mode': true, style: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: '#1A36C4', color: '#FFFFFF' } }, icon('science', 24),
         h('div', null, h('div', { style: { fontWeight: 800, fontSize: 16, letterSpacing: '0.06em' } }, 'MODE TEST'), h('div', { style: { fontSize: 14, opacity: 0.9 } }, 'Carte de démonstration : aucun commerce, aucun compte, aucun client, aucun abonnement.'))) : null,
       actions, deleteDialog,
+      assignTest && isTest && assignTest===project.test.id ? modal([
+        h('h2', { key: 'title', style: { margin: 0, fontSize: 22, fontWeight: 800 } }, 'Attribuer cette carte test'),
+        h('p', { key: 'note', style: { margin: 0, color: '#3E424A', fontSize: 14, lineHeight: 1.5 } },
+          'Le design et ses images sont copiés sur une vraie carte de commerce. Le QR DPA_TEST, les passages fictifs et les cartes Wallet de démonstration restent séparés. Aucun abonnement ni paiement n’est créé automatiquement.'),
+        dirty ? h('p', { key: 'dirty', role: 'alert', style: { color: '#B42318', fontSize: 14 } },
+          'Enregistrez d’abord vos modifications, puis recommencez.') : null,
+        h(Select, { key: 'merchant', label: 'Commerce déjà existant', value: assignTarget,
+          options: [['', 'Sélectionner un commerce…'], ...list.filter(m => m.program).map(m => [m.id, m.name])], onChange: setAssignTarget }),
+        h('button', { key: 'existing', type: 'button', disabled: !!busy || dirty || !assignTarget, onClick: assignExisting,
+          style: { minHeight: 48, border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 750 } },
+          busy==='assign'?'Attribution…':'Attribuer au commerce sélectionné'),
+        h('div', { key: 'separator', style: { textAlign: 'center', color: '#5E636B' } }, 'ou'),
+        h('button', { key: 'create', type: 'button', disabled: !!busy || dirty, onClick: () => { setAdding(true); setAssignTarget(''); },
+          style: { minHeight: 48, border: '1.5px solid #1C1F24', borderRadius: 12, background: '#FFFFFF', fontWeight: 750 } },
+          'Créer un nouveau compte commerçant'),
+        h('button', { key: 'cancel', type: 'button', disabled: !!busy, onClick: () => { setAssignTest(null); setAssignTarget(''); },
+          style: { minHeight: 44, border: 0, background: 'none', color: '#3E424A' } }, 'Annuler')
+      ], () => { if(!busy){ setAssignTest(null); setAssignTarget(''); } }, 'Attribuer une carte test') : null,
       h('div', { style: two ? { display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(380px, 1fr)', gap: 24, alignItems: 'start' } : { display: 'flex', flexDirection: 'column', gap: 18 } },
         two ? params : preview, two ? preview : params),
       isTest ? testsPanel : null,
