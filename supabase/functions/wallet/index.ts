@@ -1688,10 +1688,14 @@ async function adminScanLookup(req: Request): Promise<Response> {
   const {data:latest,error:le}=await admin.from('card_events')
     .select('balance_after').eq('card_id',card.id).order('seq',{ascending:false}).limit(1).maybeSingle();
   if(le)throw new Error('db_admin_scan_balance');
+  // PostgREST relation embeds are inferred as arrays by supabase-js without a
+  // generated schema; resolve either object or one-element array defensively.
+  const relation=(value: any)=>Array.isArray(value)?value[0]:value;
+  const customer=relation(card.customers),merchant=relation(card.merchants),program=relation(card.programs);
   return json(req,200,{kind:'real',card:{
     card_id:card.id,merchant_id:card.merchant_id,number:card.card_number,
-    merchant:card.merchants?.business_name||'Commerce',name:[card.customers?.first_name,card.customers?.last_name].filter(Boolean).join(' ')||'Client',
-    program:card.programs?.name||'Fidélité',goal:card.programs?.goal||10,mode:card.programs?.mode||'passages',reward:card.programs?.reward||'Récompense',
+    merchant:merchant?.business_name||'Commerce',name:[customer?.first_name,customer?.last_name].filter(Boolean).join(' ')||'Client',
+    program:program?.name||'Fidélité',goal:program?.goal||10,mode:program?.mode||'passages',reward:program?.reward||'Récompense',
     progress:latest?.balance_after||0,
   }});
 }
