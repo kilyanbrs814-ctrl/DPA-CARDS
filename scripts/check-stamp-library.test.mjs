@@ -7,9 +7,9 @@ import {compositeEmoji} from '../supabase/functions/apple-pass/emoji-art.js';
 import {makeRealStrip,makeDemoStrip,makeGoogleStampHero} from '../supabase/functions/apple-pass/real-strip.js';
 import {libraryStampId,LIBRARY_STAMP_IDS} from '../supabase/functions/_shared/stamp-library.js';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url));
-test('all 33 catalogue entries are actually shipped as transparent 256px PNGs',async()=>{
-  assert.equal(STAMP_LIBRARY.length,33);
-  assert.equal(new Set(STAMP_LIBRARY.map(x=>x.id)).size,33);
+test('all 39 catalogue entries are actually shipped as transparent 256px PNGs',async()=>{
+  assert.equal(STAMP_LIBRARY.length,39);
+  assert.equal(new Set(STAMP_LIBRARY.map(x=>x.id)).size,39);
   assert.deepEqual(STAMP_LIBRARY.map(x=>x.id),LIBRARY_STAMP_IDS);
   for(const item of STAMP_LIBRARY){
     const pathname='public'+stampImageUrl(item.id);
