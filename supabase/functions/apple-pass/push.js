@@ -38,7 +38,7 @@ async function notifyDevice(token,jwt,client){
     ...(client?{client}:{})
   });
   const reason=response.ok?'':String((await response.json().catch(()=>({}))).reason||'apns_'+response.status);
-  return {ok:response.ok,invalid:['BadDeviceToken','Unregistered','DeviceTokenNotForTopic'].includes(reason),reason};
+  return {ok:response.ok,invalid:['BadDeviceToken','Unregistered'].includes(reason),reason};
 }
 // Only the internal pg_net / pg_cron worker can flush this queue.
 // No customer details or messages are included in APNs: Wallet fetches signed passes.
