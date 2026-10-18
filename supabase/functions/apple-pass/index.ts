@@ -225,8 +225,15 @@ async function createPass(token: string) {
     return createDemoPass(demoLink.test_card_id, keyPem, certPem);
   }
 
+  return createRealPass(link.card_id);
+}
+
+async function createRealPass(cardId: string) {
+  const keyPem = Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM') || '';
+  const certPem = Deno.env.get('APPLE_PASS_CERT_PEM') || '';
+  if (!keyPem || !certPem) throw new SafeError(503, 'apple_wallet_not_configured');
   const { data: card, error: cardError } = await supabase.from('cards')
-    .select('id, merchant_id, customer_id, program_id, card_number, qr_token').eq('id', link.card_id).maybeSingle();
+    .select('id, merchant_id, customer_id, program_id, card_number, qr_token').eq('id', cardId).maybeSingle();
   if (cardError || !card) throw new SafeError(404, 'card_not_found');
   const [access, programResult, merchantResult, customerResult, eventResult] = await Promise.all([
     supabase.rpc('merchant_has_access', { p_merchant: card.merchant_id }),
