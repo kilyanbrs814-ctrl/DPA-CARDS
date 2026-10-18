@@ -8,7 +8,6 @@ import {readFileSync,writeFileSync,mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {pathToFileURL} from 'node:url';
 import {transform} from 'esbuild';
 import {decodePng} from '../supabase/functions/_shared/png.js';
 import {fixture} from './fixtures/png.mjs';
@@ -39,7 +38,7 @@ test('signed demo and real pkpass contain scoped PNGs, native counters and intac
    .replace(/import \{ createClient \} from 'npm:[^']+';/,"const createClient=()=>globalThis.__pngClient;")
    .replace('npm:passkit-generator@3.6.1','passkit-generator');
   writeFileSync(mod,(await transform(code,{loader:'ts',format:'esm'})).code);
-  await import(pathToFileURL(mod.pathname).href+'?test='+Date.now());
+  await import(mod.href+'?test='+Date.now());
   for(const custom of [false,true]){
   customMode=custom;
   for(const nativeName of [false,true]){

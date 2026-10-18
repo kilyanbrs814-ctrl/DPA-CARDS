@@ -229,8 +229,12 @@ répondent `402 subscription_required`. Non concernés : admin, `/join/:slug`, p
 
 | Offre | Mise en place | Abonnement | Engagement |
 |---|---|---|---|
-| `no_commitment` | 49,00 € | 24,90 €/mois | aucun |
-| `commitment` | 29,00 € | 19,90 €/mois | 12 mois |
+| `no_commitment` | 50,00 € (premier commerce) | 20 €/mois par commerce | aucun |
+| `commitment` | 50,00 € (premier commerce) | 20 €/mois par commerce | 12 mois |
+
+Profils de commerces et procédure de déploiement : [docs/merchant-profiles.md](docs/merchant-profiles.md).
+Activations suivantes : 30 €, 25 €, 20 €, puis 15 € chacune à partir du cinquième commerce, sans limite à dix.
+Les anciens abonnements gardent leur prix jusqu’à un ajout explicitement accepté. Les frais d’activation ne sont jamais refacturés pour un commerce déjà activé.
 
 Les montants sont définis à un seul endroit côté serveur (`PRICES` dans `supabase/functions/billing/index.ts`) :
 l’Edge Function retrouve les prix Stripe par `lookup_key` et vérifie leur montant ; un prix absent ou d’un autre

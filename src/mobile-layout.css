@@ -17,3 +17,8 @@ html.dpa-native-ios main{--dpa-main-bottom:96px;--dpa-client-bottom:170px}
 /* Opaque system-area cover: scrolled content must never show behind the clock. */
 html.dpa-native-ios::before{content:"";position:fixed;top:0;left:0;right:0;height:var(--dpa-safe-top);background:#F6F5F1;z-index:35;pointer-events:none}
 html.dpa-native-ios .dpa-mobile-header{background:#F6F5F1!important}
+
+.dpa-profile-controls{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;max-width:1160px;margin:0 auto;padding:16px clamp(16px,4vw,40px);border-bottom:1px solid #E4E1DA}
+.dpa-profile-overlay{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:#1C1F2480;padding:24px}
+.dpa-profile-dialog{display:flex;flex-direction:column;gap:16px;background:#F6F5F1;width:100%;max-width:600px;max-height:calc(100dvh - 48px);overflow:auto;padding:24px;border-radius:22px;box-shadow:0 16px 50px #14161c40}
+@media(max-width:640px){.dpa-profile-controls{padding:12px 16px}.dpa-profile-controls>div{flex:1 1 100%}.dpa-profile-controls>button{flex:1}.dpa-profile-overlay{align-items:flex-end;padding:env(safe-area-inset-top,16px) 0 0}.dpa-profile-dialog{max-height:calc(100dvh - env(safe-area-inset-top,16px));padding:24px 16px calc(24px + env(safe-area-inset-bottom,0px));border-radius:22px 22px 0 0}}

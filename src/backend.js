@@ -1,6 +1,8 @@
 import { registrationPage, registrationPayload } from './registration-page.js';
 import { saveQrToPhotos } from './qr-photo.js';
 import { workspaceIdentity } from './workspace-identity.js';
+import { changeProfile, rememberProfile } from './merchant-profiles.js';
+import { makeProfileControls } from './profile-controls.js';
 import { publicSiteUrl } from './public-site.js';
 import { completePasswordSetup } from './password-setup.js';
 // Supabase access for the DPA Cards logic script.
@@ -53,8 +55,25 @@ const storage = {
 };
 
 const configured = !!(URL_ && KEY);
+let activeMerchantId = null, billingMerchantId = null, profileUser = null, memberships = [];
+const scopedTables = new Set(['programs','customers','cards','card_events','wallet_passes','notifications','design_requests','card_designs']);
+async function profileFetch(input, init = {}) {
+  const url = new URL(typeof input === 'string' ? input : input.url);
+  const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+  if (activeMerchantId && url.origin === new URL(URL_).origin) {
+    headers.set('x-merchant-id', activeMerchantId);
+    const table = url.pathname.replace('/rest/v1/','');
+    // Reads and updates keep their explicit row/card predicate AND the selected
+    // commerce predicate. RLS independently checks membership for all requests.
+    const method=(init.method || 'GET').toUpperCase();
+    if (scopedTables.has(table) && ['GET','HEAD','PATCH','DELETE'].includes(method)) url.searchParams.set('merchant_id',`eq.${activeMerchantId}`);
+    if (table==='merchants' && ['GET','HEAD','PATCH'].includes(method)) url.searchParams.set('id',`eq.${activeMerchantId}`);
+  }
+  return fetch(url, {...init,headers});
+}
 const sb = configured
   ? createClient(URL_, KEY, {
+      global: { fetch: profileFetch },
       auth: { storage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' },
     })
   : null;
@@ -76,6 +95,12 @@ function isNetwork(e) {
 }
 
 const DB_ERRORS = {
+  profile_required: 'Choisissez le commerce à utiliser.',
+  prepaid_rule_required: 'La période annuelle doit être vérifiée avant de calculer votre complément.',
+  quote_changed: 'Votre facturation a changé. Actualisez le récapitulatif avant de confirmer.',
+  quote_expired: 'Ce récapitulatif a expiré. Actualisez-le avant de confirmer.',
+  unsupported_subscription: 'La configuration de cet abonnement nécessite une vérification avant l’ajout.',
+  primary_activation_required: 'Activez votre premier commerce avant d’en ajouter un autre.',
   workspace_members_unavailable: 'Votre compte est connecté, mais son rattachement au commerce n’a pas pu être chargé.',
   workspace_merchant_unavailable: 'Les informations de votre commerce n’ont pas pu être chargées.',
   reward_not_available: 'Le solde ne permet pas encore d’utiliser la récompense.',
@@ -247,8 +272,17 @@ async function fetchAll(table, columns, order) {
 }
 
 async function loadAll(user) {
+  // Identity requests must not be filtered by a previously selected commerce.
+  activeMerchantId = null;
+  profileUser=user;
   const mem = await workspaceIdentity(sb,user);
   if (!mem || !mem.merchants) return { merchant: null };
+  activeMerchantId = mem.merchants.id; profileUser=user; memberships=mem.memberships;
+  const {data:account,error:ae}=await sb.from('merchant_billing_accounts').select('primary_merchant_id').eq('id',mem.merchants.billing_account_id).single();
+  if(ae)throw ae;
+  billingMerchantId=account.primary_merchant_id;
+  const {data:activations,error:ace}=await sb.from('merchant_activations').select('merchant_id').eq('account_id',mem.merchants.billing_account_id);
+  if(ace)throw ace;
   const merchant = toMerchant(mem.merchants, user.email);
 
   const { data: prog, error: pe } = await sb.from('programs').select('*')
@@ -271,13 +305,24 @@ async function loadAll(user) {
     .map(k => ({ ...toClient(k, byCust.get(k.customer_id), byCard.get(k.id) || []), wallet: google.has(k.id) ? 'google' : null }));
   const { data: req } = await sb.from('design_requests').select('*').eq('merchant_id', merchant.id)
     .order('created_at', { ascending: false }).limit(1).maybeSingle();
-  const { data: subscription, error: se } = await sb.from('subscriptions').select('*').eq('merchant_id', merchant.id).maybeSingle();
+  const { data: subscription, error: se } = await sb.from('subscriptions').select('*').eq('merchant_id', billingMerchantId).maybeSingle();
   if (se) throw se;
   // Subscription billing and the merchant's actual entitlement are independent.
   // This endpoint uses the exact server-side predicate used for customer access.
   const access = await invokeFn('wallet/merchant-access', {});
-  return { merchant, program: prog ? toProgram(prog) : null, clients, role: mem.role, designRequest: toRequest(req), notifications, subscription: subscription || null,
+  return { merchant, billingMerchantId,billedCount:activations.length,selectedActivated:activations.some(a=>a.merchant_id===merchant.id), profiles: await listProfiles(), program: prog ? toProgram(prog) : null, clients, role: mem.role, designRequest: toRequest(req), notifications, subscription: subscription || null,
     hasAccess: access.has_access===true, accessSource: access.source||'none', manualExpiresAt: access.manual_expires_at||null };
+}
+
+async function listProfiles() {
+  // The selector reads across authorized profiles deliberately. Use an independent
+  // client without commerce filters; the same auth session and RLS still apply.
+  const {data:{session}}=await sb.auth.getSession();
+  const res=await fetch(`${URL_}/rest/v1/merchants?select=id,business_name,slug,billing_account_id,programs(logo_path)&order=created_at`,
+    {headers:{apikey:KEY,Authorization:`Bearer ${session.access_token}`}});
+  if(!res.ok)throw new Error('workspace_members_unavailable');
+  return (await res.json()).filter(m=>memberships.some(mm=>mm.merchant_id===m.id)).map(m=>({id:m.id,name:m.business_name,
+    logo:assetUrl(m.programs?.find(p=>p.logo_path)?.logo_path),role:memberships.find(mm=>mm.merchant_id===m.id)?.role}));
 }
 
 // ---------------------------------------------------------------- notifications (Google Wallet)
@@ -358,11 +403,16 @@ const api = {
     if(error)throw error;return toProgram(data);
   },
   loadAll,
+  ProfileControls: makeProfileControls(window.React),
+  switchProfile: id => changeProfile(localStorage,window.location,profileUser.id,id,memberships),
   access: () => invokeFn('wallet/merchant-access', {}),
-  async createMerchant({ business, first, last, activity, slug, program }) {
-    const r = await rpc('create_merchant', {
+  async createMerchant({ business, first, last, activity, slug, program, requestId }) {
+    const r = await rpc(requestId ? 'create_profile' : 'create_merchant', {
+      ...(requestId ? {p_request_id:requestId} : {}),
       p_business: business, p_first: first, p_last: last, p_activity: activity, p_slug: slug, p_program: program,
     });
+    activeMerchantId=r.merchant.id;
+    if(profileUser)rememberProfile(localStorage,profileUser.id,r.merchant.id);
     return { merchant: r.merchant, program: toProgram(r.program) };
   },
   // ---- card design (initial creation only; the server locks it once validated)
@@ -556,8 +606,13 @@ const api = {
   // ---- subscription (Stripe). The browser only names a plan; prices, trial and billing
   // dates are decided by the billing Edge Function, and Stripe stays the source of truth.
   billing: {
+    initialQuote: (plan,billing) => invokeFn('billing/initial-quote',{plan,billing}),
+    profileQuote: () => invokeFn('billing/profile-quote', {}),
+    profileAccept: id => invokeFn('billing/profile-accept', {operation_id:id,confirmed:true}),
+    profileResume: () => invokeFn('billing/profile-resume', {}),
+    profileCancel: () => invokeFn('billing/profile-cancel', {}),
     // billing 'prepaid': commitment paid in one go (the server computes the amount from Stripe prices).
-    checkout: (plan, billing) => invokeFn('billing/checkout', billing ? { plan, billing } : { plan }),
+    checkout: (plan, billing, quote) => invokeFn('billing/checkout', {plan,billing:billing||'monthly',quote,confirmed:true}),
     verify: sessionId => invokeFn('billing/verify', { session_id: sessionId }),
     summary: () => invokeFn('billing/summary', {}),
     portal: () => invokeFn('billing/portal', {}),
@@ -568,7 +623,7 @@ const api = {
     // Change of mind before paying: cancels the unpaid request only (refused once paid).
     designCancel: requestId => invokeFn('billing/design-cancel', { design_request_id: requestId }),
     async refresh(merchantId) {
-      const { data, error } = await sb.from('subscriptions').select('*').eq('merchant_id', merchantId).maybeSingle();
+      const { data, error } = await sb.from('subscriptions').select('*').eq('merchant_id', billingMerchantId || merchantId).maybeSingle();
       if (error) throw error;
       return data || null;
     },
