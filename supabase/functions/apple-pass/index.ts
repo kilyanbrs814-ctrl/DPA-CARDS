@@ -281,8 +281,23 @@ async function createRealPass(cardId: string) {
   } catch {
     console.error('apple-pass real strip unavailable');
   }
+  const {data:notice,error:noticeError}=await supabase.from('apple_wallet_changes')
+    .select('message_text,changed_at').eq('card_id',card.id).maybeSingle();
+  if(noticeError)throw new Error('db_apple_changes');
+  const nextJson: any = {
+    ...json, webServiceURL:passServiceUrl(SUPABASE_URL),
+    authenticationToken:await passAuthToken(card.id,keyPem),
+  };
+  if(notice?.message_text && nextJson.storeCard) {
+    nextJson.storeCard = {...nextJson.storeCard,backFields:[
+      ...(nextJson.storeCard.backFields||[]),
+      {key:'notice',label:'MESSAGE DU COMMERCE',
+       value:notice.message_text+' · '+new Date(notice.changed_at).toISOString(),
+       changeMessage:'%@'},
+    ]};
+  }
   const pass = new PKPass({
-    ...assets, 'pass.json': Buffer.from(JSON.stringify(json), 'utf8'),
+    ...assets, 'pass.json': Buffer.from(JSON.stringify(nextJson), 'utf8'),
   }, {
     wwdr: await wwdrCert(),
     signerCert: certPem.replace(/\\n/g, '\n'),
