@@ -47,6 +47,7 @@ jobs:
           npm run build
           npm run test:static
           node --test scripts/check-native-admin-link.test.mjs
+          node --test scripts/check-native-wallet-notifications.test.mjs
           npx cap add ios
           npx cap sync ios
           swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
