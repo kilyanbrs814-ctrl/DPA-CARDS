@@ -1,4 +1,7 @@
 # Achats intégrés iPhone — étude de faisabilité et portes de livraison
+
+> **Décision remplacée le 18 octobre 2026** : les achats intégrés et Stripe dans l'app iPhone sont abandonnés au profit d'un **mode compagnon gratuit réservé aux comptes actifs**. Toute création, activation et facturation reste sur le site. Voir [la politique iOS compagnon](ios-companion-policy.md). Le contenu historique ci-dessous n'est plus un plan de développement actif.
+
 Date : 18 octobre 2026. Cette note complète `docs/merchant-profiles.md` ; **aucun changement de prix ni d'engagement n'est approuvé ici**.
 
 ## État vérifié
