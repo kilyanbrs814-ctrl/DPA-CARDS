@@ -2293,7 +2293,7 @@ class Component extends DCLogic {
         f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
       // The iOS app is a free companion to the existing merchant web service.
       // There is no purchasing, pricing funnel or onboarding checkout in this native app.
-      if(DPA_NATIVE_IOS&&(!d.merchant||!d.program||!d.hasAccess)){
+      if(DPA_NATIVE_IOS&&(!d.merchant||!d.program||!d.hasAccess||d.program.designStatus==='draft')){
         this.setState({...base,screen:'nativeAccess',
           merchant:d.merchant||{...this.state.merchant,business:'DPA Cards'},
           program:d.program||this.state.program,clients:d.clients||[],designReq:d.designRequest||null});
@@ -2311,7 +2311,7 @@ class Component extends DCLogic {
           this.setState({...base,screen:scr,loadingHome:false,merchant:m,sd:{...m},program:p,draft:{...p},clients:d.clients,designReq:d.designRequest});
           if(SUB_RETURN==='success') setTimeout(()=>this.verifySub(),0); }
       }
-      if(DESIGN_RETURN&&d.merchant){ this.setState({screen:DESIGN_RETURN==='success'?'designPaid':'designCancel',designVerify:{st:'loading'}}); if(DESIGN_RETURN==='success') setTimeout(()=>this.verifyDesign(),0); }
+      if(!DPA_NATIVE_IOS&&DESIGN_RETURN&&d.merchant){ this.setState({screen:DESIGN_RETURN==='success'?'designPaid':'designCancel',designVerify:{st:'loading'}}); if(DESIGN_RETURN==='success') setTimeout(()=>this.verifyDesign(),0); }
       this.scrollTop();
     }catch(e){ this._liveUid=null; useCalendar(false); this.setState({busy:false,screen:'workspaceError',workspaceError:api.errorMessage(e),err:{}}); }
     finally{ this._opening=false; }
@@ -2348,14 +2348,19 @@ class Component extends DCLogic {
       const a=await this.api.access();
       if(this.state.live&&this.state.merchant?.id===id){
         this.setState(x=>({hasAccess:a.has_access===true,accessSource:a.source||'none',manualExpiresAt:a.manual_expires_at||null,
-          ...(a.has_access===true&&x.screen==='locked'?{screen:'home',lockKind:null}:{})}));
+          ...(DPA_NATIVE_IOS&&a.has_access!==true?{screen:'nativeAccess',lockKind:null}:(a.has_access===true&&x.screen==='locked'?{screen:'home',lockKind:null}:{}))}));
       }
     }catch(e){/* Keep last verified state; server continues to enforce every paid feature. */}
     finally{this._accessBusy=false;}
   };
   go(screen,extra={}){
-    if(DPA_NATIVE_IOS&&(screen==='billing'||screen==='signup'||screen==='ob'||(screen==='settings'&&extra.section==='billing'))){
-      this.showToast('Cette fonction n’est pas disponible dans l’application iPhone.','info'); return;
+    if(DPA_NATIVE_IOS){
+      // The app is a free companion to previously activated accounts only.
+      if(['billing','signup','signupSent','ob','obDone','designSent','subSuccess','subCancel','designPaid','designCancel'].includes(screen)
+        ||(screen==='settings'&&extra.section==='billing'))
+        screen=this.state.live?(this.state.hasAccess?'home':'nativeAccess'):'login';
+      if(this.state.live&&!this.state.hasAccess&&!['nativeAccess','login','forgot','forgotSent','reset','workspaceError'].includes(screen))
+        screen='nativeAccess';
     }
     // The card/programme editor is desktop-only: on mobile it is never opened.
     if(screen==='card'&&window.innerWidth<1024) screen='home';
@@ -2384,7 +2389,7 @@ class Component extends DCLogic {
       api.setRemember(this.state.remember);
       try{ const {data,error}=await api.signIn(em.trim(),pw); if(error) return this.setState({busy:false,err:api.authErrors(error,'login')}); await this.openLive(data.session); }
       catch(e){ this.setState({busy:false,err:api.authErrors(e,'login')}); } }); };
-  signup=e=>{ e&&e.preventDefault(); const f=this.state.f;
+  signup=e=>{ e&&e.preventDefault(); if(DPA_NATIVE_IOS)return; const f=this.state.f;
     if(!this.validate([['suBiz',f.suBiz.trim(),'Indiquez le nom de votre commerce.'],['suFirst',f.suFirst.trim(),'Indiquez votre prénom.'],['suLast',f.suLast.trim(),'Indiquez votre nom.'],['suEmail',EMAIL.test(f.suEmail),f.suEmail?"Cette adresse e-mail n'est pas valide.":'Saisissez votre adresse e-mail.'],['suPwd',f.suPwd.length>=8,'Le mot de passe doit contenir au moins 8 caractères.']])) return;
     this.setState({busy:true,err:{}});
     this.ready().then(async api=>{ if(!api) return this.noBackend('suEmail');
@@ -2481,7 +2486,7 @@ class Component extends DCLogic {
       this.setState({busy:false,program:d.program,draft:{...d.program},merchant:d.merchant,sd:{...d.merchant},screen:'obDone'}); this.scrollTop();
       if(r&&r.wallet==='retry') this.showToast('Carte validée. Google Wallet sera finalisé lors du premier ajout d’une carte client.','info'); }
     catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
-  async obSubmitRequest(){ const s=this.state, o=s.ob;
+  async obSubmitRequest(){ if(DPA_NATIVE_IOS)return; const s=this.state, o=s.ob;
     if(!this.validate([['drdesc',o.drDesc.trim().length>=10,'Décrivez le résultat attendu (10 caractères minimum).'],['drname',o.drName.trim(),'Indiquez un nom de contact.'],
       ['drcontact',(o.drEmail.trim()&&EMAIL.test(o.drEmail.trim()))||(!o.drEmail.trim()&&o.drPhone.trim().length>=6),o.drEmail.trim()?"Cette adresse e-mail n'est pas valide.":'Indiquez un e-mail ou un téléphone.']])) return;
     this.setState({busy:true});
@@ -2496,7 +2501,7 @@ class Component extends DCLogic {
     catch(e){ this.settleReq('design',e); this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
   clearDesignUrl(){ try{ history.replaceState(null,'','/'); }catch(e){} }
   // Back from Stripe: the server checks the session with Stripe before the request becomes an order.
-  async verifyDesign(){ const id=new URLSearchParams(window.location.search).get('session_id');
+  async verifyDesign(){ if(DPA_NATIVE_IOS)return; const id=new URLSearchParams(window.location.search).get('session_id');
     if(!id){ this.clearDesignUrl(); return this.setState({designVerify:{st:'error',msg:'Session de paiement introuvable.'}}); }
     for(let i=0;i<8;i++){
       try{ const r=await this.api.billing.designVerify(id);
@@ -2506,7 +2511,7 @@ class Component extends DCLogic {
       catch(e){ if(e.code==='forbidden'||e.code==='invalid_session'||i===7){ this.clearDesignUrl(); return this.setState({designVerify:{st:'error',msg:this.api.errorMessage(e)}}); } }
       await new Promise(r=>setTimeout(r,2000)); }
     this.setState({designVerify:{st:'error',msg:'La confirmation prend plus de temps que prévu. Actualisez la page dans un instant.'}}); }
-  resumeDesign=async()=>{ if(this.state.busy) return; this.setState({busy:true});
+  resumeDesign=async()=>{ if(DPA_NATIVE_IOS||this.state.busy) return; this.setState({busy:true});
     try{ const r=await this.api.billing.designCheckout(null); window.location.assign(r.url); }
     catch(e){ this.setState({busy:false}); this.clearDesignUrl();
       if(e.code==='design_already_paid') return this.designContinue();
@@ -2677,7 +2682,7 @@ class Component extends DCLogic {
   async refreshSub(){ try{ const [sub,a]=await Promise.all([this.api.billing.refresh(this.state.merchant.id),this.api.access()]); this.setState({subscription:sub,hasAccess:a.has_access===true,accessSource:a.source||'none',manualExpiresAt:a.manual_expires_at||null}); return sub; }catch(e){ return this.state.subscription; } }
   clearSubUrl(){ try{ history.replaceState(null,'','/'); }catch(e){} }
   // Back from Stripe: the page never trusts the URL; the server asks Stripe whether the session is paid.
-  async verifySub(){ const id=new URLSearchParams(window.location.search).get('session_id');
+  async verifySub(){ if(DPA_NATIVE_IOS)return; const id=new URLSearchParams(window.location.search).get('session_id');
     if(!id){ this.clearSubUrl(); return this.go('billing'); }
     this.setState({screen:'subSuccess',subVerify:{st:'loading'}});
     for(let i=0;i<8;i++){
@@ -2699,10 +2704,10 @@ class Component extends DCLogic {
     try{ const r=await this.api.billing.portal(); window.location.assign(r.url); }
     catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } };
   // During a 12-month commitment nothing is cancelled: the server records the request and answers with the end date.
-  askCancelSub=()=>{ const sub=this.state.subscription;
+  askCancelSub=()=>{ if(DPA_NATIVE_IOS)return; const sub=this.state.subscription;
     if(sub&&sub.plan_type==='commitment'&&sub.commitment_end&&new Date(sub.commitment_end)>new Date()) return this.cancelSub();
     this.setState({modal:'cancelSub'}); };
-  cancelSub=async()=>{ if(this.state.busy) return; this.setState({busy:true,billMsg:null});
+  cancelSub=async()=>{ if(DPA_NATIVE_IOS||this.state.busy) return; this.setState({busy:true,billMsg:null});
     try{ const r=await this.api.billing.cancel(); this.setState({busy:false,modal:null,subscription:r.subscription});
       this.showToast('Résiliation enregistrée : votre abonnement prendra fin le '+fmtFull(r.subscription&&r.subscription.current_period_end)+'.'); this.loadBillingSummary(); }
     catch(e){ this.setState({busy:false,modal:null});
