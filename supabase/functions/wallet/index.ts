@@ -1,7 +1,7 @@
 import { decodePng } from '../_shared/png.js';
 import { selectedMembership } from '../_shared/merchant-context.ts';
 import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
-import { loadRewardStar } from '../_shared/reward-star.js';
+import { loadRewardStamp } from '../_shared/reward-stamp.js';
 // DPA Cards — Google Wallet Edge Function.
 //
 //   POST /wallet/save-link  merchant session → signed "Add to Google Wallet" link for one card
@@ -230,7 +230,7 @@ async function publicStampBoard(req: Request, path: string) {
       if(data && data.size<=2097152)icon=await decodePng(new Uint8Array(await data.arrayBuffer()));
     }
   }
-  const finalStar=await loadRewardStar();
+  const finalStar=await loadRewardStamp(design.stamps?.rewardId);
   let panelArt=null;
   const artwork=design.assets?.googleStrip || (design.google?.reuseAppleStrip!==false ? design.assets?.appleStrip : null);
   const artPath=artwork?.path;
@@ -1226,7 +1226,7 @@ function cleanDesign(raw: any, folder: string) {
     label: str(r.label, 16),
     assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
     stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, savedEmoji(s.emoji) ? 'emoji' : 'library'), libraryId: libraryStampId(s.libraryId), emoji: s.icon==='library' ? '' : savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
-      filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF'), size: int(s.size, 50, 120, 100), spacing: int(s.spacing, 50, 120, 100), inactiveOpacity: int(s.inactiveOpacity, 0, 100, 22) },
+      filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF'), size: int(s.size, 50, 120, 100), spacing: int(s.spacing, 50, 120, 100), inactiveOpacity: int(s.inactiveOpacity, 0, 100, 22), rewardId: libraryStampId(s.rewardId)||'reward-star' },
     apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showStampPanel: r.apple?.showStampPanel !== false, showStamps: r.apple?.showStamps !== false, headerMode: r.apple?.headerMode==='custom'?'custom':'classic', headerArtworkVersion: int(r.apple?.headerArtworkVersion,0,4,0), showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64),
       rewardTextColor: HEX_RE.test(r.apple?.rewardTextColor??'')?String(r.apple.rewardTextColor).toUpperCase():'',
       businessNameFont: pick(r.apple?.businessNameFont,['system','hanken','space','playfair','custom'] as const,'system') },
