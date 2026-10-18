@@ -1644,6 +1644,75 @@ async function adminTestCardDuplicate(req: Request): Promise<Response> {
   if (error) throw new Error('db_test_cards');
   return json(req, 200, { test: testView(data) });
 }
+
+/**
+ * Apply a demo card's ARTWORK to a real merchant program.
+ * Demo QR, demo scans, test Wallet objects and demo balances are never migrated.
+ * Asset copies have their own permanent program paths, so the demo can be deleted later.
+ * Existing merchants require a second explicit overwrite confirmation in the UI.
+ */
+async function adminTestCardAssign(req: Request): Promise<Response> {
+  const user = await requireAdmin(req);
+  const body = await req.json().catch(() => ({}));
+  const t = await testRow(body?.id, user);
+  const merchantId = String(body?.merchant_id ?? '');
+  if (!UUID_RE.test(merchantId) || body?.overwrite !== true) throw new HttpError(422, 'confirmation_required');
+  await assertAdminMerchant(user, merchantId);
+  const { data: programs, error: pe } = await admin.from('programs').select(PROGRAM_SELECT)
+    .eq('merchant_id', merchantId).eq('is_active', true).limit(2);
+  if (pe) throw new Error('db_programs');
+  if (!programs?.length || programs.length !== 1) throw new HttpError(409, 'program_not_found');
+  const program = programs[0];
+  const source = cleanDesign(t.config, testFolder(t.id));
+  const assets: Record<string, any> = { ...source.assets };
+  const copied: string[] = [];
+  let applied = false;
+  try {
+    for (const kind of ASSET_KINDS) {
+      const original = assets[kind]?.path;
+      if (!original) continue;
+      if (!original.startsWith(`${testFolder(t.id)}/`)) throw new HttpError(422, 'invalid_design_asset');
+      const ext = original.split('.').pop();
+      if (!['png', 'jpg', 'ttf', 'otf', 'woff2'].includes(ext ?? '')) throw new HttpError(422, 'invalid_design_asset');
+      const dest = `${merchantId}/${program.id}/designer/${kind}-${crypto.randomUUID()}.${ext}`;
+      const { error } = await admin.storage.from('program-assets').copy(original, dest);
+      if (error) throw new HttpError(409, 'demo_asset_copy_failed');
+      copied.push(dest);
+      assets[kind] = { path: dest };
+    }
+    // The merchant's loyalty conditions prevail over the demo preview.
+    const config = cleanDesign({ ...source, assets, preview: {
+      ...source.preview, mode: program.mode, goal: program.goal, reward: program.reward,
+      progress: 0, available: 0
+    } }, `${merchantId}/${program.id}`);
+    await validateDesignPng(config);
+    const { preview: _preview, ...cardDesign } = config;
+    const now = new Date().toISOString();
+    const patch = {
+      card_design: cardDesign, card_design_validated_at: now,
+      bg: config.colors.primary, accent: config.colors.secondary,
+      logo_path: assets.logo?.path ?? null, hero_path: assets.hero?.path ?? null,
+      design_status: 'validated', design_mode: 'dpa', design_validated_at: now
+    };
+    const { error: ue } = await admin.from('programs').update(patch).eq('id', program.id);
+    if (ue) throw new Error('db_programs');
+    applied = true;
+    const { error: de } = await admin.from('card_designs').upsert({
+      merchant_id: merchantId, program_id: program.id, design_request_id: null,
+      config, status: 'validated', validated_at: now, updated_by: user.id,
+      google_sync_status: 'pending', google_sync_error: null
+    }, { onConflict: 'program_id' });
+    if (de) throw new Error('db_card_designs');
+    const google = await syncDesignToGoogle(program.id);
+    return json(req, 200, { assigned: true, merchant_id: merchantId, program_id: program.id,
+      source_test_id: t.id, google, demo_preserved: true, demo_balance_copied: false });
+  } finally {
+    // Remove only orphan copies. Once the real program points to them, keep them
+    // even if the draft update fails, so live Wallet cards never lose artwork.
+    if (!applied && copied.length) await admin.storage.from('program-assets').remove(copied);
+  }
+}
+
 // Removes the test card, its images and deactivates its Google Wallet demo object. Nothing else is touched.
 async function adminTestCardDelete(req: Request): Promise<Response> {
   const user=await requireAdmin(req);
@@ -1894,6 +1963,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-test-card-upload')) return await adminTestCardUpload(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-duplicate')) return await adminTestCardDuplicate(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-delete')) return await adminTestCardDelete(req);
+    if (req.method === 'POST' && path.endsWith('/admin-test-card-assign')) return await adminTestCardAssign(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-new-qr')) return await adminTestCardNewQr(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-wallet')) return await adminTestCardWallet(req);
     if (req.method === 'POST' && path.endsWith('/admin-test-card-apple')) return await adminTestCardApple(req);
