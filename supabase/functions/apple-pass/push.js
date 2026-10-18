@@ -19,12 +19,23 @@ async function apnsJwt(){
   cached={id,at:now,token};
   return token;
 }
-async function notifyDevice(token,jwt){
+// PassKit docs specify the same pass-type certificate used to sign the pass.
+// Some Edge runtimes disable custom TLS clients; in that case an explicitly
+// configured APNs signing key is attempted and must be confirmed on device.
+function certificateClient(){
+  if(typeof Deno.createHttpClient!=='function')return null;
+  const cert=(Deno.env.get('APPLE_PASS_CERT_PEM')||'').replace(/\\n/g,'\n');
+  const key=(Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM')||'').replace(/\\n/g,'\n');
+  if(!cert.includes('BEGIN CERTIFICATE')||!key.includes('PRIVATE KEY'))return null;
+  try{return Deno.createHttpClient({cert,key})}catch{return null}
+}
+async function notifyDevice(token,jwt,client){
+  const headers={ 'apns-topic':passTypeId,'apns-push-type':'background',
+    'apns-priority':'5','content-type':'application/json' };
+  if(!client)headers.authorization='bearer '+jwt;
   const response=await fetch('https://api.push.apple.com/3/device/'+encodeURIComponent(token),{
-    method:'POST',
-    headers:{authorization:'bearer '+jwt,'apns-topic':passTypeId,'apns-push-type':'background','apns-priority':'5','content-type':'application/json'},
-    body:'{}',
-    signal:AbortSignal.timeout(10000),
+    method:'POST',headers,body:'{}',signal:AbortSignal.timeout(10000),
+    ...(client?{client}:{})
   });
   const reason=response.ok?'':String((await response.json().catch(()=>({}))).reason||'apns_'+response.status);
   return {ok:response.ok,invalid:['BadDeviceToken','Unregistered','DeviceTokenNotForTopic'].includes(reason),reason};
@@ -50,8 +61,9 @@ export async function processPassUpdates(req,{admin}){
     if(de)return respond(503,{error:'database_unavailable'});
     pushTokenByDevice=new Map((devices||[]).map(d=>[d.device_library_id,d.push_token]));
   }
-  const jwt=regs?.length?await apnsJwt():null;
-  if(regs?.length&&!jwt)return respond(503,{error:'apns_key_not_configured'});
+  const client=regs?.length?certificateClient():null;
+  const jwt=regs?.length&&!client?await apnsJwt():null;
+  if(regs?.length&&!jwt&&!client)return respond(503,{error:'apns_transport_not_configured'});
   let processed=0,pushed=0,failed=0;
   // A changed version is acknowledged only if it has not advanced while we sent.
   for(const change of changes){
@@ -60,7 +72,7 @@ export async function processPassUpdates(req,{admin}){
     const unique=[...new Set(own.map(r=>pushTokenByDevice.get(r.device_library_id)).filter(Boolean))];
     for(const token of unique){
       try{
-        const result=await notifyDevice(token,jwt);
+        const result=await notifyDevice(token,jwt,client);
         if(result.ok){pushed++;continue;}
         if(result.invalid){
           // A stale device token cannot continue blocking other registrations.
