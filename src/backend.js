@@ -359,7 +359,8 @@ async function loadNotifications() {
 const notifRow = nf => ({
   title: nf.title.trim(), body: (nf.body || '').trim(), kind: nf.type,
   audience: nf.audience === 'segment' ? nf.segment : nf.audience,
-  card_ids: nf.audience === 'selected' ? nf.ids : [], notify: nf.gNotify !== false, platform: nf.platform || 'google',
+  card_ids: nf.audience === 'selected' ? nf.ids : [], notify: nf.gNotify !== false,
+  platform: ['apple','google','both'].includes(nf.platform) ? nf.platform : 'google', platform: nf.platform || 'google',
 });
 
 // Edge Function call; the server's error code becomes the Error message (mapped by errorMessage).
