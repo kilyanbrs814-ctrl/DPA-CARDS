@@ -1,13 +1,9 @@
 name: Upload signed iOS build to TestFlight
 
-# User-requested one-off signed iOS upload; limit the push trigger to changes to this workflow.
+# Deliberately manual: never uploads an unreviewed build automatically.
 # Only runs after Apple signing materials are configured in GitHub Actions secrets.
 on:
   workflow_dispatch:
-  push:
-    branches: [feat/ios-app-store-preparation]
-    paths:
-      - .github/workflows/ios-testflight.yml
 
 permissions:
   contents: read
