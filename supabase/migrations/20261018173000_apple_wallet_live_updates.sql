@@ -49,12 +49,32 @@ $$;
 revoke all on function app_private.apple_wallet_bump(uuid,text) from public,anon,authenticated;
 grant execute on function app_private.apple_wallet_bump(uuid,text) to service_role;
 
+-- Reuse the existing Vault-based pg_net worker credential. No new shared
+-- secret is stored in SQL or committed to GitHub.
+create function app_private.apple_wallet_kick() returns void
+language plpgsql security definer set search_path='' as $
+declare worker_secret text;
+begin
+  select ds.decrypted_secret into worker_secret from vault.decrypted_secrets ds
+    where ds.name='wallet_worker_secret';
+  if worker_secret is null then return; end if;
+  perform net.http_post(
+    url:='https://fiuffxchvjcghcvfaout.supabase.co/functions/v1/apple-pass/push',
+    headers:=jsonb_build_object('content-type','application/json','x-wallet-worker',worker_secret),
+    body:='{}'::jsonb,timeout_milliseconds:=20000);
+end;
+$;
+revoke all on function app_private.apple_wallet_kick() from public,anon,authenticated;
+
 -- Card ledger is the source of truth. Every visit/redemption/correction
 -- advances the Apple version without changing any Wallet signing/design data.
 create function app_private.apple_wallet_on_event() returns trigger
 language plpgsql security definer set search_path='' as $$
 begin
   perform app_private.apple_wallet_bump(new.card_id,null);
+  if exists(select 1 from public.apple_wallet_registrations where card_id=new.card_id) then
+    perform app_private.apple_wallet_kick();
+  end if;
   return new;
 end;
 $$;
@@ -82,6 +102,19 @@ $$;
 revoke all on function app_private.apple_wallet_on_program() from public,anon,authenticated;
 create trigger programs_apple_wallet_update after update on public.programs
   for each row execute function app_private.apple_wallet_on_program();
+
+create function app_private.apple_wallet_retry_due() returns void
+language plpgsql security definer set search_path='' as $
+begin
+  if exists(select 1 from public.apple_wallet_changes c
+      join public.apple_wallet_registrations r on r.card_id=c.card_id
+      where c.push_pending) then
+    perform app_private.apple_wallet_kick();
+  end if;
+end;
+$;
+revoke all on function app_private.apple_wallet_retry_due() from public,anon,authenticated;
+select cron.schedule('apple-pass-retry','*/5 * * * *',$select app_private.apple_wallet_retry_due()$);
 
 -- Existing signed passes (prior to this feature) are not claimed as installed.
 -- Once re-added, the PassKit registration endpoint stores a real device token.
