@@ -42,13 +42,17 @@ test('migration preserves a legacy commerce; profiles, grants, RLS and serialize
  const b=await make(request);assert.notEqual(b.merchant.id,a);assert.equal((await make(request)).merchant.id,b.merchant.id);
  const c=await make('20000000-0000-0000-0000-000000000002');
  assert.equal((await db.query('select count(*)::int n from public.merchant_activations')).rows[0].n,1);
- // Previous iOS builds cannot transmit a selected merchant: stay on their original commerce.
+ // Legacy iPhone only sees the primary membership and primary business data.
+ assert.deepEqual((await db.query('select merchant_id from public.merchant_members order by created_at')).rows.map(x=>x.merchant_id),[a]);
  assert.equal((await db.query(`select app_private.selected_merchant() id`)).rows[0].id,a);
- await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify({'x-merchant-id':b.merchant.id})]);
+ // A browser opts in to all *its own* memberships; the selected header scopes actions.
+ await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify({'x-dpa-web-profiles':'1','x-merchant-id':b.merchant.id})]);
+ assert.equal((await db.query('select merchant_id from public.merchant_members')).rows.length,3);
  assert.equal((await db.query('select app_private.selected_merchant() id')).rows[0].id,b.merchant.id);
  assert.equal((await db.query('select app_private.merchant_active($1) allowed',[b.merchant.id])).rows[0].allowed,false);
  await assert.rejects(db.query(`insert into public.merchant_activations(merchant_id,account_id,ordinal,amount_cents,source) values($1,$2,2,0,'stripe')`,[b.merchant.id,b.merchant.billing_account_id]),/permission denied/);
  await db.exec(`set request.test_uid='${other}';`);
+ assert.equal((await db.query('select * from public.merchant_members')).rows.length,0);
  assert.equal((await db.query('select * from public.merchants')).rows.length,0);
  await assert.rejects(db.query('select app_private.selected_merchant()'),/forbidden/);
  await db.exec('reset role;set role service_role;');
