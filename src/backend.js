@@ -304,12 +304,17 @@ async function loadAll(user) {
     loadNotifications(),
   ]);
   const google = new Set(passes.map(p => p.card_id));
+  // A signed .pkpass download is not evidence of installation. Only real
+  // device registrations count as Apple Wallet recipients.
+  const {data:registeredApple,error:appleError}=await sb.rpc('apple_wallet_registered_cards',{p_merchant:merchant.id});
+  if(appleError)throw appleError;
+  const apple = new Set((registeredApple||[]).map(p=>p.card_id));
   const byCust = new Map(customers.map(c => [c.id, c]));
   const byCard = new Map();
   for (const e of events) { if (!byCard.has(e.card_id)) byCard.set(e.card_id, []); byCard.get(e.card_id).push(e); }
   const clients = cards
     .filter(k => prog && k.program_id === prog.id && byCust.has(k.customer_id))
-    .map(k => ({ ...toClient(k, byCust.get(k.customer_id), byCard.get(k.id) || []), wallet: google.has(k.id) ? 'google' : null }));
+    .map(k => ({ ...toClient(k, byCust.get(k.customer_id), byCard.get(k.id) || []), wallet: google.has(k.id) ? 'google' : (apple.has(k.id) ? 'apple' : null), wallets:{google:google.has(k.id),apple:apple.has(k.id)} }));
   const { data: req } = await sb.from('design_requests').select('*').eq('merchant_id', merchant.id)
     .order('created_at', { ascending: false }).limit(1).maybeSingle();
   const { data: subscription, error: se } = await sb.from('subscriptions').select('*').eq('merchant_id', billingMerchantId).maybeSingle();
