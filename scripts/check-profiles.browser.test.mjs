@@ -37,7 +37,7 @@ test('web profiles: header, selector, always-visible addition, new onboarding an
 });
 
 
-test('native iPhone: existing paid accounts only, without signup, profile purchase or Stripe CTAs',async()=>{
+test('native iPhone stays single-commerce: no signup, profile selector or Stripe CTAs',async()=>{
  const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=server.resolvedUrls.local[0];
  const browser=await chromium.launch({headless:true});
  try{
@@ -63,13 +63,11 @@ test('native iPhone: existing paid accounts only, without signup, profile purcha
     merchant:{...a.state.merchant,id:'primary',business:'Premier commerce'},
     profiles:[{id:'primary',name:'Premier commerce',role:'owner'},{id:'second',name:'Deuxième commerce',role:'owner'}]});
   });
-  await page.getByRole('button',{name:'Changer de profil',exact:true}).click();
-  const dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'Vos commerces'}).waitFor();
-  assert.equal(await dialog.getByRole('button',{name:'Ajouter un profil',exact:true}).count(),0);
-  assert.equal(await dialog.getByRole('button',{name:'Activer ce commerce',exact:true}).count(),0);
-  await dialog.getByRole('button',{name:'Deuxième commerce',exact:true}).click();
-  assert.equal(await page.evaluate(()=>window.__nativeSelected),'second');
-  await dialog.getByRole('button',{name:'Fermer',exact:true}).click();
+  // Multi-commerce controls are deliberately web-only, even with two memberships.
+  assert.equal(await page.getByRole('button',{name:'Changer de profil',exact:true}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'Ajouter un profil',exact:true}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'Activer ce commerce',exact:true}).count(),0);
+  assert.equal(await page.evaluate(()=>window.__nativeSelected),undefined);
   await page.evaluate(()=>{
    const a=window.__testApp; a.beginAddProfile();a.go('billing');a.choosePlan('no_commitment');
   });
