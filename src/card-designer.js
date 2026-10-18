@@ -638,6 +638,9 @@ export function makeCardDesigner(React, api) {
     const [onsiteOpen, setOnsiteOpen] = useState(false);
     const [onsiteRef, setOnsiteRef] = useState('');
     const [onsiteChecked, setOnsiteChecked] = useState(false);
+    const [salePlan, setSalePlan] = useState('no_commitment');
+    const [saleBilling, setSaleBilling] = useState('monthly');
+    const [saleLink, setSaleLink] = useState('');
     const [rewardPickerOpen, setRewardPickerOpen] = useState(false);
     const key = target ? (target.testId ? 't:' + target.testId : target.requestId ? 'r:' + target.requestId : target.merchantId ? 'm:' + target.merchantId : '') : '';
     useEffect(loadFonts, []);
@@ -811,6 +814,27 @@ export function makeCardDesigner(React, api) {
       catch (e) { setAskAccess(false); const d = e && e.info && e.info.detail; toast(e && e.code === 'access_email_failed' ? 'Envoi impossible : ' + (ACCESS_ERR[d] || d || 'erreur du service e-mail') : errText(e)); }
       finally { setBusy(null); }
     };
+    const createSaleLink = async () => {
+      if(busy || !project?.merchant?.id) return;
+      setBusy('stripe-sale'); setSaleLink('');
+      try {
+        const r=await api.paymentQuote(project.merchant.id,salePlan,saleBilling);
+        const q=r.quote;
+        if(!q) throw new Error('quote_unavailable');
+        const checkout=await api.paymentCheckout(project.merchant.id,salePlan,saleBilling,q);
+        if(!checkout?.url || !/^https:\/\/checkout\.stripe\.com\//.test(checkout.url))throw new Error('invalid_checkout_url');
+        setSaleLink(checkout.url);
+        toast('Lien Stripe prêt : le commerçant choisit carte bancaire ou IBAN directement sur la page sécurisée.');
+      } catch(e) { toast(errText(e)); }
+      finally { setBusy(null); }
+    };
+    const copySaleLink = async () => {
+      if(!saleLink)return;
+      try {
+        await navigator.clipboard.writeText(saleLink);
+        toast('Lien de paiement sécurisé copié.');
+      } catch(e) { toast('Copie impossible : ouvrez le paiement sur cet appareil.'); }
+    };
     const recordOnsite = async () => {
       if (busy || !project?.merchant?.id || !onsiteChecked || onsiteRef.trim().length < 6) return;
       setBusy('onsite');
@@ -962,7 +986,39 @@ export function makeCardDesigner(React, api) {
           acc.can_record_onsite && h('button', { type: 'button', 'data-onsite-activation': true,
             disabled: !!busy, onClick: () => { setOnsiteRef(''); setOnsiteChecked(false); setOnsiteOpen(true); },
             style: { minHeight: 46, border: '1.5px solid #2448F0', borderRadius: 12, background: '#FFFFFF', color: '#2448F0', fontWeight: 750 } },
-            'J’ai encaissé 50 € en sans-contact')),
+            'J’ai encaissé 50 € en sans-contact'),
+          !['active','trialing'].includes(acc.subscription_status) && h('div', {
+            'data-admin-stripe-checkout': true, style: { display: 'flex', flexDirection: 'column', gap: 12,
+              borderTop: '1px solid #E4E1DA', paddingTop: 14 } },
+            h('h3', { style: { margin: 0, fontWeight: 800, fontSize: 16 } }, 'Configurer le paiement avec le commerçant'),
+            h('p', { style: { margin: 0, fontSize: 13, color: '#5E636B', lineHeight: 1.5 } },
+              'Générez un lien Stripe à utiliser en face à face ou à transmettre au commerçant. Stripe demande son consentement et recueille sa carte ou son mandat SEPA.'),
+            h(Select, { label: 'Offre', value: salePlan,
+              options: [['no_commitment','20 €/mois sans engagement'],['commitment','20 €/mois avec engagement de 12 mois']],
+              onChange: v => { setSalePlan(v); if(v==='no_commitment')setSaleBilling('monthly');setSaleLink(''); } }),
+            salePlan==='commitment' && h(Select, { label: 'Règlement de l’engagement', value: saleBilling,
+              options: [['monthly','20 €/mois'],['prepaid','Engagement réglé en une fois']],
+              onChange: v => { setSaleBilling(v); setSaleLink(''); } }),
+            h('p', { style: { margin: 0, fontSize: 14 } },
+              acc.activation ? '50 € d’activation déjà enregistrés : aucune seconde facturation.' :
+                '50 € d’activation seront demandés sur Stripe.'),
+            h('button', { type: 'button', disabled: !!busy, onClick: createSaleLink,
+              style: { minHeight: 46, padding: '0 14px', border: 0, borderRadius: 12,
+                background: '#2448F0', color: '#FFFFFF', fontWeight: 750 } },
+              busy==='stripe-sale'?'Création du paiement sécurisé…':'Créer le lien de paiement sécurisé'),
+            saleLink && h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10,
+              padding: 12, border: '1px solid #D4D1C9', borderRadius: 12 } },
+              h('a', { href: saleLink, target: '_blank', rel: 'noopener noreferrer',
+                style: { minHeight: 46, padding: '12px 14px', display: 'inline-flex',
+                  justifyContent: 'center', alignItems: 'center', background: '#1C1F24',
+                  color: '#FFFFFF', borderRadius: 10, textDecoration: 'none', fontWeight: 700 } },
+                'Ouvrir Stripe avec le commerçant'),
+              h('button', { type: 'button', onClick: copySaleLink,
+                style: { minHeight: 44, border: '1.5px solid #D4D1C9', borderRadius: 10,
+                  background: '#FFFFFF', fontWeight: 700 } }, 'Copier le lien à envoyer au commerçant'),
+              h('p', { style: { margin: 0, color: '#5E636B', fontSize: 12, lineHeight: 1.5 } },
+                'Une validation Stripe peut être immédiate ou différée (SEPA). Le statut du commerçant est mis à jour par les événements Stripe.'))
+          )),
         pg.card_design_validated_at && project.draft && project.draft.google_sync_status ? (() => {
           const g = project.draft, G = { synced: ['Google Wallet à jour' + (g.google_synced_at ? ' (' + fmtDate(g.google_synced_at) + ')' : ''), '#E4F3EB', '#1F6B45'],
             no_class: ['Google Wallet : aucune carte ajoutée pour l’instant, le design sera utilisé à la première', '#EFEDE8', '#3E424A'],
