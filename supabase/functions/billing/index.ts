@@ -94,7 +94,7 @@ async function priceIds(): Promise<Record<PriceName, string>> {
 function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
   return ALLOWED_ORIGINS.includes(origin)
-    ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info, x-merchant-id', 'access-control-allow-methods': 'POST, OPTIONS', vary: 'Origin' }
+    ? { 'access-control-allow-origin': origin, 'access-control-allow-headers': 'authorization, apikey, content-type, x-client-info, x-merchant-id, x-dpa-web-profiles', 'access-control-allow-methods': 'POST, OPTIONS', vary: 'Origin' }
     : {};
 }
 const json = (req: Request, status: number, body: unknown) =>
