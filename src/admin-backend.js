@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { makeCardDesigner } from './card-designer.js';
 import { makeSales } from './sales.js';
+import { makeAdminScanner } from './admin-scanner.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -191,11 +192,17 @@ const salesApi = {
   payout: payload => adminCall('admin-sales-payout', payload),
 };
 let sales = null;
+const scannerApi={
+  lookup: code=>adminCall('admin-scan-lookup',{code}),
+  addTest: (code,expected_progress)=>adminCall('admin-scan-test-add',{code,expected_progress}),
+};
+let scanner = null;
 
 refreshAccess();
 window.__dpaAdminResolve({
   designer: () => designer || (designer = makeCardDesigner(window.React, designerApi)),
   sales: () => sales || (sales = makeSales(window.React, salesApi)),
+  scanner: () => scanner || (scanner = makeAdminScanner(window.React,scannerApi)),
   supabase: sb,
   onAccess(cb) { accessListeners.push(cb); if (app.style.display === 'block') cb(); },
   overview: () => adminCall('admin-overview'),

@@ -1,5 +1,5 @@
 import { decodePng } from '../_shared/png.js';
-import { loadRewardStar } from '../_shared/reward-star.js';
+import { loadRewardStamp } from '../_shared/reward-stamp.js';
 import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 // DPA Cards: creates a signed Apple Wallet pass from one real loyalty card.
 // GET /functions/v1/apple-pass?token=<opaque bearer token>
@@ -162,7 +162,7 @@ async function createDemoPass(testId: string, signerKey: string, signerCert: str
   if(rewardPath && !rewardBytes)throw new SafeError(422,'invalid_reward_label');
   const rewardArt=rewardBytes ? await decodePng(rewardBytes) : null;
   const panelArt=await loadPanelArt(testAsset('appleStrip'));
-  const finalStar=await loadRewardStar();
+  const finalStar=await loadRewardStamp(d.stamps?.rewardId);
   if(rewardArt && (rewardArt.width!==630||rewardArt.height!==52))throw new SafeError(422,'invalid_reward_label');
   // Apple displays its native primary text on top of the strip image. It cannot
   // use the exact HTML layout, but the two-row colored stamps and blue gradient
@@ -272,7 +272,7 @@ async function createRealPass(cardId: string) {
   if(brand.rewardLabel && !rewardBytes)throw new SafeError(422,'invalid_reward_label');
   const rewardArt=rewardBytes ? await decodePng(rewardBytes) : null;
   const panelArt=await loadPanelArt(brand.appleStrip);
-  const finalStar=await loadRewardStar();
+  const finalStar=await loadRewardStamp(brand.stamps?.rewardId);
   if(rewardArt && (rewardArt.width!==630||rewardArt.height!==52))throw new SafeError(422,'invalid_reward_label');
   // Strip is optional: a rendering issue should not prevent a customer from
   // receiving a valid pass containing all native fields and QR code.

@@ -26,6 +26,7 @@ jobs:
       - run: npm run test:apple-updates
       - run: npm run test:apple-strip
       - run: npm run test:emoji
+      - run: node --test scripts/check-reward-and-admin-scanner.test.mjs
       - run: npm run test:png
       - run: npm run test:profiles
       - run: npx playwright install --with-deps chromium
