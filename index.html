@@ -2760,7 +2760,7 @@ class Component extends DCLogic {
     if(full){ if(!nf.body.trim()) err.nbody='Rédigez le texte du message.';
       if(nf.audience==='selected'&&!nf.ids.length) err.nAud='Sélectionnez au moins un client.';
       else if(!t.length) err.nAud=live?'Aucun client ne correspond à ces critères.':'Aucune carte ne correspond à ces critères. Modifiez les destinataires ou le Wallet.';
-      else if(live&&!t.some(c=>c.wallet==='google')) err.nAud='Aucun des clients ciblés n’a ajouté sa carte à Google Wallet.';
+      else if(live&&!t.some(c=>nf.platform==='both'?(c.wallets?.google||c.wallets?.apple):(c.wallets?.[nf.platform]||c.wallet===nf.platform))) err.nAud='Aucun client ciblé ne possède une carte installée sur le Wallet sélectionné.';
       if(live&&nf.timing==='schedule') err.nwhen='La programmation n’est pas encore disponible : choisissez « Envoyer maintenant ».';
       if(nf.timing==='schedule'){ if(!nf.date||!nf.time) err.nwhen='Choisissez une date et une heure.'; else if(nf.date<TODAY||(nf.date===TODAY&&nf.time<=clockNow())) err.nwhen='Choisissez une date et une heure à venir.'; } }
     this.setState({err}); return !Object.keys(err).length; }
