@@ -306,6 +306,9 @@ async function createRealPass(cardId: string) {
   return { pkpass: await pass.getAsBuffer(), cardId: card.id, merchantId: card.merchant_id };
 }
 Deno.serve(async req => {
+  if (new URL(req.url).pathname.includes('/apple-pass/v1/')) {
+    return handlePasskit(req,{admin:supabase,signerKey:Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM')||'',renderPass:createRealPass});
+  }
   if (req.method !== 'GET') return reply(405, 'method_not_allowed');
   try {
     const token = new URL(req.url).searchParams.get('token') || '';
