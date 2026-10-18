@@ -602,7 +602,9 @@ async function verify(req: Request): Promise<Response> {
       access: r.paid && access === true && r.row?.prepaid_purchase_id === r.purchase?.id, subscription: r.row, prepaid: await prepaidOf(merchantId, r.purchase?.id) });
   }
   const r = await ensureSubscription(session);
-  return json(req, 200, { paid: r.paid, status: r.row?.status ?? 'incomplete', access: !!r.row && ACCESS.includes(r.row.status), subscription: r.row });
+  const pending = !r.paid && session.status === 'complete' && session.mode === 'payment' && session.payment_status !== 'paid';
+  return json(req, 200, { paid: r.paid, pending, status: r.row?.status ?? 'incomplete',
+    access: !!r.row && ACCESS.includes(r.row.status), subscription: r.row });
 }
 
 async function summary(req: Request): Promise<Response> {
