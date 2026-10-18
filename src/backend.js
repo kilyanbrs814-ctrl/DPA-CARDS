@@ -341,8 +341,8 @@ function toNotif(r) {
   return {
     id: r.id, status: r.status, type: r.kind, title: r.title, body: r.body,
     audience: SEGMENTS.includes(r.audience) ? 'segment' : r.audience, segment: SEGMENTS.includes(r.audience) ? r.audience : 'reward',
-    ids: r.card_ids || [], platform: 'google', gNotify: r.notify, date: ymd(at), time: hm(at), error: r.error || null,
-    apple: 0, google: r.sent_count, gIds: [],
+    ids: r.card_ids || [], platform: r.platform || 'google', gNotify: r.notify, date: ymd(at), time: hm(at), error: r.error || null,
+    apple: r.apple_queued_count || 0, google: r.google_sent_count || (r.platform === 'google' ? r.sent_count : 0), gIds: [],
     live: { targeted: r.targeted, sent: r.sent_count, failed: r.failed_count, quota: r.quota_count, noWallet: r.no_wallet_count },
   };
 }
@@ -354,7 +354,7 @@ async function loadNotifications() {
 const notifRow = nf => ({
   title: nf.title.trim(), body: (nf.body || '').trim(), kind: nf.type,
   audience: nf.audience === 'segment' ? nf.segment : nf.audience,
-  card_ids: nf.audience === 'selected' ? nf.ids : [], notify: nf.gNotify !== false,
+  card_ids: nf.audience === 'selected' ? nf.ids : [], notify: nf.gNotify !== false, platform: nf.platform || 'google',
 });
 
 // Edge Function call; the server's error code becomes the Error message (mapped by errorMessage).
