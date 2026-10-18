@@ -9,6 +9,7 @@ import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { passAuthToken, passServiceUrl } from './auth.js';
 import { handlePasskit } from './web-service.js';
+import { processPassUpdates } from './push.js';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
 import { realApplePassData, visibleCardNumber, testAssetPath, appleHeaderName } from './real-card.js';
@@ -306,6 +307,9 @@ async function createRealPass(cardId: string) {
   return { pkpass: await pass.getAsBuffer(), cardId: card.id, merchantId: card.merchant_id };
 }
 Deno.serve(async req => {
+  if (new URL(req.url).pathname.endsWith('/apple-pass/push') && req.method === 'POST') {
+    return processPassUpdates(req,{admin:supabase});
+  }
   if (new URL(req.url).pathname.includes('/apple-pass/v1/')) {
     return handlePasskit(req,{admin:supabase,signerKey:Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM')||'',renderPass:createRealPass});
   }
