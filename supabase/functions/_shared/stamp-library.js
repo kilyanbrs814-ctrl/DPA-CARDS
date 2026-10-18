@@ -1,7 +1,7 @@
 // Server-side whitelist: uploaded merchant paths must never be replaced by arbitrary URLs.
 // These PNG assets are versioned with the frontend at cards.digitalprojectagency.fr.
 import { decodePng } from './png.js';
-const IDS = 'pizza baguette glace donut riz-crousty ciseaux fleuriste barber burger the carwash spa vernis patte fitness poulet bubble-tea tacos kebab sushi crepe croissant cafe milkshake cookie maquillage sneaker shopping bijouterie vetements telephonie pneumatique animalerie'.split(' ');
+const IDS = 'pizza baguette glace donut riz-crousty ciseaux fleuriste barber burger the carwash spa vernis patte fitness poulet bubble-tea tacos kebab sushi crepe croissant cafe milkshake cookie maquillage sneaker shopping bijouterie vetements telephonie pneumatique animalerie tacos-2 wok vape cheveux-bruns e-liquide cadeau'.split(' ');
 export const LIBRARY_STAMP_IDS = Object.freeze(IDS);
 const allowed = new Set(IDS);
 export function libraryStampId(value) { return typeof value==='string' && allowed.has(value) ? value : ''; }
