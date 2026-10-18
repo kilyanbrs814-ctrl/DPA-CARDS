@@ -71,10 +71,10 @@ test('migration preserves a legacy commerce; profiles, grants, RLS and serialize
  const third=(await db.query('select to_jsonb(public.profile_quote_begin($1,$2,$3::jsonb)) r',[c.merchant.id,u,JSON.stringify({current_count:2,new_monthly_cents:6000})])).rows[0].r;
  assert.equal(third.ordinal,3);assert.equal(third.activation_cents,2500);
  await db.exec(`reset role;set role authenticated;set request.test_uid='${u}';`);
- await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify({'x-merchant-id':b.merchant.id})]);
+ await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify({'x-dpa-web-profiles':'1','x-merchant-id':b.merchant.id})]);
  const enrolled=(await db.query(`select public.enroll_customer(gen_random_uuid(),'Client B','','',true) r`)).rows[0].r;
  assert.equal(enrolled.card.merchant_id,b.merchant.id);
- await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify({'x-merchant-id':a})]);
+ await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify({'x-dpa-web-profiles':'1','x-merchant-id':a})]);
  assert.equal((await db.query('select * from public.lookup_card($1)',['DPA1:'+enrolled.card.qr_token])).rows.length,0);
  await assert.rejects(db.query(`select public.add_visit($1,gen_random_uuid())`,[enrolled.card.id]),/card_not_found/);
  assert.equal((await db.query('select id from public.programs where id=$1',[program])).rows.length,1);
