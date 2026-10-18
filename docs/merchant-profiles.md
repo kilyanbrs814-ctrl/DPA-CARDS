@@ -1,6 +1,6 @@
 # Profils de commerces — web et backend
 
-Historique : le développement initial du 18 octobre 2026 visait le web et Supabase uniquement. **Le périmètre a ensuite été étendu à l’application iPhone, sans changer les règles commerciales.** Cette documentation décrit le socle Stripe/web existant ; les contraintes Apple, les blocages d’achats croisés et l’état réel des livraisons iOS figurent dans [l’étude StoreKit](apple-in-app-purchase-feasibility.md). L’ajout à une période annuelle prépayée web reste facturé au prorata du temps restant, sans changer sa date de fin ni ajouter de renouvellement automatique.
+**Périmètre décidé : site web uniquement.** L’ajout et l’activation d’un commerce, le changement entre profils, les devis et les paiements restent sur `https://cards.digitalprojectagency.fr`. La version iPhone n’affiche aucun sélecteur multi-commerce, aucun ajout de commerce et aucun paiement. La facturation Stripe existante est inchangée pour un commerce. L’ajout à une période annuelle prépayée reste facturé au prorata du temps restant, sans changer sa date de fin ni ajouter de renouvellement automatique.
 
 ## Architecture vérifiée
 
@@ -10,7 +10,7 @@ Historique : le développement initial du 18 octobre 2026 visait le web et Supab
 - Facturation : fonction `billing` déployée en version 11, Stripe SDK 17.7.0/API 2025-02-24.acacia, Checkout puis abonnement mensuel ; variante annuelle `prepaid_purchases`, sans abonnement Stripe ni renouvellement automatique.
 - Le code déployé de `billing` a été comparé à `main`. La différence antérieure porte sur le paiement du design avec accès manuel ; cette correction de `main` est conservée.
 - Wallet : identifiants, slugs, cartes distribuées et chemins de rendu inchangés. Les appels commerçants reçoivent un contexte explicite validé par le serveur.
-- Les sources historiques compilées par le workflow TestFlight sont sur `feat/ios-app-store-preparation`. Ce workflow garde une référence explicite à cette branche et n’intègre donc pas automatiquement la PR multi-profils. Un workflow **distinct de simulateur non signé**, `.github/workflows/ios-profile-simulator.yml`, valide la préparation iOS de la PR sans publication. L’ancien build iOS utilise `merchant_members.maybeSingle()` et des lectures sans filtre explicite : il peut échouer ou mélanger des données après l’ajout d’un deuxième profil. **Le repli RPC/Edge sur le commerce principal n’est pas une solution complète pour cette version. Le déploiement multi-profils reste bloqué jusqu’à compatibilité réellement vérifiée ou mise à jour imposée des clients concernés.**
+- Les sources historiques compilées par le workflow TestFlight sont sur `feat/ios-app-store-preparation`. Ce workflow garde une référence explicite à cette branche et n’intègre donc pas automatiquement la PR multi-profils. Un workflow **distinct de simulateur non signé**, `.github/workflows/ios-profile-simulator.yml`, valide la préparation iOS de la PR sans publication. L’ancien build iOS utilise `merchant_members.maybeSingle()` et des lectures sans filtre explicite. La migration limite donc les droits SELECT de `merchant_members` au commerce principal **en l’absence du marqueur web `x-dpa-web-profiles: 1`**. Ce filtrage se propage aux lectures métier protégées par membership ; le navigateur web envoie le marqueur, puis `x-merchant-id` pour ses actions. Les RPC et fonctions Edge conservent leur repli sur le commerce principal. **Une validation sur la build iOS réellement distribuée est obligatoire avant la migration production ; le test DB seul ne suffit pas.**
 
 ## Modèle et isolation
 
@@ -87,6 +87,11 @@ Sous Windows, le test de signature utilise OpenSSL fourni avec Git dans `usr/bin
 État de cette livraison : sources, migration et tests préparés ; aucune migration, configuration de prix, fonction ou page du site de production n’a été publiée. Aucun build iOS nécessaire pour cette livraison web. Une éventuelle prise en charge native des comptes multi-profils fera l’objet d’un travail et d’une distribution distincts.
 
 
-## Extension iPhone postérieure à la livraison web
+## Périmètre iPhone
 
-Le sélecteur est rétabli dans le rendu iOS et vérifié par test navigateur simulant la WebView. Aucun abonnement Apple n’est encore achetable : StoreKit natif, produits App Store Connect, serveur de transactions, notifications V2, Sandbox et décision commerciale sur les achats croisés restent à réaliser. La nouvelle CI de simulateur ne publie pas d’IPA. Se reporter à [`apple-in-app-purchase-feasibility.md`](apple-in-app-purchase-feasibility.md) pour le détail et les conditions bloquant toute fusion/déploiement.
+Aucun changement d’application iOS n’est demandé ni livré pour cette fonction. Le site affiche le sélecteur et l’ajout ; l’interface native ne les affiche pas. La migration protège les anciennes requêtes sans sélection explicite de commerce. Avant déploiement du backend, vérifier la compatibilité d’une version iPhone actuellement installée, et pas seulement un simulateur. Les achats restent exclusivement sur le site, conformément à [la politique de l’application compagnon](ios-companion-policy.md).
+
+
+## État des vérifications de production au 18 octobre 2026
+
+La base de production a six commerces et six appartenances au moment du contrôle. Les changements de schéma multi-commerce ne sont pas appliqués. La connexion Stripe accessible aux outils est **en mode test seulement**, sans accès confirmé aux prix et clés live. Déployer `billing` avec les nouveaux endpoints sans pouvoir tester les prix live et le parcours Checkout complet risquerait de rendre les achats indisponibles. **Ne pas fusionner ou activer en production sans staging, vérification du connecteur Stripe live et test de compatibilité iPhone.**
