@@ -2873,7 +2873,7 @@ class Component extends DCLogic {
       const k=pending?nAudMatch(n,clients,goal).length:L.targeted;
       return {id:n.id,title:n.title||'Sans titre',body:n.body,hasBody:!!n.body,noBody:!n.body,stLabel:st[0],stBg:st[1],stFg:st[2],whenLabel:`${WHEN[n.status]||'Le'} : ${fmtDate(n.date)}, ${n.time}`,
         recLabel:pending?`${nAudLabel(n)} · ${plural(k,'client')}`:`${nAudLabel(n)} · ${L.sent} / ${plural(L.targeted,'client')} ${L.sent>1?'touchés':'touché'}`,
-        platLabel:'Google Wallet',platIcon:'account_balance_wallet',typeLabel:TYPE[n.type]||TYPE.message,hasGoogle:true,
+        platLabel:PLAT[n.platform||'google'][0],platIcon:PLAT[n.platform||'google'][1],typeLabel:TYPE[n.type]||TYPE.message,hasGoogle:n.platform!=='apple',
         gNotifyLabel:n.gNotify?'Avec notification':'Sans notification, message ajouté à la carte',
         hasError:bad,error:bad?(nSummary(L)+(n.error?' '+nErrText(n.error):'')):'',open:()=>this.setState({modal:'nDetail',nsel:n.id})}; };
     const lrows=sorted.filter(n=>s.nfilter==='all'||n.status===s.nfilter).map(lview);
@@ -2896,10 +2896,10 @@ class Component extends DCLogic {
       :LR?{ok:false,fail:true,icon:'error',iconBg:'#FCEBEA',iconFg:'#B42318',title:'Aucune notification envoyée',text:nSummary(LR)+(LR.noWallet===LR.targeted?' '+nErrText('no_wallet'):(LR.quotaExceeded&&!LR.failed?' '+nErrText('google_quota_exceeded'):''))}
       :{ok:false,fail:true,icon:'error',iconBg:'#FCEBEA',iconFg:'#B42318',title:'Échec de l’envoi',text:rr.error||nErrText('wallet_unavailable')};
     return {...out, nFilters:lFilters, nRows:lrows, nHasRows:lrows.length>0, nFilterEmpty:notifs.length>0&&lrows.length===0,
-      nAud:laud, nSegs:lsegs, nPickList:lpick, nPickEmpty:lpick.length===0, nPlats:[{label:'Google Wallet',...chip(true),pick:()=>{}}],
-      nCount:{total:lt.length,label:lt.length>1?'clients ciblés':'client ciblé',split:lsplit}, nQuota:{show:false,text:''},
-      nShowApple:false, nShowGoogle:true, nHasTabs:false, nPrevApple:false, nPrevGoogle:true, nTiming:ltiming, nIsSchedule:false, nReviewLabel:'Vérifier et envoyer',
-      nRecap:{...out.nRecap,rec:`${nAudLabel(nf)} · ${plural(lt.length,'client')}`,split:lsplit,plat:'Google Wallet',when:'Maintenant',hasG:true},
+      nAud:laud, nSegs:lsegs, nPickList:lpick, nPickEmpty:lpick.length===0, nPlats:plats,
+      nCount:{total:liveCount,label:liveCount>1?'cartes Wallet ciblées':'carte Wallet ciblée',split:lsplit}, nQuota:quota,
+      nShowApple:showApple, nShowGoogle:showGoogle, nHasTabs:nf.platform==='both', nPrevApple:out.nPrevApple, nPrevGoogle:out.nPrevGoogle, nTiming:ltiming, nIsSchedule:false, nReviewLabel:'Vérifier et envoyer',
+      nRecap:{...out.nRecap,rec:`${nAudLabel(nf)} · ${plural(liveCount,'carte Wallet ciblée')}`,split:lsplit,plat:PLAT[nf.platform][0],when:'Maintenant',hasG:showGoogle},
       nSimLabel:s.busy?'Envoi en cours…':'Envoyer maintenant', nDet:ldet, nActs:lacts, nRes:lres,
       nMod:{...out.nMod,detail:s.modal==='nDetail'&&!!ldet}, nConfirmDelete:()=>this.nDeleteLive(s.nsel) };
   }
