@@ -42,7 +42,8 @@ test('migration preserves a legacy commerce; profiles, grants, RLS and serialize
  const b=await make(request);assert.notEqual(b.merchant.id,a);assert.equal((await make(request)).merchant.id,b.merchant.id);
  const c=await make('20000000-0000-0000-0000-000000000002');
  assert.equal((await db.query('select count(*)::int n from public.merchant_activations')).rows[0].n,1);
- await assert.rejects(db.query(`select app_private.selected_merchant()`),/profile_required/);
+ // Previous iOS builds cannot transmit a selected merchant: stay on their original commerce.
+ assert.equal((await db.query(`select app_private.selected_merchant() id`)).rows[0].id,a);
  await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify({'x-merchant-id':b.merchant.id})]);
  assert.equal((await db.query('select app_private.selected_merchant() id')).rows[0].id,b.merchant.id);
  assert.equal((await db.query('select app_private.merchant_active($1) allowed',[b.merchant.id])).rows[0].allowed,false);
