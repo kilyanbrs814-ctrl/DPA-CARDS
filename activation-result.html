@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Confirmation · DPA Cards</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f7fa;color:#1c1f24;font:16px system-ui,-apple-system,Segoe UI,sans-serif;padding:20px}
+main{width:min(100%,480px);background:white;border:1px solid #e4e1da;border-radius:22px;padding:32px;box-shadow:0 12px 30px #0001}
+strong{font-size:19px}h1{font-size:27px;line-height:1.2;letter-spacing:-.03em}p{line-height:1.6;color:#414652}a{display:inline-flex;justify-content:center;padding:14px 18px;border-radius:12px;background:#2448f0;color:white;text-decoration:none;font-weight:700;margin-top:12px}
+</style>
+</head>
+<body>
+<main>
+<strong>DPA Cards</strong>
+<h1 id="title">Validation de vos coordonnées de paiement</h1>
+<p id="message">Votre démarche a été transmise à Stripe. L’activation de DPA Cards reste soumise à la confirmation du paiement ou du mandat par Stripe. Pour un prélèvement SEPA, cette confirmation peut être différée.</p>
+<p>Vous pouvez fermer cette page et retrouver le responsable DPA Cards pour terminer votre inscription.</p>
+<a href="/">Accéder à DPA Cards</a>
+</main>
+<script>
+if(new URLSearchParams(location.search).get('status')==='cancel'){
+ document.getElementById('title').textContent='Paiement non finalisé';
+ document.getElementById('message').textContent='Vous avez quitté le paiement avant sa confirmation. Aucun nouvel abonnement n’est activé depuis cette page. Vous pouvez reprendre la démarche avec DPA Cards.';
+}
+</script>
+</body>
+</html>
