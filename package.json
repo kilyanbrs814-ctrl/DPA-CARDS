@@ -16,14 +16,17 @@
     "test:png-ui": "playwright test",
     "test:profiles": "node --test scripts/check-profile-pricing.test.mjs scripts/check-profile-migration.test.mjs scripts/check-profile-billing.test.mjs scripts/check-registration.test.mjs scripts/check-onboarding.test.mjs",
     "test:profiles-ui": "node --test scripts/check-profiles.browser.test.mjs",
-    "test:apple-updates": "node --test scripts/check-apple-web-service.test.mjs"
+    "test:apple-updates": "node --test scripts/check-apple-web-service.test.mjs",
+    "prebuild": "node scripts/prepare-stamp-assets.mjs",
+    "predev": "node scripts/prepare-stamp-assets.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",
     "@playwright/test": "1.56.1",
     "@types/node": "22.18.10",
     "passkit-generator": "3.6.1",
-    "vite": "^7.1.5"
+    "vite": "^7.1.5",
+    "pngjs": "5.0.0"
   },
   "dependencies": {
     "@capacitor-community/media": "9.1.0",
