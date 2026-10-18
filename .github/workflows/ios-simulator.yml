@@ -10,6 +10,7 @@ on:
       - index.html
       - src/**
       - scripts/check-native-admin-link.test.mjs
+      - scripts/check-native-wallet-notifications.test.mjs
       - scripts/configure-ios-deeplink.swift
       - capacitor.config.json
       - .github/workflows/ios-simulator.yml
@@ -46,6 +47,7 @@ jobs:
           npm run test:static
           node --test scripts/check-native-admin-link.test.mjs
           node --test scripts/check-ios-companion.test.mjs
+          node --test scripts/check-native-wallet-notifications.test.mjs
 
       - name: Generate and synchronize iOS project
         run: |
