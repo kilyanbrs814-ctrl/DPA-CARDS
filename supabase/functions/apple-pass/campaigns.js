@@ -16,7 +16,10 @@ const clean=(x,n)=>String(x??'').normalize('NFC').replace(/[\u0000-\u001F\u007F]
 export async function notifyApple(req,{admin}){
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:cors(req)});
   if(req.method!=='POST')return send(req,405,{error:'method_not_allowed'});
-  if(!Deno.env.get('APPLE_APNS_KEY_ID')||!Deno.env.get('APPLE_APNS_PRIVATE_KEY_PEM'))
+  const hasCertTransport=typeof Deno.createHttpClient==='function' &&
+    !!Deno.env.get('APPLE_PASS_CERT_PEM') && !!Deno.env.get('APPLE_PASS_PRIVATE_KEY_PEM');
+  const hasTokenTransport=!!Deno.env.get('APPLE_APNS_KEY_ID') && !!Deno.env.get('APPLE_APNS_PRIVATE_KEY_PEM');
+  if(!hasCertTransport&&!hasTokenTransport)
     return send(req,503,{error:'apple_notifications_unavailable'});
   const bearer=(req.headers.get('authorization')||'').match(/^Bearer (\S+)$/i)?.[1];
   if(!bearer)return send(req,401,{error:'unauthorized'});
