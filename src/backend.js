@@ -62,7 +62,9 @@ async function profileFetch(input, init = {}) {
   const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
   // Web clients opt in to the multi-commerce membership view. Legacy packaged
   // iPhone versions send no such header and keep only their original workspace.
-  if (window.location.protocol !== 'capacitor:' && url.origin === new URL(URL_).origin) {
+  if (window.location.protocol !== 'capacitor:' && url.origin === new URL(URL_).origin && url.pathname.startsWith('/rest/v1/')) {
+    // This header is only understood by PostgREST. Do not forward it to
+    // Edge Functions, which have a stricter CORS allow-headers list.
     headers.set('x-dpa-web-profiles', '1');
   }
   if (activeMerchantId && url.origin === new URL(URL_).origin) {
