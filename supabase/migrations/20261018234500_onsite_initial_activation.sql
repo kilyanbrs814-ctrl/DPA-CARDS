@@ -21,7 +21,7 @@ alter table public.merchant_onsite_activation_receipts enable row level security
 revoke all on public.merchant_onsite_activation_receipts from public,anon,authenticated;
 grant all on public.merchant_onsite_activation_receipts to service_role;
 
-create function app_private.record_onsite_initial_activation(
+create function public.record_onsite_initial_activation(
   p_merchant uuid,p_receipt_ref text,p_actor uuid
 ) returns jsonb language plpgsql security invoker set search_path='' as $$
 declare v_account uuid; v_count integer; v_receipt public.merchant_onsite_activation_receipts;
@@ -62,7 +62,7 @@ begin
   return jsonb_build_object('merchant_id',p_merchant,'recorded',true,
     'amount_cents',5000,'receipt_id',v_receipt.id);
 end; $$;
-revoke all on function app_private.record_onsite_initial_activation(uuid,text,uuid)
+revoke all on function public.record_onsite_initial_activation(uuid,text,uuid)
  from public,anon,authenticated;
-grant execute on function app_private.record_onsite_initial_activation(uuid,text,uuid) to service_role;
+grant execute on function public.record_onsite_initial_activation(uuid,text,uuid) to service_role;
 commit;
