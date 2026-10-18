@@ -596,7 +596,9 @@ export function makeCardDesigner(React, api) {
         h(Input, { id: 'nc-conditions', label: 'Conditions (facultatif)', value: f.conditions, max: 600, onChange: up('conditions'), multi: true })),
       h(Section, { title: 'Compte' },
         h('div', { style: { fontSize: 15 } }, 'E-mail de connexion : ', h('strong', null, f.email.trim() || '—')),
-        h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45 } }, 'Aucun mot de passe à saisir : le commerçant choisira le sien grâce au lien « Envoyer l’accès au commerçant », quand vous le déciderez.')),
+        h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45 } }, 'Aucun mot de passe à saisir : le commerçant choisira le sien grâce au lien « Envoyer l’accès au commerçant », quand vous le déciderez.'),
+        h('div', { style: { fontSize: 13, color: '#2448F0', lineHeight: 1.5 } },
+          'Paiement : après création, les frais d’activation sont réglés en ligne ou enregistrés après encaissement sans-contact réel. Le commerçant autorise ensuite ses mensualités par carte ou SEPA directement sur Stripe.')),
       ask ? h('div', { role: 'alertdialog', 'aria-label': 'Confirmation', style: { display: 'flex', flexDirection: 'column', gap: 10, padding: 14, borderRadius: 14, background: '#FFF3DC', color: '#5C4200', fontSize: 15 } }, ask.text,
         h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
           h('button', { type: 'button', onClick: () => submit(ask.opts), disabled: busy, style: { minHeight: 44, padding: '0 14px', border: 0, borderRadius: 12, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700 } }, ask.label),
@@ -633,6 +635,9 @@ export function makeCardDesigner(React, api) {
     const [askDelete, setAskDelete] = useState(null);
     const [assignTest, setAssignTest] = useState(null);
     const [assignTarget, setAssignTarget] = useState('');
+    const [onsiteOpen, setOnsiteOpen] = useState(false);
+    const [onsiteRef, setOnsiteRef] = useState('');
+    const [onsiteChecked, setOnsiteChecked] = useState(false);
     const [rewardPickerOpen, setRewardPickerOpen] = useState(false);
     const key = target ? (target.testId ? 't:' + target.testId : target.requestId ? 'r:' + target.requestId : target.merchantId ? 'm:' + target.merchantId : '') : '';
     useEffect(loadFonts, []);
@@ -806,6 +811,18 @@ export function makeCardDesigner(React, api) {
       catch (e) { setAskAccess(false); const d = e && e.info && e.info.detail; toast(e && e.code === 'access_email_failed' ? 'Envoi impossible : ' + (ACCESS_ERR[d] || d || 'erreur du service e-mail') : errText(e)); }
       finally { setBusy(null); }
     };
+    const recordOnsite = async () => {
+      if (busy || !project?.merchant?.id || !onsiteChecked || onsiteRef.trim().length < 6) return;
+      setBusy('onsite');
+      try {
+        await api.recordOnsiteActivation(project.merchant.id, onsiteRef.trim());
+        setProject(prev => ({ ...prev, account: { ...prev.account,
+          can_record_onsite: false, activation: {source:'onsite',amount_cents:5000,confirmed_at:new Date().toISOString()} } }));
+        setOnsiteOpen(false); setOnsiteRef(''); setOnsiteChecked(false);
+        toast('50 € encaissés sur place : référence enregistrée. Le commerçant doit encore autoriser son abonnement sur le site.');
+      } catch (e) { toast(e?.code==='already_activated'?'Activation déjà comptabilisée pour ce commerce.':errText(e)); }
+      finally { setBusy(null); }
+    };
     const onCreated = async r => {
       setAdding(false); setCreated(r);
       if (assignTest) {
@@ -934,6 +951,18 @@ export function makeCardDesigner(React, api) {
         h('div', { style: { fontSize: 15 } }, h('strong', null, project.merchant.business_name), ' · ', pg.name, ' · ', `${pg.goal} ${pg.mode === 'points' ? 'points' : 'passages'} = ${pg.reward}`),
         h('div', { style: { fontSize: 13, color: '#5E636B' } }, applied),
         accessBlock,
+        ac && h(Section, { title: 'Activation et prélèvements' },
+          acc.activation ? h('p', { style: { margin: 0, fontSize: 14, lineHeight: 1.5 } },
+            acc.activation.source === 'onsite' ? 'Activation de 50 € enregistrée sur place : aucun second frais d’activation.' :
+              'Activation déjà comptabilisée : ' + acc.activation.source) :
+            h('p', { style: { margin: 0, fontSize: 14, lineHeight: 1.5 } },
+              '50 € d’activation à régler en ligne sur DPA Cards, ou par sans-contact sur votre terminal.'),
+          h('p', { style: { margin: 0, fontSize: 13, color: '#5E636B', lineHeight: 1.5 } },
+            'Abonnement : le commerçant choisit carte bancaire ou mandat SEPA/IBAN sur Stripe. Les coordonnées bancaires ne sont pas saisies dans cette administration.'),
+          acc.can_record_onsite && h('button', { type: 'button', 'data-onsite-activation': true,
+            disabled: !!busy, onClick: () => { setOnsiteRef(''); setOnsiteChecked(false); setOnsiteOpen(true); },
+            style: { minHeight: 46, border: '1.5px solid #2448F0', borderRadius: 12, background: '#FFFFFF', color: '#2448F0', fontWeight: 750 } },
+            'J’ai encaissé 50 € en sans-contact')),
         pg.card_design_validated_at && project.draft && project.draft.google_sync_status ? (() => {
           const g = project.draft, G = { synced: ['Google Wallet à jour' + (g.google_synced_at ? ' (' + fmtDate(g.google_synced_at) + ')' : ''), '#E4F3EB', '#1F6B45'],
             no_class: ['Google Wallet : aucune carte ajoutée pour l’instant, le design sera utilisé à la première', '#EFEDE8', '#3E424A'],
@@ -1102,6 +1131,26 @@ export function makeCardDesigner(React, api) {
       isTest ? h('div', { role: 'note', 'data-test-mode': true, style: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: '#1A36C4', color: '#FFFFFF' } }, icon('science', 24),
         h('div', null, h('div', { style: { fontWeight: 800, fontSize: 16, letterSpacing: '0.06em' } }, 'MODE TEST'), h('div', { style: { fontSize: 14, opacity: 0.9 } }, 'Carte de démonstration : aucun commerce, aucun compte, aucun client, aucun abonnement.'))) : null,
       actions, deleteDialog,
+      onsiteOpen && !isTest ? modal([
+        h('h2', { key: 'title', style: { margin: 0, fontSize: 22, fontWeight: 800 } }, 'Enregistrer les 50 € encaissés sur place'),
+        h('p', { key: 'body', style: { fontSize: 14, lineHeight: 1.55, color: '#3E424A' } },
+          'Ce bouton n’encaisse pas de paiement. Utilisez-le uniquement après un paiement sans-contact réel sur votre terminal. Vérifiez le reçu. Aucun second paiement des 50 € ne sera demandé.'),
+        h('label', { key: 'ref', style: { display: 'flex', flexDirection: 'column', gap: 8, fontWeight: 700 } },
+          'Référence de transaction du terminal',
+          h('input', { type: 'text', required: true, maxLength: 100, minLength: 6, value: onsiteRef,
+            placeholder: 'Référence imprimée sur le reçu', onChange: e => setOnsiteRef(e.target.value),
+            style: { padding: '12px 14px', minHeight: 48, border: '1px solid #D4D1C9', borderRadius: 12, fontSize: 15 } })),
+        h('label', { key: 'confirm', style: { display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 14, lineHeight: 1.5 } },
+          h('input', { type: 'checkbox', checked: onsiteChecked, onChange: e => setOnsiteChecked(e.target.checked),
+            style: { width: 22, height: 22, flexShrink: 0 } }),
+          'Je certifie avoir encaissé 50 € pour ce commerce et vérifié le reçu.'),
+        h('button', { key: 'save', type: 'button', disabled: !!busy || !onsiteChecked || onsiteRef.trim().length < 6,
+          onClick: recordOnsite, style: { minHeight: 48, padding: '0 16px', border: 0, borderRadius: 12,
+            background: '#2448F0', color: '#FFFFFF', fontWeight: 750 } },
+          busy === 'onsite' ? 'Vérification…' : 'Enregistrer le paiement sur place'),
+        h('button', { key: 'cancel', type: 'button', disabled: !!busy, onClick: () => setOnsiteOpen(false),
+          style: { minHeight: 44, border: 0, background: '#FFFFFF', fontWeight: 650 } }, 'Annuler')
+      ], () => !busy && setOnsiteOpen(false), 'Paiement sans-contact déjà effectué') : null,
       assignTest && isTest && assignTest===project.test.id ? modal([
         h('h2', { key: 'title', style: { margin: 0, fontSize: 22, fontWeight: 800 } }, 'Attribuer cette carte test'),
         h('p', { key: 'note', style: { margin: 0, color: '#3E424A', fontSize: 14, lineHeight: 1.5 } },
