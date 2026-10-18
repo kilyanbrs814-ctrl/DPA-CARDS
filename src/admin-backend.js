@@ -73,6 +73,19 @@ async function adminCall(route, body = {}) {
   return data;
 }
 
+// Same verified admin session as the designer, but the Stripe checkout lives in
+// the billing Edge Function, not wallet. Bank details remain on Stripe.
+async function adminBillingCall(route, body = {}) {
+  const { data, error } = await sb.functions.invoke('billing/' + route, { body });
+  if (error) {
+    let code = '', info = null;
+    try { info = await error.context.json(); code = info.error || ''; } catch (e) {}
+    if (!code) code = error.name === 'FunctionsFetchError' ? 'network_or_cors' : (error.context?.status ? 'http_' + error.context.status : (error.name || 'billing_unavailable'));
+    throw Object.assign(new Error(code), { code, info, route });
+  }
+  return data;
+}
+
 async function isAuthorized(user) {
   const mail = (user?.email || '').trim().toLowerCase();
   if (!mail) return false;
@@ -166,6 +179,9 @@ const designerApi = {
   createMerchant: payload => adminCall('admin-merchant-create', payload),
   sendAccess: merchantId => adminCall('admin-merchant-access', { merchant_id: merchantId }),
   recordOnsiteActivation: (merchantId, reference) => adminCall('admin-onsite-activation', {merchant_id: merchantId, receipt_ref: reference, confirmed: true}),
+  paymentQuote: (merchantId, plan, billing) => adminBillingCall('admin-initial-quote', {merchant_id:merchantId,plan,billing}),
+  paymentCheckout: (merchantId, plan, billing, quote) => adminBillingCall('admin-checkout',
+    {merchant_id:merchantId,plan,billing,quote,confirmed:true}),
   // Test cards: same designer, no merchant (test_card_designs, images under program-assets/tests/<id>/).
   testList: () => adminCall('admin-test-cards'),
   testGet: id => adminCall('admin-test-card-get', { id }),
