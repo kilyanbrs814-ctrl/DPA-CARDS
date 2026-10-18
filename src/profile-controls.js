@@ -12,6 +12,7 @@ export function makeProfileControls(React) {
   const [initial,setInitial]=React.useState(null);
   const run=async fn=>{if(working)return;setWorking(true);setError('');try{await fn();}catch(e){setError(api.errorMessage(e));}finally{setWorking(false);}};
   React.useEffect(()=>{
+   if(native)return;
    if(initialChoice){setOpen(true);setInitial(initialChoice);setOperation(null);setConfirmed(false);
     if(native){setError('Cette application est réservée aux commerces déjà actifs.');return;}
     run(async()=>{const r=await api.billing.initialQuote(initialChoice.plan,initialChoice.billing);setQuote(r.quote);});}
@@ -19,7 +20,7 @@ export function makeProfileControls(React) {
   React.useEffect(()=>{if(open){dialog.current?.focus();const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous;trigger.current?.focus();};}},[open]);
   // A return URL never grants access: resume asks the server to retrieve Stripe.
   React.useEffect(()=>{
-   if(needsActivation && new URLSearchParams(location.search).has('profile_payment')){
+   if(!native&&needsActivation && new URLSearchParams(location.search).has('profile_payment')){
     setOpen(true);run(async()=>{const r=await api.billing.profileResume();
      if(r.operation?.status==='complete'){history.replaceState(null,'','/');onActivated();return;}
      if(r.operation?.status==='cancelled'){setError(r.operation.stripe_refund_id?'Le paiement a été remboursé car votre facturation a changé. Actualisez le récapitulatif pour reprendre.':'Ce parcours de paiement a expiré. Vous pouvez reprendre l’activation.');return;}
@@ -59,8 +60,8 @@ export function makeProfileControls(React) {
   ]:[];
   return h('div',{className:'dpa-profile-controls'},
    h('div',{style:{minWidth:0}},h('div',{style:{fontSize:12,color:'#5E636B'}},'Commerce actif'),h('strong',{style:{overflowWrap:'anywhere'}},merchant.business)),
-   h('button',{ref:trigger,type:'button',style:button,disabled:busy||working,onClick:()=>{if(profiles.length===1&&merchant.id&&profiles[0].role==='owner'){onAdd();return;}setOpen(true);setError('');}},profiles.length>1?'Changer de profil':'Ajouter un profil'),
-   needsActivation&&h('button',{type:'button',style:primary,disabled:busy||working,onClick:getQuote},'Activer ce commerce'),
+   (!native||profiles.length>1)&&h('button',{ref:trigger,type:'button',style:button,disabled:busy||working,onClick:()=>{if(!native&&profiles.length===1&&merchant.id&&profiles[0].role==='owner'){onAdd();return;}setOpen(true);setError('');}},profiles.length>1?'Changer de profil':'Ajouter un profil'),
+   !native&&needsActivation&&h('button',{type:'button',style:primary,disabled:busy||working,onClick:getQuote},'Activer ce commerce'),
    open&&h('div',{className:'dpa-profile-overlay',onClick:e=>{if(e.target===e.currentTarget)close();}},
     h('section',{ref:dialog,role:'dialog','aria-modal':true,'aria-labelledby':'profile-dialog-title',tabIndex:-1,onKeyDown:trap,className:'dpa-profile-dialog'},
      h('h2',{id:'profile-dialog-title',style:{margin:0,fontSize:24}},quote?'Confirmer les montants':'Vos commerces'),
@@ -71,7 +72,7 @@ export function makeProfileControls(React) {
        style:{...button,display:'flex',alignItems:'center',gap:12,textAlign:'left',borderColor:p.id===merchant.id?'#2448F0':'#D4D1C9'},
        onClick:()=>p.id!==merchant.id&&api.switchProfile(p.id)},p.logo&&h('img',{src:p.logo,alt:'',width:36,height:36,style:{objectFit:'contain',borderRadius:8}}),
        h('span',{style:{flex:1}},p.name),p.id===merchant.id&&h('span',{style:{color:'#2448F0'}},'Actif'))),
-      merchant.id&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')&&h('button',{type:'button',style:primary,disabled:working||busy,onClick:()=>{close();onAdd();}},'Ajouter un profil')),
+      !native&&merchant.id&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')&&h('button',{type:'button',style:primary,disabled:working||busy,onClick:()=>{close();onAdd();}},'Ajouter un profil')),
      quote&&h(React.Fragment,null,
       h('dl',{style:{margin:0}},...rows.map(([k,v])=>h('div',{key:k,style:{display:'flex',justifyContent:'space-between',gap:16,padding:'12px 0',borderBottom:'1px solid #E4E1DA',flexWrap:'wrap'}},h('dt',null,k),h('dd',{style:{margin:0,fontWeight:700}},v)))),
       h('p',{style:{fontSize:14,color:'#5E636B',lineHeight:1.5}},'20 €/mois par commerce, sans remise dégressive. Les frais d’activation sont uniques et identiques avec ou sans engagement. Les modalités d’engagement existantes sont conservées.'),
