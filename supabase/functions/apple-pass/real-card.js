@@ -113,7 +113,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
       secondaryFields: [
         // Apple styles field VALUES more prominently than field labels.
         // Keep counts native, accessible and synchronized with the actual balance.
-        {key:'done',label:modePoints?'Points gagnés':'Passages effectués',value:String(b),textAlignment:'PKTextAlignmentLeft'},
+        {key:'done',label:modePoints?'Points gagnés':'Passages effectués',value:String(b),textAlignment:'PKTextAlignmentLeft',changeMessage:modePoints?'Vous avez maintenant %@ points.':'Vous avez maintenant %@ passages.'},
         {key:'remaining',label:modePoints?'Points restants':'Passages restants',value:String(Math.max(0,goal-b)),textAlignment:'PKTextAlignmentRight'},
       ],
       backFields: [
@@ -122,12 +122,12 @@ export function realApplePassData({ program, merchant, customer, card, balance }
         {key:'reward',label:'RÉCOMPENSE',value:txt(program.reward,90)||'Récompense fidélité'},
         ...(brand.subtitle?[{key:'subtitle',label:'LE COMMERCE',value:brand.subtitle}]:[]),
         {key:'rule',label:'CONDITIONS',value:modePoints?goal+' points pour '+txt(program.reward,90):goal+' passages pour '+txt(program.reward,90)},
-        {key:'info',label:'DPA Cards',value:'Présentez votre QR code en caisse. Le solde correspond à la dernière génération du pass ; les mises à jour automatiques ne sont pas encore activées.'},
+        {key:'info',label:'DPA Cards',value:'Présentez votre QR code en caisse. Le solde et les tampons sont actualisés lorsque vous recevez une mise à jour Wallet.'},
         ...(brand.emoji ? [{key:'emoji_credits',label:'ILLUSTRATIONS',value:'Noto Emoji (Google, Apache 2.0) ; Twemoji (Twitter, CC BY 4.0) — github.com/jdecked/twemoji'}] : []),
       ],
     } : {
       headerFields: [{ key: 'program', label: 'PROGRAMME', value: txt(program.name, 22) || 'Fidélité' }],
-      primaryFields: [{ key: 'progress', label: brand.label, value: modePoints ? b + ' / ' + goal + ' pts' : b + ' / ' + goal }],
+      primaryFields: [{ key: 'progress', label: brand.label, value: modePoints ? b + ' / ' + goal + ' pts' : b + ' / ' + goal, changeMessage:'Votre fidélité a été mise à jour : %@' }],
       secondaryFields: [
         { key: 'client', label: 'CLIENT', value: client },
         { key: 'reward', label: 'RÉCOMPENSE', value: txt(program.reward, 60) || 'Récompense fidélité' },
@@ -136,7 +136,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
       backFields: [
         ...(brand.subtitle ? [{ key: 'subtitle', label: 'LE COMMERCE', value: brand.subtitle }] : []),
         { key: 'rule', label: 'COMMENT ÇA MARCHE ?', value: modePoints ? goal + ' points pour ' + txt(program.reward, 90) : goal + ' passages pour ' + txt(program.reward, 90) },
-        { key: 'info', label: 'DPA Cards', value: 'Présentez votre QR code en caisse. Le solde reflète la date de création du pass ; les mises à jour automatiques ne sont pas encore activées.' },
+        { key: 'info', label: 'DPA Cards', value: 'Présentez votre QR code en caisse. Le solde est actualisé automatiquement lors des mises à jour de cette carte.' },
       ],
     },
     barcode, barcodes: [barcode],
