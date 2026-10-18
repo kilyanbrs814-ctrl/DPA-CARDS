@@ -2890,9 +2890,15 @@ class Component extends DCLogic {
       else if(dn.status==='failed'||dn.status==='partial') lacts=[B('Modifier et réessayer','refresh',()=>this.openComposer({...dn,id:null,status:'draft'}),'p'),B('Dupliquer','content_copy',dup),del];
       else if(dn.status==='sent') lacts=[B('Dupliquer','content_copy',dup,'p'),del]; }
     const LR=rr&&rr.live;
+    const deliveryText=LR?[
+      LR.googleSent!=null&&LR.googleSent>0?`${LR.googleSent} message(s) Google accepté(s)`:null,
+      LR.appleQueued>0?`${LR.appleQueued} mise(s) à jour Apple mise(s) en file ; affichage sur iPhone non garanti`:null,
+      LR.appleError?'Apple : '+LR.appleError:null,
+    ].filter(Boolean).join(' · '):'';
+    const liveResultText=LR?(deliveryText||nSummary(LR)):'';
     const lres=!rr?out.nRes:LR&&LR.sent>0?(LR.failed+LR.quotaExceeded>0
-        ?{ok:true,fail:false,icon:'warning',iconBg:'#FFF3DC',iconFg:'#8A5A00',title:'Envoi partiel',text:nSummary(LR)}
-        :{ok:true,fail:false,icon:'task_alt',iconBg:'#E4F3EB',iconFg:'#1F7A4F',title:'Notification envoyée',text:nSummary(LR)})
+        ?{ok:true,fail:false,icon:'warning',iconBg:'#FFF3DC',iconFg:'#8A5A00',title:'Envoi partiel',text:liveResultText}
+        :{ok:true,fail:false,icon:'task_alt',iconBg:'#E4F3EB',iconFg:'#1F7A4F',title:LR.appleQueued?'Mise à jour Apple demandée':'Notification envoyée',text:liveResultText})
       :LR?{ok:false,fail:true,icon:'error',iconBg:'#FCEBEA',iconFg:'#B42318',title:'Aucune notification envoyée',text:nSummary(LR)+(LR.noWallet===LR.targeted?' '+nErrText('no_wallet'):(LR.quotaExceeded&&!LR.failed?' '+nErrText('google_quota_exceeded'):''))}
       :{ok:false,fail:true,icon:'error',iconBg:'#FCEBEA',iconFg:'#B42318',title:'Échec de l’envoi',text:rr.error||nErrText('wallet_unavailable')};
     return {...out, nFilters:lFilters, nRows:lrows, nHasRows:lrows.length>0, nFilterEmpty:notifs.length>0&&lrows.length===0,
