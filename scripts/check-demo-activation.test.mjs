@@ -49,3 +49,18 @@ test('both payment methods are collected securely through Stripe Checkout',()=>{
  assert.match(profiles,/payment_method_types:\['card','sepa_debit'\]/);
  assert.match(designer,/Les coordonnées bancaires ne sont pas saisies dans cette administration/);
 });
+
+test('admin can start hosted Stripe collection immediately without a merchant login',()=>{
+ assert.match(billing,/async function adminCheckoutActor\(req: Request\)/);
+ assert.match(billing,/if\(director\?\.role!=='director'\)/);
+ assert.match(billing,/if\(!m\|\|!prepared\)/);
+ assert.match(billing,/account\.primary_merchant_id!==merchantId\|\|account\.owner_id!==m\.created_by/);
+ assert.match(billing,/path\.endsWith\('\/admin-initial-quote'\)/);
+ assert.match(billing,/path\.endsWith\('\/admin-checkout'\)/);
+ assert.match(billing,/actor\?\.adminCheckout \? \x60\$\{origin\}\/activation-result\.html\?status=success\x60/);
+ assert.match(ui,/paymentQuote: \(merchantId, plan, billing\)/);
+ assert.match(ui,/paymentCheckout: \(merchantId, plan, billing, quote\)/);
+ assert.match(designer,/data-admin-stripe-checkout/);
+ assert.match(designer,/Ouvrir Stripe avec le commerçant/);
+ assert.match(designer,/Copier le lien à envoyer au commerçant/);
+});
