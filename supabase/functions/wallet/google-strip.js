@@ -141,6 +141,7 @@ async function demoPng(width, height, pixels) {
     chunk('IDAT', compressed), chunk('IEND', new Uint8Array()),
   ]);
 }
+/** @param {{width:number,height:number,pixels:Uint8Array}|null} panelArt */
 export async function makeGoogleStampHero(d, progress, goal, mode='passages', customIcon=null, finalStar=null, panelArt=null) {
   const width=1032,height=812;
   const pixels=new Uint8Array(width*height*4);
