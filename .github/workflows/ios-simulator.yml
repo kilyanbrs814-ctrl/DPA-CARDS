@@ -45,6 +45,7 @@ jobs:
         run: |
           npm run test:static
           node --test scripts/check-native-admin-link.test.mjs
+          node --test scripts/check-ios-companion.test.mjs
 
       - name: Generate and synchronize iOS project
         run: |
