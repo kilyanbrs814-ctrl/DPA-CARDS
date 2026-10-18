@@ -13,7 +13,7 @@ export function makeProfileControls(React) {
   const run=async fn=>{if(working)return;setWorking(true);setError('');try{await fn();}catch(e){setError(api.errorMessage(e));}finally{setWorking(false);}};
   React.useEffect(()=>{
    if(initialChoice){setOpen(true);setInitial(initialChoice);setOperation(null);setConfirmed(false);
-    if(native){setError('Achats intégrés Apple non configurés : aucun paiement ne peut être effectué dans cette version.');return;}
+    if(native){setError('Cette application est réservée aux commerces déjà actifs.');return;}
     run(async()=>{const r=await api.billing.initialQuote(initialChoice.plan,initialChoice.billing);setQuote(r.quote);});}
   },[initialChoice]);
   React.useEffect(()=>{if(open){dialog.current?.focus();const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous;trigger.current?.focus();};}},[open]);
