@@ -5,7 +5,7 @@ export function makeProfileControls(React) {
  const h=React.createElement;
  const button={minHeight:46,padding:'10px 16px',border:'1px solid #D4D1C9',borderRadius:12,background:'#FFF',fontWeight:700};
  const primary={...button,background:'#2448F0',color:'#FFF',borderColor:'#2448F0'};
- return function ProfileControls({api,profiles,merchant,busy,onAdd,needsActivation,onActivated,initialChoice,onInitialDone}) {
+ return function ProfileControls({api,profiles,merchant,busy,onAdd,needsActivation,onActivated,initialChoice,onInitialDone,native=false}) {
   const [open,setOpen]=React.useState(false),[operation,setOperation]=React.useState(null),[quote,setQuote]=React.useState(null);
   const [working,setWorking]=React.useState(false),[error,setError]=React.useState(''),[confirmed,setConfirmed]=React.useState(false);
   const dialog=React.useRef(null),trigger=React.useRef(null);
@@ -13,6 +13,7 @@ export function makeProfileControls(React) {
   const run=async fn=>{if(working)return;setWorking(true);setError('');try{await fn();}catch(e){setError(api.errorMessage(e));}finally{setWorking(false);}};
   React.useEffect(()=>{
    if(initialChoice){setOpen(true);setInitial(initialChoice);setOperation(null);setConfirmed(false);
+    if(native){setError('Achats intégrés Apple non configurés : aucun paiement ne peut être effectué dans cette version.');return;}
     run(async()=>{const r=await api.billing.initialQuote(initialChoice.plan,initialChoice.billing);setQuote(r.quote);});}
   },[initialChoice]);
   React.useEffect(()=>{if(open){dialog.current?.focus();const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous;trigger.current?.focus();};}},[open]);
@@ -26,16 +27,16 @@ export function makeProfileControls(React) {
    }
   },[merchant.id]);
   const close=()=>{if(working)return;setOpen(false);setQuote(null);setOperation(null);setInitial(null);setConfirmed(false);onInitialDone?.();};
-  const getQuote=()=>{setOpen(true);setConfirmed(false);setInitial(null);run(async()=>{
+  const getQuote=()=>{setOpen(true);setConfirmed(false);setInitial(null);if(native){setError('Achats intégrés Apple non configurés : ce parcours ne lance pas Stripe sur iPhone.');return;}run(async()=>{
    const r=await api.billing.profileQuote();setOperation(r.operation);setQuote(r.operation.quote);
   });};
-  const pay=()=>run(async()=>{
+  const pay=()=>{if(native){setError('Paiement Apple indisponible : aucun paiement Stripe n’est lancé dans l’app.');return;}return run(async()=>{
    if(!confirmed)return;
    const r=initial?await api.billing.checkout(initial.plan,initial.billing,quote):await api.billing.profileAccept(operation.id);
    if(r.operation?.status==='complete'){close();onActivated();return;}
    if(r.operation?.status==='cancelled'){setQuote(null);setOperation(null);setError('Le paiement a été remboursé car votre facturation a changé. Actualisez les montants pour reprendre.');return;}
    if(r.url)location.assign(r.url);
-  });
+  });};
   const trap=e=>{
    if(e.key==='Escape'){e.preventDefault();close();}
    if(e.key==='Tab'){
@@ -75,7 +76,7 @@ export function makeProfileControls(React) {
       h('dl',{style:{margin:0}},...rows.map(([k,v])=>h('div',{key:k,style:{display:'flex',justifyContent:'space-between',gap:16,padding:'12px 0',borderBottom:'1px solid #E4E1DA',flexWrap:'wrap'}},h('dt',null,k),h('dd',{style:{margin:0,fontWeight:700}},v)))),
       h('p',{style:{fontSize:14,color:'#5E636B',lineHeight:1.5}},'20 €/mois par commerce, sans remise dégressive. Les frais d’activation sont uniques et identiques avec ou sans engagement. Les modalités d’engagement existantes sont conservées.'),
       h('label',{style:{display:'flex',gap:12,alignItems:'flex-start',lineHeight:1.5}},h('input',{type:'checkbox',checked:confirmed,disabled:working,onChange:e=>setConfirmed(e.target.checked),style:{width:22,height:22,flexShrink:0}}),'Je confirme les montants ci-dessus et la modification de ma facturation.'),
-      h('button',{type:'button',style:primary,disabled:!confirmed||working,onClick:pay},'Confirmer et continuer vers le paiement'),
+      h('button',{type:'button',style:primary,disabled:native||!confirmed||working,onClick:pay},native?'Paiement Apple non disponible':'Confirmer et continuer vers le paiement'),
       !initial&&h('button',{type:'button',style:button,disabled:working,onClick:()=>run(async()=>{const r=await api.billing.profileCancel();if(r.operation?.status==='complete')onActivated();else{setOperation(null);setQuote(null);setConfirmed(false);}})},'Annuler ce parcours de paiement')),
      h('button',{type:'button',style:button,disabled:working,onClick:close},'Fermer'))));
  };
