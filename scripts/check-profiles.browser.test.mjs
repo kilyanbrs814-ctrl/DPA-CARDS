@@ -37,11 +37,12 @@ test('web profiles: header, selector, always-visible addition, new onboarding an
 });
 
 
-test('native iPhone profile selector is visible; unconfigured Apple purchases never open Stripe',async()=>{
+test('native iPhone: existing paid accounts only, without signup, profile purchase or Stripe CTAs',async()=>{
  const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=server.resolvedUrls.local[0];
  const browser=await chromium.launch({headless:true});
  try{
-  const page=await browser.newPage({viewport:{width:393,height:852}});
+  const page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route(url,async route=>{
    const response=await route.fetch();let body=await response.text();
    assert.ok(body.includes("const DPA_NATIVE_IOS=window.location.protocol==='capacitor:';"));
@@ -50,27 +51,41 @@ test('native iPhone profile selector is visible; unconfigured Apple purchases ne
    await route.fulfill({response,body});
   });
   await page.goto(url);await page.waitForFunction(()=>window.__testApp);
+  await page.getByRole('button',{name:'Se connecter',exact:true}).waitFor();
+  assert.equal(await page.getByRole('button',{name:'Créer mon compte',exact:true}).count(),0);
   await page.evaluate(async()=>{
-   const a=window.__testApp;
-   a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),
+   const a=window.__testApp;a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),
     switchProfile:id=>{window.__nativeSelected=id;},
     billing:{profileQuote:async()=>{window.__stripeQuoteCalled=true;throw Error('unexpected Stripe quote');},
-     profileAccept:async()=>{window.__stripePaymentCalled=true;throw Error('unexpected Stripe purchase');}}};
+     profileAccept:async()=>{window.__stripePaymentCalled=true;throw Error('unexpected Stripe purchase');},
+     designCheckout:async()=>{window.__designChargeCalled=true;throw Error('unexpected design checkout');}}};
    a.enterDemo();a.setState({live:true,demo:false,role:'owner',hasAccess:true,billingMerchantId:'primary',
     merchant:{...a.state.merchant,id:'primary',business:'Premier commerce'},
     profiles:[{id:'primary',name:'Premier commerce',role:'owner'},{id:'second',name:'Deuxième commerce',role:'owner'}]});
   });
   await page.getByRole('button',{name:'Changer de profil',exact:true}).click();
-  const dialog=page.getByRole('dialog');
+  const dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'Vos commerces'}).waitFor();
+  assert.equal(await dialog.getByRole('button',{name:'Ajouter un profil',exact:true}).count(),0);
+  assert.equal(await dialog.getByRole('button',{name:'Activer ce commerce',exact:true}).count(),0);
   await dialog.getByRole('button',{name:'Deuxième commerce',exact:true}).click();
   assert.equal(await page.evaluate(()=>window.__nativeSelected),'second');
-  await dialog.getByRole('button',{name:'Ajouter un profil',exact:true}).click();
-  assert.equal(await page.evaluate(()=>window.__testApp.state.screen),'ob');
-  await page.evaluate(()=>{const a=window.__testApp;a.setState({screen:'home',
-   merchant:{...a.state.merchant,id:'second',business:'Deuxième commerce'},
-   program:{...a.state.program,designStatus:'validated'},hasAccess:false,addingProfile:null});});
-  await page.getByRole('button',{name:'Activer ce commerce',exact:true}).click();
-  await dialog.getByText(/Achats intégrés Apple non configurés/).waitFor();
-  assert.equal(await page.evaluate(()=>!!window.__stripeQuoteCalled||!!window.__stripePaymentCalled),false);
+  await dialog.getByRole('button',{name:'Fermer',exact:true}).click();
+  await page.evaluate(()=>{
+   const a=window.__testApp; a.beginAddProfile();a.go('billing');a.choosePlan('no_commitment');
+  });
+  assert.equal(await page.evaluate(()=>window.__testApp.state.screen),'home');
+  assert.equal(await page.getByRole('button',{name:'Mon abonnement',exact:true}).count(),0);
+  await page.evaluate(()=>window.__testApp.go('signup'));
+  assert.equal(await page.evaluate(()=>window.__testApp.state.screen),'home');
+  await page.evaluate(()=>{
+   const a=window.__testApp;a.setState({hasAccess:false,screen:'home'});
+   a.go('billing');
+  });
+  await page.getByRole('heading',{name:'Espace non actif'}).waitFor();
+  await page.getByRole('button',{name:'Vérifier mon accès'}).waitFor();
+  assert.equal(await page.getByText('Choisir cette offre').count(),0);
+  assert.equal(await page.getByRole('button',{name:'Activer ce commerce',exact:true}).count(),0);
+  assert.equal(await page.evaluate(()=>!!window.__stripeQuoteCalled||!!window.__stripePaymentCalled||!!window.__designChargeCalled),false);
+  assert.deepEqual(errors,[]);
  }finally{await browser.close();await server.close();}
 });
