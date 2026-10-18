@@ -30,13 +30,13 @@ alter table public.merchants alter column billing_account_id set not null;
 -- Web browsers explicitly opt in to all their own memberships. This header is
 -- only a view preference: it cannot grant an unrelated user's membership.
 create function app_private.legacy_primary_merchant(p_user uuid) returns uuid
-language sql stable security definer set search_path='' as $
+language sql stable security definer set search_path='' as '
   select coalesce(
     (select ba.primary_merchant_id from public.merchant_billing_accounts ba where ba.owner_id=p_user),
     (select mm.merchant_id from public.merchant_members mm
      where mm.user_id=p_user order by mm.created_at,mm.merchant_id limit 1)
-  );
-$;
+  )
+';
 revoke all on function app_private.legacy_primary_merchant(uuid) from public,anon,authenticated;
 grant execute on function app_private.legacy_primary_merchant(uuid) to authenticated;
 
