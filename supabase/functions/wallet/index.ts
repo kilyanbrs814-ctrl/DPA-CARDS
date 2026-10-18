@@ -1282,7 +1282,13 @@ async function adminCardDesigner(req: Request): Promise<Response> {
     admin.from('admin_created_merchants').select('created_at, access_sent_at, access_sent_count, access_last_error').eq('merchant_id', merchantId).maybeSingle(),
     ownerEmails([created_by]),
   ]);
-  const account = { owner_email: emails[created_by] ?? null, public_url: `${PUBLIC_SITE}/join/${merchant.slug}`, subscription_status: sub?.status ?? null, admin_created: prepared ?? null };
+  const {data: activation, error: activationError} = await admin.from('merchant_activations')
+    .select('source, amount_cents, confirmed_at').eq('merchant_id', merchantId).maybeSingle();
+  if (activationError) throw new Error('db_activations');
+  const account = { owner_email: emails[created_by] ?? null, public_url: `${PUBLIC_SITE}/join/${merchant.slug}`,
+    subscription_status: sub?.status ?? null, admin_created: prepared ?? null,
+    activation: activation ?? null,
+    can_record_onsite: user.dpaRole === 'director' && !!prepared && !activation };
   let q = admin.from('programs').select(PROGRAM_SELECT).eq('merchant_id', merchantId);
   q = programId ? q.eq('id', programId) : q.eq('is_active', true);
   const { data: program } = await q.maybeSingle();
@@ -1549,6 +1555,29 @@ async function adminMerchantAccess(req: Request): Promise<Response> {
   await admin.from('admin_created_merchants').update(error ? { access_last_error: errCode } : { access_sent_at: now, access_sent_count: row.access_sent_count + 1, access_last_error: null }).eq('merchant_id', id);
   if (error) return json(req, 502, { error: 'access_email_failed', detail: errCode });
   return json(req, 200, { sent: true, email, sent_at: now });
+}
+
+// A contactless activation is paid OUTSIDE DPA Cards (terminal receipt).
+// Recording is director-only, auditable and never creates a Stripe charge.
+async function adminOnsiteActivation(req: Request): Promise<Response> {
+  const user = await requireDirector(req);
+  const b = await req.json().catch(() => ({}));
+  const merchantId = String(b?.merchant_id ?? '');
+  const reference = str(b?.receipt_ref, 100);
+  if (!UUID_RE.test(merchantId) || reference.length < 6 || b?.confirmed !== true)
+    throw new HttpError(422, 'invalid_receipt');
+  const { data, error } = await admin.rpc('record_onsite_initial_activation', {
+    p_merchant: merchantId, p_receipt_ref: reference, p_actor: user.id,
+  });
+  if (error) {
+    const known = ['already_activated', 'checkout_in_progress', 'first_activation_only',
+      'not_admin_created', 'merchant_not_found', 'invalid_receipt'];
+    const code = known.find(k => (error.message ?? '').includes(k));
+    if (code) throw new HttpError(409, code);
+    console.error('wallet error', 'admin-onsite-activation', error.code);
+    throw new Error('db_onsite_activation');
+  }
+  return json(req, 200, data);
 }
 
 // ---------------------------------------------------------------- admin: test cards ("Créer une carte test")
@@ -1947,6 +1976,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/admin-card-google-sync')) return await adminCardGoogleSync(req);
     if (req.method === 'POST' && path.endsWith('/admin-merchant-create')) return await adminMerchantCreate(req);
     if (req.method === 'POST' && path.endsWith('/admin-merchant-access')) return await adminMerchantAccess(req);
+    if (req.method === 'POST' && path.endsWith('/admin-onsite-activation')) return await adminOnsiteActivation(req);
     if (req.method === 'POST' && path.endsWith('/admin-sales')) return await adminSales(req);
     if (req.method === 'POST' && path.endsWith('/admin-sales-attribute')) return await adminSalesAttribute(req);
     if (req.method === 'POST' && path.endsWith('/admin-sales-rule')) return await adminSalesRule(req);
