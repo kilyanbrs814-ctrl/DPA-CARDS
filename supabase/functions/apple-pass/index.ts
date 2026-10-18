@@ -10,6 +10,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { passAuthToken, passServiceUrl } from './auth.js';
 import { handlePasskit } from './web-service.js';
 import { processPassUpdates } from './push.js';
+import { notifyApple } from './campaigns.js';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
 import { realApplePassData, visibleCardNumber, testAssetPath, appleHeaderName } from './real-card.js';
@@ -307,6 +308,7 @@ async function createRealPass(cardId: string) {
   return { pkpass: await pass.getAsBuffer(), cardId: card.id, merchantId: card.merchant_id };
 }
 Deno.serve(async req => {
+  if (new URL(req.url).pathname.endsWith('/apple-pass/notify')) return notifyApple(req,{admin:supabase});
   if (new URL(req.url).pathname.endsWith('/apple-pass/push') && req.method === 'POST') {
     return processPassUpdates(req,{admin:supabase});
   }
