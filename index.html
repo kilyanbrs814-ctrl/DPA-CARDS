@@ -2861,10 +2861,14 @@ class Component extends DCLogic {
       closeModal:()=>{ if(s.busy) return; if(s.modal==='nResult'&&rr&&rr.ok) return this.nDone(); this.setState({modal:null,err:{}}); }
     };
     if(!s.live) return out;
-    // ---- live: Google Wallet only, immediate send, real counts from the server
+    // ---- live: merchant campaigns on Apple, Google or both; no scheduled sending yet.
     const L0={targeted:0,sent:0,failed:0,quota:0,noWallet:0};
     const plural=(k,w)=>k+' '+w+(k>1?'s':'');
-    const lt=nAudMatch(nf,clients,goal), lg=lt.filter(c=>c.wallet==='google').length, lsplit=`${lg} avec Google Wallet · ${lt.length-lg} sans Google Wallet`;
+    const lt=nAudMatch(nf,clients,goal);
+    const lg=lt.filter(c=>c.wallets?.google||c.wallet==='google').length;
+    const la=lt.filter(c=>c.wallets?.apple||c.wallet==='apple').length;
+    const liveCount=nf.platform==='apple'?la:nf.platform==='google'?lg:la+lg;
+    const lsplit=`${la} Apple Wallet enregistrées · ${lg} Google Wallet`;
     const lview=n=>{ const st=ST[n.status]||ST.failed, L=n.live||L0, pending=n.status==='draft'||n.status==='sending', bad=n.status==='partial'||n.status==='failed';
       const k=pending?nAudMatch(n,clients,goal).length:L.targeted;
       return {id:n.id,title:n.title||'Sans titre',body:n.body,hasBody:!!n.body,noBody:!n.body,stLabel:st[0],stBg:st[1],stFg:st[2],whenLabel:`${WHEN[n.status]||'Le'} : ${fmtDate(n.date)}, ${n.time}`,
@@ -2876,7 +2880,7 @@ class Component extends DCLogic {
     const lFilters=[['all','Toutes'],['draft','Brouillons'],['sent','Envoyées'],['partial','Partielles'],['failed','Échecs']].map(([k,label])=>({label,count:cnt(k),...chip(s.nfilter===k),pick:()=>this.setState({nfilter:k})}));
     const laud=aud.map((a,i)=>i===0?{...a,label:'Tous les clients',sub:plural(clients.length,'client')}:a);
     const lsegs=[['reward','Récompense disponible'],['near','Proches d’une récompense'],['inactive','Inactifs depuis 14 jours']].map(([k,label])=>({label,count:nAudMatch({...nf,audience:'segment',segment:k},clients,goal).length,...chip(nf.segment===k),pick:()=>this.setNf({segment:k})}));
-    const lpick=clients.map(c=>({id:'pk-'+c.id,name:(c.first+' '+c.last).trim(),meta:`${c.wallet==='google'?'Google Wallet':'Sans Google Wallet'} · ${c.balance} / ${goal}`,checked:nf.ids.includes(c.id),
+    const lpick=clients.map(c=>({id:'pk-'+c.id,name:(c.first+' '+c.last).trim(),meta:`${[c.wallets?.apple?'Apple Wallet':null,c.wallets?.google?'Google Wallet':null].filter(Boolean).join(' + ')||'Sans Wallet enregistré'} · ${c.balance} / ${goal}`,checked:nf.ids.includes(c.id),
       toggle:()=>this.setState(x=>({nf:{...x.nf,ids:x.nf.ids.includes(c.id)?x.nf.ids.filter(i=>i!==c.id):[...x.nf.ids,c.id]},err:{...x.err,nAud:null}}))}));
     const ltiming=[{label:'Envoyer maintenant',icon:'send',...chip(nf.timing!=='schedule'),pick:()=>this.setNf({timing:'now'})},
       {label:'Programmer · bientôt disponible',icon:'schedule',...chip(false),pick:()=>this.showToast('La programmation sera disponible prochainement : seul l’envoi immédiat est possible.','info')}];
