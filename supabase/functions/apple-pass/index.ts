@@ -7,6 +7,8 @@ import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 // This is the first-install endpoint: live Wallet updates require a separate
 // Apple PassKit web service + APNs registration, not implemented here.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { passAuthToken, passServiceUrl } from './auth.js';
+import { handlePasskit } from './web-service.js';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
 import { realApplePassData, visibleCardNumber, testAssetPath, appleHeaderName } from './real-card.js';
