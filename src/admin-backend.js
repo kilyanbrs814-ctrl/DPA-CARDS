@@ -165,6 +165,7 @@ const designerApi = {
   // "Ajouter un client": the server creates the login (no password), the shop and its program.
   createMerchant: payload => adminCall('admin-merchant-create', payload),
   sendAccess: merchantId => adminCall('admin-merchant-access', { merchant_id: merchantId }),
+  recordOnsiteActivation: (merchantId, reference) => adminCall('admin-onsite-activation', {merchant_id: merchantId, receipt_ref: reference, confirmed: true}),
   // Test cards: same designer, no merchant (test_card_designs, images under program-assets/tests/<id>/).
   testList: () => adminCall('admin-test-cards'),
   testGet: id => adminCall('admin-test-card-get', { id }),
