@@ -643,6 +643,8 @@ export function makeCardDesigner(React, api) {
     const [saleLink, setSaleLink] = useState('');
     const [rewardPickerOpen, setRewardPickerOpen] = useState(false);
     const key = target ? (target.testId ? 't:' + target.testId : target.requestId ? 'r:' + target.requestId : target.merchantId ? 'm:' + target.merchantId : '') : '';
+    // A Stripe link is tied to exactly one merchant and one selected plan.
+    useEffect(() => { setSaleLink(''); setSalePlan('no_commitment'); setSaleBilling('monthly'); setOnsiteOpen(false); }, [key]);
     useEffect(loadFonts, []);
     const refreshTests = () => api.testList().then(r => setTests(r.tests || [])).catch(() => setTests(t => t || []));
     useEffect(() => { refreshTests(); }, [key]);
@@ -812,6 +814,17 @@ export function makeCardDesigner(React, api) {
         setProject(p => ({ ...p, account: { ...p.account, admin_created: { ...(p.account.admin_created || {}), access_sent_at: r.sent_at, access_sent_count: ((p.account.admin_created || {}).access_sent_count || 0) + 1, access_last_error: null } } }));
         setAskAccess(false); toast('Accès envoyé à ' + r.email + '.'); }
       catch (e) { setAskAccess(false); const d = e && e.info && e.info.detail; toast(e && e.code === 'access_email_failed' ? 'Envoi impossible : ' + (ACCESS_ERR[d] || d || 'erreur du service e-mail') : errText(e)); }
+      finally { setBusy(null); }
+    };
+    const refreshSaleStatus = async () => {
+      if(busy || !project?.merchant?.id)return;
+      setBusy('sale-status');
+      try {
+        const r=await api.load({merchantId:project.merchant.id});
+        setProject(p=>({...p,account:r.account || p.account}));
+        toast(['active','trialing'].includes(r.account?.subscription_status)?'Abonnement confirmé par Stripe.':
+          'Statut mis à jour. Le paiement ou le mandat peut encore être en cours de confirmation.');
+      } catch(e) { toast(errText(e)); }
       finally { setBusy(null); }
     };
     const createSaleLink = async () => {
@@ -987,6 +1000,9 @@ export function makeCardDesigner(React, api) {
             disabled: !!busy, onClick: () => { setOnsiteRef(''); setOnsiteChecked(false); setOnsiteOpen(true); },
             style: { minHeight: 46, border: '1.5px solid #2448F0', borderRadius: 12, background: '#FFFFFF', color: '#2448F0', fontWeight: 750 } },
             'J’ai encaissé 50 € en sans-contact'),
+          h('button', { type: 'button', disabled: !!busy, onClick: refreshSaleStatus,
+            style: { minHeight: 42, border: '1px solid #D4D1C9', borderRadius: 10, background: '#FFFFFF', fontWeight: 700 } },
+            busy==='sale-status'?'Actualisation…':'Actualiser le statut de paiement'),
           !['active','trialing'].includes(acc.subscription_status) && h('div', {
             'data-admin-stripe-checkout': true, style: { display: 'flex', flexDirection: 'column', gap: 12,
               borderTop: '1px solid #E4E1DA', paddingTop: 14 } },
