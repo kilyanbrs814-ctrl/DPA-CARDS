@@ -176,6 +176,7 @@ const designerApi = {
     return { path: r.path, url: r.url };
   },
   testDuplicate: id => adminCall('admin-test-card-duplicate', { id }),
+  testAssign: (testId, merchantId) => adminCall('admin-test-card-assign', { id: testId, merchant_id: merchantId, overwrite: true }),
   testDelete: id => adminCall('admin-test-card-delete', { id }),
   testNewQr: id => adminCall('admin-test-card-new-qr', { id }),
   testWallet: id => adminCall('admin-test-card-wallet', { id }),
