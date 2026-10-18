@@ -659,13 +659,24 @@ const api = {
     if (error) throw error;
   },
   async sendNotification(nf, draftId) {
-    const { data, error } = await sb.functions.invoke('wallet/notify', { body: { ...notifRow(nf), draft_id: draftId || undefined } });
-    if (error) {
-      let code = '';
-      try { code = (await error.context.json()).error || ''; } catch (e) {}
-      throw Object.assign(new Error(code || error.message || 'wallet_unavailable'), { code });
+    const platform=['apple','google','both'].includes(nf.platform)?nf.platform:'google';
+    const body={...notifRow(nf),draft_id:draftId||undefined};
+    if(platform==='apple')return invokeFn('apple-pass/notify',body);
+    const google=await invokeFn('wallet/notify',body);
+    if(platform==='google')return google;
+    // Two independent campaigns: an Apple failure does not roll back a real
+    // Google delivery. The history retains both individual send attempts.
+    try {
+      const apple=await invokeFn('apple-pass/notify',{...body,draft_id:undefined});
+      return {...google,platform:'both',sent:(google.sent||0)+(apple.sent||0),
+        targeted:(google.targeted||0)+(apple.targeted||0),
+        failed:(google.failed||0)+(apple.failed||0),
+        noWallet:(google.noWallet||0)+(apple.noWallet||0),
+        appleQueued:apple.appleQueued||0,googleSent:google.sent||0};
+    } catch(e) {
+      return {...google,platform:'both',status:'partial',appleError:errorMessage(e),
+        appleQueued:0,googleSent:google.sent||0,failed:(google.failed||0)+1};
     }
-    return data;
   },
   async saveMerchant(id, patch) {
     const { data, error } = await sb.from('merchants').update(patch).eq('id', id).select().single();
