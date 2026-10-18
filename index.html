@@ -2662,7 +2662,7 @@ class Component extends DCLogic {
     const ok=()=>this.showToast('Lien copié'), ko=()=>this.showToast('Copie impossible sur ce navigateur. Lien : '+url,'info');
     try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(ok,ko); else ko(); }catch(e){ ko(); } }
   // ---- subscription (Stripe). The page only names a plan; the billing Edge Function does the rest.
-  choosePlan=async(plan,billing)=>{ if(this.state.busy) return; this.setState({busy:true,billingPlan:plan});
+  choosePlan=async(plan,billing)=>{ if(DPA_NATIVE_IOS){this.showToast('Achats intégrés Apple non configurés. Aucun paiement n’a été effectué.','info');return;} if(this.state.busy) return; this.setState({busy:true,billingPlan:plan});
     try{ this.setState({busy:false,initialChoice:{plan,billing}}); }
     catch(e){ this.setState({busy:false,billingPlan:null});
       if(e.code==='already_subscribed'){ await this.refreshSub(); return this.go('home'); }
@@ -3187,7 +3187,7 @@ class Component extends DCLogic {
       s:S, isDesk, isMob, m, P, f:s.f, F, err, eb, inv, go, spin, scanLine, sheetAnim, busy:s.busy, notBusy:!s.busy,
       offerTitle:s.billingMerchantId&&m.id!==s.billingMerchantId&&!s.selectedActivated?'Activez votre nouveau commerce':'Choisissez votre offre',
       offerSubtitle:s.billingMerchantId&&m.id!==s.billingMerchantId&&!s.selectedActivated?'Utilisez « Activer ce commerce » pour vérifier les montants et confirmer l’ajout à votre facturation existante.':'15 jours d’essai gratuit sur votre abonnement initial.',
-      profileControl:s.live&&this.api&&s.profiles&&s.profiles.length&&!DPA_NATIVE_IOS?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,onAdd:this.beginAddProfile,
+      profileControl:s.live&&this.api&&s.profiles&&s.profiles.length?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,onAdd:this.beginAddProfile,
         needsActivation:!!m.id&&m.id!==s.billingMerchantId&&!s.selectedActivated&&!s.hasAccess&&P&&(P.designStatus!=='draft'||designUnpaid(s.designReq)),
         onActivated:async()=>{const session=await this.api.session();await this.openLive(session);},initialChoice:s.initialChoice,onInitialDone:()=>this.setState({initialChoice:null})}):null,
       showDemoHints:false, isWeb:!DPA_NATIVE_IOS, isNative:DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
