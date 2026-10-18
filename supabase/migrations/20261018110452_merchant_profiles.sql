@@ -23,6 +23,32 @@ update public.merchants m set billing_account_id=a.id from public.merchant_billi
 set constraints all immediate;
 alter table public.merchants alter column billing_account_id set not null;
 
+-- Website-only rollout: existing iPhone builds issue unscoped merchant_members
+-- SELECT ... maybeSingle() and do not attach a selected profile header.
+-- Never return multiple memberships to those legacy clients. Their other table
+-- RLS policies also depend on merchant_members, so they stay on the first shop.
+-- Web browsers explicitly opt in to all their own memberships. This header is
+-- only a view preference: it cannot grant an unrelated user's membership.
+create function app_private.legacy_primary_merchant(p_user uuid) returns uuid
+language sql stable security definer set search_path='' as $
+  select coalesce(
+    (select ba.primary_merchant_id from public.merchant_billing_accounts ba where ba.owner_id=p_user),
+    (select mm.merchant_id from public.merchant_members mm
+     where mm.user_id=p_user order by mm.created_at,mm.merchant_id limit 1)
+  );
+$;
+revoke all on function app_private.legacy_primary_merchant(uuid) from public,anon,authenticated;
+grant execute on function app_private.legacy_primary_merchant(uuid) to authenticated;
+
+alter policy merchant_members_select on public.merchant_members
+  using (
+    user_id=(select auth.uid()) and (
+      coalesce(nullif(current_setting('request.headers',true),'')::jsonb->>'x-dpa-web-profiles','')='1'
+      or merchant_id=app_private.legacy_primary_merchant((select auth.uid()))
+    )
+  );
+
+
 create table public.merchant_activations (
   merchant_id uuid primary key references public.merchants(id) on delete cascade,
   account_id uuid not null references public.merchant_billing_accounts(id) on delete cascade,
