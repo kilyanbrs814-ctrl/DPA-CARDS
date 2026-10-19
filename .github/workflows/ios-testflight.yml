@@ -4,6 +4,10 @@ name: Upload signed iOS build to TestFlight
 # Only runs after Apple signing materials are configured in GitHub Actions secrets.
 on:
   workflow_dispatch:
+  # Temporary one-time trigger: this file update submits the corrected iOS build.
+  push:
+    branches: [feat/ios-app-store-preparation]
+    paths: ['.github/workflows/ios-testflight.yml']
 
 permissions:
   contents: read
