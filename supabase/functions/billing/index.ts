@@ -37,6 +37,9 @@ const ALLOWED_ORIGINS = (Deno.env.get('WALLET_ALLOWED_ORIGINS') ?? 'https://card
   .split(',').map(s => s.trim()).filter(Boolean);
 // Allow the new custom domain even if the production secret still contains an older origin.
 if (!ALLOWED_ORIGINS.includes('https://cards.digitalprojectagency.fr')) ALLOWED_ORIGINS.push('https://cards.digitalprojectagency.fr');
+// The native iOS WebView uses this fixed origin for authenticated admin payment setup.
+// The actual Stripe checkout still happens on Stripe, outside the WebView.
+if (!ALLOWED_ORIGINS.includes('capacitor://localhost')) ALLOWED_ORIGINS.push('capacitor://localhost');
 const TRIAL_DAYS = 15;
 const ACCESS = ['trialing', 'active'];
 
@@ -100,7 +103,8 @@ function cors(req: Request): Record<string, string> {
 const json = (req: Request, status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', ...cors(req) } });
 class HttpError extends Error { constructor(public status: number, public code: string, public extra: Record<string, unknown> = {}) { super(code); } }
-const siteOrigin = (req: Request) => { const o = req.headers.get('origin') ?? ''; return ALLOWED_ORIGINS.includes(o) ? o : SITE_URL; };
+// Native requests may use the API, but Stripe must redirect to an HTTPS page.
+const siteOrigin = (req: Request) => { const o = req.headers.get('origin') ?? ''; return o === 'capacitor://localhost' ? SITE_URL : ALLOWED_ORIGINS.includes(o) ? o : SITE_URL; };
 const requireStripe = () => { if (!stripe) throw new HttpError(503, 'billing_not_configured'); return stripe; };
 const iso = (s?: number | null) => (s ? new Date(s * 1000).toISOString() : null);
 
