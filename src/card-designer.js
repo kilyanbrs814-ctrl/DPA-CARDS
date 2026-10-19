@@ -57,7 +57,7 @@ export function defaultDesign(project) {
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
     assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, googleStrip: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null },
-    stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg), size: 100, spacing: 100, inactiveOpacity: 22 },
+    stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg), size: 100, spacing: 100, inactiveOpacity: 22, rewardId: 'reward-star' },
     apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, headerMode: 'classic', showStampPanel: true, showStamps: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showStamps: true, reuseAppleStrip: true, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
@@ -145,7 +145,7 @@ export function makeCardDesigner(React, api) {
   // ------------------------------------------------------------ stamps / points
   function Stamp({ on, st, size, stampUrl, final=false }) {
     const fade=inactiveStampOpacity(st?.inactiveOpacity)/100;
-    if(final) return h('img',{src:'/assets/stamps/reward-star.png',alt:on?'Récompense débloquée':'Récompense à débloquer',
+    if(final) return h('img',{src:stampImageUrl(st?.rewardId)||'/assets/stamps/reward-star.png',alt:on?'Récompense débloquée':'Récompense à débloquer',
       'data-stamp':on?'filled-final-star':'empty-final-star',style:{width:size,height:size,display:'block',objectFit:'contain',flex:'none',opacity:on?1:fade,filter:on?'none':'grayscale(1)'}});
     const libraryUrl = st?.icon === 'library' ? stampImageUrl(st.libraryId) : '';
     if (libraryUrl) return h('img', {
@@ -641,6 +641,7 @@ export function makeCardDesigner(React, api) {
     const [salePlan, setSalePlan] = useState('no_commitment');
     const [saleBilling, setSaleBilling] = useState('monthly');
     const [saleLink, setSaleLink] = useState('');
+    const [rewardPickerOpen, setRewardPickerOpen] = useState(false);
     const key = target ? (target.testId ? 't:' + target.testId : target.requestId ? 'r:' + target.requestId : target.merchantId ? 'm:' + target.merchantId : '') : '';
     useEffect(() => { setSaleLink(''); setSalePlan('no_commitment'); setSaleBilling('monthly'); setOnsiteOpen(false); }, [key]);
     useEffect(loadFonts, []);
@@ -1115,6 +1116,17 @@ export function makeCardDesigner(React, api) {
             style:{width:'100%',accentColor:'#2448F0'}}),
           h('div',{style:{marginTop:5,fontSize:13,color:'#5E636B',lineHeight:1.4}},
             '0 % = invisibles · 22 % = gris actuel · 100 % = gris bien visible. Les tampons validés restent en couleur.'))),
+      h(Section,{title:'Tampon récompense — dernier tampon'},
+        h('div',{style:{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}},
+          h('img',{src:stampImageUrl(design.stamps.rewardId)||'/assets/stamps/reward-star.png',
+            alt:'Tampon récompense sélectionné',width:56,height:56,style:{objectFit:'contain',background:'#F6F5F1',borderRadius:12,padding:4}}),
+          h('div',{style:{flex:'1 1 160px',fontSize:14,color:'#4A4E55'}},'Sélectionnez une autre image pour le dernier tampon. Les anciens modèles gardent leur étoile.'),
+          h('button',{type:'button','data-reward-stamp-picker':true,'aria-expanded':rewardPickerOpen,
+            onClick:()=>setRewardPickerOpen(v=>!v),
+            style:{minHeight:44,padding:'0 14px',borderRadius:12,border:'1.5px solid #2448F0',background:'#EEF1FF',color:'#1A36C4',fontWeight:700,cursor:'pointer'}},
+            rewardPickerOpen?'Fermer le choix':'Choisir le tampon récompense')),
+        rewardPickerOpen && h(StampLibraryPicker,{includeRewardStar:true,value:design.stamps.rewardId||'reward-star',
+          onChange:v=>{set('stamps.rewardId',v);setRewardPickerOpen(false);}})),
       platform==='apple' && h(Section, { title: 'Apple Wallet' },
         h(ImagePick, { label: 'Image du bandeau Apple Wallet (facultatif)', testId: 'appleStrip',
           asset: design.assets.appleStrip, busy: busy==='up-appleStrip', onPick: pickFile('appleStrip'),

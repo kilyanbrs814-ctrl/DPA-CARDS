@@ -165,7 +165,13 @@ export const STAMP_LIBRARY = [
     "id": "animalerie",
     "label": "Os",
     "tags": "chien animaux animalerie"
-  }
+  },
+  {"id":"tacos-2","label":"Tacos 2","tags":"tacos fast food snack"},
+  {"id":"wok","label":"Wok","tags":"wok asiatique nouilles restaurant"},
+  {"id":"vape","label":"Vape","tags":"vapoteuse e-cigarette"},
+  {"id":"cheveux-bruns","label":"Cheveux bruns","tags":"cheveux coiffure salon brushing"},
+  {"id":"e-liquide","label":"E-liquide","tags":"flacon liquide vape"},
+  {"id":"cadeau","label":"Cadeau","tags":"gift récompense cadeau anniversaire"}
 ];
 const BY_ID = new Map(STAMP_LIBRARY.map(stamp=>[stamp.id,stamp]));
 export function stampById(id) { return typeof id === 'string' ? BY_ID.get(id) || null : null; }
@@ -177,14 +183,14 @@ export function filterStamps(query) {
 }
 export function makeStampLibraryPicker(React) {
   const h=React.createElement;
-  return function StampLibraryPicker({value,onChange}) {
+  return function StampLibraryPicker({value,onChange,includeRewardStar=false}) {
     const [search,setSearch]=React.useState('');
     return h('div',{'data-stamp-library':true,style:{display:'flex',flexDirection:'column',gap:12}},
       h('label',{style:{fontSize:14,fontWeight:700}},'Choisir un tampon PNG'),
       h('input',{type:'search',value:search,onChange:e=>setSearch(e.target.value),placeholder:'Rechercher : burger, coiffeur, sushi…','aria-label':'Rechercher un tampon',style:{width:'100%',height:42,borderRadius:10,border:'1px solid #D4D1C9',padding:'0 12px',fontSize:14}}),
       h('div',{role:'group','aria-label':'Catalogue des tampons PNG',style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(82px,1fr))',gap:8,maxHeight:288,overflowY:'auto',padding:'2px'}},
-        ...filterStamps(search).map(item=>h('button',{key:item.id,type:'button',title:item.label,'aria-label':item.label,'aria-pressed':value===item.id,onClick:()=>onChange(item.id),style:{border:value===item.id?'2px solid #2448F0':'1px solid #E4E1DA',borderRadius:12,background:value===item.id?'#EEF2FF':'#FFFFFF',minHeight:98,padding:'7px 4px',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:4,cursor:'pointer'}},
-          h('img',{src:stampImageUrl(item.id),alt:'',loading:'lazy',width:52,height:52,style:{objectFit:'contain',display:'block'}}),
+        ...(includeRewardStar && (!search || normalizeSearch('étoile récompense par défaut star').includes(normalizeSearch(search))) ? [{id:'reward-star',label:'Étoile (actuelle)',tags:'étoile star'}] : []).concat(filterStamps(search)).map(item=>h('button',{key:item.id,type:'button',title:item.label,'aria-label':item.label,'aria-pressed':value===item.id,onClick:()=>onChange(item.id),style:{border:value===item.id?'2px solid #2448F0':'1px solid #E4E1DA',borderRadius:12,background:value===item.id?'#EEF2FF':'#FFFFFF',minHeight:98,padding:'7px 4px',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:4,cursor:'pointer'}},
+          h('img',{src:item.id==='reward-star'?'/assets/stamps/reward-star.png':stampImageUrl(item.id),alt:'',loading:'lazy',width:52,height:52,style:{objectFit:'contain',display:'block'}}),
           h('span',{style:{fontSize:11,fontWeight:value===item.id?800:550,lineHeight:1.2,color:'#252A33',textAlign:'center'}},item.label)))),
       h('small',{style:{color:'#5E636B'}},'Passage validé : image en couleur. Passage restant : la même image en gris, atténuée.'));
   };
