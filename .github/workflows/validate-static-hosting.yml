@@ -23,6 +23,7 @@ jobs:
       - run: npm run test:static
       - run: npm run test:apple
       - run: npm run test:real-apple
+      - run: node --test scripts/check-dual-logo-wallet.test.mjs
       - run: npm run test:apple-updates
       - run: npm run test:apple-strip
       - run: npm run test:emoji
