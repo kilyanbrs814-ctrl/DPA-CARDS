@@ -32,7 +32,7 @@ try{
     '    }'
    ].join('\n');
  const patched=source.replace(anchor,fixtureCode+'\n'+anchor).replace("const DPA_NATIVE_IOS=window.location.protocol==='capacitor:';","const DPA_NATIVE_IOS=true;");
- fs.writeFileSync('index.html',patched);
+ fs.writeFileSync('index.html',patched.replace("const PUBLIC_SITE=/^https?:$/.test(window.location.protocol)&&/^(localhost|127\\.0\\.0\\.1)$/.test(window.location.hostname)?window.location.origin:'https://cards.digitalprojectagency.fr';","const PUBLIC_SITE='https://cards.digitalprojectagency.fr';"));
  cp.execFileSync('npm',['run','build'],{stdio:'inherit',timeout:120000});
  if(!server){server=cp.spawn('npm',['run','preview','--','--host','127.0.0.1'],{stdio:'inherit'});await new Promise(r=>setTimeout(r,1500));}
  for(const [family,width,height,scale]of [['iphone',402,874,3],['ipad',1032,1376,2]]){
@@ -43,6 +43,7 @@ try{
  await page.evaluate(()=>document.fonts.ready);
  await page.waitForTimeout(2000);
  const text=await page.locator('body').innerText();
+ if(view==='invite'&&(/127\\.0\\.0\\.1|localhost/.test(text)||!text.includes('https://cards.digitalprojectagency.fr')))throw Error('Invitation URL must match the native app public origin');
  if(text.length<80||expected&&!text.toLowerCase().includes(expected.toLowerCase())||/Espace non actif|Service de connexion indisponible/.test(text))throw Error('Screen not ready: '+family+'/'+view+' '+text+' '+errors.join('; '));
  const folder=path.join(out,family);fs.mkdirSync(folder,{recursive:true});
  const file=path.join(folder,name+'.png'),ocr=path.join(folder,name+'.txt');
