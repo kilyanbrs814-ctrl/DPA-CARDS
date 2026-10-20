@@ -9,20 +9,16 @@ permissions:
 jobs:
   stop-old-job:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
-      - name: Cancel only the superseded screenshot run
-        env:
+      - env:
           GH_TOKEN: ${{ github.token }}
         run: |
           node --input-type=module <<'NODE'
-          const root='https://api.github.com/repos/kilyanbrs814-ctrl/DPA-CARDS/actions/runs/39479512618';
-          const headers={Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
-          const r=await fetch(root,{headers});if(!r.ok)throw Error('Cannot read old run: '+r.status);
-          const run=await r.json();
-          if(run.head_sha!=='c21ee135efd7cb427a630c04e69ea7d6bb0794d5'||run.path!=='.github/workflows/app-store-assets.yml')throw Error('Unexpected run; cancellation refused');
-          if(run.status==='completed'){console.log('Old capture already finished.');process.exit(0);}
-          const c=await fetch(root+'/force-cancel',{method:'POST',headers});
-          if(![202,204].includes(c.status))throw Error('Cancel returned '+c.status);
-          console.log('Superseded screenshot run cancellation requested.');
+          const url='https://api.github.com/repos/kilyanbrs814-ctrl/DPA-CARDS/actions/runs/39481188335';
+          const headers={Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json'};
+          const r=await fetch(url,{headers});if(!r.ok)throw Error('Read failed');const run=await r.json();
+          if(run.head_sha!=='f4564053fd42f5721b1b7cde4c133e8f6b13f3dd'||run.path!=='.github/workflows/app-store-assets.yml')throw Error('Unexpected run');
+          if(run.status==='completed')process.exit(0);
+          const c=await fetch(url+'/cancel',{method:'POST',headers});if(![202,204].includes(c.status))throw Error('Cancel status '+c.status);
+          console.log('Superseded runner cancellation requested.');
           NODE
