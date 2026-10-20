@@ -233,7 +233,7 @@ test('Custom Apple header saves at Retina 3x, then Classic restores native name 
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const custom=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(custom.apple.headerMode).toBe('custom');
- expect(custom.apple.headerArtworkVersion).toBe(5);
+ expect(custom.apple.headerArtworkVersion).toBe(6);
  expect(custom.assets.appleHeader.path).toContain('appleHeader-');
  const img=card.getByRole('img',{name:'Logo, nom et activité du commerce'});
  await expect(img).toBeVisible();
@@ -252,7 +252,7 @@ test('Custom Apple header saves at Retina 3x, then Classic restores native name 
  await page.getByLabel('Style de l’en-tête').selectOption('custom');
  await page.getByRole('button',{name:/Enregistrer/}).click();
  const again=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
- expect(again.apple.headerArtworkVersion).toBe(5);
+ expect(again.apple.headerArtworkVersion).toBe(6);
  expect(again.assets.appleHeader.path).toBe(custom.assets.appleHeader.path);
 });
 
@@ -423,8 +423,8 @@ test('Separate PNG wordmark renders beside the symbol in both Wallet previews an
  expect(saved.assets.businessNameImage.path).toContain('businessNameImage-');
  expect(saved.assets.appleHeader.path).toContain('appleHeader-');
  expect(saved.assets.googleWideLogo.path).toContain('googleWideLogo-');
- expect(saved.apple.headerArtworkVersion).toBe(5);
- expect(saved.google.wideArtworkVersion).toBe(1);
+ expect(saved.apple.headerArtworkVersion).toBe(6);
+ expect(saved.google.wideArtworkVersion).toBe(2);
  await page.reload();
  await page.getByRole('tab',{name:'Google Wallet'}).click();
  await expect(page.locator('[data-layout="google"] [data-field="google-wide-logo"]')).toBeVisible();
