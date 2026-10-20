@@ -403,3 +403,29 @@ test('inactive opacity slider live adjusts only gray stamps on Apple and Google 
  await expect(page.locator('[data-stamp-size-control]')).toHaveValue('100');
  await expect(page.locator('[data-stamp-spacing-control]')).toHaveValue('100');
 });
+
+test('Separate PNG wordmark renders beside the symbol in both Wallet previews and persists',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const upload=kind=>page.locator('[data-upload="'+kind+'"]');
+ await upload('logo').setInputFiles({name:'symbol.png',mimeType:'image/png',buffer:fixture(120,120,[30,120,190,255])});
+ await upload('businessNameImage').setInputFiles({name:'wordmark.png',mimeType:'image/png',buffer:fixture(400,100,[190,30,100,255])});
+ const apple=page.locator('[data-layout="apple"]').first();
+ await expect(apple.getByRole('img',{name:'Logo texte du commerce'})).toBeVisible();
+ await expect(apple.locator('[data-field="card-number"]')).toHaveText('1234');
+ await page.getByRole('tab',{name:'Google Wallet'}).click();
+ const google=page.locator('[data-layout="google"]').first();
+ await expect(google.getByRole('img',{name:'Logo symbole'})).toBeVisible();
+ await expect(google.getByRole('img',{name:'Logo texte'})).toBeVisible();
+ await expect(google.locator('[data-field="card-number"]')).toHaveText('1234');
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
+ expect(saved.assets.businessNameImage.path).toContain('businessNameImage-');
+ expect(saved.assets.appleHeader.path).toContain('appleHeader-');
+ expect(saved.assets.googleWideLogo.path).toContain('googleWideLogo-');
+ expect(saved.apple.headerArtworkVersion).toBe(5);
+ expect(saved.google.wideArtworkVersion).toBe(1);
+ await page.reload();
+ await page.getByRole('tab',{name:'Google Wallet'}).click();
+ await expect(page.locator('[data-layout="google"] [data-field="google-wide-logo"]')).toBeVisible();
+});
