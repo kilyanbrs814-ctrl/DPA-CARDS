@@ -33,38 +33,46 @@ const views=[
 ];
 const manifest={sourceSha:process.env.GITHUB_SHA,generatedAt:new Date().toISOString(),fixture:'Isolated Apple review demo; read-only snapshot, no credentials',devices:[],files:[]};
 try{
+ console.log('Building the native simulator application before booting a device.');
+ run('npm',['run','build']);
+ run('npx',['cap','sync','ios']);
+ run('xcodebuild',['-project','ios/App/App.xcodeproj','-scheme','App','-configuration','Debug','-sdk','iphonesimulator','-destination','generic/platform=iOS Simulator','-derivedDataPath',path.join(tmp,'DPA-Capture-Build'),'CODE_SIGNING_ALLOWED=NO','build']);
+ const app=path.join(tmp,'DPA-Capture-Build/Build/Products/Debug-iphonesimulator/App.app');
  for(const [family,d] of [['iphone',phone],['ipad',tablet]]){
+  console.log('Booting '+d.name+'; only one simulator runs at a time.');
   if(d.state!=='Booted')run('xcrun',['simctl','boot',d.udid]);
   run('xcrun',['simctl','bootstatus',d.udid,'-b']);
   run('xcrun',['simctl','status_bar',d.udid,'override','--time','9:41','--dataNetwork','wifi','--wifiMode','active','--wifiBars','3','--batteryState','charged','--batteryLevel','100']);
   manifest.devices.push({family,name:d.name,udid:d.udid});
- }
- for(const [name,view,expected] of views){
-  const fixtureCode=[
-   '    // DPA_CAPTURE_FIXTURE: ephemeral, read-only screenshot fixture.',
-   '    if (true) {',
-   '      const captureFixture='+JSON.stringify(fixture)+';',
-   '      useCalendar(true);',
-   '      this.ready().then(api=>{',
-   "        if(!api)throw new Error('Current application utilities unavailable.');",
-   "        this.api={...api,access:async()=>({has_access:true,source:'manual'})};",
-   '        const cl=captureFixture.clients;',
-   "        this.setState({live:true,demo:false,hasAccess:true,accessSource:'manual',role:'owner',",
-   '          merchant:captureFixture.merchant,sd:{...captureFixture.merchant},',
-   '          program:captureFixture.program,draft:{...captureFixture.program},clients:cl,',
-   '          notifs:[],screen:'+JSON.stringify(view)+',selId:cl[0].id,',
-   "          busy:false,loadingHome:false,err:{},modal:null,toast:null,section:'profile',profiles:[],subscription:null});",
-   '      });',
-   '      return;',
-   '    }'
-  ].join('\n');
-  fs.writeFileSync('index.html',source.replace(anchor,fixtureCode+'\n'+anchor));
-  run('npm',['run','build']);
-  run('npx',['cap','sync','ios']);
-  run('xcodebuild',['-project','ios/App/App.xcodeproj','-scheme','App','-configuration','Debug','-sdk','iphonesimulator','-destination','generic/platform=iOS Simulator','-derivedDataPath',path.join(tmp,'DPA-Capture-Build'),'CODE_SIGNING_ALLOWED=NO','build']);
-  const app=path.join(tmp,'DPA-Capture-Build/Build/Products/Debug-iphonesimulator/App.app');
-  for(const [family,d] of [['iphone',phone],['ipad',tablet]]){
+  for(const [name,view,expected] of views){
    if(family==='iphone' && view==='card')continue;
+   console.log('Preparing '+family+'/'+name);
+   const fixtureCode=[
+    '    // DPA_CAPTURE_FIXTURE: ephemeral, read-only screenshot fixture.',
+    '    if (true) {',
+    '      const captureFixture='+JSON.stringify(fixture)+';',
+    '      useCalendar(true);',
+    '      this.ready().then(api=>{',
+    "        if(!api)throw new Error('Current application utilities unavailable.');",
+    "        this.api={...api,access:async()=>({has_access:true,source:'manual'})};",
+    '        const cl=captureFixture.clients;',
+    "        this.setState({live:true,demo:false,hasAccess:true,accessSource:'manual',role:'owner',",
+    '          merchant:captureFixture.merchant,sd:{...captureFixture.merchant},',
+    '          program:captureFixture.program,draft:{...captureFixture.program},clients:cl,',
+    '          notifs:[],screen:'+JSON.stringify(view)+',selId:cl[0].id,',
+    "          busy:false,loadingHome:false,err:{},modal:null,toast:null,section:'profile',profiles:[],subscription:null});",
+    '      });',
+    '      return;',
+    '    }'
+   ].join('\n');
+   fs.writeFileSync('index.html',source.replace(anchor,fixtureCode+'\n'+anchor));
+   run('npm',['run','build']);
+   // The native code and plugins are unchanged. Replace only this unsigned
+   // simulator package's bundled web resources, exactly as cap copy does.
+   const web=path.join(app,'public');
+   if(!fs.existsSync(web))throw new Error('Generated Capacitor public resource folder missing');
+   fs.rmSync(web,{recursive:true});
+   fs.cpSync('dist',web,{recursive:true});
    try{run('xcrun',['simctl','terminate',d.udid,bundle]);}catch{}
    run('xcrun',['simctl','install',d.udid,app]);
    run('xcrun',['simctl','launch',d.udid,bundle]);
@@ -89,6 +97,7 @@ try{
    fs.writeFileSync(path.join(out,'manifest.json'),JSON.stringify(manifest,null,2));
    console.log('Captured '+family+'/'+name+' '+width+'x'+height);
   }
+  run('xcrun',['simctl','shutdown',d.udid]);
  }
 }finally{
  fs.writeFileSync('index.html',source);

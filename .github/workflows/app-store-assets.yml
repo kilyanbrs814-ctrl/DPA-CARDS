@@ -9,6 +9,9 @@ on:
       - scripts/publish-app-store-capture-results.mjs
       - app-store/review-fixture.json
   workflow_dispatch:
+concurrency:
+  group: dpa-cards-appstore-capture
+  cancel-in-progress: true
 permissions:
   contents: write
 jobs:
