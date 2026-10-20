@@ -423,7 +423,14 @@ export function makeCardDesigner(React, api) {
     const done=Math.max(0,Number(data.progress)||0),goal=Math.max(1,Number(data.goal)||10);
     const points=data.mode==='points';
     return h('div',{'data-layout':'google',style:{width:340,borderRadius:22,overflow:'hidden',background:c.primary,color:c.text,fontFamily:FONTS[d.font].css,boxShadow:'0 14px 36px rgba(20,22,28,.19)'}},
-      h('div',{style:{display:'flex',gap:12,alignItems:'center',padding:20}},h(Logo,{d,size:40,round:true}),h('strong',{style:{fontSize:20}},d.identity.name||'Nom du commerce')),
+      h('div',{style:{display:'flex',gap:10,alignItems:'center',justifyContent:'space-between',padding:20}},
+        d.assets.businessNameImage?.url
+          ? h('div',{'data-field':'google-wide-logo',style:{display:'flex',gap:8,alignItems:'center',minWidth:0,flex:1}},
+              d.assets.logo?.url && h(Img,{asset:d.assets.logo,alt:'Logo symbole',style:{width:40,height:40,objectFit:'contain',flexShrink:0}}),
+              h(Img,{asset:d.assets.businessNameImage,alt:'Logo texte',style:{width:145,height:40,objectFit:'contain',objectPosition:'left center',minWidth:0}}))
+          : h('div',{style:{display:'flex',alignItems:'center',gap:12,minWidth:0}},h(Logo,{d,size:40,round:true}),h('strong',{style:{fontSize:20,...ellipsis}},d.identity.name||'Nom du commerce')),
+        d.assets.businessNameImage?.url && h('span',{'data-field':'card-number',style:{fontSize:14,fontWeight:700,flexShrink:0,fontVariantNumeric:'tabular-nums'}},
+          (String(data.cardNumber||'').replace(/\\D/g,'')||'0000').slice(-4))),
       h('div',{style:{display:'flex',justifyContent:'space-between',padding:'8px 18px 24px'}},
         h('div',null,h('div',null,points?'Points gagnés':'Passages effectués'),h('strong',{'data-field':'completed-count'},String(done))),
         h('div',{style:{textAlign:'right'}},h('div',null,points?'Points restants':'Passages restants'),h('strong',{'data-field':'remaining-count'},String(Math.max(0,goal-done))))),
