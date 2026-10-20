@@ -7,7 +7,11 @@ const root=process.cwd(), tmp=process.env.RUNNER_TEMP;
 if(!tmp || process.platform!=='darwin') throw new Error('Run on the macOS screenshot runner.');
 const out=path.join(root,'app-store-output'); fs.mkdirSync(out,{recursive:true});
 const log=fs.openSync(path.join(out,'native-build.log'),'a');
-function run(cmd,args,opts={}){return cp.execFileSync(cmd,args,{cwd:root,encoding:'utf8',stdio:['ignore',log,log],...opts});}
+function run(cmd,args,opts={}){
+ const started=Date.now();console.log('Running '+cmd+' '+args.slice(0,4).join(' '));
+ try{const result=cp.execFileSync(cmd,args,{cwd:root,encoding:'utf8',timeout:cmd==='xcodebuild'?360000:180000,stdio:['ignore',log,log],...opts});console.log(cmd+' finished in '+Math.round((Date.now()-started)/1000)+'s');return result;}
+ catch(e){console.error(fs.readFileSync(path.join(out,'native-build.log'),'utf8').split('\\n').slice(-45).join('\\n'));throw e;}
+}
 function json(cmd,args){return JSON.parse(run(cmd,args,{stdio:['ignore','pipe',log]}));}
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 const available=json('xcrun',['simctl','list','devices','available','--json']);
@@ -33,10 +37,17 @@ const views=[
 ];
 const manifest={sourceSha:process.env.GITHUB_SHA,generatedAt:new Date().toISOString(),fixture:'Isolated Apple review demo; read-only snapshot, no credentials',devices:[],files:[]};
 try{
+ // App icon and launch artwork are not visible in in-app screenshots. Skip only
+ // the ephemeral native asset-catalog build; all actual web UI assets stay intact.
+ const projectFile='ios/App/App.xcodeproj/project.pbxproj';
+ const pbx=fs.readFileSync(projectFile,'utf8');
+ const pruned=pbx.replace(/^\\s*[A-F0-9]{24} \\/\\* Assets\\.xcassets in Resources \\*\\/,\\r?\\n/gm,'');
+ if(pruned===pbx)throw new Error('Native asset-catalog resource entry not found');
+ fs.writeFileSync(projectFile,pruned);
  console.log('Building the native simulator application before booting a device.');
  run('npm',['run','build']);
  run('npx',['cap','sync','ios']);
- run('xcodebuild',['-project','ios/App/App.xcodeproj','-scheme','App','-configuration','Debug','-sdk','iphonesimulator','-destination','generic/platform=iOS Simulator','-derivedDataPath',path.join(tmp,'DPA-Capture-Build'),'CODE_SIGNING_ALLOWED=NO','build']);
+ run('xcodebuild',['-project','ios/App/App.xcodeproj','-scheme','App','-configuration','Debug','-sdk','iphonesimulator','-destination','generic/platform=iOS Simulator','-derivedDataPath',path.join(tmp,'DPA-Capture-Build'),'CODE_SIGNING_ALLOWED=NO','ARCHS='+process.arch.replace('x64','x86_64'),'ONLY_ACTIVE_ARCH=YES','ASSETCATALOG_COMPILER_APPICON_NAME=','ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME=','ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS=NO','-jobs','2','build']);
  const app=path.join(tmp,'DPA-Capture-Build/Build/Products/Debug-iphonesimulator/App.app');
  for(const [family,d] of [['iphone',phone],['ipad',tablet]]){
   console.log('Booting '+d.name+'; only one simulator runs at a time.');
