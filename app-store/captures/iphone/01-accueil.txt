@@ -1,0 +1,83 @@
+
+chat
+Support
+Mardi 20 octobre · Bonjour Apple
+Commerce Démo Apple
+Ma carte
+DÉMO
+Commerce Démo Apple
+PASSAGES
+9 / 10
+Club Démo Apple
+RÉCOMPENSE
+Une récompense offerte (démonstration)
+MEMBRE
+Emma
+10 passages = Une récompense offerte (démonstration) · aperçu indicatif
+edit_note
+Demander la modification de ma carte
+13
+Passages aujourd’hui
+0
+Récompenses disponibles
+3
+Clients inscrits
+
+qr_code_scanner
+Scanner une carte
+Passage ou récompense
+arrow_forward
+
+person_add
+Ajouter un client
+Activité récente
+Tous les clients
+
+add_circle
+Emma Démo
++1 passage
+18:19
+
+add_circle
+Emma Démo
++1 passage
+18:19
+
+add_circle
+Emma Démo
++1 passage
+18:19
+
+add_circle
+Emma Démo
++1 passage
+18:19
+
+add_circle
+Emma Démo
++1 passage
+18:19
+
+add_circle
+Emma Démo
++1 passage
+18:19
+Page d’inscription
+Personnalisez la page ouverte par vos clients après avoir scanné votre QR code.
+
+Modifier ma page d’inscription
+
+home
+Accueil
+
+group
+Clients
+
+qr_code_scanner
+Scanner
+
+notifications
+Notifications
+
+settings
+Réglages

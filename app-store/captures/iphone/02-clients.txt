@@ -1,0 +1,50 @@
+Clients
+
+person_add
+Rechercher un clientsearch
+
+Tous
+3
+
+Récompense
+0
+
+Nouveaux
+3
+3 clients
+
+ED
+Emma Démo
+Nouveau
+Aujourd'hui, 18:19
+9 / 10
+chevron_right
+
+LD
+Lucas Démo
+Nouveau
+Aujourd'hui, 18:19
+4 / 10
+chevron_right
+
+AD
+Alice Démo
+Nouveau
+Aucun passage
+0 / 10
+chevron_right
+
+home
+Accueil
+
+group
+Clients
+
+qr_code_scanner
+Scanner
+
+notifications
+Notifications
+
+settings
+Réglages

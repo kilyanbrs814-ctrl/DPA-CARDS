@@ -1,0 +1,53 @@
+
+qr_code_scanner
+Scanner une carte
+
+home
+Accueil
+
+group
+Clients
+
+qr_code_scanner
+Scanner
+
+notifications
+Notifications
+
+qr_code_2
+Inviter mes clients
+
+settings
+Paramètres
+chat
+Support
+
+AR
+Apple Review
+Commerce Démo Apple
+Inviter mes clients
+Affichez ce QR code au comptoir ou partagez le lien.
+QR code du commerce · pour rejoindre le programme
+
+Club Démo Apple
+10 passages = Une récompense offerte (démonstration)
+http://127.0.0.1:4173/join/demo-apple-review
+
+content_copy
+Copier le lien
+
+download
+Enregistrer dans Photos
+
+open_in_new
+Voir la page d’inscription
+Lien permanent : vous pouvez imprimer ce QR code ou partager ce lien.
+Deux QR codes, deux usages
+storefront
+QR code du commerce
+Un seul pour toute la boutique. Affiché au comptoir, il permet à un nouveau client de rejoindre le programme et de créer sa carte.
+badge
+QR code personnel du client
+Unique à chaque client, il figure sur sa carte dans son Wallet. Vous le scannez en caisse pour identifier la carte et créditer un passage.
+Scanner la carte d’un client
+arrow_forward

@@ -1,0 +1,118 @@
+
+qr_code_scanner
+Scanner une carte
+
+home
+Accueil
+
+group
+Clients
+
+qr_code_scanner
+Scanner
+
+notifications
+Notifications
+
+qr_code_2
+Inviter mes clients
+
+settings
+Paramètres
+chat
+Support
+
+AR
+Apple Review
+Commerce Démo Apple
+
+arrow_back
+Clients
+ED
+Emma Démo
+Inscrit le 20 oct. 2026 · DPA 6730 2544
+9 / 10 passages
+Solde
+redeem
+Encore 1 passage avant : Une récompense offerte (démonstration)
+
+add
+Ajouter un passage
+Date d’inscription
+20 oct. 2026
+Dernier passage
+Aujourd'hui, 18:19
+Passages enregistrés
+9
+Récompenses utilisées
+0
+DÉMO
+Commerce Démo Apple
+PASSAGES
+9 / 10
+Club Démo Apple
+RÉCOMPENSE
+Une récompense offerte (démonstration)
+MEMBRE
+Emma Démo
+
+DPA 6730 2544
+Carte du client · aperçu indicatif
+
+account_balance_wallet
+Ajouter à Google Wallet
+
+wallet
+Ajouter à Apple Wallet
+
+delete
+Supprimer le client
+Historique
+add_circle
+Passage ajouté
+Aujourd'hui, 18:19
++1
+Corriger
+add_circle
+Passage ajouté
+Aujourd'hui, 18:19
++1
+Corriger
+add_circle
+Passage ajouté
+Aujourd'hui, 18:19
++1
+Corriger
+add_circle
+Passage ajouté
+Aujourd'hui, 18:19
++1
+Corriger
+add_circle
+Passage ajouté
+Aujourd'hui, 18:19
++1
+Corriger
+add_circle
+Passage ajouté
+Aujourd'hui, 18:19
++1
+Corriger
+add_circle
+Passage ajouté
+Aujourd'hui, 18:19
++1
+Corriger
+add_circle
+Passage ajouté
+Aujourd'hui, 18:19
++1
+Corriger
+add_circle
+Passage ajouté
+Aujourd'hui, 18:19
++1
+Corriger
+person_add
+Inscription au programme
+Aujourd'hui, 18:19

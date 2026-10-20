@@ -1,0 +1,96 @@
+{
+  "sourceSha": "48bb21f599be3fb39320614966dd94da4c2c610f",
+  "generatedAt": "2026-10-20T19:24:20.887Z",
+  "renderer": "WebKit desktop engine; actual current app UI, native companion mode, simulated device viewport; not iOS Simulator",
+  "devices": [],
+  "files": [
+    {
+      "family": "iphone",
+      "view": "home",
+      "file": "iphone/01-accueil.png",
+      "width": 1206,
+      "height": 2622,
+      "ocr": "iphone/01-accueil.txt"
+    },
+    {
+      "family": "ipad",
+      "view": "home",
+      "file": "ipad/01-accueil.png",
+      "width": 2064,
+      "height": 2752,
+      "ocr": "ipad/01-accueil.txt"
+    },
+    {
+      "family": "iphone",
+      "view": "clients",
+      "file": "iphone/02-clients.png",
+      "width": 1206,
+      "height": 2622,
+      "ocr": "iphone/02-clients.txt"
+    },
+    {
+      "family": "ipad",
+      "view": "clients",
+      "file": "ipad/02-clients.png",
+      "width": 2064,
+      "height": 2752,
+      "ocr": "ipad/02-clients.txt"
+    },
+    {
+      "family": "iphone",
+      "view": "client",
+      "file": "iphone/03-fiche-client.png",
+      "width": 1206,
+      "height": 2622,
+      "ocr": "iphone/03-fiche-client.txt"
+    },
+    {
+      "family": "ipad",
+      "view": "client",
+      "file": "ipad/03-fiche-client.png",
+      "width": 2064,
+      "height": 2752,
+      "ocr": "ipad/03-fiche-client.txt"
+    },
+    {
+      "family": "iphone",
+      "view": "invite",
+      "file": "iphone/04-invitation.png",
+      "width": 1206,
+      "height": 2622,
+      "ocr": "iphone/04-invitation.txt"
+    },
+    {
+      "family": "ipad",
+      "view": "invite",
+      "file": "ipad/04-invitation.png",
+      "width": 2064,
+      "height": 2752,
+      "ocr": "ipad/04-invitation.txt"
+    },
+    {
+      "family": "iphone",
+      "view": "more",
+      "file": "iphone/05-reglages.png",
+      "width": 1206,
+      "height": 2622,
+      "ocr": "iphone/05-reglages.txt"
+    },
+    {
+      "family": "ipad",
+      "view": "more",
+      "file": "ipad/05-reglages.png",
+      "width": 2064,
+      "height": 2752,
+      "ocr": "ipad/05-reglages.txt"
+    },
+    {
+      "family": "ipad",
+      "view": "card",
+      "file": "ipad/06-carte.png",
+      "width": 2064,
+      "height": 2752,
+      "ocr": "ipad/06-carte.txt"
+    }
+  ]
+}

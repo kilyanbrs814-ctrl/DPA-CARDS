@@ -1,0 +1,101 @@
+
+qr_code_scanner
+Scanner une carte
+
+home
+Accueil
+
+group
+Clients
+
+qr_code_scanner
+Scanner
+
+notifications
+Notifications
+
+qr_code_2
+Inviter mes clients
+
+settings
+Paramètres
+chat
+Support
+
+AR
+Apple Review
+Commerce Démo Apple
+Mardi 20 octobre
+Bonjour Apple
+Commerce Démo Apple
+
+qr_code_scanner
+Scanner une carte
+Créditer un passage ou valider une récompense
+arrow_forward
+group
+3
+Clients inscrits
+confirmation_number
+13
+Passages aujourd'hui
+redeem
+0
+Récompenses disponibles
+task_alt
+0
+Récompenses utilisées ce mois-ci
+Dernières activités
+Voir les clients
+
+add_circle
+Emma Démo
++1 passage
+18:19
+
+add_circle
+Emma Démo
++1 passage
+18:19
+
+add_circle
+Emma Démo
++1 passage
+18:19
+
+add_circle
+Emma Démo
++1 passage
+18:19
+
+add_circle
+Emma Démo
++1 passage
+18:19
+
+add_circle
+Emma Démo
++1 passage
+18:19
+Ma carte
+DÉMO
+Commerce Démo Apple
+PASSAGES
+9 / 10
+Club Démo Apple
+RÉCOMPENSE
+Une récompense offerte (démonstration)
+MEMBRE
+Emma
+10 passages = Une récompense offerte (démonstration) · aperçu indicatif
+edit_note
+Demander la modification de ma carte
+
+qr_code_2
+Inviter mes clients
+QR code d’inscription et lien à partager
+chevron_right
+Page d’inscription
+Personnalisez la page ouverte par vos clients après avoir scanné votre QR code.
+
+Modifier ma page d’inscription

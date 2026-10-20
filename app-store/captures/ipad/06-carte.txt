@@ -1,0 +1,81 @@
+
+qr_code_scanner
+Scanner une carte
+
+home
+Accueil
+
+group
+Clients
+
+qr_code_scanner
+Scanner
+
+notifications
+Notifications
+
+qr_code_2
+Inviter mes clients
+
+settings
+Paramètres
+chat
+Support
+
+AR
+Apple Review
+Commerce Démo Apple
+Ma carte et mon programme
+L’aperçu se met à jour pendant la saisie.
+Programme
+Nom du programme
+
+Type de fidélité
+Passages
+Points
+Objectif à atteindre
+
+remove
+10 passages
+
+add
+Libellé de la récompense
+
+Conditions d’utilisation
+
+Apparence
+Logo
+DÉMO
+
+upload
+Importer
+Bandeau visuel
+Rayures
+Pois
+Uni
+Sans bandeau
+
+image
+Image
+Couleur de fond
+
+Couleur d’accent
+
+
+Enregistrer les modifications
+Apple Wallet
+Google Wallet
+DÉMO
+Commerce Démo Apple
+PASSAGES
+9 / 10
+Club Démo Apple
+RÉCOMPENSE
+Une récompense offerte (démonstration)
+MEMBRE
+Emma D.
+
+DPA 6730 2544
+info
+Aperçu indicatif. Le rendu final dépend d’Apple Wallet et de Google Wallet, qui imposent leur propre mise en page.
+Données fictives réservées aux tests Apple. Aucun achat ni prélèvement.

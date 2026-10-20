@@ -1,0 +1,54 @@
+Réglages
+AR
+Apple Review
+Commerce Démo Apple
+
+qr_code_2
+Inviter mes clients
+QR code et lien d'inscription
+chevron_right
+
+public
+Page d'inscription publique
+Inscrire un client sur cet appareil
+chevron_right
+
+person
+Profil du responsable
+Apple Review
+chevron_right
+
+storefront
+Informations du commerce
+Commerce Démo Apple
+chevron_right
+
+lock
+Sécurité et mot de passe
+Mot de passe, export des données, suppression du compte
+chevron_right
+
+help
+Aide et contact
+Questions fréquentes, support
+chevron_right
+
+logout
+Se déconnecter
+DPA CARDS · prototype v0.1 · aucune offre ni paiement à ce stade
+Mentions légales · Confidentialité
+
+home
+Accueil
+
+group
+Clients
+
+qr_code_scanner
+Scanner
+
+notifications
+Notifications
+
+settings
+Réglages

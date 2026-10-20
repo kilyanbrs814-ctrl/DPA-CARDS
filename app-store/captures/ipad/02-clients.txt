@@ -1,0 +1,60 @@
+
+qr_code_scanner
+Scanner une carte
+
+home
+Accueil
+
+group
+Clients
+
+qr_code_scanner
+Scanner
+
+notifications
+Notifications
+
+qr_code_2
+Inviter mes clients
+
+settings
+Paramètres
+chat
+Support
+
+AR
+Apple Review
+Commerce Démo Apple
+Clients
+3 inscrits
+
+person_add
+Inviter
+Rechercher un clientsearch
+
+Tous
+3
+
+Récompense disponible
+0
+
+Nouveaux inscrits
+3
+
+ED
+Emma Démo
+Nouveau
+Dernier passage : Aujourd'hui, 18:19
+9 / 10
+
+LD
+Lucas Démo
+Nouveau
+Dernier passage : Aujourd'hui, 18:19
+4 / 10
+
+AD
+Alice Démo
+Nouveau
+Dernier passage : Aucun passage
+0 / 10
