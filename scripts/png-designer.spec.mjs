@@ -475,7 +475,7 @@ test('Google Wallet image pickers stay independent from Apple Wallet artwork',as
  const logoApple=appleSaved.assets.logo.path;
  const textApple=appleSaved.assets.businessNameImage.path;
  const headerApple=appleSaved.assets.appleHeader.path;
- const originalGoogleWide=appleSaved.assets.googleWideLogo.path;
+ const originalGoogleWide=appleSaved.assets.googleWideLogo.url;
  await expect(page.locator('[data-layout="apple"]').first().getByRole('img',{name:'Logo, nom et activité du commerce'})).toBeVisible();
 
  await pick('googleLogo').setInputFiles({name:'google-circle.png',mimeType:'image/png',buffer:fixture(120,120,[0,170,30,255])});
@@ -492,7 +492,7 @@ test('Google Wallet image pickers stay independent from Apple Wallet artwork',as
  expect(both.assets.appleHeader.path).toBe(headerApple);
  expect(both.assets.googleLogo.path).toContain('googleLogo-');
  expect(both.assets.googleBusinessNameImage.path).toContain('googleBusinessNameImage-');
- expect(both.assets.googleWideLogo.path).not.toBe(originalGoogleWide);
+ expect(both.assets.googleWideLogo.url).not.toBe(originalGoogleWide);
  expect(both.google.wideArtworkVersion).toBe(2);
  const googleUploaded=await page.locator('[data-upload="googleLogo"]').evaluate(el=>el.parentElement.querySelector('img')?.src||'');
  expect(googleUploaded.startsWith('data:image/png')).toBe(true);
