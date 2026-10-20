@@ -31,7 +31,7 @@ QR code du commerce · pour rejoindre le programme
 
 Club Démo Apple
 10 passages = Une récompense offerte (démonstration)
-http://127.0.0.1:4173/join/demo-apple-review
+https://cards.digitalprojectagency.fr/join/demo-apple-review
 
 content_copy
 Copier le lien
