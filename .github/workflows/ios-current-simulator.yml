@@ -1,0 +1,71 @@
+name: Validate current DPA Cards iPhone app
+
+# Every iPhone build is assembled from the current site source. Simulator validation
+# does not access Apple signing credentials and NEVER publishes an App Store build.
+on:
+  pull_request:
+    paths:
+      - index.html
+      - admin.html
+      - src/**
+      - scripts/check-ios-bundle-current.test.mjs
+      - scripts/check-native-admin-link.test.mjs
+      - scripts/configure-ios-deeplink.swift
+      - scripts/make-ios-icon.swift
+      - capacitor.config.json
+      - .github/workflows/ios-testflight.yml
+      - .github/workflows/ios-current-simulator.yml
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - admin.html
+      - src/**
+      - scripts/check-ios-bundle-current.test.mjs
+      - .github/workflows/ios-testflight.yml
+      - .github/workflows/ios-current-simulator.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ios-current:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Check latest web app and native Wallet compatibility
+        run: |
+          npm ci
+          npm run build
+          npm run test:static
+          node --test scripts/check-native-admin-link.test.mjs
+          node --test scripts/check-native-wallet-notifications.test.mjs
+          node --test scripts/check-dual-logo-wallet.test.mjs scripts/check-ios-bundle-current.test.mjs
+      - name: Generate bundled iOS app
+        run: |
+          npm install --no-save --package-lock=false @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8 @capacitor/app@8
+          npx cap add ios
+          npx cap sync ios
+          swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+          swift scripts/configure-ios-deeplink.swift ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName DPA Cards" ios/App/App/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string DPA Cards utilise la caméra pour scanner les QR codes des cartes de fidélité." ios/App/App/Info.plist
+      - name: Compile unsigned iOS Simulator application
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Archive generated Xcode project for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dpa-cards-current-ios-project
+          path: ios/
+          retention-days: 7
+          if-no-files-found: warn
