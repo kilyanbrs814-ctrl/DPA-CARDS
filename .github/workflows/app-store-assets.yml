@@ -16,7 +16,7 @@ permissions:
   contents: write
 jobs:
   captures:
-    runs-on: macos-26
+    runs-on: macos-26-intel
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
