@@ -1,0 +1,26 @@
+name: Diagnose App Store screenshot generation
+on:
+  push:
+    branches: [work/appstore-assets]
+    paths: [.github/workflows/diagnose-appstore-capture.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  diagnostics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read the cancelled native build log
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import cp from 'node:child_process';
+          const r=await fetch('https://api.github.com/repos/kilyanbrs814-ctrl/DPA-CARDS/actions/artifacts/12289868123/zip',{headers:{Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json'}});
+          if(!r.ok)throw Error('Artifact download failed: '+r.status);
+          fs.writeFileSync('/tmp/dpa-build-diagnostics.zip',Buffer.from(await r.arrayBuffer()));
+          const log=cp.execFileSync('unzip',['-p','/tmp/dpa-build-diagnostics.zip','native-build.log'],{encoding:'utf8',maxBuffer:20*1024*1024});
+          console.log(log.split('\n').slice(-140).join('\n'));
+          NODE
