@@ -49,7 +49,7 @@ try{
  const missing=Object.keys(cfg.age).filter(k=>!Object.hasOwn(age.attributes,k));
  if(missing.length)throw new Error('Age declaration schema differs: '+missing.join(','));
  await api('/v1/ageRatingDeclarations/'+age.id,'PATCH',{data:{type:'ageRatingDeclarations',id:age.id,attributes}});
- const updatedAge=(await api('/v1/ageRatingDeclarations/'+age.id)).data;
+ const updatedAge=(await api('/v1/appInfos/'+info.id+'/ageRatingDeclaration')).data;
  for(const [k,v]of Object.entries(attributes))if(updatedAge.attributes[k]!==v)throw new Error('Age field not persisted: '+k);
  report.operations.push({type:'age',status:'SAVED',attributes:updatedAge.attributes});
  await api('/v1/apps/'+cfg.appId,'PATCH',{data:{type:'apps',id:cfg.appId,attributes:{contentRightsDeclaration:cfg.contentRightsDeclaration}}});
