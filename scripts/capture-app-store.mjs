@@ -9,7 +9,7 @@ const out=path.join(root,'app-store-output'); fs.mkdirSync(out,{recursive:true})
 const log=fs.openSync(path.join(out,'native-build.log'),'a');
 function run(cmd,args,opts={}){
  const started=Date.now();console.log('Running '+cmd+' '+args.slice(0,4).join(' '));
- try{const result=cp.execFileSync(cmd,args,{cwd:root,encoding:'utf8',timeout:cmd==='xcodebuild'?360000:180000,stdio:['ignore',log,log],...opts});console.log(cmd+' finished in '+Math.round((Date.now()-started)/1000)+'s');return result;}
+ try{const result=cp.execFileSync(cmd,args,{cwd:root,encoding:'utf8',killSignal:'SIGKILL',timeout:cmd==='xcodebuild'?360000:180000,stdio:['ignore',log,log],...opts});console.log(cmd+' finished in '+Math.round((Date.now()-started)/1000)+'s');return result;}
  catch(e){console.error(fs.readFileSync(path.join(out,'native-build.log'),'utf8').split('\n').slice(-45).join('\n'));throw e;}
 }
 function json(cmd,args){return JSON.parse(run(cmd,args,{stdio:['ignore','pipe',log]}));}
