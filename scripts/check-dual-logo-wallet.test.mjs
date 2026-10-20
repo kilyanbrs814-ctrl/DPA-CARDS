@@ -13,7 +13,7 @@ const appleHeaderPath=merchantId+'/'+programId+'/designer/appleHeader-'+uuid+'.p
 function sample(version) {
  return {
   program:{id:programId,mode:'passages',goal:10,bg:'#14202C',accent:'#FFFFFF',reward:'Un café',name:'Club',
-   card_design:{identity:{name:'À fleur de peau'},apple:{showBusinessName:true,headerMode:'custom',headerArtworkVersion:version},
+   card_design:{identity:{name:'À fleur de peau'},stamps:{icon:'library',libraryId:'cafe'},apple:{showBusinessName:true,headerMode:'custom',headerArtworkVersion:version},
     assets:{logo:{path:logoPath},businessNameImage:{path:wordmarkPath},appleHeader:{path:appleHeaderPath}}}},
   merchant:{business_name:'À fleur de peau'},
   customer:{first_name:'Test',last_name:'Client'},
