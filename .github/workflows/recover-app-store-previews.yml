@@ -1,0 +1,26 @@
+name: Recover generated App Store previews
+on:
+  push:
+    branches: [work/appstore-assets]
+    paths: [.github/workflows/recover-app-store-previews.yml]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: dpa-cards-webkit-previews
+          path: app-store-output
+          run-id: 39483028016
+          github-token: ${{ github.token }}
+      - run: node scripts/publish-app-store-web-previews.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
