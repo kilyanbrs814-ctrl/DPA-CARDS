@@ -51,10 +51,15 @@ try{
  await api('/v1/ageRatingDeclarations/'+age.id,'PATCH',{data:{type:'ageRatingDeclarations',id:age.id,attributes}});
  const updatedAge=(await api('/v1/appInfos/'+info.id+'/ageRatingDeclaration')).data;
  for(const [k,v]of Object.entries(attributes))if(updatedAge.attributes[k]!==v)throw new Error('Age field not persisted: '+k);
- report.operations.push({type:'age',status:'SAVED',attributes:updatedAge.attributes});
+ report.operations.push({type:'age',status:'SAVED',attributes:updatedAge.attributes});save();
  await api('/v1/apps/'+cfg.appId,'PATCH',{data:{type:'apps',id:cfg.appId,attributes:{contentRightsDeclaration:cfg.contentRightsDeclaration}}});
- const updatedApp=(await api('/v1/apps/'+cfg.appId)).data;
- if(updatedApp.attributes.contentRightsDeclaration!==cfg.contentRightsDeclaration)throw new Error('Content-rights declaration not persisted');
+ let updatedApp;
+ for(let attempt=0;attempt<5;attempt++){
+  updatedApp=(await api('/v1/apps/'+cfg.appId+'?fields[apps]=bundleId,contentRightsDeclaration')).data;
+  if(updatedApp.attributes.contentRightsDeclaration===cfg.contentRightsDeclaration)break;
+  await pause(1500);
+ }
+ if(updatedApp.attributes.contentRightsDeclaration!==cfg.contentRightsDeclaration)throw new Error('Content-rights verification returned '+JSON.stringify(updatedApp.attributes));
  report.operations.push({type:'contentRights',status:'SAVED',value:updatedApp.attributes.contentRightsDeclaration});
  const localizations=await list('/v1/appInfos/'+info.id+'/appInfoLocalizations');
  const infoLoc=localizations.find(x=>x.attributes.locale===cfg.locale)||localizations.find(x=>x.attributes.locale.startsWith('fr'));
