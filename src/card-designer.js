@@ -1,5 +1,5 @@
-import { preparePngUpload } from './png-upload.js';
-import { createAppleWordmark, APPLE_WORDMARK_VERSION } from './apple-wordmark.js';
+import { preparePngUpload, prepareBusinessNamePng } from './png-upload.js';
+import { createAppleWordmark, APPLE_WORDMARK_VERSION, createGoogleWideLogo, GOOGLE_WIDE_LOGO_VERSION } from './apple-wordmark.js';
 import { createRewardLabel, rewardLabelColor } from './apple-reward-label.js';
 // Card designer (admin): one design project per program, rendered in two layouts —
 // Apple Wallet (full rectangle, rounded corners only) and Google Wallet (its own layout).
@@ -23,12 +23,13 @@ export const STAMP_ICONS = [
   ['icecream', 'Glace'], ['bakery_dining', 'Viennoiserie'], ['custom', 'Personnalisée'],
 ];
 const HEX = /^#[0-9A-Fa-f]{6}$/;
-const ASSET_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(designer\/)?(logo|hero|background|stamp|googleStrip|appleStrip|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\.(png|jpg)$/;
+const ASSET_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(designer\/)?(logo|hero|background|stamp|googleStrip|appleStrip|appleHeader|rewardLabel|businessNameImage|googleWideLogo)-[0-9a-f-]{36}\.(png|jpg)$/;
 // Recommended source dimensions for EVERY upload in the card generator.
 // Cropped assets are exported to exactly the dimensions below. The original
 // logo and stamp keep their proportions; these sizes are recommendations only.
 export const RECOMMENDED_IMAGE_SIZES = Object.freeze({
   logo: Object.freeze({ width: 660, height: 660, format: 'PNG transparent', note: 'Carré, important pour Google Wallet.' }),
+  businessNameImage: Object.freeze({ width: 1000, height: 250, format: 'PNG transparent', note: 'Logo texte horizontal, sans fond, affiché à droite du symbole.' }),
   hero: Object.freeze({ width: 1032, height: 812, format: 'PNG, JPEG ou WebP', note: 'Format paysage ; recadrage automatique.' }),
   background: Object.freeze({ width: 680, height: 1120, format: 'PNG, JPEG ou WebP', note: 'Format portrait ; recadrage automatique.' }),
   stamp: Object.freeze({ width: 256, height: 256, format: 'PNG transparent', note: 'Carré, sans fond pour un beau rendu.' }),
@@ -56,10 +57,10 @@ export function defaultDesign(project) {
     identity: { name: m.business_name || '', subtitle: m.activity || '' },
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
-    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, googleStrip: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null },
+    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, googleStrip: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null, googleWideLogo: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg), size: 100, spacing: 100, inactiveOpacity: 22, rewardId: 'reward-star' },
     apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, headerMode: 'classic', showStampPanel: true, showStamps: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
-    google: { colors: {}, showStamps: true, reuseAppleStrip: true, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '' },
+    google: { colors: {}, showStamps: true, reuseAppleStrip: true, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '', wideArtworkVersion: 0 },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
   };
 }
@@ -105,7 +106,8 @@ export function prepareDesign(cardDesign, program, merchant, assetUrl) {
     appleHeader: withUrl(cardDesign.assets && cardDesign.assets.appleHeader, null),
     rewardLabel: withUrl(cardDesign.assets && cardDesign.assets.rewardLabel, null),
     businessFont: withUrl(cardDesign.assets && cardDesign.assets.businessFont, null),
-    businessNameImage: withUrl(cardDesign.assets && cardDesign.assets.businessNameImage, null) };
+    businessNameImage: withUrl(cardDesign.assets && cardDesign.assets.businessNameImage, null),
+    googleWideLogo: withUrl(cardDesign.assets && cardDesign.assets.googleWideLogo, null) };
   if (!d.identity.name) d.identity.name = base.identity.name;
   if (d.stamps.icon === 'custom' && !d.assets.stamp) d.stamps.icon = 'check';
   return d;
@@ -285,15 +287,17 @@ export function makeCardDesigner(React, api) {
             : platform==='apple' && o.showBusinessName && o.headerMode==='custom'
               ? h('div',{'data-field':'apple-custom-business-header',style:{width:160,height:50,display:'flex',alignItems:'center',gap:4,flexShrink:0,overflow:'hidden'}},
                   h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:48,height:48,objectFit:'contain',flexShrink:0}}),
-                  h('div',{style:{minWidth:0,flex:1,overflow:'hidden',lineHeight:1.12}},
+                  d.assets.businessNameImage?.url ? h(Img,{asset:d.assets.businessNameImage,alt:'Logo texte du commerce',style:{width:106,height:44,objectFit:'contain',objectPosition:'left center',minWidth:0}}) : h('div',{style:{minWidth:0,flex:1,overflow:'hidden',lineHeight:1.12}},
                     h('div',{style:{...ellipsis,fontWeight:750,fontSize:15}},d.identity.name||'Nom du commerce'),
                     o.showSubtitle!==false && d.identity.subtitle && h('div',{style:{...ellipsis,fontSize:8,fontWeight:500,marginTop:4,textTransform:'uppercase'}},d.identity.subtitle)))
-              : platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : h(Logo, { d, size: 40, round: false }),
+              : platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : d.assets.businessNameImage?.url ? h('div',{'data-field':'google-wide-logo',style:{display:'flex',gap:8,alignItems:'center',maxWidth:174,minWidth:0}},
+                 d.assets.logo?.url && h(Img,{asset:d.assets.logo,alt:'Logo symbole',style:{width:40,height:40,objectFit:'contain',flexShrink:0}}),
+                 h(Img,{asset:d.assets.businessNameImage,alt:'Logo texte',style:{height:36,width:126,objectFit:'contain',objectPosition:'left center',minWidth:0}})) : h(Logo, { d, size: 40, round: false }),
           platform==='apple' && o.showBusinessName && o.headerMode!=='custom' && h('div',{
             'data-field':'apple-native-business-name',
             style:{...ellipsis,minWidth:0,whiteSpace:'nowrap',fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:20,fontWeight:700,lineHeight:1.1}
           },d.identity.name||'Nom du commerce'),
-          platform!=='apple' && h('div', {
+          platform!=='apple' && !d.assets.businessNameImage?.url && h('div', {
             'data-field': 'business',
             style: {
               ...ellipsis,
@@ -419,7 +423,14 @@ export function makeCardDesigner(React, api) {
     const done=Math.max(0,Number(data.progress)||0),goal=Math.max(1,Number(data.goal)||10);
     const points=data.mode==='points';
     return h('div',{'data-layout':'google',style:{width:340,borderRadius:22,overflow:'hidden',background:c.primary,color:c.text,fontFamily:FONTS[d.font].css,boxShadow:'0 14px 36px rgba(20,22,28,.19)'}},
-      h('div',{style:{display:'flex',gap:12,alignItems:'center',padding:20}},h(Logo,{d,size:40,round:true}),h('strong',{style:{fontSize:20}},d.identity.name||'Nom du commerce')),
+      h('div',{style:{display:'flex',gap:10,alignItems:'center',justifyContent:'space-between',padding:20}},
+        d.assets.businessNameImage?.url
+          ? h('div',{'data-field':'google-wide-logo',style:{display:'flex',gap:8,alignItems:'center',minWidth:0,flex:1}},
+              d.assets.logo?.url && h(Img,{asset:d.assets.logo,alt:'Logo symbole',style:{width:40,height:40,objectFit:'contain',flexShrink:0}}),
+              h(Img,{asset:d.assets.businessNameImage,alt:'Logo texte',style:{width:145,height:40,objectFit:'contain',objectPosition:'left center',minWidth:0}}))
+          : h('div',{style:{display:'flex',alignItems:'center',gap:12,minWidth:0}},h(Logo,{d,size:40,round:true}),h('strong',{style:{fontSize:20,...ellipsis}},d.identity.name||'Nom du commerce')),
+        d.assets.businessNameImage?.url && h('span',{'data-field':'card-number',style:{fontSize:14,fontWeight:700,flexShrink:0,fontVariantNumeric:'tabular-nums'}},
+          (String(data.cardNumber||'').replace(/\D/g,'')||'0000').slice(-4))),
       h('div',{style:{display:'flex',justifyContent:'space-between',padding:'8px 18px 24px'}},
         h('div',null,h('div',null,points?'Points gagnés':'Passages effectués'),h('strong',{'data-field':'completed-count'},String(done))),
         h('div',{style:{textAlign:'right'}},h('div',null,points?'Points restants':'Passages restants'),h('strong',{'data-field':'remaining-count'},String(Math.max(0,goal-done))))),
@@ -493,7 +504,7 @@ export function makeCardDesigner(React, api) {
         h('div', { style: { fontWeight: 500, marginTop: 2 } }, dimensions.format + ' · ' + dimensions.note)) : null,
       h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
         asset && asset.url ? h('img', { src: asset.url, alt: '', style: { width: 56, height: 56, objectFit: 'contain', borderRadius: 10, border: '1px solid #E4E1DA', background: 'repeating-conic-gradient(#ECEAE4 0% 25%, #FFFFFF 0% 50%) 0 0/12px 12px' } }) : null,
-        h('input', { ref, type: 'file', accept: ['logo','stamp'].includes(testId)?'image/png':'image/png,image/jpeg,image/webp', 'data-upload': testId, style: { display: 'none' }, onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPick(f); } }),
+        h('input', { ref, type: 'file', accept: ['logo','stamp','businessNameImage'].includes(testId)?'image/png':'image/png,image/jpeg,image/webp', 'data-upload': testId, style: { display: 'none' }, onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPick(f); } }),
         h('button', { type: 'button', disabled: busy, onClick: () => ref.current && ref.current.click(), style: { minHeight: 44, padding: '0 14px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
           icon('upload', 18), busy ? 'Envoi…' : asset ? 'Remplacer' : 'Importer'),
         asset ? h('button', { type: 'button', onClick: onRemove, style: { minHeight: 44, padding: '0 12px', border: 0, background: 'none', color: '#B42318', fontWeight: 600, fontSize: 14 } }, 'Retirer') : null,
@@ -517,7 +528,7 @@ export function makeCardDesigner(React, api) {
   const errText = e => {
     const code = (e && (e.code || e.message)) || 'erreur_inconnue';
     if (ERR[code]) return ERR[code];
-    if (/^(missing|invalid)_(logo|hero|background|stamp)$/.test(code)) return 'Une image du design est introuvable ou invalide : importez-la à nouveau.';
+    if (/^(missing|invalid)_(logo|hero|background|stamp|businessNameImage|googleWideLogo)$/.test(code)) return 'Une image du design est introuvable ou invalide : importez-la à nouveau.';
     const where = e && e.route ? ' — ' + e.route : '';
     if (code === 'network_or_cors') return `Requête bloquée avant le serveur (réseau ou CORS) depuis ${typeof location !== 'undefined' ? location.origin : 'cette page'}${where}. Code : network_or_cors.`;
     return `Opération impossible — code : ${code}${where}.`;
@@ -682,11 +693,17 @@ export function makeCardDesigner(React, api) {
       o[ks[ks.length - 1]] = value;
       // Recompose only when bitmap content changes; preserve custom art when
       // switching Classic / Custom so reverting remains instantaneous.
-      if(['identity.name','identity.subtitle','assets.logo','apple.showSubtitle'].includes(path)
+      if(['identity.name','identity.subtitle','assets.logo','assets.businessNameImage','apple.showSubtitle'].includes(path)
         || path.startsWith('colors.') || path.startsWith('apple.colors.')) {
         n.assets.appleHeader=null;n.apple.headerArtworkVersion=0;
       }
-      if(path==='apple.headerMode' && value==='custom')n.apple.showBusinessName=true;
+      if(['assets.logo','assets.businessNameImage'].includes(path)) {
+         n.assets.googleWideLogo=null;n.google.wideArtworkVersion=0;
+       }
+       if(path==='assets.businessNameImage' && value) {
+         n.apple.headerMode='custom';n.apple.showBusinessName=true;
+       }
+       if(path==='apple.headerMode' && value==='custom')n.apple.showBusinessName=true;
       if(path==='apple.showReward'||path==='apple.rewardText'||path==='apple.rewardTextColor'||path.startsWith('colors.')||path.startsWith('apple.colors.'))
         n.assets.rewardLabel=null;
       return n;
@@ -704,6 +721,14 @@ export function makeCardDesigner(React, api) {
         next.assets.appleHeader=asset;
         next.apple.headerArtworkVersion=APPLE_WORDMARK_VERSION;
       }
+      if(next.assets.businessNameImage?.path) {
+        if(!next.assets.googleWideLogo?.path || next.google.wideArtworkVersion!==GOOGLE_WIDE_LOGO_VERSION) {
+          const artwork=await createGoogleWideLogo(next);
+          next.assets.googleWideLogo=isTest ? await api.testUpload(project.test.id,'googleWideLogo',artwork)
+            : await api.upload(project.program.id,'googleWideLogo',artwork);
+          next.google.wideArtworkVersion=GOOGLE_WIDE_LOGO_VERSION;
+        }
+      } else { next.assets.googleWideLogo=null;next.google.wideArtworkVersion=0; }
       if(next.apple?.showReward===true&&!next.assets?.rewardLabel?.path){
         const bitmap=await createRewardLabel(next);
         const asset=isTest ? await api.testUpload(project.test.id,'rewardLabel',bitmap)
@@ -715,10 +740,10 @@ export function makeCardDesigner(React, api) {
     };
     const savedMark=next=>JSON.stringify(next)+(isTest?'|'+testName:'');
     const pickFile = kind => async f => {
-      if(kind==='logo' || kind==='stamp') {
+      if(kind==='logo' || kind==='stamp' || kind==='businessNameImage') {
         setBusy('up-'+kind);
         try {
-          const blob=await preparePngUpload(f);
+          const blob=kind==='businessNameImage' ? await prepareBusinessNamePng(f) : await preparePngUpload(f);
           const a=isTest ? await api.testUpload(project.test.id,kind,blob) : await api.upload(project.program.id,kind,blob);
           set('assets.'+kind,a); if(kind==='stamp')set('stamps.icon','custom');
         } catch(e) {toast(e.message || errText(e));} finally {setBusy(null);}
@@ -1056,14 +1081,18 @@ export function makeCardDesigner(React, api) {
       h(Section, { title: 'Identité' },
         h(Text, { label: 'Nom du commerce', value: design.identity.name, max: 40, onChange: v => set('identity.name', v) }),
         h(Text, { label: 'Activité / sous-titre (facultatif)', value: design.identity.subtitle, max: 40, onChange: v => set('identity.subtitle', v) }),
-        h(ImagePick, { label: 'Logo', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), showBusinessName: design.apple.showBusinessName === true, onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true), hint: 'PNG transparent, 2 Mo maximum. Votre logo reste inchangé. « Afficher le nom du commerce » fonctionne dans les deux styles.' })),
+        h(ImagePick, { label: 'Logo symbole (à gauche)', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), showBusinessName: design.apple.showBusinessName === true, onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true), hint: 'PNG carré, 2 Mo maximum. Le symbole est placé en premier, à gauche sur la carte.' }),
+        h(ImagePick, { label: 'Logo texte (à droite du symbole)', testId: 'businessNameImage',
+          asset: design.assets.businessNameImage, busy: busy === 'up-businessNameImage',
+          onPick: pickFile('businessNameImage'), onRemove: () => set('assets.businessNameImage', null),
+          hint: 'PNG transparent sans fond. La typographie originale du commerce sera affichée juste après son symbole sur Apple et Google Wallet. Facultatif : si absent, l’ancien affichage est conservé.' })),
       h(Section, { title: 'En-tête Apple Wallet' },
         h(Select,{label:'Style de l’en-tête',value:design.apple.headerMode==='custom'?'custom':'classic',
-          options:[['classic','Classique — texte natif Apple (actuel)'],['custom','Personnalisé — logo, nom et activité']],
+          options:[['classic','Classique — texte natif Apple (actuel)'],['custom','Personnalisé — symbole + logo texte']],
           onChange:v=>set('apple.headerMode',v)}),
         h('div',{style:{fontSize:13,color:'#5E636B',lineHeight:1.55}},
           design.apple.headerMode==='custom'
-            ? 'Logo, nom du commerce et activité (facultative) sont réunis dans une image Retina, sans changer la hauteur de la carte. L’activité vient du champ « Activité / sous-titre ». Pour revenir au résultat actuel, choisissez « Classique ».'
+            ? 'Symbole à gauche et logo texte importé juste après, dans une image Retina. Sans logo texte, le nom du commerce et son activité sont écrits comme avant. Le numéro de carte reste à droite dans son champ natif.'
             : 'Design actuel : logo PNG à gauche, nom affiché en texte natif Apple Wallet. Vous pouvez essayer le mode personnalisé et revenir ici à tout moment.'),
         design.apple.headerMode==='custom' && design.apple.showBusinessName!==true &&
           h('div',{style:{fontSize:12,color:'#A15A12'}},'Activez « Afficher le nom du commerce » pour voir également l’activité.')),
