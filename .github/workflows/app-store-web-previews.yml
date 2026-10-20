@@ -1,0 +1,30 @@
+name: Render DPA Cards interface previews
+on:
+  push:
+    branches: [work/appstore-assets]
+    paths: [.github/workflows/app-store-web-previews.yml, scripts/capture-app-store-web.mjs, scripts/publish-app-store-web-previews.mjs]
+permissions:
+  contents: write
+jobs:
+  previews:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps webkit
+      - run: node --check scripts/capture-app-store-web.mjs
+      - run: node scripts/capture-app-store-web.mjs
+      - run: node scripts/publish-app-store-web-previews.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dpa-cards-webkit-previews
+          path: app-store-output/
+          retention-days: 30
