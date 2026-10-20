@@ -10,7 +10,7 @@ const log=fs.openSync(path.join(out,'native-build.log'),'a');
 function run(cmd,args,opts={}){
  const started=Date.now();console.log('Running '+cmd+' '+args.slice(0,4).join(' '));
  try{const result=cp.execFileSync(cmd,args,{cwd:root,encoding:'utf8',timeout:cmd==='xcodebuild'?360000:180000,stdio:['ignore',log,log],...opts});console.log(cmd+' finished in '+Math.round((Date.now()-started)/1000)+'s');return result;}
- catch(e){console.error(fs.readFileSync(path.join(out,'native-build.log'),'utf8').split('\\n').slice(-45).join('\\n'));throw e;}
+ catch(e){console.error(fs.readFileSync(path.join(out,'native-build.log'),'utf8').split('\n').slice(-45).join('\n'));throw e;}
 }
 function json(cmd,args){return JSON.parse(run(cmd,args,{stdio:['ignore','pipe',log]}));}
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
@@ -41,7 +41,7 @@ try{
  // the ephemeral native asset-catalog build; all actual web UI assets stay intact.
  const projectFile='ios/App/App.xcodeproj/project.pbxproj';
  const pbx=fs.readFileSync(projectFile,'utf8');
- const pruned=pbx.replace(/^\\s*[A-F0-9]{24} \\/\\* Assets\\.xcassets in Resources \\*\\/,\\r?\\n/gm,'');
+ const pruned=pbx.replace(/^\s*[A-F0-9]{24} \/\* Assets\.xcassets in Resources \*\/,\r?\n/gm,'');
  if(pruned===pbx)throw new Error('Native asset-catalog resource entry not found');
  fs.writeFileSync(projectFile,pruned);
  console.log('Building the native simulator application before booting a device.');
