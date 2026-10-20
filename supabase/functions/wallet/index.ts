@@ -260,6 +260,10 @@ function classBranding(program: any, businessName: string) {
   const colors = { ...(d?.colors ?? {}), ...(d?.google?.colors ?? {}) };
   const issuer = String(d?.identity?.name || businessName || program.name).slice(0, 40);
   const showHero = d ? d.google?.showHero !== false : true;
+  const googleLogoPath=d?.assets?.googleLogo?.path;
+  const validGoogleLogo=typeof googleLogoPath==='string'
+    && designerPath(program.merchant_id + '/' + program.id).test(googleLogoPath)
+    && /\/googleLogo-[0-9a-f-]{36}\.png$/i.test(googleLogoPath);
   const widePath = d?.assets?.googleWideLogo?.path;
   const validWidePath = typeof widePath === 'string'
     && designerPath(program.merchant_id + '/' + program.id).test(widePath)
@@ -268,7 +272,7 @@ function classBranding(program: any, businessName: string) {
     issuerName: issuer,
     programName: program.name,
     // Programs created before the design flow have no uploaded logo: they keep the generic one.
-    programLogo: { sourceUri: { uri: program.logo_path ? assetUrl(program.logo_path) : LOGO_URL }, contentDescription: text(issuer) },
+    programLogo: { sourceUri: { uri: validGoogleLogo ? assetUrl(googleLogoPath) : program.logo_path ? assetUrl(program.logo_path) : LOGO_URL }, contentDescription: text(issuer) },
     ...(validWidePath ? {wideProgramLogo: {sourceUri:{uri:assetUrl(widePath)},contentDescription:text(issuer)}} : {}),
     ...(showHero && program.hero_path ? { heroImage: { sourceUri: { uri: assetUrl(program.hero_path) }, contentDescription: text(program.name) } } : {}),
     hexBackgroundColor: HEX_RE.test(colors.primary ?? '') ? colors.primary : program.bg,
@@ -1193,7 +1197,7 @@ const savedEmoji = (value: unknown) => {
   return [...emoji].length <= 16 && /\p{Extended_Pictographic}/u.test(emoji) ? emoji : '';
 };
 
-const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'googleStrip', 'appleStrip', 'appleHeader', 'rewardLabel', 'businessFont', 'businessNameImage', 'googleWideLogo'] as const;
+const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'googleStrip', 'appleStrip', 'appleHeader', 'rewardLabel', 'businessFont', 'businessNameImage', 'googleLogo', 'googleBusinessNameImage', 'googleWideLogo'] as const;
 type AssetKind = typeof ASSET_KINDS[number];
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '');
@@ -1202,14 +1206,14 @@ const pick = <T extends string>(v: unknown, list: readonly T[], dflt: T): T => (
 const int = (v: unknown, min: number, max: number, dflt: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt; };
 // Images of the program's own folder: the designer's uploads, or the logo / cover the program already uses.
 // `folder` = "<merchant>/<program>" for a real program, "tests/<test id>" for a test card (designer/ only).
-const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp|googleStrip|appleStrip|appleHeader|rewardLabel|businessNameImage|googleWideLogo)-[0-9a-f-]{36}\\.(png|jpg)$`);
+const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|googleLogo|hero|background|stamp|googleStrip|appleStrip|appleHeader|rewardLabel|businessNameImage|googleBusinessNameImage|googleWideLogo)-[0-9a-f-]{36}\\.(png|jpg)$`);
 
 // Whitelist of the design document; anything else is dropped. Colours of a platform are optional overrides.
 function cleanDesign(raw: any, folder: string) {
   const r = raw && typeof raw === 'object' ? raw : {};
   const re = designerPath(folder);
   const fontRe=new RegExp('^'+folder+'/designer/businessFont-[0-9a-f-]{36}\\.(?:ttf|otf|woff2)$');
-  const asset = (a: any, kind: AssetKind) => (a && typeof a.path === 'string' && (kind==='businessFont'?fontRe.test(a.path):(re.test(a.path)&&(kind!=='businessNameImage'||a.path.endsWith('.png')))) && a.path.split('/').pop()!.startsWith(`${kind}-`) ? { path: a.path } : null);
+  const asset = (a: any, kind: AssetKind) => (a && typeof a.path === 'string' && (kind==='businessFont'?fontRe.test(a.path):(re.test(a.path)&&(!['businessNameImage','googleBusinessNameImage','googleLogo'].includes(kind)||a.path.endsWith('.png')))) && a.path.split('/').pop()!.startsWith(`${kind}-`) ? { path: a.path } : null);
   const colors = (c: any, base: Record<string, string> | null) => {
     const o = c && typeof c === 'object' ? c : {};
     if (!base) return Object.fromEntries(['primary', 'secondary', 'text', 'accent'].filter(k => HEX_RE.test(o[k] ?? '')).map(k => [k, String(o[k]).toUpperCase()]));
@@ -1322,7 +1326,7 @@ async function adminCardUpload(req: Request): Promise<Response> {
   await assertAdminMerchant(user,program.merchant_id);
   const kind = String(body?.kind ?? '') as AssetKind, type = String(body?.type ?? '');
   const extension=kind==='businessFont'?({'font/ttf':'ttf','font/otf':'otf','font/woff2':'woff2'} as Record<string,string>)[type]:null;
-  if(!ASSET_KINDS.includes(kind)||(kind==='businessFont'?!extension:kind==='businessNameImage'?type!=='image/png':!['image/png','image/jpeg'].includes(type)))throw new HttpError(400,'invalid_request');
+  if(!ASSET_KINDS.includes(kind)||(kind==='businessFont'?!extension:['businessNameImage','googleBusinessNameImage','googleLogo'].includes(kind)?type!=='image/png':!['image/png','image/jpeg'].includes(type)))throw new HttpError(400,'invalid_request');
   const path = `${program.merchant_id}/${program.id}/designer/${kind}-${crypto.randomUUID()}.${extension || (type === 'image/png' ? 'png' : 'jpg')}`;
   const { data, error } = await admin.storage.from('program-assets').createSignedUploadUrl(path);
   if (error || !data) throw new Error('storage_signed_upload');
@@ -1347,7 +1351,7 @@ async function validateDesignPng(config: any) {
     try { await decodePanelArt(new Uint8Array(await data.arrayBuffer()), { maxBytes: 15728640 }); }
     catch { throw new HttpError(422,'invalid_googleStrip'); }
   }
-  for(const kind of ['logo','stamp','appleHeader','rewardLabel','businessNameImage','googleWideLogo','appleStrip']) {
+  for(const kind of ['logo','googleLogo','stamp','appleHeader','rewardLabel','businessNameImage','googleBusinessNameImage','googleWideLogo','appleStrip']) {
     const path=config.assets?.[kind]?.path;
     if(!path || (kind!=='appleStrip' && !path.endsWith('.png')))continue; // legacy JPEG assets remain compatible
     const {data,error}=await admin.storage.from('program-assets').download(path);
@@ -1357,7 +1361,8 @@ async function validateDesignPng(config: any) {
       const bytes=new Uint8Array(await data.arrayBuffer());
       const img=kind==='appleStrip' ? await decodePanelArt(bytes) : await decodePng(bytes);
       if(kind==='googleWideLogo' && (img.width!==1280 || img.height!==400))throw new Error('invalid_google_wide_logo_dimensions');
-      if(kind==='businessNameImage') {
+       if(kind==='googleLogo' && (img.width!==660 || img.height!==660))throw new Error('invalid_google_logo_dimensions');
+      if(kind==='businessNameImage' || kind==='googleBusinessNameImage') {
         let ink=false,transparent=false;
         for(let i=3;i<img.pixels.length;i+=4){
           if(img.pixels[i]>=8)ink=true;
@@ -1444,7 +1449,7 @@ async function adminCardValidate(req: Request): Promise<Response> {
     if (!f) throw new HttpError(422, `missing_${kind}`);
     const bytes = new Uint8Array(await f.arrayBuffer()), info = imageInfo(bytes);
     if (!info) throw new HttpError(422, `invalid_${kind}`);
-    if (kind === 'logo' || kind === 'hero') { const rule = IMAGE_RULES[kind]; fit[kind] = (rule.types as readonly string[]).includes(info.type) && bytes.length <= rule.maxBytes && rule.ok(info.w, info.h); }
+    if (kind === 'logo' || kind === 'hero' || kind === 'googleLogo') { const rule = IMAGE_RULES[kind==='googleLogo'?'logo':kind]; fit[kind] = (rule.types as readonly string[]).includes(info.type) && bytes.length <= rule.maxBytes && rule.ok(info.w, info.h); }
   }
   const { preview: _preview, ...applied } = config;
   const now = new Date().toISOString();
@@ -1656,7 +1661,7 @@ async function adminTestCardUpload(req: Request): Promise<Response> {
   const t = await testRow(body?.id,user);
   const kind = String(body?.kind ?? '') as AssetKind, type = String(body?.type ?? '');
   const extension=kind==='businessFont'?({'font/ttf':'ttf','font/otf':'otf','font/woff2':'woff2'} as Record<string,string>)[type]:null;
-  if(!ASSET_KINDS.includes(kind)||(kind==='businessFont'?!extension:kind==='businessNameImage'?type!=='image/png':!['image/png','image/jpeg'].includes(type)))throw new HttpError(400,'invalid_request');
+  if(!ASSET_KINDS.includes(kind)||(kind==='businessFont'?!extension:['businessNameImage','googleBusinessNameImage','googleLogo'].includes(kind)?type!=='image/png':!['image/png','image/jpeg'].includes(type)))throw new HttpError(400,'invalid_request');
   const path = `${testFolder(t.id)}/designer/${kind}-${crypto.randomUUID()}.${extension || (type === 'image/png' ? 'png' : 'jpg')}`;
   const { data, error } = await admin.storage.from('program-assets').createSignedUploadUrl(path);
   if (error || !data) throw new Error('storage_signed_upload');
@@ -1892,13 +1897,13 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   const d = t.config ?? {}, pv = d.preview ?? {}, colors = { ...(d.colors ?? {}), ...(d.google?.colors ?? {}) };
   const text = (value: string) => ({ defaultValue: { language: 'fr-FR', value } });
   // Only images that meet the Google rules (same as real programs); otherwise the generic DPA Cards logo.
-  const fits = async (kind: 'logo' | 'hero') => {
+  const fits = async (kind: 'logo' | 'googleLogo' | 'hero') => {
     const p = d.assets?.[kind]?.path; if (!p || !designerPath(testFolder(t.id)).test(p)) return null;
     const { data: f } = await admin.storage.from('program-assets').download(p); if (!f) return null;
-    const bytes = new Uint8Array(await f.arrayBuffer()), info = imageInfo(bytes), rule = IMAGE_RULES[kind];
+    const bytes = new Uint8Array(await f.arrayBuffer()), info = imageInfo(bytes), rule = IMAGE_RULES[kind==='googleLogo'?'logo':kind];
     return info && (rule.types as readonly string[]).includes(info.type) && bytes.length <= rule.maxBytes && rule.ok(info.w, info.h) ? p : null;
   };
-  const [logo, hero] = await Promise.all([fits('logo'), fits('hero')]);
+  const [googleLogo, logo, hero] = await Promise.all([fits('googleLogo'),fits('logo'),fits('hero')]);
   const widePath=d.assets?.googleWideLogo?.path;
   let wideLogo: string|null=null;
   if(typeof widePath==='string' && designerPath(testFolder(t.id)).test(widePath)
@@ -1913,7 +1918,7 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   const classId = `${ISSUER_ID}.dpa-test-class-${t.id}`, objectId = `${ISSUER_ID}.dpa-test-${t.id}`;
   const branding = {
     issuerName: issuer, programName: hasSavedStampArt(d) ? issuer : 'Carte de démonstration',
-    programLogo: { sourceUri: { uri: logo ? assetUrl(logo) : LOGO_URL }, contentDescription: text(issuer) },
+    programLogo: { sourceUri: { uri: googleLogo ? assetUrl(googleLogo) : logo ? assetUrl(logo) : LOGO_URL }, contentDescription: text(issuer) },
     ...(wideLogo ? {wideProgramLogo:{sourceUri:{uri:assetUrl(wideLogo)},contentDescription:text(issuer)}} : {}),
     ...(hero && d.google?.showHero !== false ? { heroImage: { sourceUri: { uri: assetUrl(hero) }, contentDescription: text(issuer) } } : {}),
     hexBackgroundColor: HEX_RE.test(colors.primary ?? '') ? colors.primary : '#1C1F24',
