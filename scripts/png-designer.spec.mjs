@@ -51,7 +51,7 @@ test('last stamp and reward label stay editable, but Apple name font is native',
  const apple=page.locator('[data-layout="apple"]').first();
  await expect(apple.locator('[data-stamp="empty-final-star"]')).toHaveCount(1);
  await expect(page.getByLabel('Police du nom')).toHaveCount(0);
- await expect(page.locator('[data-upload="businessNameImage"]')).toHaveCount(0);
+ await expect(page.locator('[data-upload="businessNameImage"]')).toHaveCount(1);
  await expect(page.locator('[data-upload="businessFont"]')).toHaveCount(0);
  const reward=page.locator('[data-apple-reward-settings]');
  await reward.getByLabel('Afficher la récompense dans le bloc des tampons').check();
@@ -233,7 +233,7 @@ test('Custom Apple header saves at Retina 3x, then Classic restores native name 
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const custom=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(custom.apple.headerMode).toBe('custom');
- expect(custom.apple.headerArtworkVersion).toBe(4);
+ expect(custom.apple.headerArtworkVersion).toBe(5);
  expect(custom.assets.appleHeader.path).toContain('appleHeader-');
  const img=card.getByRole('img',{name:'Logo, nom et activité du commerce'});
  await expect(img).toBeVisible();
@@ -252,7 +252,7 @@ test('Custom Apple header saves at Retina 3x, then Classic restores native name 
  await page.getByLabel('Style de l’en-tête').selectOption('custom');
  await page.getByRole('button',{name:/Enregistrer/}).click();
  const again=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
- expect(again.apple.headerArtworkVersion).toBe(4);
+ expect(again.apple.headerArtworkVersion).toBe(5);
  expect(again.assets.appleHeader.path).toBe(custom.assets.appleHeader.path);
 });
 
