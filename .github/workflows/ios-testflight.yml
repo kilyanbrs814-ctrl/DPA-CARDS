@@ -34,7 +34,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: feat/ios-app-store-preparation
+          ref: main  # Always bundle the same current card generator as the website
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -48,6 +48,8 @@ jobs:
           npm run test:static
           node --test scripts/check-native-admin-link.test.mjs
           node --test scripts/check-native-wallet-notifications.test.mjs
+          node --test scripts/check-dual-logo-wallet.test.mjs scripts/check-ios-bundle-current.test.mjs
+          npm run test:real-apple
           npx cap add ios
           npx cap sync ios
           swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
