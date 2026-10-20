@@ -1,0 +1,217 @@
+{
+  "merchant": {
+    "id": "795f176c-81c0-4df6-82a4-bbb9425e4192",
+    "first": "Apple",
+    "last": "Review",
+    "email": "appreview@digitalprojectagency.fr",
+    "business": "Commerce Démo Apple",
+    "activity": "Commerce fictif — démonstration App Store",
+    "phone": "",
+    "address": "",
+    "slug": "demo-apple-review"
+  },
+  "program": {
+    "id": "4061de97-44f9-4fe1-a97e-984e60a07010",
+    "merchantId": "795f176c-81c0-4df6-82a4-bbb9425e4192",
+    "name": "Club Démo Apple",
+    "mode": "passages",
+    "goal": 10,
+    "reward": "Une récompense offerte (démonstration)",
+    "conditions": "Données fictives réservées aux tests Apple. Aucun achat ni prélèvement.",
+    "bg": "#F5F0FF",
+    "accent": "#7C3AED",
+    "pattern": "none",
+    "logo": "DÉMO",
+    "designStatus": "validated",
+    "designMode": "custom",
+    "registrationPage": {},
+    "cardDesign": null,
+    "heroUrl": null,
+    "logoUrl": null
+  },
+  "clients": [
+    {
+      "id": "c9de3145-2e96-4906-a763-0011f3455125",
+      "customerId": "0586ee05-07c8-4f49-84fb-acc4ce33924d",
+      "first": "Emma",
+      "last": "Démo",
+      "card": "DPA 6730 2544",
+      "joined": "2026-10-20",
+      "balance": 9,
+      "history": [
+        {
+          "id": "3f317d49-5b7c-4c14-a1b2-682df7966c28",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 10
+        },
+        {
+          "id": "e67ea9b3-1cb4-4390-8f05-3924dba7f5fe",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 9
+        },
+        {
+          "id": "8b029a0a-e3c6-472b-b162-fdec2af46358",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 8
+        },
+        {
+          "id": "ee790c6b-d118-4ada-b1e0-3326f7f539df",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 7
+        },
+        {
+          "id": "ed643aba-314b-4202-86da-e5746a3bb1b2",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 6
+        },
+        {
+          "id": "6cb2e7a1-c5fd-40dc-9b43-91c31669c598",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 5
+        },
+        {
+          "id": "6b10b6a2-6f84-4923-85c7-fa6aa118d876",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 4
+        },
+        {
+          "id": "2bf96425-2f87-4294-9708-0cfa6369feee",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 3
+        },
+        {
+          "id": "8e9d06d8-3518-426f-83d7-2ab3b10e5e36",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 2
+        },
+        {
+          "id": "5a7e245f-86fa-4725-b25a-3bd4bfa00125",
+          "type": "join",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 0,
+          "label": "Inscription au programme",
+          "seq": 1
+        }
+      ],
+      "wallet": null,
+      "qrValue": "DPA1:dddb1e35-488f-49a5-9602-83f401264dfc"
+    },
+    {
+      "id": "b7a810da-30f6-438f-88ea-56af2a123559",
+      "customerId": "aff4712b-ea12-4740-8648-f2b439dbe169",
+      "first": "Lucas",
+      "last": "Démo",
+      "card": "DPA 3314 4542",
+      "joined": "2026-10-20",
+      "balance": 4,
+      "history": [
+        {
+          "id": "43a04df6-de99-4cf0-bd1d-14eadcf42719",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 5
+        },
+        {
+          "id": "2bd4a6cc-8e78-46c6-a153-c39d3590ef8f",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 4
+        },
+        {
+          "id": "e6131aa5-55e6-4340-bd6a-26897c4746ce",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 3
+        },
+        {
+          "id": "b88a6523-e0f6-42b7-a7d7-1c5ff25f1a66",
+          "type": "visit",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 1,
+          "label": "Passage ajouté",
+          "seq": 2
+        },
+        {
+          "id": "da926188-07d1-4ca2-ba14-4929cd6e4311",
+          "type": "join",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 0,
+          "label": "Inscription au programme",
+          "seq": 1
+        }
+      ],
+      "wallet": null,
+      "qrValue": "DPA1:86feedc2-cfab-490d-8444-94f2f3262502"
+    },
+    {
+      "id": "c1fd1450-8ff9-4b37-b1fe-f355e0397b0c",
+      "customerId": "a8ac5191-4afb-4fb9-9d9e-2e168bb49978",
+      "first": "Alice",
+      "last": "Démo",
+      "card": "DPA 5426 3941",
+      "joined": "2026-10-20",
+      "balance": 0,
+      "history": [
+        {
+          "id": "6f29b549-3e92-4d4d-aaed-d6ff34350dcc",
+          "type": "join",
+          "date": "2026-10-20",
+          "time": "18:19",
+          "delta": 0,
+          "label": "Inscription au programme",
+          "seq": 1
+        }
+      ],
+      "wallet": null,
+      "qrValue": "DPA1:2ea1e915-aef6-4c11-8e04-58517d0601b0"
+    }
+  ]
+}

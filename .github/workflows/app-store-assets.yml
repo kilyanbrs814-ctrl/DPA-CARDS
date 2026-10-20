@@ -1,0 +1,53 @@
+name: Prepare DPA Cards App Store assets
+on:
+  push:
+    branches: [work/appstore-assets]
+    paths:
+      - .github/workflows/app-store-assets.yml
+      - scripts/capture-app-store.mjs
+      - scripts/verify-app-store.swift
+      - scripts/publish-app-store-capture-results.mjs
+      - app-store/review-fixture.json
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  captures:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Check capture scripts
+        run: |
+          node --check scripts/capture-app-store.mjs
+          node --check scripts/publish-app-store-capture-results.mjs
+          swiftc scripts/verify-app-store.swift -o "$RUNNER_TEMP/dpa-verify-screenshot"
+      - name: Prepare current native application
+        run: |
+          npm ci
+          npm install --no-save --package-lock=false @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8 @capacitor/app@8
+          npm run build
+          npx cap add ios
+          npx cap sync ios
+          swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
+          swift scripts/configure-ios-deeplink.swift ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName DPA Cards" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string DPA Cards utilise la caméra pour scanner les QR codes des cartes de fidélité." ios/App/App/Info.plist
+      - name: Capture and verify iPhone and iPad screens
+        run: node scripts/capture-app-store.mjs
+      - name: Save reviewable screenshots
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/publish-app-store-capture-results.mjs
+      - name: Archive captures and build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dpa-cards-appstore-captures
+          path: app-store-output/
+          retention-days: 30
+          if-no-files-found: warn
