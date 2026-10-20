@@ -1,0 +1,51 @@
+{
+  "appId": "6823642562",
+  "version": "1.0",
+  "locale": "fr-FR",
+  "bundleId": "fr.digitalprojectagency.cards",
+  "age": {
+    "advertising": false,
+    "alcoholTobaccoOrDrugUseOrReferences": "INFREQUENT",
+    "contests": "NONE",
+    "gambling": false,
+    "gamblingSimulated": "NONE",
+    "gunsOrOtherWeapons": "NONE",
+    "healthOrWellnessTopics": false,
+    "lootBox": false,
+    "medicalOrTreatmentInformation": "NONE",
+    "messagingAndChat": false,
+    "parentalControls": false,
+    "profanityOrCrudeHumor": "NONE",
+    "ageAssurance": false,
+    "sexualContentGraphicAndNudity": "NONE",
+    "sexualContentOrNudity": "NONE",
+    "socialMedia": false,
+    "socialMediaAgeRestricted": false,
+    "horrorOrFearThemes": "NONE",
+    "matureOrSuggestiveThemes": "NONE",
+    "unrestrictedWebAccess": false,
+    "userGeneratedContent": false,
+    "violenceCartoonOrFantasy": "NONE",
+    "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+    "violenceRealistic": "NONE"
+  },
+  "contentRightsDeclaration": "USES_THIRD_PARTY_CONTENT",
+  "privacyPolicyUrl": "https://cards.digitalprojectagency.fr/confidentialite",
+  "privacy": {
+    "status": "PREPARED_REQUIRES_APP_STORE_CONNECT_WEB_FORM",
+    "tracking": false,
+    "linkedToIdentity": true,
+    "purpose": "App Functionality",
+    "dataTypes": [
+      "Name",
+      "Email Address",
+      "Phone Number",
+      "Physical Address",
+      "User ID",
+      "Photos or Videos",
+      "Other User Content",
+      "Purchase History",
+      "Product Interaction"
+    ]
+  }
+}

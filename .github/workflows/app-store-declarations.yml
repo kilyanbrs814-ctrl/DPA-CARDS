@@ -1,0 +1,45 @@
+name: Update DPA Cards Apple declarations
+on:
+  push:
+    branches: [work/appstore-assets]
+    paths:
+      - .github/workflows/app-store-declarations.yml
+      - scripts/app-store-connect-assets.mjs
+      - app-store/declarations.json
+      - app-store/upload-captures.json
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  apple-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check publishing script and decide screenshot upload
+        id: capture-config
+        run: |
+          node --check scripts/app-store-connect-assets.mjs
+          node --input-type=module -e "import fs from 'node:fs';if(fs.existsSync('app-store/upload-captures.json')){const c=JSON.parse(fs.readFileSync('app-store/upload-captures.json'));if(!/^[a-f0-9]{40}$/.test(c.commit))throw Error('Invalid capture commit');fs.appendFileSync(process.env.GITHUB_OUTPUT,'ref='+c.commit+'\nupload=1\n');}else fs.appendFileSync(process.env.GITHUB_OUTPUT,'upload=0\n');"
+      - uses: actions/checkout@v4
+        if: steps.capture-config.outputs.upload == '1'
+        with:
+          ref: ${{ steps.capture-config.outputs.ref }}
+          path: capture-input
+      - name: Update and verify Apple metadata
+        env:
+          ASC_API_KEY_B64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+          DPA_UPLOAD_SCREENSHOTS: ${{ steps.capture-config.outputs.upload }}
+        run: node scripts/app-store-connect-assets.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: dpa-apple-metadata-result
+          path: app-store-report/
+          retention-days: 30
+          if-no-files-found: warn
