@@ -73,7 +73,7 @@ export function realAppleBrand(program, merchant, card) {
     showStamps: apple.showStamps !== false,
     appleStrip: assetPath(assets.appleStrip, card, 'appleStrip'),
     // Explicit new custom mode only. Legacy combined PNGs never override native text.
-    appleHeader: apple.headerMode==='custom' && apple.showBusinessName===true && [4,5].includes(apple.headerArtworkVersion)
+    appleHeader: apple.headerMode==='custom' && apple.showBusinessName===true && [4,5,6].includes(apple.headerArtworkVersion)
       ? assetPath(assets.appleHeader,card,'appleHeader') : null,
     rewardEnabled: apple.showReward === true,
     rewardLabel: apple.showReward === true ? assetPath(assets.rewardLabel,card,'rewardLabel') : null,

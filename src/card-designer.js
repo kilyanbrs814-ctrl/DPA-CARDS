@@ -1,5 +1,5 @@
 import { preparePngUpload, prepareBusinessNamePng } from './png-upload.js';
-import { createAppleWordmark, APPLE_WORDMARK_VERSION, createGoogleWideLogo, GOOGLE_WIDE_LOGO_VERSION } from './apple-wordmark.js';
+import { createAppleWordmark, APPLE_WORDMARK_VERSION, createGoogleWideLogo, GOOGLE_WIDE_LOGO_VERSION, tightWordmarkPreview } from './apple-wordmark.js';
 import { createRewardLabel, rewardLabelColor } from './apple-reward-label.js';
 // Card designer (admin): one design project per program, rendered in two layouts —
 // Apple Wallet (full rectangle, rounded corners only) and Google Wallet (its own layout).
@@ -216,6 +216,18 @@ export function makeCardDesigner(React, api) {
     if (i >= srcs.length) return fallback || null;
     return h('img', { src: srcs[i], alt: alt || '', onError: () => setI(n => n + 1), style });
   }
+  // Visually crop transparent margins without changing the original uploaded logo.
+  function WordmarkImg({asset,style,alt}) {
+    const source=asset?.url||'';
+    const [display,setDisplay]=useState(source);
+    useEffect(()=>{
+      let alive=true;
+      setDisplay(source);
+      if(source)tightWordmarkPreview(source).then(url=>{if(alive)setDisplay(url||source);}).catch(()=>{if(alive)setDisplay(source);});
+      return ()=>{alive=false;};
+    },[source]);
+    return source ? h('img',{src:display||source,alt:alt||'Logo texte',style}) : null;
+  }
   const initialsOf = d => (d.identity.name || 'DPA').replace(/[^\p{L}\p{N} ]/gu, '').split(/\s+/).map(w => w[0] || '').join('').slice(0, 3).toUpperCase();
   const Logo = ({ d, size, round }) => {
     const box = { width: size, height: size, borderRadius: round ? '50%' : Math.round(size * 0.22), overflow: 'hidden', flex: 'none' };
@@ -286,13 +298,13 @@ export function makeCardDesigner(React, api) {
             ? h(Img,{asset:d.assets.appleHeader,alt:'Logo, nom et activité du commerce',style:{width:160,height:50,objectFit:'contain',objectPosition:'left center',flexShrink:0}})
             : platform==='apple' && o.showBusinessName && o.headerMode==='custom'
               ? h('div',{'data-field':'apple-custom-business-header',style:{width:160,height:50,display:'flex',alignItems:'center',gap:4,flexShrink:0,overflow:'hidden'}},
-                  h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:48,height:48,objectFit:'contain',flexShrink:0}}),
-                  d.assets.businessNameImage?.url ? h(Img,{asset:d.assets.businessNameImage,alt:'Logo texte du commerce',style:{width:106,height:44,objectFit:'contain',objectPosition:'left center',minWidth:0}}) : h('div',{style:{minWidth:0,flex:1,overflow:'hidden',lineHeight:1.12}},
+                  h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:d.assets.businessNameImage?.url?31:48,height:d.assets.businessNameImage?.url?31:48,objectFit:'contain',flexShrink:0}}),
+                  d.assets.businessNameImage?.url ? h(WordmarkImg,{asset:d.assets.businessNameImage,alt:'Logo texte du commerce',style:{width:124,height:48,objectFit:'contain',objectPosition:'left center',minWidth:0}}) : h('div',{style:{minWidth:0,flex:1,overflow:'hidden',lineHeight:1.12}},
                     h('div',{style:{...ellipsis,fontWeight:750,fontSize:15}},d.identity.name||'Nom du commerce'),
                     o.showSubtitle!==false && d.identity.subtitle && h('div',{style:{...ellipsis,fontSize:8,fontWeight:500,marginTop:4,textTransform:'uppercase'}},d.identity.subtitle)))
               : platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : d.assets.businessNameImage?.url ? h('div',{'data-field':'google-wide-logo',style:{display:'flex',gap:8,alignItems:'center',maxWidth:174,minWidth:0}},
                  d.assets.logo?.url && h(Img,{asset:d.assets.logo,alt:'Logo symbole',style:{width:40,height:40,objectFit:'contain',flexShrink:0}}),
-                 h(Img,{asset:d.assets.businessNameImage,alt:'Logo texte',style:{height:36,width:126,objectFit:'contain',objectPosition:'left center',minWidth:0}})) : h(Logo, { d, size: 40, round: false }),
+                 h(WordmarkImg,{asset:d.assets.businessNameImage,alt:'Logo texte',style:{height:42,width:145,objectFit:'contain',objectPosition:'left center',minWidth:0}})) : h(Logo, { d, size: 40, round: false }),
           platform==='apple' && o.showBusinessName && o.headerMode!=='custom' && h('div',{
             'data-field':'apple-native-business-name',
             style:{...ellipsis,minWidth:0,whiteSpace:'nowrap',fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:20,fontWeight:700,lineHeight:1.1}
@@ -425,9 +437,9 @@ export function makeCardDesigner(React, api) {
     return h('div',{'data-layout':'google',style:{width:340,borderRadius:22,overflow:'hidden',background:c.primary,color:c.text,fontFamily:FONTS[d.font].css,boxShadow:'0 14px 36px rgba(20,22,28,.19)'}},
       h('div',{style:{display:'flex',gap:10,alignItems:'center',justifyContent:'space-between',padding:20}},
         d.assets.businessNameImage?.url
-          ? h('div',{'data-field':'google-wide-logo',style:{display:'flex',gap:8,alignItems:'center',minWidth:0,flex:1}},
-              d.assets.logo?.url && h(Img,{asset:d.assets.logo,alt:'Logo symbole',style:{width:40,height:40,objectFit:'contain',flexShrink:0}}),
-              h(Img,{asset:d.assets.businessNameImage,alt:'Logo texte',style:{width:145,height:40,objectFit:'contain',objectPosition:'left center',minWidth:0}}))
+          ? h('div',{'data-field':'google-wide-logo',style:{display:'flex',gap:6,alignItems:'center',minWidth:0,flex:1}},
+              d.assets.logo?.url && h(Img,{asset:d.assets.logo,alt:'Logo symbole',style:{width:28,height:32,objectFit:'contain',flexShrink:0}}),
+              h(WordmarkImg,{asset:d.assets.businessNameImage,alt:'Logo texte',style:{width:'100%',maxWidth:216,height:44,objectFit:'contain',objectPosition:'left center',minWidth:0,flex:'1 1 auto'}}))
           : h('div',{style:{display:'flex',alignItems:'center',gap:12,minWidth:0}},h(Logo,{d,size:40,round:true}),h('strong',{style:{fontSize:20,...ellipsis}},d.identity.name||'Nom du commerce')),
         d.assets.businessNameImage?.url && h('span',{'data-field':'card-number',style:{fontSize:14,fontWeight:700,flexShrink:0,fontVariantNumeric:'tabular-nums'}},
           (String(data.cardNumber||'').replace(/\D/g,'')||'0000').slice(-4))),

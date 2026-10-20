@@ -23,7 +23,7 @@ function sample(version) {
 }
 
 test('New Apple paired-header artwork appears as native logo alongside card number',()=>{
- const d=sample(5);
+ const d=sample(6);
  const {brand,json}=realApplePassData(d);
  assert.equal(brand.appleHeader,appleHeaderPath);
  assert.equal(json.logoText,undefined);
