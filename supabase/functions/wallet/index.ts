@@ -260,11 +260,16 @@ function classBranding(program: any, businessName: string) {
   const colors = { ...(d?.colors ?? {}), ...(d?.google?.colors ?? {}) };
   const issuer = String(d?.identity?.name || businessName || program.name).slice(0, 40);
   const showHero = d ? d.google?.showHero !== false : true;
+  const widePath = d?.assets?.googleWideLogo?.path;
+  const validWidePath = typeof widePath === 'string'
+    && designerPath(program.merchant_id + '/' + program.id).test(widePath)
+    && /\/googleWideLogo-[0-9a-f-]{36}\.png$/i.test(widePath);
   return {
     issuerName: issuer,
     programName: program.name,
     // Programs created before the design flow have no uploaded logo: they keep the generic one.
     programLogo: { sourceUri: { uri: program.logo_path ? assetUrl(program.logo_path) : LOGO_URL }, contentDescription: text(issuer) },
+    ...(validWidePath ? {wideProgramLogo: {sourceUri:{uri:assetUrl(widePath)},contentDescription:text(issuer)}} : {}),
     ...(showHero && program.hero_path ? { heroImage: { sourceUri: { uri: assetUrl(program.hero_path) }, contentDescription: text(program.name) } } : {}),
     hexBackgroundColor: HEX_RE.test(colors.primary ?? '') ? colors.primary : program.bg,
     ...(d ? { accountNameLabel: 'Client', accountIdLabel: 'N° de carte' } : {}),
@@ -1188,7 +1193,7 @@ const savedEmoji = (value: unknown) => {
   return [...emoji].length <= 16 && /\p{Extended_Pictographic}/u.test(emoji) ? emoji : '';
 };
 
-const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'googleStrip', 'appleStrip', 'appleHeader', 'rewardLabel', 'businessFont', 'businessNameImage'] as const;
+const ASSET_KINDS = ['logo', 'hero', 'background', 'stamp', 'googleStrip', 'appleStrip', 'appleHeader', 'rewardLabel', 'businessFont', 'businessNameImage', 'googleWideLogo'] as const;
 type AssetKind = typeof ASSET_KINDS[number];
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, max) : '');
@@ -1197,7 +1202,7 @@ const pick = <T extends string>(v: unknown, list: readonly T[], dflt: T): T => (
 const int = (v: unknown, min: number, max: number, dflt: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt; };
 // Images of the program's own folder: the designer's uploads, or the logo / cover the program already uses.
 // `folder` = "<merchant>/<program>" for a real program, "tests/<test id>" for a test card (designer/ only).
-const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp|googleStrip|appleStrip|appleHeader|rewardLabel|businessNameImage)-[0-9a-f-]{36}\\.(png|jpg)$`);
+const designerPath = (folder: string) => new RegExp(`^${folder}/(designer/)?(logo|hero|background|stamp|googleStrip|appleStrip|appleHeader|rewardLabel|businessNameImage|googleWideLogo)-[0-9a-f-]{36}\\.(png|jpg)$`);
 
 // Whitelist of the design document; anything else is dropped. Colours of a platform are optional overrides.
 function cleanDesign(raw: any, folder: string) {
@@ -1227,10 +1232,10 @@ function cleanDesign(raw: any, folder: string) {
     assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
     stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, savedEmoji(s.emoji) ? 'emoji' : 'library'), libraryId: libraryStampId(s.libraryId), emoji: s.icon==='library' ? '' : savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
       filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF'), size: int(s.size, 50, 120, 100), spacing: int(s.spacing, 50, 120, 100), inactiveOpacity: int(s.inactiveOpacity, 0, 100, 22), rewardId: libraryStampId(s.rewardId)||'reward-star' },
-    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showStampPanel: r.apple?.showStampPanel !== false, showStamps: r.apple?.showStamps !== false, headerMode: r.apple?.headerMode==='custom'?'custom':'classic', headerArtworkVersion: int(r.apple?.headerArtworkVersion,0,4,0), showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64),
+    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showStampPanel: r.apple?.showStampPanel !== false, showStamps: r.apple?.showStamps !== false, headerMode: r.apple?.headerMode==='custom'?'custom':'classic', headerArtworkVersion: int(r.apple?.headerArtworkVersion,0,5,0), showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64),
       rewardTextColor: HEX_RE.test(r.apple?.rewardTextColor??'')?String(r.apple.rewardTextColor).toUpperCase():'',
       businessNameFont: pick(r.apple?.businessNameFont,['system','hanken','space','playfair','custom'] as const,'system') },
-    google: { ...platform(r.google), showStamps:r.google?.showStamps!==false, reuseAppleStrip:r.google?.reuseAppleStrip!==false },
+    google: { ...platform(r.google), showStamps:r.google?.showStamps!==false, reuseAppleStrip:r.google?.reuseAppleStrip!==false, wideArtworkVersion:int(r.google?.wideArtworkVersion,0,1,0) },
     // Editor only (demo customer, demo progress): never copied to the program.
     preview: { mode: pick(pv.mode, ['passages', 'points'] as const, 'passages'), goal: int(pv.goal, 1, 1000, 10), progress: int(pv.progress, 0, 100000, 3),
       reward: str(pv.reward, 80), available: int(pv.available, 0, 99, 1), client: str(pv.client, 60) },
@@ -1342,7 +1347,7 @@ async function validateDesignPng(config: any) {
     try { await decodePanelArt(new Uint8Array(await data.arrayBuffer()), { maxBytes: 15728640 }); }
     catch { throw new HttpError(422,'invalid_googleStrip'); }
   }
-  for(const kind of ['logo','stamp','appleHeader','rewardLabel','businessNameImage','appleStrip']) {
+  for(const kind of ['logo','stamp','appleHeader','rewardLabel','businessNameImage','googleWideLogo','appleStrip']) {
     const path=config.assets?.[kind]?.path;
     if(!path || (kind!=='appleStrip' && !path.endsWith('.png')))continue; // legacy JPEG assets remain compatible
     const {data,error}=await admin.storage.from('program-assets').download(path);
@@ -1351,6 +1356,7 @@ async function validateDesignPng(config: any) {
     try {
       const bytes=new Uint8Array(await data.arrayBuffer());
       const img=kind==='appleStrip' ? await decodePanelArt(bytes) : await decodePng(bytes);
+      if(kind==='googleWideLogo' && (img.width!==1280 || img.height!==400))throw new Error('invalid_google_wide_logo_dimensions');
       if(kind==='businessNameImage') {
         let ink=false,transparent=false;
         for(let i=3;i<img.pixels.length;i+=4){
@@ -1395,6 +1401,7 @@ async function updateClassBranding(programId: string) {
   if (got.status !== 200) throw gErr('class_get', got);
   const next = { ...got.data, ...classBranding(program, m?.business_name ?? ''), reviewStatus: 'UNDER_REVIEW' };
   if (!classBranding(program, m?.business_name ?? '').heroImage) delete next.heroImage;
+  if (!classBranding(program, m?.business_name ?? '').wideProgramLogo) delete next.wideProgramLogo;
   const put = await google('PUT', `/loyaltyClass/${id}`, next);
   if (put.status !== 200) throw gErr('class_update', put);
   return { status: 'synced' as const };
@@ -1892,11 +1899,22 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
     return info && (rule.types as readonly string[]).includes(info.type) && bytes.length <= rule.maxBytes && rule.ok(info.w, info.h) ? p : null;
   };
   const [logo, hero] = await Promise.all([fits('logo'), fits('hero')]);
+  const widePath=d.assets?.googleWideLogo?.path;
+  let wideLogo: string|null=null;
+  if(typeof widePath==='string' && designerPath(testFolder(t.id)).test(widePath)
+      && /\/googleWideLogo-[0-9a-f-]{36}\.png$/i.test(widePath)){
+    const {data: wideFile}=await admin.storage.from('program-assets').download(widePath);
+    if(wideFile && wideFile.size<=2097152){
+      const wideBytes=new Uint8Array(await wideFile.arrayBuffer()),info=imageInfo(wideBytes);
+      if(info?.type==='png' && info.w===1280 && info.h===400)wideLogo=widePath;
+    }
+  }
   const issuer = String(d.identity?.name || 'Carte test DPA Cards').slice(0, 40);
   const classId = `${ISSUER_ID}.dpa-test-class-${t.id}`, objectId = `${ISSUER_ID}.dpa-test-${t.id}`;
   const branding = {
     issuerName: issuer, programName: hasSavedStampArt(d) ? issuer : 'Carte de démonstration',
     programLogo: { sourceUri: { uri: logo ? assetUrl(logo) : LOGO_URL }, contentDescription: text(issuer) },
+    ...(wideLogo ? {wideProgramLogo:{sourceUri:{uri:assetUrl(wideLogo)},contentDescription:text(issuer)}} : {}),
     ...(hero && d.google?.showHero !== false ? { heroImage: { sourceUri: { uri: assetUrl(hero) }, contentDescription: text(issuer) } } : {}),
     hexBackgroundColor: HEX_RE.test(colors.primary ?? '') ? colors.primary : '#1C1F24',
     accountNameLabel: 'Client', accountIdLabel: 'N° de carte',
@@ -1904,6 +1922,7 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   const cg = await google('GET', `/loyaltyClass/${encodeURIComponent(classId)}`);
   if (cg.status === 404) { const r = await google('POST', '/loyaltyClass', { id: classId, ...branding, reviewStatus: 'UNDER_REVIEW', countryCode: 'FR' }); if (r.status !== 200 && r.status !== 409) throw gErr('test_class_insert', r); }
   else if (cg.status === 200) { const next: any = { ...cg.data, ...branding, reviewStatus: 'UNDER_REVIEW' }; if (!branding.heroImage) delete next.heroImage;
+    if (!branding.wideProgramLogo) delete next.wideProgramLogo;
     const r = await google('PUT', `/loyaltyClass/${encodeURIComponent(classId)}`, next); if (r.status !== 200) throw gErr('test_class_update', r); }
   else throw gErr('test_class_get', cg);
   const mode = pv.mode === 'points' ? 'points' : 'passages', view = testView(t);
