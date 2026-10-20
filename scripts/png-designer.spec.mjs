@@ -479,7 +479,9 @@ test('Google Wallet image pickers stay independent from Apple Wallet artwork',as
  await expect(page.locator('[data-layout="apple"]').first().getByRole('img',{name:'Logo, nom et activité du commerce'})).toBeVisible();
 
  await pick('googleLogo').setInputFiles({name:'google-circle.png',mimeType:'image/png',buffer:fixture(120,120,[0,170,30,255])});
+ await expect(pick('googleLogo').locator('..').getByRole('button',{name:'Remplacer'})).toBeVisible();
  await pick('googleBusinessNameImage').setInputFiles({name:'google-text.png',mimeType:'image/png',buffer:fixture(360,120,[0,100,180,255])});
+ await expect(pick('googleBusinessNameImage').locator('..').getByRole('button',{name:'Remplacer'})).toBeVisible();
  await page.getByRole('button',{name:/Enregistrer/}).click();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const both=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
