@@ -48,3 +48,20 @@ test('New Google image is whitelisted and can be removed on future class updates
  assert.match(designer,/createGoogleWideLogo\(next\)/);
  assert.match(designer,/prepareBusinessNamePng\(f\)/);
 });
+
+test('Google-only images are stored separately, while Apple pass code still uses Apple logo',()=>{
+ const server=readFileSync(new URL('../supabase/functions/wallet/index.ts',import.meta.url),'utf8');
+ const designer=readFileSync(new URL('../src/card-designer.js',import.meta.url),'utf8');
+ const wordmark=readFileSync(new URL('../src/apple-wordmark.js',import.meta.url),'utf8');
+ const realApple=readFileSync(new URL('../supabase/functions/apple-pass/real-card.js',import.meta.url),'utf8');
+ assert.match(server,/validGoogleLogo \? assetUrl\(googleLogoPath\)/);
+ assert.match(server,/googleLogo \? assetUrl\(googleLogo\)/);
+ assert.match(server,/googleBusinessNameImage/);
+ assert.match(server,/googleLogo' && \(img\.width!==660/);
+ assert.match(designer,/title: 'Logos Google Wallet'/);
+ assert.match(designer,/title: 'Logos Apple Wallet'/);
+ assert.match(designer,/assets: platform==='google'/);
+ assert.match(wordmark,/assets\?\.googleLogo\?\.url\|\|design\?\.assets\?\.logo/);
+ assert.match(wordmark,/assets\?\.googleBusinessNameImage\?\.url\|\|design\?\.assets\?\.businessNameImage/);
+ assert.match(realApple,/logo: Object\.hasOwn\(assets,'logo'\)/);
+});

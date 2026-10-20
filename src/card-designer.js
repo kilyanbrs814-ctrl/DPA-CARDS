@@ -1,4 +1,4 @@
-import { preparePngUpload, prepareBusinessNamePng } from './png-upload.js';
+import { preparePngUpload, prepareBusinessNamePng, prepareGoogleLogoPng } from './png-upload.js';
 import { createAppleWordmark, APPLE_WORDMARK_VERSION, createGoogleWideLogo, GOOGLE_WIDE_LOGO_VERSION, tightWordmarkPreview } from './apple-wordmark.js';
 import { createRewardLabel, rewardLabelColor } from './apple-reward-label.js';
 // Card designer (admin): one design project per program, rendered in two layouts —
@@ -23,13 +23,15 @@ export const STAMP_ICONS = [
   ['icecream', 'Glace'], ['bakery_dining', 'Viennoiserie'], ['custom', 'Personnalisée'],
 ];
 const HEX = /^#[0-9A-Fa-f]{6}$/;
-const ASSET_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(designer\/)?(logo|hero|background|stamp|googleStrip|appleStrip|appleHeader|rewardLabel|businessNameImage|googleWideLogo)-[0-9a-f-]{36}\.(png|jpg)$/;
+const ASSET_RE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(designer\/)?(logo|googleLogo|hero|background|stamp|googleStrip|appleStrip|appleHeader|rewardLabel|businessNameImage|googleBusinessNameImage|googleWideLogo)-[0-9a-f-]{36}\.(png|jpg)$/;
 // Recommended source dimensions for EVERY upload in the card generator.
 // Cropped assets are exported to exactly the dimensions below. The original
 // logo and stamp keep their proportions; these sizes are recommendations only.
 export const RECOMMENDED_IMAGE_SIZES = Object.freeze({
   logo: Object.freeze({ width: 660, height: 660, format: 'PNG transparent', note: 'Carré, important pour Google Wallet.' }),
-  businessNameImage: Object.freeze({ width: 1000, height: 250, format: 'PNG transparent', note: 'Logo texte horizontal, sans fond, affiché à droite du symbole.' }),
+  businessNameImage: Object.freeze({ width: 1000, height: 250, format: 'PNG transparent', note: 'Logo texte horizontal Apple Wallet.' }),
+  googleLogo: Object.freeze({ width: 660, height: 660, format: 'PNG', note: 'Le fichier est adapté à 660 × 660 px pour Google Wallet.' }),
+  googleBusinessNameImage: Object.freeze({ width: 1000, height: 250, format: 'PNG transparent', note: 'Logo texte Google Wallet, facultatif.' }),
   hero: Object.freeze({ width: 1032, height: 812, format: 'PNG, JPEG ou WebP', note: 'Format paysage ; recadrage automatique.' }),
   background: Object.freeze({ width: 680, height: 1120, format: 'PNG, JPEG ou WebP', note: 'Format portrait ; recadrage automatique.' }),
   stamp: Object.freeze({ width: 256, height: 256, format: 'PNG transparent', note: 'Carré, sans fond pour un beau rendu.' }),
@@ -57,7 +59,7 @@ export function defaultDesign(project) {
     identity: { name: m.business_name || '', subtitle: m.activity || '' },
     colors: { primary: bg, secondary: HEX.test(p.accent || '') ? p.accent.toUpperCase() : '#2448F0', text: onColor(bg), accent: '#F2C94C' },
     font: 'hanken', label: '',
-    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, googleStrip: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null, googleWideLogo: null },
+    assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, googleStrip: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null, googleLogo: null, googleBusinessNameImage: null, googleWideLogo: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg), size: 100, spacing: 100, inactiveOpacity: 22, rewardId: 'reward-star' },
     apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, headerMode: 'classic', showStampPanel: true, showStamps: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
     google: { colors: {}, showStamps: true, reuseAppleStrip: true, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '', wideArtworkVersion: 0 },
@@ -107,6 +109,8 @@ export function prepareDesign(cardDesign, program, merchant, assetUrl) {
     rewardLabel: withUrl(cardDesign.assets && cardDesign.assets.rewardLabel, null),
     businessFont: withUrl(cardDesign.assets && cardDesign.assets.businessFont, null),
     businessNameImage: withUrl(cardDesign.assets && cardDesign.assets.businessNameImage, null),
+    googleLogo: withUrl(cardDesign.assets && cardDesign.assets.googleLogo, null),
+    googleBusinessNameImage: withUrl(cardDesign.assets && cardDesign.assets.googleBusinessNameImage, null),
     googleWideLogo: withUrl(cardDesign.assets && cardDesign.assets.googleWideLogo, null) };
   if (!d.identity.name) d.identity.name = base.identity.name;
   if (d.stamps.icon === 'custom' && !d.assets.stamp) d.stamps.icon = 'check';
@@ -116,7 +120,13 @@ export function prepareDesign(cardDesign, program, merchant, assetUrl) {
 // Shared design + the platform's own adjustments.
 export function effective(design, platform) {
   const p = design[platform] || {};
-  return { ...design, colors: { ...design.colors, ...(p.colors || {}) }, opt: p };
+  return { ...design, colors: { ...design.colors, ...(p.colors || {}) }, opt: p,
+    // Google-only logos override Apple artworks in the Google preview, not in Apple Wallet.
+    assets: platform==='google'
+      ? { ...design.assets,
+          logo: design.assets?.googleLogo || design.assets?.logo,
+          businessNameImage: design.assets?.googleBusinessNameImage || design.assets?.businessNameImage }
+      : design.assets };
 }
 
 export function makeCardDesigner(React, api) {
@@ -516,7 +526,7 @@ export function makeCardDesigner(React, api) {
         h('div', { style: { fontWeight: 500, marginTop: 2 } }, dimensions.format + ' · ' + dimensions.note)) : null,
       h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
         asset && asset.url ? h('img', { src: asset.url, alt: '', style: { width: 56, height: 56, objectFit: 'contain', borderRadius: 10, border: '1px solid #E4E1DA', background: 'repeating-conic-gradient(#ECEAE4 0% 25%, #FFFFFF 0% 50%) 0 0/12px 12px' } }) : null,
-        h('input', { ref, type: 'file', accept: ['logo','stamp','businessNameImage'].includes(testId)?'image/png':'image/png,image/jpeg,image/webp', 'data-upload': testId, style: { display: 'none' }, onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPick(f); } }),
+        h('input', { ref, type: 'file', accept: ['logo','stamp','businessNameImage','googleLogo','googleBusinessNameImage'].includes(testId)?'image/png':'image/png,image/jpeg,image/webp', 'data-upload': testId, style: { display: 'none' }, onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPick(f); } }),
         h('button', { type: 'button', disabled: busy, onClick: () => ref.current && ref.current.click(), style: { minHeight: 44, padding: '0 14px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
           icon('upload', 18), busy ? 'Envoi…' : asset ? 'Remplacer' : 'Importer'),
         asset ? h('button', { type: 'button', onClick: onRemove, style: { minHeight: 44, padding: '0 12px', border: 0, background: 'none', color: '#B42318', fontWeight: 600, fontSize: 14 } }, 'Retirer') : null,
@@ -540,7 +550,7 @@ export function makeCardDesigner(React, api) {
   const errText = e => {
     const code = (e && (e.code || e.message)) || 'erreur_inconnue';
     if (ERR[code]) return ERR[code];
-    if (/^(missing|invalid)_(logo|hero|background|stamp|businessNameImage|googleWideLogo)$/.test(code)) return 'Une image du design est introuvable ou invalide : importez-la à nouveau.';
+    if (/^(missing|invalid)_(logo|googleLogo|hero|background|stamp|businessNameImage|googleBusinessNameImage|googleWideLogo)$/.test(code)) return 'Une image du design est introuvable ou invalide : importez-la à nouveau.';
     const where = e && e.route ? ' — ' + e.route : '';
     if (code === 'network_or_cors') return `Requête bloquée avant le serveur (réseau ou CORS) depuis ${typeof location !== 'undefined' ? location.origin : 'cette page'}${where}. Code : network_or_cors.`;
     return `Opération impossible — code : ${code}${where}.`;
@@ -709,7 +719,7 @@ export function makeCardDesigner(React, api) {
         || path.startsWith('colors.') || path.startsWith('apple.colors.')) {
         n.assets.appleHeader=null;n.apple.headerArtworkVersion=0;
       }
-      if(['assets.logo','assets.businessNameImage'].includes(path)) {
+      if(['assets.logo','assets.businessNameImage','assets.googleLogo','assets.googleBusinessNameImage'].includes(path)) {
          n.assets.googleWideLogo=null;n.google.wideArtworkVersion=0;
        }
        if(path==='assets.businessNameImage' && value) {
@@ -733,7 +743,7 @@ export function makeCardDesigner(React, api) {
         next.assets.appleHeader=asset;
         next.apple.headerArtworkVersion=APPLE_WORDMARK_VERSION;
       }
-      if(next.assets.businessNameImage?.path) {
+      if(next.assets.googleBusinessNameImage?.path || next.assets.businessNameImage?.path) {
         if(!next.assets.googleWideLogo?.path || next.google.wideArtworkVersion!==GOOGLE_WIDE_LOGO_VERSION) {
           const artwork=await createGoogleWideLogo(next);
           next.assets.googleWideLogo=isTest ? await api.testUpload(project.test.id,'googleWideLogo',artwork)
@@ -752,10 +762,11 @@ export function makeCardDesigner(React, api) {
     };
     const savedMark=next=>JSON.stringify(next)+(isTest?'|'+testName:'');
     const pickFile = kind => async f => {
-      if(kind==='logo' || kind==='stamp' || kind==='businessNameImage') {
+      if(['logo','googleLogo','stamp','businessNameImage','googleBusinessNameImage'].includes(kind)) {
         setBusy('up-'+kind);
         try {
-          const blob=kind==='businessNameImage' ? await prepareBusinessNamePng(f) : await preparePngUpload(f);
+          const blob=kind==='googleLogo' ? await prepareGoogleLogoPng(f)
+             : ['businessNameImage','googleBusinessNameImage'].includes(kind) ? await prepareBusinessNamePng(f) : await preparePngUpload(f);
           const a=isTest ? await api.testUpload(project.test.id,kind,blob) : await api.upload(project.program.id,kind,blob);
           set('assets.'+kind,a); if(kind==='stamp')set('stamps.icon','custom');
         } catch(e) {toast(e.message || errText(e));} finally {setBusy(null);}
@@ -1093,11 +1104,28 @@ export function makeCardDesigner(React, api) {
       h(Section, { title: 'Identité' },
         h(Text, { label: 'Nom du commerce', value: design.identity.name, max: 40, onChange: v => set('identity.name', v) }),
         h(Text, { label: 'Activité / sous-titre (facultatif)', value: design.identity.subtitle, max: 40, onChange: v => set('identity.subtitle', v) }),
-        h(ImagePick, { label: 'Logo symbole (à gauche)', testId: 'logo', asset: design.assets.logo, busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null), showBusinessName: design.apple.showBusinessName === true, onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true), hint: 'PNG carré, 2 Mo maximum. Le symbole est placé en premier, à gauche sur la carte.' }),
-        h(ImagePick, { label: 'Logo texte (à droite du symbole)', testId: 'businessNameImage',
+        h('p',{style:{fontSize:13,color:'#5E636B',margin:0}},'Les logos sont désormais configurés séparément dans les sections Apple Wallet et Google Wallet ci-dessous.')),
+      h(Section, { title: 'Logos Apple Wallet' },
+        h(ImagePick, { label: 'Logo symbole Apple Wallet', testId: 'logo', asset: design.assets.logo,
+          busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null),
+          showBusinessName: design.apple.showBusinessName === true,
+          onToggleBusinessName: () => set('apple.showBusinessName', design.apple.showBusinessName !== true),
+          hint: 'Symbole du commerce pour Apple Wallet. Ne modifie pas le logo Google spécifique si tu en as importé un.' }),
+        h(ImagePick, { label: 'Logo texte Apple Wallet', testId: 'businessNameImage',
           asset: design.assets.businessNameImage, busy: busy === 'up-businessNameImage',
           onPick: pickFile('businessNameImage'), onRemove: () => set('assets.businessNameImage', null),
-          hint: 'PNG transparent sans fond. La typographie originale du commerce sera affichée juste après son symbole sur Apple et Google Wallet. Facultatif : si absent, l’ancien affichage est conservé.' })),
+          hint: 'PNG transparent. Le logo texte apparaît juste après le symbole dans le mode personnalisé Apple.' })),
+      h(Section, { title: 'Logos Google Wallet' },
+        h('p',{style:{fontSize:13,color:'#5E636B',margin:0}},
+          'Importe ici un logo réservé à Google Wallet. Sans image spécifique, le logo Apple correspondant est repris automatiquement. Pour colorer ton symbole dans le cercle Google, intègre cette couleur dans le PNG : le fond du cercle est géré par Google.'),
+        h(ImagePick, { label: 'Logo symbole Google Wallet', testId: 'googleLogo',
+          asset: design.assets.googleLogo, busy: busy === 'up-googleLogo',
+          onPick: pickFile('googleLogo'), onRemove: () => set('assets.googleLogo', null),
+          hint: 'PNG propre à Google Wallet. Retirer revient au logo symbole Apple, sans modifier Apple Wallet.' }),
+        h(ImagePick, { label: 'Logo texte Google Wallet', testId: 'googleBusinessNameImage',
+          asset: design.assets.googleBusinessNameImage, busy: busy === 'up-googleBusinessNameImage',
+          onPick: pickFile('googleBusinessNameImage'), onRemove: () => set('assets.googleBusinessNameImage', null),
+          hint: 'PNG texte réservé à Google Wallet. Facultatif : reprend le logo texte Apple si absent.' })),
       h(Section, { title: 'En-tête Apple Wallet' },
         h(Select,{label:'Style de l’en-tête',value:design.apple.headerMode==='custom'?'custom':'classic',
           options:[['classic','Classique — texte natif Apple (actuel)'],['custom','Personnalisé — symbole + logo texte']],

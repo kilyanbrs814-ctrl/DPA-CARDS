@@ -27,3 +27,25 @@ export async function prepareBusinessNamePng(file) {
   if(!hasInk||!hasTransparent)throw new Error('Image du nom : PNG transparent avec du texte visible obligatoire (sans fond).');
   return png;
 }
+
+/** Google Wallet's circular program logo requires a square PNG >=660px.
+ * Prepare a 660px square with the complete uploaded logo, preserving its original colors and alpha. */
+export async function prepareGoogleLogoPng(file) {
+  const original=await preparePngUpload(file);
+  const img=await decodePng(new Uint8Array(await original.arrayBuffer()));
+  const source=document.createElement('canvas');
+  source.width=img.width;source.height=img.height;
+  source.getContext('2d').putImageData(
+    new ImageData(new Uint8ClampedArray(img.pixels),img.width,img.height),0,0);
+  const result=document.createElement('canvas');
+  result.width=660;result.height=660;
+  const scale=Math.min(660/img.width,660/img.height);
+  const w=img.width*scale,h=img.height*scale;
+  const ctx=result.getContext('2d');
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality='high';
+  ctx.drawImage(source,(660-w)/2,(660-h)/2,w,h);
+  const png=await new Promise(resolve=>result.toBlob(resolve,'image/png'));
+  if(!png || png.size>2097152)throw new Error('Logo Google Wallet trop lourd (2 Mo maximum).');
+  return png;
+}

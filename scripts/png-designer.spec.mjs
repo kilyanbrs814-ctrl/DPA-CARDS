@@ -462,3 +462,65 @@ test('Very wide original PNG wordmark gets larger without altering its saved art
  const reloaded=page.locator('[data-layout="google"]').first().getByRole('img',{name:'Logo texte'});
  await expect.poll(()=>reloaded.evaluate(img=>img.naturalWidth/img.naturalHeight)).toBeGreaterThan(8);
 });
+
+test('Google Wallet image pickers stay independent from Apple Wallet artwork',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ const pick=kind=>page.locator('[data-upload="'+kind+'"]');
+ await pick('logo').setInputFiles({name:'apple-symbol.png',mimeType:'image/png',buffer:fixture(120,120,[30,80,150,255])});
+ await pick('businessNameImage').setInputFiles({name:'apple-wordmark.png',mimeType:'image/png',buffer:fixture(360,120,[200,20,50,255])});
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ const appleSaved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
+ expect(appleSaved.apple.headerMode).toBe('custom');
+ const logoApple=appleSaved.assets.logo.path;
+ const textApple=appleSaved.assets.businessNameImage.path;
+ const headerApple=appleSaved.assets.appleHeader.path;
+ const originalGoogleWide=appleSaved.assets.googleWideLogo.url;
+ await expect(page.locator('[data-layout="apple"]').first().getByRole('img',{name:'Logo, nom et activité du commerce'})).toBeVisible();
+
+ await pick('googleLogo').setInputFiles({name:'google-circle.png',mimeType:'image/png',buffer:fixture(120,120,[0,170,30,255])});
+ await expect(pick('googleLogo').locator('..').getByRole('button',{name:'Remplacer'})).toBeVisible();
+ await pick('googleBusinessNameImage').setInputFiles({name:'google-text.png',mimeType:'image/png',buffer:fixture(360,120,[0,100,180,255])});
+ await expect(pick('googleBusinessNameImage').locator('..').getByRole('button',{name:'Remplacer'})).toBeVisible();
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ // The first save's toast already exists: wait for the *new* async save to persist its assets.
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config.assets.googleLogo?.path||'')).toContain('googleLogo-');
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config.assets.googleBusinessNameImage?.path||'')).toContain('googleBusinessNameImage-');
+ const both=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
+ expect(both.assets.logo.path).toBe(logoApple);
+ expect(both.assets.businessNameImage.path).toBe(textApple);
+ expect(both.assets.appleHeader.path).toBe(headerApple);
+ expect(both.assets.googleLogo.path).toContain('googleLogo-');
+ expect(both.assets.googleBusinessNameImage.path).toContain('googleBusinessNameImage-');
+ expect(both.assets.googleWideLogo.url).not.toBe(originalGoogleWide);
+ expect(both.google.wideArtworkVersion).toBe(2);
+ const googleUploaded=await page.locator('[data-upload="googleLogo"]').evaluate(el=>el.parentElement.querySelector('img')?.src||'');
+ expect(googleUploaded.startsWith('data:image/png')).toBe(true);
+ // Google symbols are normalized to native 660 x 660, independently of Apple's 120px file.
+ const logoAsset=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config.assets.googleLogo.url);
+ const dims=await page.evaluate(async url=>{const i=new Image();i.src=url;await i.decode();return [i.naturalWidth,i.naturalHeight];},logoAsset);
+ expect(dims).toEqual([660,660]);
+ await page.getByRole('tab',{name:'Google Wallet'}).click();
+ const preview=page.locator('[data-layout="google"]').first();
+ await expect(preview.getByRole('img',{name:'Logo symbole'})).toBeVisible();
+ await expect(preview.getByRole('img',{name:'Logo texte'})).toBeVisible();
+ const googleImageSrc=await preview.getByRole('img',{name:'Logo symbole'}).getAttribute('src');
+ expect(googleImageSrc).toBe(both.assets.googleLogo.url);
+ await page.reload();
+ await page.getByRole('tab',{name:'Google Wallet'}).click();
+ await expect(page.locator('[data-layout="google"]').first().getByRole('img',{name:'Logo symbole'})).toHaveAttribute('src',both.assets.googleLogo.url);
+ await pick('googleLogo').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
+ await pick('googleBusinessNameImage').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect.poll(()=>page.evaluate(()=>{
+   const a=JSON.parse(localStorage.getItem('test-design')).config.assets;
+   return a.googleLogo===null && a.googleBusinessNameImage===null;
+ })).toBe(true);
+ const fallback=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
+ expect(fallback.assets.googleLogo).toBeNull();
+ expect(fallback.assets.googleBusinessNameImage).toBeNull();
+ expect(fallback.assets.logo.path).toBe(logoApple);
+ expect(fallback.assets.businessNameImage.path).toBe(textApple);
+ expect(fallback.assets.appleHeader.path).toBe(headerApple);
+ await expect(page.locator('[data-layout="google"]').first().getByRole('img',{name:'Logo symbole'})).toHaveAttribute('src',fallback.assets.logo.url);
+});
