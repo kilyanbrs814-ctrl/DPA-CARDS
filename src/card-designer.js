@@ -430,7 +430,7 @@ export function makeCardDesigner(React, api) {
               h(Img,{asset:d.assets.businessNameImage,alt:'Logo texte',style:{width:145,height:40,objectFit:'contain',objectPosition:'left center',minWidth:0}}))
           : h('div',{style:{display:'flex',alignItems:'center',gap:12,minWidth:0}},h(Logo,{d,size:40,round:true}),h('strong',{style:{fontSize:20,...ellipsis}},d.identity.name||'Nom du commerce')),
         d.assets.businessNameImage?.url && h('span',{'data-field':'card-number',style:{fontSize:14,fontWeight:700,flexShrink:0,fontVariantNumeric:'tabular-nums'}},
-          (String(data.cardNumber||'').replace(/\\D/g,'')||'0000').slice(-4))),
+          (String(data.cardNumber||'').replace(/\D/g,'')||'0000').slice(-4))),
       h('div',{style:{display:'flex',justifyContent:'space-between',padding:'8px 18px 24px'}},
         h('div',null,h('div',null,points?'Points gagnés':'Passages effectués'),h('strong',{'data-field':'completed-count'},String(done))),
         h('div',{style:{textAlign:'right'}},h('div',null,points?'Points restants':'Passages restants'),h('strong',{'data-field':'remaining-count'},String(Math.max(0,goal-done))))),
