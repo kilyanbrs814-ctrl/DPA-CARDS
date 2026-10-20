@@ -1,8 +1,8 @@
 // Optional DPA Cards Apple Wallet header: logo, merchant name and business type.
 // Rendered once in the admin's browser at Retina 3x resolution.
 // Classic mode still uses iOS native logoText and an independent logo PNG.
-export const APPLE_WORDMARK_VERSION=5;
-export const GOOGLE_WIDE_LOGO_VERSION=1;
+export const APPLE_WORDMARK_VERSION=6;
+export const GOOGLE_WIDE_LOGO_VERSION=2;
 const WIDTH=160,HEIGHT=50,SCALE=3;
 const FONT='"SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif';
 const validHex=value=>/^#[0-9a-f]{6}$/i.test(value||'')?value:'#FFFFFF';
@@ -71,9 +71,11 @@ export async function createAppleWordmark(design) {
  const ctx=canvas.getContext('2d',{willReadFrequently:true});
  if(!ctx)throw new Error('Impossible de préparer l’en-tête Apple Wallet.');
  ctx.scale(SCALE,SCALE);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
- const hasSymbol=await drawArtwork(ctx,design?.assets?.logo?.url||'',1,1,47,47);
- const left=hasSymbol?52:2;
+ // When a wordmark exists, make the pictogram more compact to prioritize readable lettering.
+ // Apple's entire logo artwork is capped at 160 x 50 pt.
  const wordmark=design?.assets?.businessNameImage?.url||'';
+ const hasSymbol=await drawArtwork(ctx,design?.assets?.logo?.url||'',1,wordmark?9:1,wordmark?31:47,wordmark?31:47);
+ const left=hasSymbol?(wordmark?36:52):2;
  if(wordmark) {
   const rendered=await drawArtwork(ctx,wordmark,left+1,4,WIDTH-left-3,HEIGHT-8);
   if(rendered) {
@@ -110,11 +112,48 @@ export async function createGoogleWideLogo(design) {
  const ctx=canvas.getContext('2d',{willReadFrequently:true});
  if(!ctx)throw new Error('Impossible de préparer le logo large Google Wallet.');
  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
- const symbol=await drawArtwork(ctx,design?.assets?.logo?.url||'',16,20,350,360);
- const left=symbol?392:24;
- const wordmark=await drawArtwork(ctx,design?.assets?.businessNameImage?.url||'',left,52,1280-left-24,296);
+ // Reserve a smaller icon so long horizontal names have almost the entire logo width.
+ const symbol=await drawArtwork(ctx,design?.assets?.logo?.url||'',16,88,222,224);
+ const left=symbol?250:24;
+ const wordmark=await drawArtwork(ctx,design?.assets?.businessNameImage?.url||'',left,24,1280-left-18,352);
  if(!wordmark)throw new Error('Logo texte inaccessible : veuillez le réimporter.');
  const png=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
  if(!png||png.size>2097152)throw new Error('Logo Google Wallet trop lourd après préparation (2 Mo maximum).');
  return png;
+}
+
+/** Render-time only: ignore transparent PNG padding without changing the merchant's original.
+ * Older uploaded artwork stays valid; new and old imports get the same tight preview. */
+const tightWordmarkCache=new Map();
+export function tightWordmarkPreview(url) {
+ if(!url)return Promise.resolve('');
+ if(tightWordmarkCache.has(url))return tightWordmarkCache.get(url);
+ const task=(async()=>{
+  const img=await loadLogo(url);
+  if(!img)return url;
+  try{
+   const canvas=document.createElement('canvas');
+   canvas.width=img.width;canvas.height=img.height;
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});
+   if(!ctx)return url;
+   ctx.drawImage(img,0,0);
+   const data=ctx.getImageData(0,0,img.width,img.height).data;
+   let left=img.width,top=img.height,right=-1,bottom=-1;
+   for(let y=0;y<img.height;y++)for(let x=0;x<img.width;x++){
+    if(data[(y*img.width+x)*4+3]<8)continue;
+    if(x<left)left=x;if(x>right)right=x;
+    if(y<top)top=y;if(y>bottom)bottom=y;
+   }
+   if(right<left)return url;
+   const inset=1;
+   left=Math.max(0,left-inset);top=Math.max(0,top-inset);
+   right=Math.min(img.width-1,right+inset);bottom=Math.min(img.height-1,bottom+inset);
+   const cropped=document.createElement('canvas');
+   cropped.width=right-left+1;cropped.height=bottom-top+1;
+   cropped.getContext('2d').drawImage(canvas,left,top,cropped.width,cropped.height,0,0,cropped.width,cropped.height);
+   return cropped.toDataURL('image/png');
+  } finally {if(typeof img.close==='function')img.close();}
+ })();
+ tightWordmarkCache.set(url,task);
+ return task;
 }
