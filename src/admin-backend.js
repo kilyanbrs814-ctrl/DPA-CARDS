@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { makeCardDesigner } from './card-designer.js';
 import { makeSales } from './sales.js';
 import { makeAdminScanner } from './admin-scanner.js';
+import { isSixDigitCode } from './admin-otp.js';
+import { ADMIN_CALLBACK_URL, isNativeIOS, parseAdminAuthUrl, takePendingAdminAuth, listenForAdminDeepLinks } from './native-admin-link.js';
 
 const URL_ = import.meta.env.VITE_SUPABASE_URL;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -21,7 +23,7 @@ const sb = createClient(URL_, KEY, {
     storageKey: 'dpa-admin-auth',
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: !isNativeIOS(),
   },
 });
 
@@ -31,6 +33,58 @@ const form = document.getElementById('admin-auth-form');
 const email = document.getElementById('admin-email');
 const submit = document.getElementById('admin-submit');
 const message = document.getElementById('admin-auth-message');
+const help = document.getElementById('admin-auth-help');
+const otpRow = document.getElementById('admin-otp-row');
+const otpCode = document.getElementById('admin-otp-code');
+const otpActions = document.getElementById('admin-otp-actions');
+const otpResend = document.getElementById('admin-otp-resend');
+const otpChange = document.getElementById('admin-otp-change');
+const nativeAdmin = isNativeIOS();
+let nativeOtpEmail = null;
+const ERROR_COLOR = '#C62828';
+const NORMAL_COLOR = '#5E636B';
+// Surface failed authentication as a red, accessible error message.
+function setAuthMessage(text, isError = false) {
+  message.textContent = text;
+  message.style.color = isError ? ERROR_COLOR : NORMAL_COLOR;
+  message.setAttribute('role', isError ? 'alert' : 'status');
+  otpCode.style.borderColor = isError && nativeAdmin ? ERROR_COLOR : '#D4D1C9';
+}
+if (nativeAdmin) {
+  otpCode.addEventListener('input', () => {
+    // Paste from the e-mail may include invisible spaces, but never transform digits.
+    const normalized = otpCode.value.replace(/[^0-9]/g, '').slice(0, 6);
+    if (otpCode.value !== normalized) otpCode.value = normalized;
+    if (message.getAttribute('role') === 'alert') setAuthMessage('');
+  });
+}
+if (nativeAdmin) {
+  help.textContent = 'Recevez un code à 6 chiffres par e-mail, puis saisissez-le ici pour ouvrir votre tableau de bord. Pas besoin de quitter l’application.';
+  submit.textContent = 'Recevoir mon code';
+}
+function showCodeEntry(mail) {
+  nativeOtpEmail = mail;
+  email.value = mail;
+  email.readOnly = true;
+  otpRow.style.display = 'block';
+  otpActions.style.display = 'flex';
+  otpCode.required = true;
+  otpCode.value = '';
+  submit.textContent = 'Valider le code';
+  help.textContent = 'Entrez le code à 6 chiffres reçu par e-mail. N’ouvrez pas le lien : copiez uniquement les chiffres.';
+  setAuthMessage('Code envoyé. Vérifiez votre boîte de réception.');
+  otpCode.focus();
+}
+function resetCodeEntry() {
+  nativeOtpEmail = null;
+  email.readOnly = false;
+  otpRow.style.display = 'none';
+  otpActions.style.display = 'none';
+  otpCode.required = false;
+  otpCode.value = '';
+  submit.textContent = nativeAdmin ? 'Recevoir mon code' : 'Recevoir le lien de connexion';
+  if (nativeAdmin) help.textContent = 'Recevez un code à 6 chiffres par e-mail, puis saisissez-le ici pour ouvrir votre tableau de bord. Pas besoin de quitter l’application.';
+}
 const denied = document.getElementById('admin-denied');
 const signout = document.getElementById('admin-signout');
 const app = document.getElementById('admin-app');
@@ -41,7 +95,7 @@ function showLogin(msg = '') {
   form.style.display = 'flex';
   app.style.display = 'none';
   root.style.display = 'flex';
-  message.textContent = msg;
+  setAuthMessage(msg, /invalide|expiré|erreur|impossible|refusé|indisponible/i.test(msg));
 }
 
 function showDenied() {
@@ -100,45 +154,121 @@ async function isAuthorized(user) {
   return !!data;
 }
 
-async function refreshAccess() {
+// Avoid the initial (empty) session check racing with setSession after an iOS callback.
+let completingNativeLogin = false;
+async function refreshAccess(force = false) {
+  if (completingNativeLogin && !force) return;
   const { data: { session } } = await sb.auth.getSession();
+  if (completingNativeLogin && !force) return;
   if (!session?.user) {
     showLogin();
     return;
   }
-
-  if (await isAuthorized(session.user)) showApp();
+  const authorized = await isAuthorized(session.user);
+  if (completingNativeLogin && !force) return;
+  if (authorized) showApp();
   else showDenied();
 }
 
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const mail = email.value.trim().toLowerCase();
-
-  if (!ALLOWED.has(mail)) {
-    message.textContent = 'Cette adresse n’est pas autorisée.';
-    return;
-  }
-
-  submit.disabled = true;
-  submit.textContent = 'Envoi…';
-  message.textContent = '';
-
+// On the public website, retain the existing magic-link login.
+// On iOS, verify an e-mail OTP inside this same WebView: no Safari callback,
+// URL scheme, or cross-page sessionStorage handoff is required.
+async function sendAdminCode(mail) {
   const { error } = await sb.auth.signInWithOtp({
     email: mail,
     options: {
-      emailRedirectTo: window.location.origin + '/admin.html',
+      emailRedirectTo: nativeAdmin ? ADMIN_CALLBACK_URL : window.location.origin + '/admin.html',
       shouldCreateUser: true,
     },
   });
-
-  submit.disabled = false;
-  submit.textContent = 'Recevoir le lien de connexion';
-
-  message.textContent = error
-    ? linkErrorMessage(error)
-    : 'Lien envoyé. Ouvrez l’e-mail reçu pour vous connecter.';
+  return error;
+}
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const mail = email.value.trim().toLowerCase();
+  if (!ALLOWED.has(mail)) {
+    setAuthMessage('Cette adresse n’est pas autorisée.', true);
+    return;
+  }
+  if (nativeAdmin && nativeOtpEmail) {
+    const token = otpCode.value.trim();
+    if (!isSixDigitCode(token)) {
+      setAuthMessage('Saisissez les 6 chiffres figurant dans votre e-mail.', true);
+      otpCode.focus();
+      return;
+    }
+    submit.disabled = true;
+    submit.textContent = 'Vérification…';
+    completingNativeLogin = true;
+    try {
+      const { data, error } = await sb.auth.verifyOtp({ email: nativeOtpEmail, token, type: 'email' });
+      if (error) {
+        const expired = error.code === 'otp_expired';
+        setAuthMessage(
+          expired
+            ? 'Code refusé par Supabase (OTP expiré ou invalide). Le code peut avoir été invalidé avant sa saisie. Demandez-en un nouveau et utilisez uniquement le dernier e-mail.'
+            : 'Code incorrect ou expiré. Vérifiez les 6 chiffres du dernier e-mail reçu.',
+          true,
+        );
+      } else if (!data?.session?.access_token) {
+        setAuthMessage('Code reconnu, mais aucune session administrateur n’a été créée. Réessayez avec un nouveau code.', true);
+      } else {
+        // The admin client uses an isolated storageKey and all permissions are
+        // still checked against admin_users before displaying the dashboard.
+        await refreshAccess(true);
+      }
+    } catch {
+      setAuthMessage('Impossible de vérifier le code. Vérifiez votre connexion et réessayez.', true);
+    } finally {
+      completingNativeLogin = false;
+      submit.disabled = false;
+      submit.textContent = 'Valider le code';
+    }
+    return;
+  }
+  submit.disabled = true;
+  submit.textContent = 'Envoi…';
+  setAuthMessage('');
+  try {
+    const error = await sendAdminCode(mail);
+    if (error) {
+      setAuthMessage(linkErrorMessage(error), true);
+    } else if (nativeAdmin) {
+      showCodeEntry(mail);
+    } else {
+      setAuthMessage('Lien envoyé. Ouvrez l’e-mail reçu pour vous connecter.');
+    }
+  } catch {
+    setAuthMessage('Service de connexion indisponible. Réessayez dans quelques instants.', true);
+  } finally {
+    submit.disabled = false;
+    submit.textContent = nativeAdmin ? (nativeOtpEmail ? 'Valider le code' : 'Recevoir mon code') : 'Recevoir le lien de connexion';
+  }
 });
+
+if (nativeAdmin) {
+  otpChange.addEventListener('click', () => {
+    resetCodeEntry();
+    setAuthMessage('');
+    email.focus();
+  });
+  otpResend.addEventListener('click', async () => {
+    if (!nativeOtpEmail) return;
+    otpResend.disabled = true;
+    setAuthMessage('');
+    try {
+      const error = await sendAdminCode(nativeOtpEmail);
+      if (error) setAuthMessage(linkErrorMessage(error), true);
+      else {
+        otpCode.value = '';
+        setAuthMessage('Nouveau code envoyé. Utilisez le dernier e-mail reçu.');
+        otpCode.focus();
+      }
+    } catch {
+      setAuthMessage('Impossible de renvoyer le code. Réessayez plus tard.', true);
+    } finally { otpResend.disabled = false; }
+  });
+}
 
 // Supabase Auth errors on a sign-in link request, from its error code and status (never the raw message).
 function linkErrorMessage(error) {
@@ -161,6 +291,53 @@ signout.addEventListener('click', async () => {
 sb.auth.onAuthStateChange(() => {
   setTimeout(refreshAccess, 0);
 });
+
+// Supabase returns to the iOS app using dpacards://auth/admin#access_token=….
+// The merchant and admin sessions must stay separate (admin uses dpa-admin-auth).
+// Handle both warm callbacks and cold starts, including the case where the app
+// was showing the merchant screen when the mail link was clicked.
+let lastAdminCallback = null;
+async function handleNativeAdminLogin(url) {
+  if (!isNativeIOS() || !url || url === lastAdminCallback) return;
+  const callback = parseAdminAuthUrl(url);
+  if (!callback) return;
+  lastAdminCallback = url;
+  if (callback.type === 'error') {
+    showLogin('Lien de connexion invalide ou expiré. Demandez un nouveau lien.');
+    return;
+  }
+  if (callback.type === 'missing_credentials') {
+    showLogin('DPA Cards a bien reçu le lien, mais aucun jeton de connexion n’a été transmis. Vérifiez la configuration de l’e-mail Supabase et demandez un nouveau lien.');
+    return;
+  }
+  completingNativeLogin = true;
+  loading.style.display = 'block';
+  form.style.display = 'none';
+  app.style.display = 'none';
+  root.style.display = 'flex';
+  try {
+    const result = callback.type === 'tokens'
+      ? await sb.auth.setSession({ access_token: callback.accessToken, refresh_token: callback.refreshToken })
+      : await sb.auth.exchangeCodeForSession(callback.code);
+    if (result.error) throw result.error;
+    // Server-side admin_users validation still decides whether this user is admin.
+    await refreshAccess(true);
+  } catch (e) {
+    showLogin('DPA Cards a reçu le lien, mais n’a pas pu ouvrir la session administrateur. Demandez un nouveau lien et réessayez.');
+  } finally {
+    completingNativeLogin = false;
+  }
+}
+if (isNativeIOS()) {
+  const pending = takePendingAdminAuth();
+  if (pending) handleNativeAdminLogin(pending);
+  // If this page stays open while switching to Mail, process the callback here.
+  if (!listenForAdminDeepLinks(handleNativeAdminLogin)) {
+    // Do not silently leave the user on a working-looking but broken form.
+    const previous = message.textContent;
+    if (!previous) setAuthMessage('Réception des liens iPhone indisponible. Mettez DPA Cards à jour via TestFlight.', true);
+  }
+}
 
 // Card designer: built on first use, once dc-runtime has loaded React.
 const designerApi = {
