@@ -1232,10 +1232,10 @@ function cleanDesign(raw: any, folder: string) {
     assets: Object.fromEntries(ASSET_KINDS.map(k => [k, asset(assets[k], k)])),
     stamps: { shape: pick(s.shape, STAMP_SHAPES, 'circle'), icon: pick(s.icon, STAMP_ICONS, savedEmoji(s.emoji) ? 'emoji' : 'library'), libraryId: libraryStampId(s.libraryId), emoji: s.icon==='library' ? '' : savedEmoji(s.emoji), style: pick(s.style, STAMP_STYLES, 'outline'),
       filled: hex(s.filled, '#F2C94C'), empty: hex(s.empty, '#FFFFFF'), size: int(s.size, 50, 120, 100), spacing: int(s.spacing, 50, 120, 100), inactiveOpacity: int(s.inactiveOpacity, 0, 100, 22), rewardId: libraryStampId(s.rewardId)||'reward-star' },
-    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showStampPanel: r.apple?.showStampPanel !== false, showStamps: r.apple?.showStamps !== false, headerMode: r.apple?.headerMode==='custom'?'custom':'classic', headerArtworkVersion: int(r.apple?.headerArtworkVersion,0,5,0), showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64),
+    apple: { ...platform(r.apple), showBusinessName: r.apple?.showBusinessName === true, showStampPanel: r.apple?.showStampPanel !== false, showStamps: r.apple?.showStamps !== false, headerMode: r.apple?.headerMode==='custom'?'custom':'classic', headerArtworkVersion: int(r.apple?.headerArtworkVersion,0,6,0), showReward: r.apple?.showReward === true, rewardText: str(r.apple?.rewardText,64),
       rewardTextColor: HEX_RE.test(r.apple?.rewardTextColor??'')?String(r.apple.rewardTextColor).toUpperCase():'',
       businessNameFont: pick(r.apple?.businessNameFont,['system','hanken','space','playfair','custom'] as const,'system') },
-    google: { ...platform(r.google), showStamps:r.google?.showStamps!==false, reuseAppleStrip:r.google?.reuseAppleStrip!==false, wideArtworkVersion:int(r.google?.wideArtworkVersion,0,1,0) },
+    google: { ...platform(r.google), showStamps:r.google?.showStamps!==false, reuseAppleStrip:r.google?.reuseAppleStrip!==false, wideArtworkVersion:int(r.google?.wideArtworkVersion,0,2,0) },
     // Editor only (demo customer, demo progress): never copied to the program.
     preview: { mode: pick(pv.mode, ['passages', 'points'] as const, 'passages'), goal: int(pv.goal, 1, 1000, 10), progress: int(pv.progress, 0, 100000, 3),
       reward: str(pv.reward, 80), available: int(pv.available, 0, 99, 1), client: str(pv.client, 60) },
