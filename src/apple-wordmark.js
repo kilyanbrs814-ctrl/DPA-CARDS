@@ -113,9 +113,9 @@ export async function createGoogleWideLogo(design) {
  if(!ctx)throw new Error('Impossible de préparer le logo large Google Wallet.');
  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
  // Reserve a smaller icon so long horizontal names have almost the entire logo width.
- const symbol=await drawArtwork(ctx,design?.assets?.logo?.url||'',16,88,222,224);
+ const symbol=await drawArtwork(ctx,design?.assets?.googleLogo?.url||design?.assets?.logo?.url||'',16,88,222,224);
  const left=symbol?250:24;
- const wordmark=await drawArtwork(ctx,design?.assets?.businessNameImage?.url||'',left,24,1280-left-18,352);
+ const wordmark=await drawArtwork(ctx,design?.assets?.googleBusinessNameImage?.url||design?.assets?.businessNameImage?.url||'',left,24,1280-left-18,352);
  if(!wordmark)throw new Error('Logo texte inaccessible : veuillez le réimporter.');
  const png=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
  if(!png||png.size>2097152)throw new Error('Logo Google Wallet trop lourd après préparation (2 Mo maximum).');
