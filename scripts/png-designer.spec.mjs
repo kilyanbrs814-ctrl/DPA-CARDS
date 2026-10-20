@@ -483,7 +483,9 @@ test('Google Wallet image pickers stay independent from Apple Wallet artwork',as
  await pick('googleBusinessNameImage').setInputFiles({name:'google-text.png',mimeType:'image/png',buffer:fixture(360,120,[0,100,180,255])});
  await expect(pick('googleBusinessNameImage').locator('..').getByRole('button',{name:'Remplacer'})).toBeVisible();
  await page.getByRole('button',{name:/Enregistrer/}).click();
- await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ // The first save's toast already exists: wait for the *new* async save to persist its assets.
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config.assets.googleLogo?.path||'')).toContain('googleLogo-');
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config.assets.googleBusinessNameImage?.path||'')).toContain('googleBusinessNameImage-');
  const both=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(both.assets.logo.path).toBe(logoApple);
  expect(both.assets.businessNameImage.path).toBe(textApple);
@@ -510,6 +512,10 @@ test('Google Wallet image pickers stay independent from Apple Wallet artwork',as
  await pick('googleLogo').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
  await pick('googleBusinessNameImage').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect.poll(()=>page.evaluate(()=>{
+   const a=JSON.parse(localStorage.getItem('test-design')).config.assets;
+   return a.googleLogo===null && a.googleBusinessNameImage===null;
+ })).toBe(true);
  const fallback=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(fallback.assets.googleLogo).toBeNull();
  expect(fallback.assets.googleBusinessNameImage).toBeNull();
