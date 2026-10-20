@@ -429,3 +429,36 @@ test('Separate PNG wordmark renders beside the symbol in both Wallet previews an
  await page.getByRole('tab',{name:'Google Wallet'}).click();
  await expect(page.locator('[data-layout="google"] [data-field="google-wide-logo"]')).toBeVisible();
 });
+
+test('Very wide original PNG wordmark gets larger without altering its saved artwork',async({page})=>{
+ await page.goto('/scripts/fixtures/designer.html');
+ // Reproduce an original 2000x666 transparent file with letters occupying only a thin horizontal band.
+ const encoded=await page.evaluate(()=>{
+  const canvas=document.createElement('canvas');canvas.width=2000;canvas.height=666;
+  const c=canvas.getContext('2d');c.fillStyle='#4C1C09';c.fillRect(24,235,1952,160);
+  return canvas.toDataURL('image/png').split(',')[1];
+ });
+ await page.locator('[data-upload="logo"]').setInputFiles({name:'symbol.png',mimeType:'image/png',buffer:fixture(120,120)});
+ await page.locator('[data-upload="businessNameImage"]').setInputFiles({
+  name:'wide.png',mimeType:'image/png',buffer:Buffer.from(encoded,'base64')});
+ const apple=page.locator('[data-layout="apple"]').first();
+ const appleWordmark=apple.getByRole('img',{name:'Logo texte du commerce'});
+ await expect(appleWordmark).toBeVisible();
+ await expect.poll(()=>appleWordmark.evaluate(img=>img.naturalWidth/img.naturalHeight)).toBeGreaterThan(8);
+ await expect(appleWordmark).toHaveCSS('width','124px');
+ await page.getByRole('tab',{name:'Google Wallet'}).click();
+ const google=page.locator('[data-layout="google"]').first();
+ const googleWordmark=google.getByRole('img',{name:'Logo texte'});
+ await expect.poll(()=>googleWordmark.evaluate(img=>img.naturalWidth/img.naturalHeight)).toBeGreaterThan(8);
+ const visibleWidth=await googleWordmark.evaluate(img=>img.getBoundingClientRect().width);
+ expect(visibleWidth).toBeGreaterThan(190);
+ await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
+ expect(saved.apple.headerArtworkVersion).toBe(6);
+ expect(saved.google.wideArtworkVersion).toBe(2);
+ await page.reload();
+ await page.getByRole('tab',{name:'Google Wallet'}).click();
+ const reloaded=page.locator('[data-layout="google"]').first().getByRole('img',{name:'Logo texte'});
+ await expect.poll(()=>reloaded.evaluate(img=>img.naturalWidth/img.naturalHeight)).toBeGreaterThan(8);
+});
