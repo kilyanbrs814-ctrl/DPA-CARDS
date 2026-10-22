@@ -1739,8 +1739,8 @@ a:hover{color:#1A36C4}
     <sc-if value="{{ s.more }}" hint-placeholder-val="{{ false }}">
     <div style="max-width:720px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:20px">
       <div style="display:flex;align-items:center;gap:14px">
-        <div style="width:56px;height:56px;border-radius:50%;background:#1C1F24;color:#FFFFFF;display:grid;place-items:center;font-weight:700;font-size:18px">{{ mInitials }}</div>
-        <div><h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em">{{ m.first }} {{ m.last }}</h1><div style="color:#5E636B;font-size:15px">{{ m.business }}</div></div>
+        <div style="width:56px;height:56px;border-radius:50%;background:#1C1F24;color:#FFFFFF;display:grid;place-items:center;font-weight:700;font-size:18px">{{ moreInitials }}</div>
+        <div><h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em">{{ moreHeading }}</h1><div style="color:#5E636B;font-size:15px">{{ m.business }}</div></div>
       </div>
       <ul style="list-style:none;margin:0;padding:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;overflow:hidden">
         <sc-for list="{{ moreItems }}" as="it" hint-placeholder-count="7">
@@ -1764,6 +1764,17 @@ a:hover{color:#1A36C4}
       <button type="button" onClick="{{ toMore }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;border:0;background:none;padding:8px 0;color:#3E424A;font-weight:600;font-size:15px">Plus</button>
       <h1 style="margin:0;font-weight:800;font-size:clamp(26px,5vw,32px);letter-spacing:-0.03em">{{ secTitle }}</h1>
       </sc-if>
+        <sc-if value="{{ sec.businessReadOnly }}" hint-placeholder-val="{{ false }}">
+          <section style="display:flex;flex-direction:column;gap:14px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px">
+            <div style="display:flex;gap:10px;align-items:flex-start;color:#4A4E55;font-size:14px;line-height:1.5">
+              <span class="material-symbols-rounded" style="font-size:20px;color:#2448F0">lock</span>
+              <span>Ces informations sont en lecture seule. Seul le responsable du commerce peut les modifier.</span>
+            </div>
+            <div><div style="font-size:13px;color:#5E636B">Commerce</div><div style="margin-top:5px;font-size:16px;font-weight:700;overflow-wrap:anywhere">{{ businessView.name }}</div></div>
+            <div><div style="font-size:13px;color:#5E636B">Activité</div><div style="margin-top:5px;font-size:15px;overflow-wrap:anywhere">{{ businessView.activity }}</div></div>
+            <div><div style="font-size:13px;color:#5E636B">Adresse</div><div style="margin-top:5px;font-size:15px;overflow-wrap:anywhere">{{ businessView.address }}</div></div>
+          </section>
+        </sc-if>
       <sc-if value="{{ sec.form }}" hint-placeholder-val="{{ true }}">
       <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:18px">
         <sc-if value="{{ sec.profile }}" hint-placeholder-val="{{ true }}">
@@ -2599,6 +2610,14 @@ class Component extends DCLogic {
     finally{this._accessBusy=false;}
   };
   go(screen,extra={}){
+    // Owner-only settings and configuration must not be reachable through manual navigation.
+    if(this.state.live&&this.state.role==='staff'){
+      if(['registration','card','billing','subSuccess','subCancel','designPaid','designCancel'].includes(screen)
+          ||(screen==='settings'&&!['business','help'].includes(extra.section))){
+        this.showToast('Ces réglages sont réservés au responsable du commerce.','error');
+        return;
+      }
+    }
     if(this.state.live&&this.state.role==='staff'){
       const perm={scanner:'scan',notifs:'notifications',notifNew:'notifications',join:'add_clients'};
       if(perm[screen]&&!this.canEmployee(perm[screen])){
@@ -2832,7 +2851,7 @@ class Component extends DCLogic {
     try{ const c=await this.api.enroll(this.reqId('join'),f.joinFirst.trim(),f.joinEmail.trim()); this.settleReq('join');
       this.setState(s=>({busy:false,clients:s.clients.some(x=>x.id===c.id)?s.clients:[c,...s.clients],joinedId:c.id,screen:'joinDone'})); this.scrollTop(); }
     catch(e){ this.settleReq('join',e); this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
-  saveCard=()=>{ if(this.state.busy) return;
+  saveCard=()=>{ if(this.state.busy||this.state.live&&this.state.role!=='owner') return;
     if(this.state.live){ const d=this.state.draft;
       if(!String(d.name||'').trim()||!String(d.reward||'').trim()){ this.showToast('Indiquez le nom du programme et la récompense.','error'); return; }
       this.setState({busy:true});
@@ -2840,6 +2859,7 @@ class Component extends DCLogic {
       return; }
     this.setState({busy:true}); setTimeout(()=>{ this.setState(s=>({busy:false,program:{...s.draft,goal:+s.draft.goal}})); this.showToast('Modifications enregistrées'); },800); };
   saveSection=()=>{ const s=this.state, sd=s.sd, sec=s.section;
+    if(s.live&&s.role!=='owner')return this.showToast('Modification réservée au responsable du commerce.','error');
     if(sec==='profile'&&!this.validate([['sdfirst',sd.first.trim(),'Indiquez votre prénom.'],['sdemail',EMAIL.test(sd.email),"Cette adresse e-mail n'est pas valide."]])) return;
     if(sec==='business'&&!this.validate([['sdbusiness',sd.business.trim(),'Indiquez le nom du commerce.']])) return;
     if(sec==='security'){ const f=s.f; if(!this.validate([['pwdCur',f.pwdCur,'Saisissez votre mot de passe actuel.'],['pwdNew',f.pwdNew.length>=8,'Au moins 8 caractères.'],['pwdConf',f.pwdConf===f.pwdNew&&f.pwdConf,'Les deux mots de passe ne correspondent pas.']])) return; }
@@ -2848,7 +2868,8 @@ class Component extends DCLogic {
     setTimeout(()=>{ if(sec==='security'){ this.setState(x=>({busy:false,f:{...x.f,pwdCur:'',pwdNew:'',pwdConf:''}})); this.showToast('Mot de passe modifié'); }
       else { this.setState(x=>({busy:false,merchant:{...x.sd}})); this.showToast(sec==='profile'?'Profil mis à jour':'Informations du commerce mises à jour'); } },800); };
 
-  async saveSectionLive(sec,sd,f){ const api=this.api, m=this.state.merchant; this.setState({busy:true});
+  async saveSectionLive(sec,sd,f){ if(this.state.role!=='owner')return this.showToast('Modification réservée au responsable du commerce.','error');
+    const api=this.api, m=this.state.merchant; this.setState({busy:true});
     try{
       if(sec==='security'){
         const v=await api.signIn(m.email,f.pwdCur); if(v.error) return this.setState({busy:false,err:api.authErrors(v.error,'security')});
@@ -2919,7 +2940,7 @@ class Component extends DCLogic {
     finally{this.setState({qrSaving:false});} }
   registrationConfig(p){const a=this.api||this.utils;return a&&a.registrationPage?a.registrationPage(p):{title:'Rejoignez le '+p.name,description:'',bg:p.bg,fg:lum(p.bg)<0.45?'#FFFFFF':'#1C1F24',button:'#1C1F24'};}
   registrationChange(k){return e=>this.setState(s=>({registrationDraft:{...s.registrationDraft,[k]:e.target.value}}));}
-  saveRegistration=async()=>{if(this.state.busy)return;this.setState({busy:true});
+  saveRegistration=async()=>{if(this.state.busy||this.state.live&&this.state.role!=='owner')return;this.setState({busy:true});
     try{const p=this.state.live?await this.api.saveRegistrationPage(this.state.program.id,this.state.registrationDraft):{...this.state.program,registrationPage:{...this.state.registrationDraft}};
       this.setState({busy:false,program:p,draft:{...p},registrationDraft:this.registrationConfig(p)});this.showToast('Page d’inscription enregistrée.');}
     catch(e){this.setState({busy:false});this.showToast(this.api.errorMessage(e),'error');}};
@@ -2979,7 +3000,7 @@ class Component extends DCLogic {
     try{ await this.api.signOut(); }catch(e){}
     // Back to the login screen with a fresh state: nothing of the deleted account stays on screen.
     this.resetToLogin({toast:{msg:'Votre compte et les données de votre commerce ont été supprimés.',kind:'ok'}}); this.armToast(); };
-  exportData=async()=>{ if(this.state.busy) return; this.setState({busy:true});
+  exportData=async()=>{ if(this.state.busy||this.state.live&&this.state.role!=='owner') return; this.setState({busy:true});
     try{ const data=await this.api.exportData();
       const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
       const a=document.createElement('a'); a.href=url; a.download='dpa-cards-export-'+(this.state.merchant.slug||'commerce')+'-'+ymdOf(new Date())+'.json';
@@ -3414,9 +3435,13 @@ class Component extends DCLogic {
       {icon:'lock',label:'Sécurité et mot de passe',sub:s.live?'Mot de passe, export des données, suppression du compte':'Modifier le mot de passe',run:openSec('security')},
       {icon:'help',label:'Aide et contact',sub:'Questions fréquentes, support',run:openSec('help')},
       ...(s.live&&!DPA_NATIVE_IOS?[{icon:'credit_card',label:'Mon abonnement',sub:s.accessSource==='manual'?'Accès offert par DPA Cards · jusqu’au '+fmtFull(s.manualExpiresAt):s.subscription?(s.subscription.billing_mode==='prepaid'?'Engagement 12 mois · payé en une fois':s.subscription.plan_type==='commitment'?'Engagement 12 mois':'Sans engagement')+' · '+(s.subscription.billing_mode==='prepaid'&&s.subscription.status==='active'&&!subOk(s.subscription)?SUB_ST.expired:(SUB_ST[s.subscription.status]||s.subscription.status)):'Offre, factures, moyen de paiement',run:openSec('billing')}]:[]),
-      {icon:'restart_alt',label:'Réinitialiser la démo',sub:'Revenir aux données BASH',run:()=>{ this.enterDemo(); this.showToast('Données de démonstration réinitialisées'); }}].filter(x=>!s.live||x.icon!=='restart_alt');
+      {icon:'restart_alt',label:'Réinitialiser la démo',sub:'Revenir aux données BASH',run:()=>{ this.enterDemo(); this.showToast('Données de démonstration réinitialisées'); }}].filter(x=>!s.live||x.icon!=='restart_alt')
+       .filter(x=>s.role!=='staff'||!['public','person','lock','credit_card'].includes(x.icon));
     const secTitle={profile:'Profil du responsable',business:'Informations du commerce',security:'Sécurité et mot de passe',help:'Aide et contact',billing:'Mon abonnement'}[s.section];
-    const sec={profile:s.section==='profile',business:s.section==='business',security:s.section==='security',help:s.section==='help',billing:s.section==='billing',form:s.section!=='help'&&s.section!=='billing'};
+    const sec={profile:s.section==='profile'&&s.role!=='staff',business:s.section==='business'&&s.role!=='staff',
+       businessReadOnly:s.section==='business'&&s.role==='staff',
+       security:s.section==='security'&&s.role!=='staff',help:s.section==='help',billing:s.section==='billing'&&s.role!=='staff',
+       form:s.section!=='help'&&s.section!=='billing'&&s.role!=='staff'};
     const SD={}; ['first','last','email','phone','business','activity','address'].forEach(k=>SD[k]=this.sh(k));
 
     const joined=cv(clients.find(c=>c.id===s.joinedId));
@@ -3545,7 +3570,10 @@ class Component extends DCLogic {
       downloadQr:()=>locked?this.go('invite'):(s.live?this.downloadJoinQr():this.showToast('Démo : le téléchargement du QR code n’est pas activé.','info')),
       canScan,canAddClients,canReward,canCorrections,canNotify,
       mobNav, deskNav, toScanner:go('scanner'), toMore:go('more'), toInvite:go('invite'), toCard:go('card'), toClients:go('clients'), toJoin:()=>{ if(locked) return this.go('invite'); const w=window.open(pubUrl,'_blank'); if(w) w.opener=null; else window.location.assign(pubUrl); }, toHome:go('home'),
-      mInitials:initials(m.first+' '+m.last), todayLabel:s.live?todayLong():'Mercredi 30 septembre',
+      mInitials:initials(m.first+' '+m.last),moreInitials:s.live&&s.role==='staff'?'EM':initials(m.first+' '+m.last),
+       moreHeading:s.live&&s.role==='staff'?'Espace employé':(m.first+' '+m.last).trim(),
+       businessView:{name:m.business||'Non renseigné',activity:m.activity||'Non renseignée',address:m.address||'Non renseignée'},
+       todayLabel:s.live?todayLong():'Mercredi 30 septembre',
       loadingHome:s.loadingHome, notLoadingHome:!s.loadingHome, stats, activities, hasActivities:activities.length>0, noActivities:activities.length===0,
       homeCard, ruleText:`${goal} ${unit} = ${P.reward}`,
       q:s.q, setQ:e=>this.setState({q:e.target.value}), clearQ:()=>this.setState({q:''}), hasQ:!!s.q, filters, list, hasList:list.length>0, emptyList:list.length===0,
@@ -3567,7 +3595,7 @@ class Component extends DCLogic {
       ...this.billingVals(s),
       canDelClient:!!s.live&&s.role==='owner', askDelClient:()=>this.setState({modal:'delClient',err:{}}), confirmDelClient:this.confirmDelClient,
       delClientName:sel?sel.full:'', delClientBtn:s.busy?'Suppression…':'Supprimer le client',
-      secData:!!s.live&&s.section==='security', isOwner:s.role==='owner', exportData:this.exportData, exportLabel:s.busy&&!s.modal?'Préparation…':'Exporter mes données',
+      secData:!!s.live&&s.section==='security'&&s.role==='owner', isOwner:s.role==='owner', exportData:this.exportData, exportLabel:s.busy&&!s.modal?'Préparation…':'Exporter mes données',
       delAccountText:s.role==='owner'?'La suppression est définitive : votre commerce, votre programme, vos clients, leurs cartes et tout l’historique sont supprimés, et votre lien d’inscription est désactivé.':'Seul le propriétaire du commerce peut supprimer le compte et ses données. Adressez-vous à lui ou écrivez-nous.',
       askDelAccount:()=>this.setState({modal:'delAccount',err:{},f:{...s.f,delConfirm:''}}), confirmDelAccount:this.confirmDelAccount,
       delAccountBtn:s.busy?'Suppression en cours…':'Supprimer définitivement', delAccountDisabled:s.busy||s.f.delConfirm.trim()!=='SUPPRIMER', delAccountOpacity:s.busy||s.f.delConfirm.trim()!=='SUPPRIMER'?0.55:1,
