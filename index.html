@@ -3283,7 +3283,7 @@ class Component extends DCLogic {
       const dots=goal<=20?Array.from({length:goal},(_,i)=>({bg:i<b?'#2448F0':'#E3E1DA',border:i<b?'#2448F0':'#D4D1C9'})):[];
       const history=c.history.map(h=>({...h,when:`${fmtDate(h.date)}, ${h.time}`,icon:{visit:'add_circle',reward:'redeem',join:'person_add',correction:'undo'}[h.type],
         iconColor:{visit:'#2448F0',reward:'#1F7A4F',join:'#5E636B',correction:'#B42318'}[h.type],iconBg:{visit:'#E8EDFF',reward:'#E4F3EB',join:'#EFEEE9',correction:'#FCEBEA'}[h.type],
-        deltaTxt:h.delta>0?'+'+h.delta:(h.delta<0?'−'+Math.abs(h.delta):''),canCorrect:h.type==='visit'&&!h.corrected,corrected:!!h.corrected,hasNote:!!h.note,
+        deltaTxt:h.delta>0?'+'+h.delta:(h.delta<0?'−'+Math.abs(h.delta):''),canCorrect:canCorrections&&h.type==='visit'&&!h.corrected,corrected:!!h.corrected,hasNote:!!h.note,
         onCorrect:()=>this.setState({modal:'correct',corr:{client:c.id,entry:h.id,motif:''},err:{},f:{...this.state.f,corrNote:''}})}));
       return {id:c.id,first:c.first,full:(c.first+' '+c.last).trim(),initials:initials(c.first+' '+c.last),card:c.card,balance:b,value:`${b} / ${goal}`,label:`${b} / ${goal} ${unit}`,
         pct:Math.min(100,Math.round(b/goal*100))+'%',hasReward:hr,noReward:!hr,remaining:hr?'Récompense disponible':`Encore ${rem} ${rem>1||unit==='points'?unit:unit.slice(0,-1)} avant : ${P.reward}`,
@@ -3442,7 +3442,7 @@ class Component extends DCLogic {
     const nv=this.nVals(s,isDesk,m,P,goal);
     const bt=i=>i?'1px solid #EFEDE8':'0';
     const mShowBar=isMob&&S.app&&!S.scanner, mShowNav=isMob&&S.app&&!['scanner','notifNew','settings'].includes(scr);
-    const mBarMap={home:{logo:true,demo:!!s.demo,support:true},clients:{title:'Clients',addClient:true},client:{title:sel?sel.full:'Client',back:go('clients')},notifs:{title:'Notifications',create:true},notifNew:{title:nv.nHeading,back:go('notifs')},more:{title:'Réglages'},settings:{title:secTitle,back:go('more')},invite:{title:'Inviter mes clients',back:go('more')},registration:{title:'Page d’inscription',back:go('home')},card:{title:'Ma carte',back:go('home')}};
+    const mBarMap={home:{logo:true,demo:!!s.demo,support:true},clients:{title:'Clients',addClient:canAddClients},client:{title:sel?sel.full:'Client',back:go('clients')},notifs:{title:'Notifications',create:true},notifNew:{title:nv.nHeading,back:go('notifs')},more:{title:'Réglages'},settings:{title:secTitle,back:go('more')},invite:{title:'Inviter mes clients',back:go('more')},registration:{title:'Page d’inscription',back:go('home')},card:{title:'Ma carte',back:go('home')}};
     mBarMap.locked={title:'Fonction verrouillée',back:go('home')};
     const mb={logo:false,support:false,back:null,title:'',demo:false,addClient:false,create:false,...(mBarMap[scr]||{})}; mb.hasBack=!!mb.back; mb.hasTitle=!!mb.title;
     const mStats=[{label:'Passages aujourd’hui',value:stats[1].value},{label:'Récompenses disponibles',value:stats[2].value},{label:'Clients inscrits',value:stats[0].value}];
