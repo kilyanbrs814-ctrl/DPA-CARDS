@@ -41,3 +41,17 @@ Aucune flèche dans les boutons, comme demandé par le projet : `docs/visual-des
 - Les vues mobile et desktop ont les mêmes actions, **sans icônes de flèche**.
 - Après chaque modification, l’interface actualise la liste. Un compte déjà activé n'est plus modifiable depuis cette fenêtre.
 - Déploiements GitHub, Vercel production et Supabase Edge Function vérifiés. **Le parcours de bout en bout avec un compte propriétaire connecté et un destinataire réel reste à tester** avant de déclarer l'envoi et le changement d’adresse validés en conditions réelles.
+
+
+## Autorisations personnalisées des employés — 22 octobre 2026
+- Dans « Employés inscrits », le propriétaire ouvre la fiche d'un collaborateur. Sous les statistiques, cinq autorisations sont présentées avec état **Autorisé/Bloqué** et bouton **Enregistrer les autorisations**.
+- Capacités : `scan` (scanner et créditer les passages), `add_clients` (ajouter des clients côté commerçant), `rewards` (remettre des récompenses), `corrections` (corriger des visites) et `notifications` (créer, modifier et envoyer les notifications Apple/Google Wallet).
+- Chaque paramètre est **spécifique à un employé ET à un commerce**. Seul un propriétaire du commerce peut les modifier. Le contrôle est fait dans `merchant-team/permissions` sur un JWT de session vérifié ; le navigateur ne peut pas modifier directement la colonne.
+- Les membres `owner` conservent tous les droits. Les employés déjà inscrits ont conservé leurs autorisations existantes (toutes vraies lors de la migration). Les **nouveaux invités** démarrent avec l'accès scanner seul ; le propriétaire peut ensuite cocher les autres fonctions.
+- La base stocke ces droits dans `merchant_members.permissions`, avec vérification `app_private.member_can(merchant_id, capability)`, politiques RLS adaptées sur `customers`, `cards` et `notifications`, et trigger `card_events_staff_permission` sur les événements de fidélité.
+- Les routes de distribution privilégiées `wallet/notify` et `apple-pass/notify` contrôlent elles-mêmes l’autorisation `notifications` avant toute création d'envoi. Les refus sont effectifs même via une requête API directe.
+- L'interface web masque les accès refusés, et les actions protégées restent bloquées côté serveur. Les paramètres de commerce, de design et de facturation restent réservés aux propriétaires.
+- **Limite** : le QR code public de souscription client demeure ouvert au public indépendamment des autorisations internes du personnel. Les permissions régulent l'ajout depuis le compte employé, pas les inscriptions faites volontairement par les clients eux-mêmes.
+- **Tests réalisés** : simulation PostgreSQL d'un employé sans autorisation, tentative d'ajout de passage rejetée avec `employee_permission_denied`, transaction annulée ; vérification du maintien des droits existants après rollback. La sauvegarde réelle depuis un navigateur commerçant et la livraison iOS sont encore à valider.
+- **Déploiement** : `merchant-team` v9, `wallet` v64, `apple-pass` v48 actifs dans Supabase. Page web mise à jour via GitHub/Vercel.
+- Règle design conservée : aucun bouton fléché.
