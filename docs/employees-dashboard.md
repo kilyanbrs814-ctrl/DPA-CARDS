@@ -55,3 +55,15 @@ Aucune flèche dans les boutons, comme demandé par le projet : `docs/visual-des
 - **Tests réalisés** : simulation PostgreSQL d'un employé sans autorisation, tentative d'ajout de passage rejetée avec `employee_permission_denied`, transaction annulée ; vérification du maintien des droits existants après rollback. La sauvegarde réelle depuis un navigateur commerçant et la livraison iOS sont encore à valider.
 - **Déploiement** : `merchant-team` v9, `wallet` v64, `apple-pass` v48 actifs dans Supabase. Page web mise à jour via GitHub/Vercel.
 - Règle design conservée : aucun bouton fléché.
+
+
+## Réglages du compte employé — lecture seule (22 octobre 2026)
+- Un membre ayant le rôle `staff` ne peut **rien modifier dans les réglages du commerce**.
+- Le menu « Réglages » n'affiche pas « Page d'inscription publique », « Profil du responsable » ni « Mon abonnement » pour un employé. La rubrique « Sécurité et mot de passe » (avec export des données et suppression de compte) est également retirée de ce menu pour éviter les éditions dans les réglages du commerce.
+- « Informations du commerce » reste accessible **en lecture seule** (nom, activité, adresse), sans champ modifiable et sans bouton Enregistrer. « Aide et contact » reste disponible.
+- Même en appelant directement la navigation interne, un employé est renvoyé hors des écrans propriétaires (fiche de programme/carte, éditeur de la page d'inscription, facturation ou paramètres personnels du responsable). `saveSection`, `saveSectionLive`, `saveCard`, `saveRegistration` et `exportData` disposent aussi de gardes frontend.
+- Les politiques RLS existantes de `merchants` et `programs` exigent déjà `role='owner'` pour les mises à jour : **le frontend n'est pas le mécanisme d'autorisation**.
+- La page publique d'inscription demeure accessible aux clients depuis son URL publique : masquer son accès dans les réglages employés ne doit pas rendre ce lien inaccessible aux clients.
+- Le parcours d'invitation des clients et les actions opérationnelles de fidélité restent soumis aux cinq autorisations choisies par le propriétaire.
+- Pour modifier leur mot de passe personnel hors de ces réglages, les employés conservent la récupération via la page de connexion.
+- **Livraison** : web déployé. Application iOS installée à reconstruire pour refléter les menus. Test interactif avec une session employé réelle encore à confirmer.
