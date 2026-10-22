@@ -84,7 +84,7 @@ a:hover{color:#1A36C4}
         </sc-if>
 
         <sc-if value="{{ s.signup }}" hint-placeholder-val="{{ false }}">
-          <button type="button" onClick="{{ toLogin }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:8px 0;margin-bottom:20px;color:#3E424A;font-weight:600;font-size:15px"><span class="material-symbols-rounded" style="font-size:20px">arrow_back</span>Connexion</button>
+          <button type="button" onClick="{{ toLogin }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:8px 0;margin-bottom:20px;color:#3E424A;font-weight:600;font-size:15px">Connexion</button>
           <h1 style="font-weight:800;font-size:clamp(30px,6vw,38px);line-height:1.08;letter-spacing:-0.03em;margin:0 0 10px">Créer mon compte</h1>
           <p style="margin:0 0 28px;color:#5E636B;font-size:16px;line-height:1.5">Quelques informations pour préparer votre espace commerçant.</p>
           <form onSubmit="{{ signup }}" noValidate="{{ true }}" style="display:flex;flex-direction:column;gap:18px">
@@ -125,7 +125,7 @@ a:hover{color:#1A36C4}
         </sc-if>
 
         <sc-if value="{{ s.forgot }}" hint-placeholder-val="{{ false }}">
-          <button type="button" onClick="{{ toLogin }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:8px 0;margin-bottom:20px;color:#3E424A;font-weight:600;font-size:15px"><span class="material-symbols-rounded" style="font-size:20px">arrow_back</span>Connexion</button>
+          <button type="button" onClick="{{ toLogin }}" style="display:flex;align-items:center;gap:6px;border:0;background:none;padding:8px 0;margin-bottom:20px;color:#3E424A;font-weight:600;font-size:15px">Connexion</button>
           <h1 style="font-weight:800;font-size:clamp(30px,6vw,38px);line-height:1.08;letter-spacing:-0.03em;margin:0 0 10px">Mot de passe oublié</h1>
           <p style="margin:0 0 28px;color:#5E636B;font-size:16px;line-height:1.5">Indiquez l’adresse e-mail de votre compte. Nous vous enverrons un lien pour choisir un nouveau mot de passe.</p>
           <form onSubmit="{{ forgot }}" noValidate="{{ true }}" style="display:flex;flex-direction:column;gap:20px">
@@ -526,7 +526,7 @@ a:hover{color:#1A36C4}
   <sc-if value="{{ notPublic }}" hint-placeholder-val="{{ true }}">
   <div role="note" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px clamp(16px,3vw,32px);background:#1C1F24;color:#FFFFFF;font-size:14px">
     <div style="display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:18px;color:#FFD66B">visibility</span>{{ joinBanner }}</div>
-    <button type="button" onClick="{{ toInvite }}" style="min-height:40px;padding:0 14px;border:1px solid rgba(255,255,255,0.3);border-radius:10px;background:transparent;color:#FFFFFF;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px"><span class="material-symbols-rounded" style="font-size:18px">arrow_back</span>Retour à DPA CARDS</button>
+    <button type="button" onClick="{{ toInvite }}" style="min-height:40px;padding:0 14px;border:1px solid rgba(255,255,255,0.3);border-radius:10px;background:transparent;color:#FFFFFF;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px">Retour à DPA CARDS</button>
   </div>
   </sc-if>
   <div style="flex:1;width:100%;max-width:440px;margin:0 auto;padding:24px 16px 48px">
@@ -613,7 +613,7 @@ a:hover{color:#1A36C4}
     <sc-if value="{{ mShowBar }}" hint-placeholder-val="{{ false }}">
       <header class="dpa-mobile-header" style="position:sticky;top:0;z-index:20;padding-top:var(--dpa-safe-top,env(safe-area-inset-top));background:rgba(246,245,241,0.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid #E4E1DA">
         <div style="max-width:640px;margin:0 auto;height:56px;padding:0 8px;display:flex;align-items:center;gap:4px">
-          <sc-if value="{{ mBar.hasBack }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ mBar.back }}" aria-label="Retour" style="width:44px;height:44px;flex:none;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;color:#1C1F24" style-active="background:#ECEAE4"><span class="material-symbols-rounded" style="font-size:26px">arrow_back</span></button></sc-if>
+          <sc-if value="{{ mBar.hasBack }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ mBar.back }}" aria-label="Retour" style="width:44px;height:44px;flex:none;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;color:#1C1F24" style-active="background:#ECEAE4"><span style="font-size:13px;font-weight:700">Retour</span></button></sc-if>
           <sc-if value="{{ mBar.logo }}" hint-placeholder-val="{{ false }}"><img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:34px;width:auto;display:block;margin-left:8px"></sc-if>
           <div style="flex:1;min-width:0;padding:0 8px">
             <sc-if value="{{ mBar.hasTitle }}" hint-placeholder-val="{{ false }}"><h1 style="margin:0;font-weight:800;font-size:20px;letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ mBar.title }}</h1></sc-if>
@@ -662,7 +662,7 @@ a:hover{color:#1A36C4}
       <button type="button" onClick="{{ toScanner }}" style="width:100%;min-height:96px;border:0;border-radius:22px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:18px;padding:18px 22px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25)" style-hover="background:#1A36C4">
         <div style="width:60px;height:60px;border-radius:16px;background:rgba(255,255,255,0.16);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:34px">qr_code_scanner</span></div>
         <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:22px;letter-spacing:-0.01em">Scanner une carte</div><div style="margin-top:4px;font-size:15px;color:#DCE3FF">Créditer un passage ou valider une récompense</div></div>
-        <span class="material-symbols-rounded" style="font-size:28px">arrow_forward</span>
+        
       </button>
       <sc-if value="{{ loadingHome }}" hint-placeholder-val="{{ false }}">
         <div aria-busy="true" aria-label="Chargement" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
@@ -712,12 +712,12 @@ a:hover{color:#1A36C4}
           <sc-if value="{{ canInviteEmployee }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openEmployeeInvite }}" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border:1px solid #E4E1DA;border-radius:20px;background:#FFFFFF;text-align:left;width:100%" style-hover="border-color:#2448F0">
             <div style="width:48px;height:48px;border-radius:14px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:26px">person_add</span></div>
             <div style="flex:1"><div style="font-weight:700;font-size:16px">Ajouter un employé</div><div style="font-size:14px;color:#5E636B;margin-top:2px">Inviter par e-mail · accès au commerce</div></div>
-            <span class="material-symbols-rounded" style="color:#5E636B">chevron_right</span>
+            
           </button></sc-if>
           <button type="button" onClick="{{ toInvite }}" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border:1px solid #E4E1DA;border-radius:20px;background:#FFFFFF;text-align:left" style-hover="border-color:#2448F0">
             <div style="width:48px;height:48px;border-radius:14px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:26px">qr_code_2</span></div>
             <div style="flex:1"><div style="font-weight:700;font-size:16px">Inviter mes clients</div><div style="font-size:14px;color:#5E636B;margin-top:2px">QR code d’inscription et lien à partager</div></div>
-            <span class="material-symbols-rounded" style="color:#5E636B">chevron_right</span>
+            
           </button>
         </div>
       </div>
@@ -739,7 +739,7 @@ a:hover{color:#1A36C4}
       <sc-if value="{{ canInviteEmployee }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openEmployeeInvite }}" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border:1px solid #E4E1DA;border-radius:20px;background:#FFFFFF;text-align:left;width:100%" style-hover="border-color:#2448F0">
             <div style="width:48px;height:48px;border-radius:14px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:26px">person_add</span></div>
             <div style="flex:1"><div style="font-weight:700;font-size:16px">Ajouter un employé</div><div style="font-size:14px;color:#5E636B;margin-top:2px">Inviter par e-mail · accès au commerce</div></div>
-            <span class="material-symbols-rounded" style="color:#5E636B">chevron_right</span>
+            
           </button></sc-if>
       <sc-if value="{{ loadingHome }}" hint-placeholder-val="{{ false }}"><div aria-busy="true" aria-label="Chargement" style="height:88px;border-radius:18px;background:#ECEAE4"></div></sc-if>
       <sc-if value="{{ notLoadingHome }}" hint-placeholder-val="{{ true }}">
@@ -756,7 +756,7 @@ a:hover{color:#1A36C4}
         <button type="button" onClick="{{ toScanner }}" style="min-height:76px;border:0;border-radius:20px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:14px;padding:12px 18px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25);transition:transform .12s ease" style-active="transform:scale(0.98);background:#1A36C4">
           <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,0.16);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:30px">qr_code_scanner</span></div>
           <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:19px">Scanner une carte</div><div style="margin-top:2px;font-size:14px;color:#DCE3FF">Passage ou récompense</div></div>
-          <span class="material-symbols-rounded" style="font-size:26px">arrow_forward</span>
+          
         </button>
         <button type="button" onClick="{{ openAddClient }}" style="min-height:56px;border:1.5px solid #D4D1C9;border-radius:16px;background:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-active="background:#F1F0EC"><span class="material-symbols-rounded" style="font-size:22px;color:#2448F0">person_add</span>Ajouter un client</button>
       </div>
@@ -1066,7 +1066,7 @@ a:hover{color:#1A36C4}
     <sc-if value="{{ scanV.found }}" hint-placeholder-val="{{ false }}">
     <div style="position:fixed;inset:0;z-index:41;background:#F6F5F1;color:#1C1F24;display:flex;flex-direction:column;padding-top:var(--dpa-safe-top,env(safe-area-inset-top));animation:dpaUp .22s ease-out">
       <div style="flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;height:60px;padding:0 12px;width:100%;max-width:640px;margin:0 auto">
-        <button type="button" onClick="{{ resetScan }}" disabled="{{ busy }}" aria-label="Scanner une autre carte" style="width:44px;height:44px;border:0;border-radius:12px;background:transparent;display:grid;place-items:center" style-active="background:#ECEAE4"><span class="material-symbols-rounded" style="font-size:26px">arrow_back</span></button>
+        <button type="button" onClick="{{ resetScan }}" disabled="{{ busy }}" aria-label="Scanner une autre carte" style="width:44px;height:44px;border:0;border-radius:12px;background:transparent;display:grid;place-items:center" style-active="background:#ECEAE4"><span style="font-size:11px;font-weight:700;line-height:1.1">Autre carte</span></button>
         <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:#E4F3EB;color:#1F6B45;font-weight:700;font-size:13px"><span class="material-symbols-rounded" style="font-size:18px">verified</span>Carte reconnue</span>
         <button type="button" onClick="{{ closeScanner }}" disabled="{{ busy }}" aria-label="Fermer le scanner" style="width:44px;height:44px;border:0;border-radius:12px;background:transparent;display:grid;place-items:center" style-active="background:#ECEAE4"><span class="material-symbols-rounded" style="font-size:26px">close</span></button>
       </div>
@@ -1188,7 +1188,7 @@ a:hover{color:#1A36C4}
                   <div style="font-weight:700;font-size:15px;font-variant-numeric:tabular-nums">{{ c.value }}</div>
                   <div style="width:100%;height:5px;border-radius:5px;background:#ECEAE4;overflow:hidden"><div style="height:100%;width:{{ c.pct }};background:#2448F0;border-radius:5px"></div></div>
                 </div>
-                <span class="material-symbols-rounded" style="font-size:22px;color:#9A9EA6;flex:none">chevron_right</span>
+                
               </button>
             </li>
           </sc-for>
@@ -1201,7 +1201,7 @@ a:hover{color:#1A36C4}
     <sc-if value="{{ s.client }}" hint-placeholder-val="{{ false }}">
 <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
     <div style="max-width:1100px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:22px">
-      <button type="button" onClick="{{ toClients }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;border:0;background:none;padding:8px 0;color:#3E424A;font-weight:600;font-size:15px"><span class="material-symbols-rounded" style="font-size:20px">arrow_back</span>Clients</button>
+      <button type="button" onClick="{{ toClients }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;border:0;background:none;padding:8px 0;color:#3E424A;font-weight:600;font-size:15px">Clients</button>
       <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
       <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
         <div style="width:60px;height:60px;border-radius:50%;background:{{ P.bg }};color:#1E1418;display:grid;place-items:center;font-weight:800;font-size:20px">{{ sel.initials }}</div>
@@ -1407,7 +1407,7 @@ a:hover{color:#1A36C4}
             <div style="width:44px;height:44px;border-radius:12px;background:#EFEDE8;color:#1C1F24;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded">badge</span></div>
             <div><div style="font-weight:700;font-size:16px">QR code personnel du client</div><div style="margin-top:4px;font-size:15px;color:#4A4E55;line-height:1.5">Unique à chaque client, il figure sur sa carte dans son Wallet. Vous le scannez en caisse pour identifier la carte et créditer un passage.</div></div>
           </div>
-          <button type="button" onClick="{{ toScanner }}" style="align-self:flex-start;min-height:44px;padding:0 4px;border:0;background:none;color:#2448F0;font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px">Scanner la carte d’un client<span class="material-symbols-rounded" style="font-size:20px">arrow_forward</span></button>
+          <button type="button" onClick="{{ toScanner }}" style="align-self:flex-start;min-height:44px;padding:0 4px;border:0;background:none;color:#2448F0;font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px">Scanner la carte d’un client</button>
         </section>
       </div>
     </div>
@@ -1455,7 +1455,7 @@ a:hover{color:#1A36C4}
                   <span style="display:flex;align-items:center;gap:5px"><span class="material-symbols-rounded" style="font-size:18px;color:#6B6F76">{{ r.platIcon }}</span>{{ r.platLabel }}</span>
                 </div>
               </div>
-              <button type="button" onClick="{{ r.open }}" style="min-height:44px;padding:0 14px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px" style-hover="border-color:#2448F0">Voir le détail<span class="material-symbols-rounded" style="font-size:18px">chevron_right</span></button>
+              <button type="button" onClick="{{ r.open }}" style="min-height:44px;padding:0 14px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px" style-hover="border-color:#2448F0">Voir le détail</button>
             </li>
           </sc-for>
         </ul>
@@ -1490,7 +1490,7 @@ a:hover{color:#1A36C4}
                     <div style="margin-top:6px;font-weight:700;font-size:16px;line-height:1.3;overflow-wrap:anywhere">{{ r.title }}</div>
                     <div style="margin-top:3px;display:flex;align-items:center;gap:5px;font-size:13px;color:#4A4E55"><span class="material-symbols-rounded" style="font-size:16px;color:#6B6F76">{{ r.platIcon }}</span><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.recLabel }}</span></div>
                   </div>
-                  <span class="material-symbols-rounded" style="font-size:22px;color:#9A9EA6;flex:none">chevron_right</span>
+                  
                 </button>
               </li>
             </sc-for>
@@ -1505,7 +1505,7 @@ a:hover{color:#1A36C4}
     <sc-if value="{{ s.notifNew }}" hint-placeholder-val="{{ false }}">
     <div style="max-width:1160px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:18px">
       <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
-      <button type="button" onClick="{{ toNotifs }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;border:0;background:none;padding:8px 0;color:#3E424A;font-weight:600;font-size:15px"><span class="material-symbols-rounded" style="font-size:20px">arrow_back</span>Notifications</button>
+      <button type="button" onClick="{{ toNotifs }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;border:0;background:none;padding:8px 0;color:#3E424A;font-weight:600;font-size:15px">Notifications</button>
       <h1 style="margin:0;font-weight:800;font-size:clamp(26px,5vw,34px);letter-spacing:-0.03em">{{ nHeading }}</h1>
       </sc-if>
       <div style="display:grid;grid-template-columns:{{ nGridCols }};gap:24px;align-items:start">
@@ -1688,7 +1688,7 @@ a:hover{color:#1A36C4}
             <button type="button" onClick="{{ it.run }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:14px 18px;min-height:64px;border:0;background:transparent;text-align:left" style-hover="background:#F8F7F4">
               <span class="material-symbols-rounded" style="font-size:22px;color:#2448F0">{{ it.icon }}</span>
               <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:16px">{{ it.label }}</div><div style="font-size:14px;color:#5E636B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.sub }}</div></div>
-              <span class="material-symbols-rounded" style="color:#9A9EA6">chevron_right</span>
+              
             </button>
           </li>
         </sc-for>
@@ -1701,7 +1701,7 @@ a:hover{color:#1A36C4}
     <sc-if value="{{ s.settings }}" hint-placeholder-val="{{ false }}">
     <div style="max-width:640px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:20px">
       <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
-      <button type="button" onClick="{{ toMore }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;border:0;background:none;padding:8px 0;color:#3E424A;font-weight:600;font-size:15px"><span class="material-symbols-rounded" style="font-size:20px">arrow_back</span>Plus</button>
+      <button type="button" onClick="{{ toMore }}" style="align-self:flex-start;display:flex;align-items:center;gap:6px;border:0;background:none;padding:8px 0;color:#3E424A;font-weight:600;font-size:15px">Plus</button>
       <h1 style="margin:0;font-weight:800;font-size:clamp(26px,5vw,32px);letter-spacing:-0.03em">{{ secTitle }}</h1>
       </sc-if>
       <sc-if value="{{ sec.form }}" hint-placeholder-val="{{ true }}">
