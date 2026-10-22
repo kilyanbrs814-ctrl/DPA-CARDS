@@ -709,6 +709,11 @@ a:hover{color:#1A36C4}
             <sc-if value="{{ designPending }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#E8EDFF;color:#1A36C4;font-size:14px;line-height:1.45;text-align:left"><span class="material-symbols-rounded" style="font-size:20px">brush</span><span>Création sur mesure en cours · demande du {{ dReq.date }} · statut : {{ dReq.statusLabel }} · sur devis</span></div></sc-if>
         <a href="{{ cardChangeUrl }}" style="min-height:48px;padding:12px 14px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;color:#2448F0;font-weight:700;font-size:14px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;line-height:1.4"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:21px;flex:none">edit_note</span>Demander la modification de ma carte</a>
           </section>
+          <sc-if value="{{ canInviteEmployee }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openEmployeeInvite }}" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border:1px solid #E4E1DA;border-radius:20px;background:#FFFFFF;text-align:left;width:100%" style-hover="border-color:#2448F0">
+            <div style="width:48px;height:48px;border-radius:14px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:26px">person_add</span></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:16px">Ajouter un employé</div><div style="font-size:14px;color:#5E636B;margin-top:2px">Inviter par e-mail · accès au commerce</div></div>
+            <span class="material-symbols-rounded" style="color:#5E636B">chevron_right</span>
+          </button></sc-if>
           <button type="button" onClick="{{ toInvite }}" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border:1px solid #E4E1DA;border-radius:20px;background:#FFFFFF;text-align:left" style-hover="border-color:#2448F0">
             <div style="width:48px;height:48px;border-radius:14px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:26px">qr_code_2</span></div>
             <div style="flex:1"><div style="font-weight:700;font-size:16px">Inviter mes clients</div><div style="font-size:14px;color:#5E636B;margin-top:2px">QR code d’inscription et lien à partager</div></div>
@@ -731,6 +736,11 @@ a:hover{color:#1A36C4}
         <sc-if value="{{ designPending }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#E8EDFF;color:#1A36C4;font-size:14px;line-height:1.45;text-align:left"><span class="material-symbols-rounded" style="font-size:20px">brush</span><span>Création sur mesure en cours · demande du {{ dReq.date }} · statut : {{ dReq.statusLabel }} · sur devis</span></div></sc-if>
         <a href="{{ cardChangeUrl }}" style="min-height:48px;padding:12px 14px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;color:#2448F0;font-weight:700;font-size:14px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;line-height:1.4"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:21px;flex:none">edit_note</span>Demander la modification de ma carte</a>
       </section>
+      <sc-if value="{{ canInviteEmployee }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openEmployeeInvite }}" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border:1px solid #E4E1DA;border-radius:20px;background:#FFFFFF;text-align:left;width:100%" style-hover="border-color:#2448F0">
+            <div style="width:48px;height:48px;border-radius:14px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:26px">person_add</span></div>
+            <div style="flex:1"><div style="font-weight:700;font-size:16px">Ajouter un employé</div><div style="font-size:14px;color:#5E636B;margin-top:2px">Inviter par e-mail · accès au commerce</div></div>
+            <span class="material-symbols-rounded" style="color:#5E636B">chevron_right</span>
+          </button></sc-if>
       <sc-if value="{{ loadingHome }}" hint-placeholder-val="{{ false }}"><div aria-busy="true" aria-label="Chargement" style="height:88px;border-radius:18px;background:#ECEAE4"></div></sc-if>
       <sc-if value="{{ notLoadingHome }}" hint-placeholder-val="{{ true }}">
         <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:#E4E1DA;border:1px solid #E4E1DA;border-radius:18px;overflow:hidden">
@@ -1781,6 +1791,25 @@ a:hover{color:#1A36C4}
 <div onClick="{{ closeModal }}" style="position:fixed;inset:0;z-index:50;background:rgba(20,22,28,0.5);display:flex;align-items:{{ modalAlign }};justify-content:center;padding:0">
   <div role="dialog" aria-modal="true" aria-labelledby="dlg-t" onClick="{{ stop }}" style="width:100%;max-width:460px;background:#FFFFFF;border-radius:{{ modalRadius }};padding:24px 22px calc(24px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)));display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 50px rgba(20,22,28,0.25);animation:dpaUp .2s ease-out;max-height:92vh;overflow:auto">
     <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}"><div aria-hidden="true" style="width:40px;height:5px;border-radius:3px;background:#D4D1C9;align-self:center;margin:-10px 0 -4px;flex:none"></div></sc-if>
+    <sc-if value="{{ mod.employee }}" hint-placeholder-val="{{ false }}">
+      <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Ajouter un employé</h2>
+      <p style="margin:0;color:#3E424A;font-size:15px;line-height:1.5">Invitez un employé à rejoindre <strong>{{ m.business }}</strong>. Il recevra un e-mail pour choisir son mot de passe. Aucun commerce supplémentaire ni abonnement ne sera créé.</p>
+      <sc-if value="{{ employeeInviteSent }}" hint-placeholder-val="{{ false }}">
+        <div role="status" style="padding:14px;border:1px solid #B9E0CB;border-radius:12px;background:#E4F3EB;color:#1F6B45;line-height:1.5;font-weight:600">Invitation envoyée à {{ employee.email }}.</div>
+        <button type="button" onClick="{{ closeModal }}" style="min-height:52px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700">Terminer</button>
+      </sc-if>
+      <sc-if value="{{ employeeInviteForm }}" hint-placeholder-val="{{ true }}">
+        <form onSubmit="{{ submitEmployeeInvite }}" noValidate="{{ true }}" style="display:flex;flex-direction:column;gap:14px">
+          <div><label for="employee-first" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Prénom de l’employé</label><input id="employee-first" autoComplete="given-name" maxLength="80" value="{{ employee.first }}" onChange="{{ setEmployeeFirst }}" disabled="{{ employeeSending }}" style="width:100%;height:52px;padding:0 14px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-size:16px"></div>
+          <div><label for="employee-email" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Adresse e-mail de l’employé</label><input id="employee-email" type="email" inputMode="email" autoComplete="email" maxLength="254" value="{{ employee.email }}" onChange="{{ setEmployeeEmail }}" disabled="{{ employeeSending }}" placeholder="prenom@exemple.fr" style="width:100%;height:52px;padding:0 14px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-size:16px"></div>
+          <sc-if value="{{ employeeInviteHasError }}" hint-placeholder-val="{{ false }}"><div role="alert" style="padding:10px 12px;border-radius:10px;background:#FCEBEA;color:#B42318;font-size:14px">{{ employeeInviteError }}</div></sc-if>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button type="button" onClick="{{ closeModal }}" disabled="{{ employeeSending }}" style="flex:1;min-width:110px;min-height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600">Annuler</button>
+            <button type="submit" disabled="{{ employeeSending }}" style="flex:2;min-width:165px;min-height:52px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700">{{ employeeInviteSubmitLabel }}</button>
+          </div>
+        </form>
+      </sc-if>
+    </sc-if>
     <sc-if value="{{ mod.addClient }}" hint-placeholder-val="{{ false }}">
       <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Ajouter un client</h2>
       <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">Le client scanne ce QR code avec son téléphone pour créer sa carte, puis l’ajoute à son Wallet.</p>
@@ -2134,7 +2163,7 @@ class Component extends DCLogic {
       err:{}, showPwd:false, remember:true, busy:false,
       merchant:{...M0}, sd:{...M0}, program:{...P0}, draft:{...P0}, clients:demoClients(),
       selId:null, notifs:demoNotifs(demoClients()), nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
-      modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple',
+      modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple', employeeInvite:{first:'',email:''},employeeInviteSent:false,employeeInviteError:'',employeeSending:false,
       ob:{step:1,biz:'',activity:'Restaurant',otherActivity:'',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
       section:'profile', loadingHome:false, prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true, subscription:null, hasAccess:false, accessSource:'none', manualExpiresAt:null, billingPlan:null, tip:{open:null,pinned:false}, subVerify:null, billSum:null, billMsg:null,
       ...(JOIN_SLUG?{screen:'joinLoading',pubSlug:JOIN_SLUG,pubErr:null,pubWallet:null,pubApple:null,clients:[],notifs:[],consent:false,merchant:{...M0,business:'',slug:JOIN_SLUG}}:{}) };
@@ -2327,6 +2356,18 @@ class Component extends DCLogic {
     this._req={};this._cdKey=null;
     this.setState({addingProfile:this.api.uuid(),screen:'ob',ob:{...this.initState().ob},merchant:blank,sd:{...blank},program:{...P0},draft:{...P0},clients:[],notifs:[],designReq:null,hasAccess:false,nf:null,nsel:null,selId:null,joinedId:null,modal:null,scan:{st:'permission',id:null,added:false,used:false,msg:''},q:'',filter:'all',err:{},drLogo:null,drRefs:[],crop:null});
     this.scrollTop();
+  };
+  openEmployeeInvite=()=>{ if(!this.state.live||this.state.role!=='owner'||!this.state.hasAccess||!this.state.merchant?.id)return; this.setState({modal:'employee',employeeInvite:{first:'',email:''},employeeInviteSent:false,employeeInviteError:'',employeeSending:false}); };
+  setEmployeeField=(field,e)=>this.setState(s=>({employeeInvite:{...s.employeeInvite,[field]:e.target.value},employeeInviteError:''}));
+  submitEmployeeInvite=async e=>{
+    e?.preventDefault();
+    const s=this.state, first=s.employeeInvite.first.trim(), email=s.employeeInvite.email.trim().toLowerCase();
+    if(s.employeeSending||!s.live||s.role!=='owner'||!s.hasAccess)return;
+    if(!first||first.length>80)return this.setState({employeeInviteError:'Indiquez un prénom valide.'});
+    if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email)||email.length>254)return this.setState({employeeInviteError:'Indiquez une adresse e-mail valide.'});
+    this.setState({employeeSending:true,employeeInviteError:''});
+    try { await this.api.inviteEmployee({first,email});this.setState({employeeSending:false,employeeInviteSent:true,employeeInvite:{first,email}}); }
+    catch(err) { this.setState({employeeSending:false,employeeInviteError:this.api.errorMessage(err)}); }
   };
   // Change of mind before paying the custom design: the unpaid request is cancelled (server side,
   // never a paid one) and the merchant customises the card at onboarding step 3. Subscription untouched.
@@ -3193,8 +3234,8 @@ class Component extends DCLogic {
     const rwC=cv(clients.find(c=>c.id===s.target));
     const corrC=clients.find(c=>c.id===s.corr.client), corrE=corrC&&corrC.history.find(h=>h.id===s.corr.entry);
     const motifs=MOTIFS.map(x=>{ const a=s.corr.motif===x; return {label:x,bg:a?'#1C1F24':'#FFFFFF',fg:a?'#FFFFFF':'#1C1F24',border:a?'#1C1F24':'#D4D1C9',pressed:a,pick:()=>this.setState(y=>({corr:{...y.corr,motif:x},err:{}}))}; });
-    const mod={addClient:s.modal==='addClient',search:s.modal==='mSearch',reward:s.modal==='reward'&&!!rwC,correct:s.modal==='correct'&&!!corrE,logout:s.modal==='logout',wallet:s.modal==='wallet',gwallet:s.modal==='gwallet',cancelSub:s.modal==='cancelSub',delClient:s.modal==='delClient'&&!!sel,delAccount:s.modal==='delAccount',crop:s.modal==='crop'&&!!s.crop,manual:s.modal==='manual',any:!!s.modal};
-    const closeModal=()=>{ if(s.modal==='crop') return this.closeCrop(); if(!s.busy) this.setState({modal:null,err:{}}); };
+    const mod={addClient:s.modal==='addClient',search:s.modal==='mSearch',reward:s.modal==='reward'&&!!rwC,correct:s.modal==='correct'&&!!corrE,logout:s.modal==='logout',wallet:s.modal==='wallet',gwallet:s.modal==='gwallet',cancelSub:s.modal==='cancelSub',delClient:s.modal==='delClient'&&!!sel,delAccount:s.modal==='delAccount',employee:s.modal==='employee',crop:s.modal==='crop'&&!!s.crop,manual:s.modal==='manual',any:!!s.modal};
+    const closeModal=()=>{ if(s.modal==='crop') return this.closeCrop(); if(!s.busy&&!s.employeeSending) this.setState({modal:null,err:{}}); };
     const walletName=s.target==='google'?'Google Wallet':'Apple Wallet';
 
     const nv=this.nVals(s,isDesk,m,P,goal);
@@ -3224,7 +3265,13 @@ class Component extends DCLogic {
       profileControl:!DPA_NATIVE_IOS&&s.live&&this.api&&s.profiles&&s.profiles.length?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,onAdd:this.beginAddProfile,
         needsActivation:!DPA_NATIVE_IOS&&!!m.id&&m.id!==s.billingMerchantId&&!s.selectedActivated&&!s.hasAccess&&P&&(P.designStatus!=='draft'||designUnpaid(s.designReq)),
         onActivated:async()=>{const session=await this.api.session();await this.openLive(session);},initialChoice:s.initialChoice,onInitialDone:()=>this.setState({initialChoice:null})}):null,
-      showDemoHints:false, isWeb:!DPA_NATIVE_IOS, isNative:DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
+      canInviteEmployee:s.live&&s.role==='owner'&&s.hasAccess&&!!m.id,
+       openEmployeeInvite:this.openEmployeeInvite,
+       employee:s.employeeInvite,employeeInviteSent:s.employeeInviteSent,employeeInviteForm:!s.employeeInviteSent,
+       employeeInviteError:s.employeeInviteError,employeeInviteHasError:!!s.employeeInviteError,employeeSending:s.employeeSending,
+       setEmployeeFirst:e=>this.setEmployeeField('first',e),setEmployeeEmail:e=>this.setEmployeeField('email',e),
+       submitEmployeeInvite:this.submitEmployeeInvite,employeeInviteSubmitLabel:s.employeeSending?'Envoi en cours…':'Envoyer l’invitation',
+       showDemoHints:false, isWeb:!DPA_NATIVE_IOS, isNative:DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
       workspaceError:s.workspaceError||'Les données de votre espace n’ont pas pu être récupérées. Réessayez.', workspaceRetryLabel:s.busy?'Chargement…':'Réessayer d’ouvrir mon espace',retryWorkspace:()=>this._lastWorkspaceSession?this.openLive(this._lastWorkspaceSession):this.resetToLogin(),
       joinPage:this.registrationConfig(P),joinLogo:P.registrationLogoUrl||P.logoUrl||'',joinButtonFg:lum((P.registrationPage||{}).button||'#1C1F24')<0.45?'#FFFFFF':'#1C1F24',
       registrationDraft:s.registrationDraft||{},registrationPreview:this.registrationConfig({...P,registrationPage:s.registrationDraft||{}}),registrationTitle:this.registrationChange('title'),registrationDescription:this.registrationChange('description'),registrationBg:this.registrationChange('bg'),registrationFg:this.registrationChange('fg'),registrationButton:this.registrationChange('button'),saveRegistration:this.saveRegistration,toRegistration:()=>this.go('registration'),canEditRegistration:(s.demo||s.role==='owner')&&!locked,qrSaving:!!s.qrSaving,qrDownloadLabel:s.qrSaving?'Enregistrement…':(DPA_NATIVE_IOS?'Enregistrer dans Photos':'Télécharger le QR code'),
