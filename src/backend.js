@@ -111,6 +111,8 @@ const DB_ERRORS = {
   quote_expired: 'Ce récapitulatif a expiré. Actualisez-le avant de confirmer.',
   unsupported_subscription: 'La configuration de cet abonnement nécessite une vérification avant l’ajout.',
   employee_invite_failed: 'Invitation impossible pour le moment. Réessayez plus tard.',
+  team_stats_unavailable: 'Statistiques des employés temporairement indisponibles.',
+  team_stats_too_large: 'Trop de données pour charger les statistiques. Contactez le support.',
   employee_invite_link_failed: 'Impossible de créer le lien de mot de passe.',
   employee_email_failed: 'L’e-mail n’a pas pu être envoyé. Réessayez plus tard.',
   employee_email_not_configured: 'L’envoi d’e-mails n’est pas configuré. Contactez DPA Cards.',
@@ -432,6 +434,19 @@ const api = {
   ProfileControls: makeProfileControls(window.React),
   switchProfile: id => changeProfile(localStorage,window.location,profileUser.id,id,memberships),
   access: () => invokeFn('wallet/merchant-access', {}),
+  async listEmployees() {
+    if (!activeMerchantId) throw new Error('merchant_required');
+    const { data, error } = await sb.functions.invoke('merchant-team/list', {
+      body: {}, headers: { 'x-merchant-id': activeMerchantId },
+    });
+    if (error) {
+      let info={};
+      try { info=(await error.context.json())||{}; } catch (e) {}
+      const code=info.error||'team_stats_unavailable';
+      throw Object.assign(new Error(code), { code });
+    }
+    return data;
+  },
   async inviteEmployee({ first, email }) {
     if (!activeMerchantId) throw new Error('merchant_required');
     const { data, error } = await sb.functions.invoke('merchant-team/invite', {
@@ -550,7 +565,7 @@ const api = {
     });
     return toClient(r.card, r.customer, [r.event]);
   },
-  addVisit: (cardId, requestId) => rpc('add_visit', { p_card_id: cardId, p_request_id: requestId }),
+  addVisit: (cardId, requestId, source='client') => rpc('add_visit_recorded', { p_card_id: cardId, p_request_id: requestId, p_source: source }),
   redeem: (cardId, requestId) => rpc('redeem_reward', { p_card_id: cardId, p_request_id: requestId }),
   correct: (eventId, motif, note, requestId) =>
     rpc('correct_event', { p_event_id: eventId, p_motif: motif, p_note: note || null, p_request_id: requestId }),
