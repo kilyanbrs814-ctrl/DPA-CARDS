@@ -723,11 +723,11 @@ a:hover{color:#1A36C4}
               <h3 style="margin:0;font-size:15px;font-weight:700">Invitations en attente ({{ teamPendingCount }})</h3>
               <sc-if value="{{ teamNoPending }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:12px;border-radius:12px;background:#F8F7F4;color:#5E636B;font-size:13px">Aucune invitation en attente.</p></sc-if>
               <sc-for list="{{ teamPending }}" as="employee" hint-placeholder-count="2">
-                <div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid #EFEDE8">
+                <button type="button" onClick="{{ employee.open }}" aria-label="Gérer l’invitation de {{ employee.first }}" style="width:100%;display:flex;align-items:center;gap:11px;padding:11px 0;border:0;border-bottom:1px solid #EFEDE8;background:transparent;text-align:left;min-height:60px">
                   <div style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#FFF3DC;color:#8A5A00;flex:none"><span class="material-symbols-rounded">schedule</span></div>
                   <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700">{{ employee.first }}</div><div style="color:#5E636B;font-size:12px;overflow-wrap:anywhere">{{ employee.email }}</div></div>
-                  <span style="font-size:11px;color:#8A5A00;font-weight:700">En attente</span>
-                </div>
+                  <span style="font-size:12px;color:#8A5A00;font-weight:700">Gérer</span>
+                </button>
               </sc-for>
             </div>
             <div style="display:flex;flex-direction:column;gap:8px">
@@ -780,11 +780,11 @@ a:hover{color:#1A36C4}
               <h3 style="margin:0;font-size:15px;font-weight:700">Invitations en attente ({{ teamPendingCount }})</h3>
               <sc-if value="{{ teamNoPending }}" hint-placeholder-val="{{ false }}"><p style="margin:0;padding:12px;border-radius:12px;background:#F8F7F4;color:#5E636B;font-size:13px">Aucune invitation en attente.</p></sc-if>
               <sc-for list="{{ teamPending }}" as="employee" hint-placeholder-count="2">
-                <div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid #EFEDE8">
+                <button type="button" onClick="{{ employee.open }}" aria-label="Gérer l’invitation de {{ employee.first }}" style="width:100%;display:flex;align-items:center;gap:11px;padding:11px 0;border:0;border-bottom:1px solid #EFEDE8;background:transparent;text-align:left;min-height:60px">
                   <div style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#FFF3DC;color:#8A5A00;flex:none"><span class="material-symbols-rounded">schedule</span></div>
                   <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700">{{ employee.first }}</div><div style="color:#5E636B;font-size:12px;overflow-wrap:anywhere">{{ employee.email }}</div></div>
-                  <span style="font-size:11px;color:#8A5A00;font-weight:700">En attente</span>
-                </div>
+                  <span style="font-size:12px;color:#8A5A00;font-weight:700">Gérer</span>
+                </button>
               </sc-for>
             </div>
             <div style="display:flex;flex-direction:column;gap:8px">
@@ -1870,6 +1870,36 @@ a:hover{color:#1A36C4}
         </form>
       </sc-if>
     </sc-if>
+    <sc-if value="{{ mod.employeePending }}" hint-placeholder-val="{{ false }}">
+      <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Gérer une invitation</h2>
+      <div style="padding:16px;background:#F8F7F4;border-radius:14px">
+        <div style="font-weight:700;font-size:17px">{{ teamPendingDetail.first }}</div>
+        <div style="margin-top:4px;color:#5E636B;font-size:14px;overflow-wrap:anywhere">{{ teamPendingDetail.email }}</div>
+        <div style="margin-top:7px;font-size:12px;color:#8A5A00;font-weight:700">En attente d’activation</div>
+      </div>
+      <sc-if value="{{ teamActionHasError }}" hint-placeholder-val="{{ false }}"><p role="alert" style="padding:12px;margin:0;border-radius:12px;background:#FCEBEA;color:#B42318;font-size:14px">{{ teamActionError }}</p></sc-if>
+      <sc-if value="{{ teamActionHasSuccess }}" hint-placeholder-val="{{ false }}"><p role="status" style="padding:12px;margin:0;border-radius:12px;background:#E4F3EB;color:#1F6B45;font-size:14px">{{ teamActionSuccess }}</p></sc-if>
+      <sc-if value="{{ teamPendingModeActions }}" hint-placeholder-val="{{ true }}">
+        <button type="button" onClick="{{ teamResendInvite }}" disabled="{{ teamActionBusy }}" style="min-height:52px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-size:15px;font-weight:700">{{ teamResendLabel }}</button>
+        <button type="button" onClick="{{ teamEditInvite }}" disabled="{{ teamActionBusy }}" style="min-height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-size:15px;font-weight:700">Changer l’adresse e-mail</button>
+        <button type="button" onClick="{{ teamAskDelete }}" disabled="{{ teamActionBusy }}" style="min-height:52px;border:1.5px solid #F5C9C5;border-radius:14px;background:#FFFFFF;color:#B42318;font-size:15px;font-weight:700">Supprimer l’invitation</button>
+        <button type="button" onClick="{{ closeModal }}" disabled="{{ teamActionBusy }}" style="min-height:44px;border:0;background:transparent;color:#5E636B;font-weight:600">Fermer</button>
+      </sc-if>
+      <sc-if value="{{ teamPendingModeEdit }}" hint-placeholder-val="{{ false }}">
+        <p style="font-size:14px;margin:0;color:#5E636B;line-height:1.5">La nouvelle adresse recevra l’invitation. L’ancien compte personnel ne sera pas modifié.</p>
+        <form onSubmit="{{ teamSaveInviteEmail }}" style="display:flex;flex-direction:column;gap:12px">
+          <label for="team-new-email" style="font-size:14px;font-weight:700">Nouvelle adresse e-mail</label>
+          <input id="team-new-email" type="email" autoComplete="email" inputMode="email" required="{{ true }}" maxLength="254" value="{{ teamPendingEmail }}" onChange="{{ teamChangeInviteEmail }}" disabled="{{ teamActionBusy }}" style="width:100%;min-height:52px;border:1.5px solid #D4D1C9;border-radius:12px;padding:0 14px;font-size:16px;background:#FFFFFF">
+          <button type="submit" disabled="{{ teamActionBusy }}" style="min-height:52px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:15px">{{ teamSaveEmailLabel }}</button>
+          <button type="button" onClick="{{ teamCancelMode }}" disabled="{{ teamActionBusy }}" style="min-height:44px;border:0;background:transparent;color:#5E636B;font-weight:600">Annuler</button>
+        </form>
+      </sc-if>
+      <sc-if value="{{ teamPendingModeDelete }}" hint-placeholder-val="{{ false }}">
+        <p style="margin:0;font-size:15px;line-height:1.6;color:#3E424A">Supprimer l’invitation de <strong>{{ teamPendingDetail.first }}</strong> ? Son accès à ce commerce sera retiré, sans supprimer son compte ni ses accès à d’autres commerces.</p>
+        <button type="button" onClick="{{ teamConfirmDelete }}" disabled="{{ teamActionBusy }}" style="min-height:52px;border:0;border-radius:14px;background:#B42318;color:#FFFFFF;font-weight:700;font-size:15px">{{ teamDeleteLabel }}</button>
+        <button type="button" onClick="{{ teamCancelMode }}" disabled="{{ teamActionBusy }}" style="min-height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:700">Conserver l’invitation</button>
+      </sc-if>
+    </sc-if>
     <sc-if value="{{ mod.employeeStats }}" hint-placeholder-val="{{ false }}">
       <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Statistiques de {{ teamDetail.first }}</h2>
       <p style="margin:0;font-size:14px;color:#5E636B;overflow-wrap:anywhere">{{ teamDetail.email }}</p>
@@ -2234,7 +2264,7 @@ class Component extends DCLogic {
       err:{}, showPwd:false, remember:true, busy:false,
       merchant:{...M0}, sd:{...M0}, program:{...P0}, draft:{...P0}, clients:demoClients(),
       selId:null, notifs:demoNotifs(demoClients()), nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
-      modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple', employeeInvite:{first:'',email:''},employeeInviteSent:false,employeeInviteError:'',employeeSending:false,teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,
+      modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple', employeeInvite:{first:'',email:''},employeeInviteSent:false,employeeInviteError:'',employeeSending:false,teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',
       ob:{step:1,biz:'',activity:'Restaurant',otherActivity:'',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
       section:'profile', loadingHome:false, prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true, subscription:null, hasAccess:false, accessSource:'none', manualExpiresAt:null, billingPlan:null, tip:{open:null,pinned:false}, subVerify:null, billSum:null, billMsg:null,
       ...(JOIN_SLUG?{screen:'joinLoading',pubSlug:JOIN_SLUG,pubErr:null,pubWallet:null,pubApple:null,clients:[],notifs:[],consent:false,merchant:{...M0,business:'',slug:JOIN_SLUG}}:{}) };
@@ -2396,7 +2426,7 @@ class Component extends DCLogic {
     this.setState({busy:true,err:{}});
     try{
       const d=await api.loadAll(user);
-      const base={teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
+      const base={teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
         f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
       if(DPA_NATIVE_IOS&&(!d.merchant||!d.program||d.hasAccess!==true||d.program.designStatus==='draft')){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
@@ -2440,6 +2470,39 @@ class Component extends DCLogic {
     } catch(e) {
       if(request!==this._teamReq||this.state.merchant?.id!==merchantId)return;
       this.setState({teamLoading:false,teamError:this.api.errorMessage(e)});
+    }
+  };
+  openPendingEmployee=id=>{
+    const s=this.state;
+    if(!s.live||s.role!=='owner')return;
+    const person=(s.teamList?.pending||[]).find(p=>p.id===id);
+    if(!person)return;
+    this.setState({modal:'employeePending',teamSelectedPendingId:id,teamPendingMode:'actions',teamPendingEmail:person.email,teamActionBusy:false,teamActionError:'',teamActionSuccess:''});
+  };
+  setPendingMode=mode=>this.setState({teamPendingMode:mode,teamActionError:'',teamActionSuccess:''});
+  pendingAction=async(action,e)=>{
+    e?.preventDefault();
+    const s=this.state,merchantId=s.merchant?.id;
+    const person=(s.teamList?.pending||[]).find(p=>p.id===s.teamSelectedPendingId);
+    if(!s.live||s.role!=='owner'||!person||s.teamActionBusy||!merchantId)return;
+    const email=s.teamPendingEmail.trim().toLowerCase();
+    if(action==='change-email'){
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)||email.length>254)return this.setState({teamActionError:'Indiquez une adresse e-mail valide.'});
+      if(email===person.email.toLowerCase())return this.setState({teamActionError:'Indiquez une adresse différente.'});
+    }
+    this.setState({teamActionBusy:true,teamActionError:'',teamActionSuccess:''});
+    try{
+      await this.api.managePendingEmployee(action,person.id,email);
+      if(this.state.merchant?.id!==merchantId)return;
+      if(action==='resend')this.setState({teamActionBusy:false,teamActionSuccess:'Un nouvel e-mail d’invitation a été envoyé.'});
+      else {
+        this.setState({modal:null,teamActionBusy:false,teamSelectedPendingId:null});
+        this.showToast(action==='delete'?'Invitation supprimée.':'Nouvelle invitation envoyée.','ok');
+      }
+      this.refreshTeam(merchantId);
+    }catch(err){
+      if(this.state.merchant?.id!==merchantId)return;
+      this.setState({teamActionBusy:false,teamActionError:this.api.errorMessage(err)});
     }
   };
   openEmployeeInvite=()=>{ if(!this.state.live||this.state.role!=='owner'||!this.state.hasAccess||!this.state.merchant?.id)return; this.setState({modal:'employee',employeeInvite:{first:'',email:''},employeeInviteSent:false,employeeInviteError:'',employeeSending:false}); };
@@ -3319,8 +3382,8 @@ class Component extends DCLogic {
     const rwC=cv(clients.find(c=>c.id===s.target));
     const corrC=clients.find(c=>c.id===s.corr.client), corrE=corrC&&corrC.history.find(h=>h.id===s.corr.entry);
     const motifs=MOTIFS.map(x=>{ const a=s.corr.motif===x; return {label:x,bg:a?'#1C1F24':'#FFFFFF',fg:a?'#FFFFFF':'#1C1F24',border:a?'#1C1F24':'#D4D1C9',pressed:a,pick:()=>this.setState(y=>({corr:{...y.corr,motif:x},err:{}}))}; });
-    const mod={addClient:s.modal==='addClient',search:s.modal==='mSearch',reward:s.modal==='reward'&&!!rwC,correct:s.modal==='correct'&&!!corrE,logout:s.modal==='logout',wallet:s.modal==='wallet',gwallet:s.modal==='gwallet',cancelSub:s.modal==='cancelSub',delClient:s.modal==='delClient'&&!!sel,delAccount:s.modal==='delAccount',employee:s.modal==='employee',employeeStats:s.modal==='employeeStats',crop:s.modal==='crop'&&!!s.crop,manual:s.modal==='manual',any:!!s.modal};
-    const closeModal=()=>{ if(s.modal==='crop') return this.closeCrop(); if(!s.busy&&!s.employeeSending) this.setState({modal:null,err:{}}); };
+    const mod={addClient:s.modal==='addClient',search:s.modal==='mSearch',reward:s.modal==='reward'&&!!rwC,correct:s.modal==='correct'&&!!corrE,logout:s.modal==='logout',wallet:s.modal==='wallet',gwallet:s.modal==='gwallet',cancelSub:s.modal==='cancelSub',delClient:s.modal==='delClient'&&!!sel,delAccount:s.modal==='delAccount',employee:s.modal==='employee',employeeStats:s.modal==='employeeStats',employeePending:s.modal==='employeePending',crop:s.modal==='crop'&&!!s.crop,manual:s.modal==='manual',any:!!s.modal};
+    const closeModal=()=>{ if(s.modal==='crop') return this.closeCrop(); if(!s.busy&&!s.employeeSending&&!s.teamActionBusy) this.setState({modal:null,err:{}}); };
     const walletName=s.target==='google'?'Google Wallet':'Apple Wallet';
 
     const nv=this.nVals(s,isDesk,m,P,goal);
@@ -3353,7 +3416,14 @@ class Component extends DCLogic {
       canInviteEmployee:s.live&&s.role==='owner'&&s.hasAccess&&!!m.id,
        openEmployeeInvite:this.openEmployeeInvite,
        refreshTeam:()=>this.refreshTeam(),teamLoading:s.teamLoading,teamLoaded:s.teamLoaded&&!s.teamLoading,teamError:s.teamError,teamHasError:!!s.teamError,
-       teamPending:s.teamList?.pending||[],teamPendingCount:(s.teamList?.pending||[]).length,teamNoPending:!(s.teamList?.pending||[]).length,
+       teamPending:(s.teamList?.pending||[]).map(p=>({...p,open:()=>this.openPendingEmployee(p.id)})),teamPendingCount:(s.teamList?.pending||[]).length,teamNoPending:!(s.teamList?.pending||[]).length,
+       teamPendingDetail:(s.teamList?.pending||[]).find(p=>p.id===s.teamSelectedPendingId)||{first:'',email:''},
+       teamPendingEmail:s.teamPendingEmail,teamChangeInviteEmail:e=>this.setState({teamPendingEmail:e.target.value,teamActionError:''}),
+       teamPendingModeActions:s.teamPendingMode==='actions',teamPendingModeEdit:s.teamPendingMode==='edit',teamPendingModeDelete:s.teamPendingMode==='delete',
+       teamEditInvite:()=>this.setPendingMode('edit'),teamAskDelete:()=>this.setPendingMode('delete'),teamCancelMode:()=>this.setPendingMode('actions'),
+       teamResendInvite:()=>this.pendingAction('resend'),teamSaveInviteEmail:e=>this.pendingAction('change-email',e),teamConfirmDelete:()=>this.pendingAction('delete'),
+       teamActionBusy:s.teamActionBusy,teamActionError:s.teamActionError,teamActionHasError:!!s.teamActionError,teamActionSuccess:s.teamActionSuccess,teamActionHasSuccess:!!s.teamActionSuccess,
+       teamResendLabel:s.teamActionBusy?'Envoi en cours…':'Renvoyer l’e-mail',teamSaveEmailLabel:s.teamActionBusy?'Envoi en cours…':'Enregistrer et envoyer',teamDeleteLabel:s.teamActionBusy?'Suppression…':'Confirmer la suppression',
        teamActive:(s.teamList?.active||[]).map(t=>({...t,initials:initials(t.first),open:()=>this.setState({modal:'employeeStats',teamSelectedId:t.id})})),teamActiveCount:(s.teamList?.active||[]).length,teamNoActive:!(s.teamList?.active||[]).length,
        teamDetail:(s.teamList?.active||[]).find(t=>t.id===s.teamSelectedId)||{first:'',email:'',stats:{}},
        teamDetailStats:(()=>{const t=(s.teamList?.active||[]).find(t=>t.id===s.teamSelectedId),k=t?.stats||{};return [{label:'Scans validés',value:k.scans||0},{label:'Cartes uniques scannées',value:k.uniqueScannedCards||0},{label:'Passages validés',value:k.validatedVisits||0},{label:'Clients ajoutés',value:k.addedClients||0},{label:'Clients récurrents',value:k.recurringClients||0}];})(),
