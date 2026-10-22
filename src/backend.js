@@ -29,7 +29,7 @@ listenForAdminDeepLinks(forwardAdminAuthToPage);
 // Read the auth redirect before supabase-js consumes and clears the hash.
 const hash = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
 const query = new URLSearchParams(window.location.search || '');
-let recoveryPending = hash.get('type') === 'recovery';
+let recoveryPending = ['recovery','invite'].includes(hash.get('type')) || ['recovery','invite'].includes(query.get('type'));
 const linkError = hash.get('error_description') || query.get('error_description') || null;
 const linkErrorCode = hash.get('error_code') || query.get('error_code') || null;
 if (linkError) {
@@ -110,6 +110,16 @@ const DB_ERRORS = {
   quote_changed: 'Votre facturation a changé. Actualisez le récapitulatif avant de confirmer.',
   quote_expired: 'Ce récapitulatif a expiré. Actualisez-le avant de confirmer.',
   unsupported_subscription: 'La configuration de cet abonnement nécessite une vérification avant l’ajout.',
+  employee_invite_failed: 'Invitation impossible pour le moment. Réessayez plus tard.',
+  employee_invite_link_failed: 'Impossible de créer le lien de mot de passe.',
+  employee_email_failed: 'L’e-mail n’a pas pu être envoyé. Réessayez plus tard.',
+  employee_email_not_configured: 'L’envoi d’e-mails n’est pas configuré. Contactez DPA Cards.',
+  employee_already_owner: 'Cette personne est déjà propriétaire du commerce.',
+  employee_self_invite: 'Vous possédez déjà un accès à ce commerce.',
+  employee_first_invalid: 'Saisissez un prénom valide (80 caractères maximum).',
+  employee_email_invalid: 'Saisissez une adresse e-mail valide.',
+  merchant_required: 'Commerce introuvable. Actualisez la page.',
+  owner_only: 'Seul le propriétaire du commerce peut ajouter un employé.',
   primary_activation_required: 'Activez votre premier commerce avant d’en ajouter un autre.',
   workspace_members_unavailable: 'Votre compte est connecté, mais son rattachement au commerce n’a pas pu être chargé.',
   workspace_merchant_unavailable: 'Les informations de votre commerce n’ont pas pu être chargées.',
@@ -422,6 +432,19 @@ const api = {
   ProfileControls: makeProfileControls(window.React),
   switchProfile: id => changeProfile(localStorage,window.location,profileUser.id,id,memberships),
   access: () => invokeFn('wallet/merchant-access', {}),
+  async inviteEmployee({ first, email }) {
+    if (!activeMerchantId) throw new Error('merchant_required');
+    const { data, error } = await sb.functions.invoke('merchant-team/invite', {
+      body: { first, email }, headers: { 'x-merchant-id': activeMerchantId },
+    });
+    if (error) {
+      let info = {};
+      try { info = (await error.context.json()) || {}; } catch (e) {}
+      const code = info.error || 'employee_invite_failed';
+      throw Object.assign(new Error(code), { code });
+    }
+    return data;
+  },
   async createMerchant({ business, first, last, activity, slug, program, requestId }) {
     const r = await rpc(requestId ? 'create_profile' : 'create_merchant', {
       ...(requestId ? {p_request_id:requestId} : {}),
