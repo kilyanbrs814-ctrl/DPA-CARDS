@@ -109,15 +109,108 @@ async function invite(req: Request) {
     }
     throw new AppError(502, 'employee_email_failed');
   }
+  const { error: trackError } = await admin.from('employee_invitations').upsert({
+    merchant_id: merchantId, user_id: memberId, email, first_name: first,
+    invited_by: identity.user.id, invited_at: new Date().toISOString(),
+  }, { onConflict: 'merchant_id,user_id' });
+  if (trackError) console.error('employee invitation tracking failed', trackError.code);
   return { sent: true };
+}
+
+
+type TeamMember = { user_id: string; created_at: string };
+type Invitation = { user_id: string; first_name: string; email: string; invited_at: string };
+type Visit = { card_id: string; type: string; created_at: string; created_by: string | null; corrects_event_id: string | null; id: string };
+type Card = { id: string; customer_id: string };
+type Customer = { id: string; created_by: string | null };
+type Scan = { event_id: string; user_id: string };
+
+async function rows(table: string, fields: string, merchantId: string): Promise<any[]> {
+  const out: any[] = [];
+  for (let start = 0; start < 100000; start += 1000) {
+    const {data,error} = await admin.from(table).select(fields).eq('merchant_id',merchantId)
+      .range(start,start+999);
+    if(error) throw new AppError(500, 'team_stats_unavailable');
+    out.push(...(data||[]));
+    if (!data || data.length<1000) return out;
+  }
+  // Never show inaccurate totals as if they were complete.
+  throw new AppError(503,'team_stats_too_large');
+}
+async function teamList(req: Request) {
+  const bearer = /^Bearer\s+(.+)$/i.exec(req.headers.get('authorization') || '');
+  if (!bearer) throw new AppError(401, 'not_authenticated');
+  const { data: who, error: ae } = await admin.auth.getUser(bearer[1]);
+  if (ae || !who?.user) throw new AppError(401, 'not_authenticated');
+  const merchantId = req.headers.get('x-merchant-id') || '';
+  if (!uuidRe.test(merchantId)) throw new AppError(400, 'merchant_required');
+  const { data: owner, error: me } = await admin.from('merchant_members')
+    .select('role').eq('merchant_id',merchantId).eq('user_id',who.user.id).maybeSingle();
+  if (me) throw new AppError(500,'employee_membership_error');
+  if (owner?.role !== 'owner') throw new AppError(403,'owner_only');
+
+  const [{data: staff,error: se}, invitations, events, cards, customers, scans] = await Promise.all([
+    admin.from('merchant_members').select('user_id,created_at').eq('merchant_id',merchantId).eq('role','staff').limit(500),
+    rows('employee_invitations','user_id,first_name,email,invited_at',merchantId),
+    rows('card_events','id,card_id,type,created_by,created_at,corrects_event_id',merchantId),
+    rows('cards','id,customer_id',merchantId),
+    rows('customers','id,created_by',merchantId),
+    rows('employee_scan_validations','event_id,user_id',merchantId),
+  ]);
+  if (se) throw new AppError(500,'employee_membership_error');
+  const members = (staff || []) as TeamMember[];
+  if (members.length >= 500) throw new AppError(503,'team_stats_too_large');
+  const inviteById = new Map((invitations as Invitation[]).map(i => [i.user_id,i]));
+  const customerByCard = new Map((cards as Card[]).map(c=>[c.id,c.customer_id]));
+  const corrected = new Set((events as Visit[]).filter(e=>e.type==='correction' && e.corrects_event_id).map(e=>e.corrects_event_id));
+  const visits = (events as Visit[]).filter(e=>e.type==='visit' && !corrected.has(e.id));
+  const validIds = new Set(visits.map(e=>e.id));
+  const allScans = (scans as Scan[]).filter(v=>validIds.has(v.event_id));
+  const active: any[] = [], pending: any[] = [];
+  for (const membership of members) {
+    const {data: lookup,error: ue} = await admin.auth.admin.getUserById(membership.user_id);
+    if (ue || !lookup?.user) throw new AppError(500,'team_stats_unavailable');
+    const account = lookup.user;
+    const invitation = inviteById.get(membership.user_id);
+    const invitedAt = invitation?.invited_at || membership.created_at;
+    const lastSignIn = account.last_sign_in_at || '';
+    const joined = !!lastSignIn && new Date(lastSignIn).getTime() >= new Date(invitedAt).getTime();
+    const ownVisits = visits.filter(v=>v.created_by===membership.user_id);
+    const ownScans = allScans.filter(v=>v.user_id===membership.user_id);
+    const dayByCustomer = new Map<string, Set<string>>();
+    for (const v of ownVisits) {
+      const cid = customerByCard.get(v.card_id);
+      if (!cid) continue;
+      if (!dayByCustomer.has(cid)) dayByCustomer.set(cid,new Set());
+      dayByCustomer.get(cid)!.add(v.created_at.slice(0,10));
+    }
+    const item={
+      id: membership.user_id,
+      first: invitation?.first_name || String(account.user_metadata?.first_name || '').trim() || (account.email||'').split('@')[0],
+      email: invitation?.email || account.email || '',
+      invitedAt,
+      stats: {
+        scans: ownScans.length,
+        uniqueScannedCards: new Set(ownScans.map(v=>visits.find(ev=>ev.id===v.event_id)?.card_id).filter(Boolean)).size,
+        validatedVisits: ownVisits.length,
+        addedClients: (customers as Customer[]).filter(c=>c.created_by===membership.user_id).length,
+        recurringClients: [...dayByCustomer.values()].filter(days=>days.size>=2).length,
+      },
+    };
+    (joined?active:pending).push(item);
+  }
+  const alpha=(a:any,b:any)=>a.first.localeCompare(b.first,'fr');
+  active.sort(alpha);pending.sort((a,b)=>b.invitedAt.localeCompare(a.invitedAt));
+  return { active,pending };
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
-  if (req.method !== 'POST' || !new URL(req.url).pathname.endsWith('/merchant-team/invite'))
+  const route = new URL(req.url).pathname;
+  if (req.method !== 'POST' || !(route.endsWith('/merchant-team/invite') || route.endsWith('/merchant-team/list')))
     return reply(req, 404, { error: 'not_found' });
   try {
-    return reply(req, 200, await invite(req));
+    return reply(req, 200, route.endsWith('/merchant-team/list') ? await teamList(req) : await invite(req));
   } catch (error) {
     if (error instanceof AppError) return reply(req, error.status, { error: error.code });
     console.error('merchant-team invite failed', error instanceof Error ? error.name : 'unknown');
