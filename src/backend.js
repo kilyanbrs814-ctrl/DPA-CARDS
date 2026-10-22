@@ -111,6 +111,17 @@ const DB_ERRORS = {
   quote_expired: 'Ce récapitulatif a expiré. Actualisez-le avant de confirmer.',
   unsupported_subscription: 'La configuration de cet abonnement nécessite une vérification avant l’ajout.',
   employee_invite_failed: 'Invitation impossible pour le moment. Réessayez plus tard.',
+  employee_management_failed: 'Impossible de modifier cette invitation pour le moment.',
+  employee_pending_not_found: 'Cette invitation n’est plus en attente. Actualisez la liste.',
+  employee_already_active: 'Cet employé a déjà activé son accès. Actualisez la liste.',
+  employee_account_changed: 'Ce compte a changé depuis la création de l’invitation. Contactez le support.',
+  employee_email_unchanged: 'Indiquez une adresse différente de l’adresse actuelle.',
+  employee_target_already_member: 'Cette adresse appartient déjà à un membre de ce commerce.',
+  employee_email_change_partial: 'Le nouvel e-mail est parti mais l’ancien accès n’a pas pu être retiré. Contactez le support.',
+  employee_delete_failed: 'Impossible de supprimer cette invitation.',
+  employee_membership_error: 'Impossible de vérifier le rattachement de cet employé.',
+  invalid_request: 'Cette demande n’est pas valide.',
+
   team_stats_unavailable: 'Statistiques des employés temporairement indisponibles.',
   team_stats_too_large: 'Trop de données pour charger les statistiques. Contactez le support.',
   employee_invite_link_failed: 'Impossible de créer le lien de mot de passe.',
@@ -443,6 +454,21 @@ const api = {
       let info={};
       try { info=(await error.context.json())||{}; } catch (e) {}
       const code=info.error||'team_stats_unavailable';
+      throw Object.assign(new Error(code), { code });
+    }
+    return data;
+  },
+  async managePendingEmployee(action, employeeId, email) {
+    if (!activeMerchantId) throw new Error('merchant_required');
+    if (!['resend','change-email','delete'].includes(action)) throw new Error('invalid_request');
+    const { data, error } = await sb.functions.invoke('merchant-team/' + action, {
+      body: { employeeId, ...(action === 'change-email' ? { email } : {}) },
+      headers: { 'x-merchant-id': activeMerchantId },
+    });
+    if (error) {
+      let info = {};
+      try { info = (await error.context.json()) || {}; } catch (e) {}
+      const code = info.error || 'employee_management_failed';
       throw Object.assign(new Error(code), { code });
     }
     return data;
