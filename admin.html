@@ -42,7 +42,7 @@
       </div>
 
       <div id="admin-auth-message" role="status" style="min-height:20px;font-size:14px;color:#5E636B"></div>
-      <a href="/" style="color:#2448F0;text-decoration:none;font-weight:600;font-size:14px">← Retour à l’espace commerçant</a>
+      <a href="/" style="color:#2448F0;text-decoration:none;font-weight:600;font-size:14px">Retour à l’espace commerçant</a>
     </form>
     <div id="admin-denied" style="display:none">
       <h1 style="margin:0 0 8px;font-size:28px;line-height:1.1">Accès refusé</h1>
@@ -200,7 +200,7 @@ a:hover{color:#1A36C4}
                 <div style="text-align:right;font-variant-numeric:tabular-nums">{{ r.visits }}</div>
                 <div><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:{{ r.stBg }};color:{{ r.stFg }};font-size:13px;font-weight:700;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:{{ r.stFg }}"></span>{{ r.status }}</span></div>
                 <div style="font-size:14px;color:#4A4E55">{{ r.joined }}</div>
-                <span class="material-symbols-rounded" style="color:#9A9EA6">chevron_right</span>
+                
               </button>
             </sc-if>
             <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
