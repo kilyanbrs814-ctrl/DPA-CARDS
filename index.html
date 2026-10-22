@@ -593,7 +593,7 @@ a:hover{color:#1A36C4}
       <div style="display:flex;align-items:center;gap:10px;padding:0 8px">
         <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:40px;width:auto;display:block">
       </div>
-      <button type="button" onClick="{{ toScanner }}" style="height:52px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:22px">qr_code_scanner</span>Scanner une carte</button>
+      <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" style="height:52px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:22px">qr_code_scanner</span>Scanner une carte</button></sc-if>
       <nav aria-label="Navigation principale" style="display:flex;flex-direction:column;gap:4px">
         <sc-for list="{{ deskNav }}" as="n" hint-placeholder-count="6">
           <button type="button" onClick="{{ n.go }}" aria-current="{{ n.current }}" style="height:46px;padding:0 12px;border:1px solid {{ n.border }};border-radius:12px;background:{{ n.bg }};color:{{ n.fg }};font-weight:{{ n.weight }};font-size:15px;display:flex;align-items:center;gap:12px;text-align:left" style-hover="background:#FFFFFF"><span class="material-symbols-rounded" style="font-size:22px;color:{{ n.iconColor }}">{{ n.icon }}</span>{{ n.label }}</button>
@@ -659,11 +659,11 @@ a:hover{color:#1A36C4}
         <h1 style="margin:6px 0 4px;font-weight:800;font-size:clamp(30px,5vw,40px);letter-spacing:-0.03em;line-height:1.05">Bonjour {{ m.first }}</h1>
         <div style="font-size:17px;color:#3E424A;font-weight:500">{{ m.business }}</div>
       </div>
-      <button type="button" onClick="{{ toScanner }}" style="width:100%;min-height:96px;border:0;border-radius:22px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:18px;padding:18px 22px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25)" style-hover="background:#1A36C4">
+      <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" style="width:100%;min-height:96px;border:0;border-radius:22px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:18px;padding:18px 22px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25)" style-hover="background:#1A36C4">
         <div style="width:60px;height:60px;border-radius:16px;background:rgba(255,255,255,0.16);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:34px">qr_code_scanner</span></div>
         <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:22px;letter-spacing:-0.01em">Scanner une carte</div><div style="margin-top:4px;font-size:15px;color:#DCE3FF">Créditer un passage ou valider une récompense</div></div>
         
-      </button>
+      </button></sc-if>
       <sc-if value="{{ loadingHome }}" hint-placeholder-val="{{ false }}">
         <div aria-busy="true" aria-label="Chargement" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
           <div style="height:112px;border-radius:18px;background:#ECEAE4"></div><div style="height:112px;border-radius:18px;background:#ECEAE4"></div><div style="height:112px;border-radius:18px;background:#ECEAE4"></div><div style="height:112px;border-radius:18px;background:#ECEAE4"></div>
@@ -813,12 +813,12 @@ a:hover{color:#1A36C4}
         </div>
       </sc-if>
       <div style="display:flex;flex-direction:column;gap:10px">
-        <button type="button" onClick="{{ toScanner }}" style="min-height:76px;border:0;border-radius:20px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:14px;padding:12px 18px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25);transition:transform .12s ease" style-active="transform:scale(0.98);background:#1A36C4">
+        <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" style="min-height:76px;border:0;border-radius:20px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:14px;padding:12px 18px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25);transition:transform .12s ease" style-active="transform:scale(0.98);background:#1A36C4">
           <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,0.16);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:30px">qr_code_scanner</span></div>
           <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:19px">Scanner une carte</div><div style="margin-top:2px;font-size:14px;color:#DCE3FF">Passage ou récompense</div></div>
           
-        </button>
-        <button type="button" onClick="{{ openAddClient }}" style="min-height:56px;border:1.5px solid #D4D1C9;border-radius:16px;background:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-active="background:#F1F0EC"><span class="material-symbols-rounded" style="font-size:22px;color:#2448F0">person_add</span>Ajouter un client</button>
+        </button></sc-if>
+        <sc-if value="{{ canAddClients }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ openAddClient }}" style="min-height:56px;border:1.5px solid #D4D1C9;border-radius:16px;background:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-active="background:#F1F0EC"><span class="material-symbols-rounded" style="font-size:22px;color:#2448F0">person_add</span>Ajouter un client</button></sc-if>
       </div>
       <section aria-labelledby="mact-h" style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -1909,7 +1909,22 @@ a:hover{color:#1A36C4}
         </sc-for>
       </div>
       <p style="margin:0;font-size:12px;color:#5E636B;line-height:1.6">Les scans sont les passages validés depuis le scanner depuis l’activation du suivi. Un client récurrent est venu sur au moins deux jours différents avec cet employé. Pas de synchronisation avec Planity.</p>
-      <button type="button" onClick="{{ closeModal }}" style="min-height:52px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700">Fermer</button>
+      <div style="border-top:1px solid #E4E1DA;padding-top:16px">
+        <h3 style="margin:0 0 6px;font-size:17px;font-weight:800">Autorisations de l’employé</h3>
+        <p style="margin:0 0 14px;color:#5E636B;font-size:13px;line-height:1.5">Choisissez ce que cet employé peut faire dans ce commerce. Les changements s’appliquent immédiatement côté serveur.</p>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ teamPermissionOptions }}" as="p" hint-placeholder-count="5">
+            <button type="button" onClick="{{ p.toggle }}" aria-pressed="{{ p.enabled }}" disabled="{{ teamPermissionBusy }}" style="display:flex;align-items:center;gap:12px;text-align:left;min-height:65px;width:100%;border:1px solid #E4E1DA;border-radius:13px;background:#FFFFFF;padding:10px 13px">
+              <span style="flex:1;min-width:0"><span style="display:block;font-weight:700;font-size:14px">{{ p.label }}</span><span style="display:block;margin-top:3px;font-size:12px;color:#5E636B;line-height:1.4">{{ p.hint }}</span></span>
+              <span style="border-radius:999px;padding:7px 10px;background:{{ p.bg }};color:{{ p.fg }};font-size:12px;font-weight:800;flex:none">{{ p.status }}</span>
+            </button>
+          </sc-for>
+        </div>
+        <sc-if value="{{ teamPermissionHasError }}" hint-placeholder-val="{{ false }}"><p role="alert" style="margin:12px 0 0;color:#B42318;font-size:13px">{{ teamPermissionError }}</p></sc-if>
+        <sc-if value="{{ teamPermissionSuccess }}" hint-placeholder-val="{{ false }}"><p role="status" style="margin:12px 0 0;color:#1F7A4F;font-size:13px;font-weight:700">Autorisations enregistrées.</p></sc-if>
+        <button type="button" onClick="{{ teamSavePermissions }}" disabled="{{ teamPermissionBusy }}" style="width:100%;min-height:52px;margin-top:15px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-size:15px;font-weight:700">{{ teamPermissionSaveLabel }}</button>
+      </div>
+      <button type="button" onClick="{{ closeModal }}" disabled="{{ teamPermissionBusy }}" style="min-height:46px;border:1px solid #D4D1C9;border-radius:14px;background:#FFFFFF;color:#1C1F24;font-weight:700">Fermer</button>
     </sc-if>
     <sc-if value="{{ mod.addClient }}" hint-placeholder-val="{{ false }}">
       <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Ajouter un client</h2>
@@ -2264,7 +2279,7 @@ class Component extends DCLogic {
       err:{}, showPwd:false, remember:true, busy:false,
       merchant:{...M0}, sd:{...M0}, program:{...P0}, draft:{...P0}, clients:demoClients(),
       selId:null, notifs:demoNotifs(demoClients()), nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
-      modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple', employeeInvite:{first:'',email:''},employeeInviteSent:false,employeeInviteError:'',employeeSending:false,teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',
+      modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple', employeeInvite:{first:'',email:''},employeeInviteSent:false,employeeInviteError:'',employeeSending:false,teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,
       ob:{step:1,biz:'',activity:'Restaurant',otherActivity:'',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
       section:'profile', loadingHome:false, prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true, subscription:null, hasAccess:false, accessSource:'none', manualExpiresAt:null, billingPlan:null, tip:{open:null,pinned:false}, subVerify:null, billSum:null, billMsg:null,
       ...(JOIN_SLUG?{screen:'joinLoading',pubSlug:JOIN_SLUG,pubErr:null,pubWallet:null,pubApple:null,clients:[],notifs:[],consent:false,merchant:{...M0,business:'',slug:JOIN_SLUG}}:{}) };
@@ -2426,7 +2441,7 @@ class Component extends DCLogic {
     this.setState({busy:true,err:{}});
     try{
       const d=await api.loadAll(user);
-      const base={teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
+      const base={teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',permissions:d.permissions||null,subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
         f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
       if(DPA_NATIVE_IOS&&(!d.merchant||!d.program||d.hasAccess!==true||d.program.designStatus==='draft')){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
@@ -2471,6 +2486,36 @@ class Component extends DCLogic {
       if(request!==this._teamReq||this.state.merchant?.id!==merchantId)return;
       this.setState({teamLoading:false,teamError:this.api.errorMessage(e)});
     }
+  };
+
+  canEmployee=(permission)=>{
+    const s=this.state;
+    return !s.live||s.role==='owner'||s.permissions?.[permission]===true;
+  };
+  openEmployeeStats=(id)=>{
+    const person=(this.state.teamList?.active||[]).find(p=>p.id===id);
+    if(!person||this.state.role!=='owner')return;
+    this.setState({modal:'employeeStats',teamSelectedId:id,
+      teamPermissionDraft:{scan:true,add_clients:true,rewards:true,corrections:true,notifications:true,...(person.permissions||{})},
+      teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false});
+  };
+  toggleEmployeePermission=(key)=>{
+    if(this.state.teamPermissionBusy)return;
+    this.setState(s=>({teamPermissionDraft:{...s.teamPermissionDraft,[key]:!s.teamPermissionDraft[key]},teamPermissionSuccess:false,teamPermissionError:''}));
+  };
+  saveEmployeePermissions=async()=>{
+    const s=this.state,mid=s.merchant?.id,uid=s.teamSelectedId;
+    if(s.teamPermissionBusy||s.role!=='owner'||!mid||!uid||s.modal!=='employeeStats')return;
+    const permissions={scan:!!s.teamPermissionDraft.scan,add_clients:!!s.teamPermissionDraft.add_clients,
+      rewards:!!s.teamPermissionDraft.rewards,corrections:!!s.teamPermissionDraft.corrections,
+      notifications:!!s.teamPermissionDraft.notifications};
+    this.setState({teamPermissionBusy:true,teamPermissionError:'',teamPermissionSuccess:false});
+    try{
+      const result=await this.api.saveEmployeePermissions(uid,permissions);
+      if(this.state.merchant?.id!==mid)return;
+      this.setState(t=>({teamPermissionBusy:false,teamPermissionSuccess:true,
+        teamList:{...t.teamList,active:(t.teamList?.active||[]).map(p=>p.id===uid?{...p,permissions:result.permissions}:p)}}));
+    }catch(e){if(this.state.merchant?.id!==mid)return;this.setState({teamPermissionBusy:false,teamPermissionError:this.api.errorMessage(e)});}
   };
   openPendingEmployee=id=>{
     const s=this.state;
@@ -2554,6 +2599,13 @@ class Component extends DCLogic {
     finally{this._accessBusy=false;}
   };
   go(screen,extra={}){
+    if(this.state.live&&this.state.role==='staff'){
+      const perm={scanner:'scan',notifs:'notifications',notifNew:'notifications',join:'add_clients'};
+      if(perm[screen]&&!this.canEmployee(perm[screen])){
+        this.showToast('Votre responsable n’a pas autorisé cet accès.','error');
+        return;
+      }
+    }
     // Native iOS is a free companion only for previously activated web accounts.
     if(DPA_NATIVE_IOS){
       if(['signup','signupSent','ob','obDone','designSent','billing','subSuccess','subCancel','designPaid','designCancel'].includes(screen)
@@ -3215,6 +3267,7 @@ class Component extends DCLogic {
     let lockKind=s.screen==='locked'?s.lockKind:null;
     if(locked) LOCKED_SCREENS.forEach(k=>{ if(S[k]){ S[k]=false; S.locked=true; lockKind=k; } });
     const m=s.merchant, P=s.program, goal=+P.goal, unit=this.unitOf(P), step=this.stepOf(P);
+    const canScan=this.canEmployee('scan'),canAddClients=this.canEmployee('add_clients'),canReward=this.canEmployee('rewards'),canCorrections=this.canEmployee('corrections'),canNotify=this.canEmployee('notifications');
     const F={}, err=s.err, eb={}, inv={};
     Object.keys(s.f).forEach(k=>F[k]=this.fh(k));
     ['loginEmail','loginPwd','suBiz','suFirst','suLast','suEmail','suPwd','fpEmail','manualNo','joinFirst','joinEmail','pwdCur','pwdNew','pwdConf','obbiz','obreward','sdfirst','sdemail','sdbusiness','obprog','obhex','drdesc','drname','drcontact','drcolors','delConfirm'].forEach(k=>{ eb[k]=err[k]?'#B42318':'#D4D1C9'; inv[k]=!!err[k]; });
@@ -3264,14 +3317,14 @@ class Component extends DCLogic {
     const scanActs=[];
     if(sc){ const openRw=()=>this.setState({modal:'reward',target:sc.id});
       if(s.scan.used){ scanActs.push(btn(PRIMARY,'Scanner une autre carte','qr_code_scanner',this.resetScan)); scanActs.push(btn(SECONDARY,'Voir la fiche client','person',sc.open)); }
-      else if(sc.hasReward){ scanActs.push(btn(SUCCESS,'Utiliser la récompense','redeem',openRw)); if(!s.scan.added) scanActs.push(s.busy?btn(SECONDARY,'Validation en cours…','',()=>{},{disabled:true}):btn(SECONDARY,addLabel,'add',()=>this.addVisit(sc.id,'scan'))); else scanActs.push(btn(SECONDARY,'Terminer','check',this.resetScan)); }
+      else if(sc.hasReward){ if(canReward)scanActs.push(btn(SUCCESS,'Utiliser la récompense','redeem',openRw)); if(!s.scan.added) scanActs.push(s.busy?btn(SECONDARY,'Validation en cours…','',()=>{},{disabled:true}):btn(SECONDARY,addLabel,'add',()=>this.addVisit(sc.id,'scan'))); else scanActs.push(btn(SECONDARY,'Terminer','check',this.resetScan)); }
       else if(!s.scan.added){ scanActs.push(busyBtn(addLabel,'add',()=>this.addVisit(sc.id,'scan'))); scanActs.push(btn(SECONDARY,'Annuler','close',this.resetScan,{disabled:s.busy})); }
       else { scanActs.push(btn(PRIMARY,'Scanner une autre carte','qr_code_scanner',this.resetScan)); scanActs.push(btn(SECONDARY,'Voir la fiche client','person',sc.open)); }
       scanActs.forEach(a=>{ a.opacity=a.opacity||(a.disabled?0.6:1); });
     }
     const selActs=[];
-    if(sel){ if(sel.hasReward) selActs.push(btn(SUCCESS,'Utiliser la récompense','redeem',()=>this.setState({modal:'reward',target:sel.id})));
-      selActs.push(s.busy&&s.modal===null?btn(sel.hasReward?SECONDARY:PRIMARY,'Validation en cours…','',()=>{},{disabled:true}):btn(sel.hasReward?SECONDARY:PRIMARY,addLabel,'add',()=>this.addVisit(sel.id,'client')));
+    if(sel){ if(sel.hasReward&&canReward) selActs.push(btn(SUCCESS,'Utiliser la récompense','redeem',()=>this.setState({modal:'reward',target:sel.id})));
+      if(canScan)selActs.push(s.busy&&s.modal===null?btn(sel.hasReward?SECONDARY:PRIMARY,'Validation en cours…','',()=>{},{disabled:true}):btn(sel.hasReward?SECONDARY:PRIMARY,addLabel,'add',()=>this.addVisit(sel.id,'client')));
       selActs.forEach(a=>{ a.opacity=a.disabled?0.65:1; }); }
 
     const live=s.live, [c1,c2,c3]=live?[clients[0],clients[1],clients[2]]:['c1','c2','c3'].map(k=>clients.find(c=>c.id===k));
@@ -3346,11 +3399,11 @@ class Component extends DCLogic {
 
     const navDef=[{k:'home',label:'Accueil',icon:'home'},{k:'clients',label:'Clients',icon:'group'},{k:'scanner',label:'Scanner',icon:'qr_code_scanner'},{k:'notifs',label:'Notifications',icon:'notifications'},{k:'more',label:'Réglages',icon:'settings'}];
     const activeKey=scr==='client'?'clients':(scr==='notifNew'?'notifs':(['invite','settings','card','registration'].includes(scr)?'more':scr));
-    const mobNav=navDef.map(n=>{ const a=activeKey===n.k, c=n.k==='scanner';
+    const mobNav=navDef.filter(n=>(n.k!=='scanner'||canScan)&&(n.k!=='notifs'||canNotify)).map(n=>{ const a=activeKey===n.k, c=n.k==='scanner';
       return {...n,current:a?'page':undefined,labelColor:a?'#2448F0':'#5E636B',iconColor:c?'#FFFFFF':(a?'#2448F0':'#5E636B'),iconBg:c?'#2448F0':(a?'#E8EDFF':'transparent'),iconW:c?'56px':'52px',iconH:c?'56px':'32px',iconMt:c?'-26px':'0px',iconShadow:c?'0 6px 16px rgba(36,72,240,0.35)':'none',iconFill:a?"'FILL' 1":"'FILL' 0",go:go(n.k)}; });
     const deskDef=[{k:'home',label:'Accueil',icon:'home'},{k:'clients',label:'Clients',icon:'group'},{k:'scanner',label:'Scanner',icon:'qr_code_scanner'},{k:'notifs',label:'Notifications',icon:'notifications'},{k:'invite',label:'Inviter mes clients',icon:'qr_code_2'},{k:'more',label:'Paramètres',icon:'settings'}];
     const deskActive=scr==='client'?'clients':(scr==='settings'?'more':(scr==='notifNew'?'notifs':scr));
-    const deskNav=deskDef.map(n=>{ const a=deskActive===n.k; return {...n,current:a?'page':undefined,bg:a?'#FFFFFF':'transparent',fg:a?'#1C1F24':'#4A4E55',iconColor:a?'#2448F0':'#6B6F76',border:a?'#E4E1DA':'transparent',weight:a?'700':'500',go:go(n.k)}; });
+    const deskNav=deskDef.filter(n=>(n.k!=='scanner'||canScan)&&(n.k!=='notifs'||canNotify)).map(n=>{ const a=deskActive===n.k; return {...n,current:a?'page':undefined,bg:a?'#FFFFFF':'transparent',fg:a?'#1C1F24':'#4A4E55',iconColor:a?'#2448F0':'#6B6F76',border:a?'#E4E1DA':'transparent',weight:a?'700':'500',go:go(n.k)}; });
 
     const openSec=k=>()=>this.go('settings',{section:k});
     const moreItems=[
@@ -3383,7 +3436,7 @@ class Component extends DCLogic {
     const corrC=clients.find(c=>c.id===s.corr.client), corrE=corrC&&corrC.history.find(h=>h.id===s.corr.entry);
     const motifs=MOTIFS.map(x=>{ const a=s.corr.motif===x; return {label:x,bg:a?'#1C1F24':'#FFFFFF',fg:a?'#FFFFFF':'#1C1F24',border:a?'#1C1F24':'#D4D1C9',pressed:a,pick:()=>this.setState(y=>({corr:{...y.corr,motif:x},err:{}}))}; });
     const mod={addClient:s.modal==='addClient',search:s.modal==='mSearch',reward:s.modal==='reward'&&!!rwC,correct:s.modal==='correct'&&!!corrE,logout:s.modal==='logout',wallet:s.modal==='wallet',gwallet:s.modal==='gwallet',cancelSub:s.modal==='cancelSub',delClient:s.modal==='delClient'&&!!sel,delAccount:s.modal==='delAccount',employee:s.modal==='employee',employeeStats:s.modal==='employeeStats',employeePending:s.modal==='employeePending',crop:s.modal==='crop'&&!!s.crop,manual:s.modal==='manual',any:!!s.modal};
-    const closeModal=()=>{ if(s.modal==='crop') return this.closeCrop(); if(!s.busy&&!s.employeeSending&&!s.teamActionBusy) this.setState({modal:null,err:{}}); };
+    const closeModal=()=>{ if(s.modal==='crop') return this.closeCrop(); if(!s.busy&&!s.employeeSending&&!s.teamActionBusy&&!s.teamPermissionBusy) this.setState({modal:null,err:{}}); };
     const walletName=s.target==='google'?'Google Wallet':'Apple Wallet';
 
     const nv=this.nVals(s,isDesk,m,P,goal);
@@ -3424,8 +3477,19 @@ class Component extends DCLogic {
        teamResendInvite:()=>this.pendingAction('resend'),teamSaveInviteEmail:e=>this.pendingAction('change-email',e),teamConfirmDelete:()=>this.pendingAction('delete'),
        teamActionBusy:s.teamActionBusy,teamActionError:s.teamActionError,teamActionHasError:!!s.teamActionError,teamActionSuccess:s.teamActionSuccess,teamActionHasSuccess:!!s.teamActionSuccess,
        teamResendLabel:s.teamActionBusy?'Envoi en cours…':'Renvoyer l’e-mail',teamSaveEmailLabel:s.teamActionBusy?'Envoi en cours…':'Enregistrer et envoyer',teamDeleteLabel:s.teamActionBusy?'Suppression…':'Confirmer la suppression',
-       teamActive:(s.teamList?.active||[]).map(t=>({...t,initials:initials(t.first),open:()=>this.setState({modal:'employeeStats',teamSelectedId:t.id})})),teamActiveCount:(s.teamList?.active||[]).length,teamNoActive:!(s.teamList?.active||[]).length,
+       teamActive:(s.teamList?.active||[]).map(t=>({...t,initials:initials(t.first),open:()=>this.openEmployeeStats(t.id)})),teamActiveCount:(s.teamList?.active||[]).length,teamNoActive:!(s.teamList?.active||[]).length,
        teamDetail:(s.teamList?.active||[]).find(t=>t.id===s.teamSelectedId)||{first:'',email:'',stats:{}},
+       teamPermissionOptions:[{key:'scan',label:'Scanner et créditer des passages',hint:'Valider les passages sur les cartes des clients'},
+         {key:'add_clients',label:'Ajouter des clients',hint:'Créer des fiches clients depuis le commerce'},
+         {key:'rewards',label:'Remettre des récompenses',hint:'Valider les cadeaux du programme'},
+         {key:'corrections',label:'Corriger des passages',hint:'Annuler un passage saisi par erreur'},
+         {key:'notifications',label:'Gérer les notifications',hint:'Créer et envoyer des messages Wallet'}]
+         .map(p=>({...p,enabled:!!s.teamPermissionDraft[p.key],status:s.teamPermissionDraft[p.key]?'Autorisé':'Bloqué',
+           bg:s.teamPermissionDraft[p.key]?'#E4F3EB':'#F1F0EC',fg:s.teamPermissionDraft[p.key]?'#1F7A4F':'#5E636B',
+           toggle:()=>this.toggleEmployeePermission(p.key)})),
+       teamSavePermissions:this.saveEmployeePermissions,teamPermissionBusy:s.teamPermissionBusy,
+       teamPermissionError:s.teamPermissionError,teamPermissionHasError:!!s.teamPermissionError,
+       teamPermissionSuccess:s.teamPermissionSuccess,teamPermissionSaveLabel:s.teamPermissionBusy?'Enregistrement…':'Enregistrer les autorisations',
        teamDetailStats:(()=>{const t=(s.teamList?.active||[]).find(t=>t.id===s.teamSelectedId),k=t?.stats||{};return [{label:'Scans validés',value:k.scans||0},{label:'Cartes uniques scannées',value:k.uniqueScannedCards||0},{label:'Passages validés',value:k.validatedVisits||0},{label:'Clients ajoutés',value:k.addedClients||0},{label:'Clients récurrents',value:k.recurringClients||0}];})(),
        employee:s.employeeInvite,employeeInviteSent:s.employeeInviteSent,employeeInviteForm:!s.employeeInviteSent,
        employeeInviteError:s.employeeInviteError,employeeInviteHasError:!!s.employeeInviteError,employeeSending:s.employeeSending,
@@ -3479,6 +3543,7 @@ class Component extends DCLogic {
         return {ok:false,retry:false,loading:true,notLoading:false,icon:'',bg:'#E8EDFF',fg:'#2448F0',title:'Confirmation du paiement…',text:'Nous vérifions votre paiement auprès de Stripe.'}; })(),
       resumeDesign:this.resumeDesign, designContinue:this.designContinue,
       downloadQr:()=>locked?this.go('invite'):(s.live?this.downloadJoinQr():this.showToast('Démo : le téléchargement du QR code n’est pas activé.','info')),
+      canScan,canAddClients,canReward,canCorrections,canNotify,
       mobNav, deskNav, toScanner:go('scanner'), toMore:go('more'), toInvite:go('invite'), toCard:go('card'), toClients:go('clients'), toJoin:()=>{ if(locked) return this.go('invite'); const w=window.open(pubUrl,'_blank'); if(w) w.opener=null; else window.location.assign(pubUrl); }, toHome:go('home'),
       mInitials:initials(m.first+' '+m.last), todayLabel:s.live?todayLong():'Mercredi 30 septembre',
       loadingHome:s.loadingHome, notLoadingHome:!s.loadingHome, stats, activities, hasActivities:activities.length>0, noActivities:activities.length===0,
@@ -3521,7 +3586,7 @@ class Component extends DCLogic {
       mListCount:list.length+' client'+(list.length>1?'s':''), mSelActs, mResults, mNoResults:mResults.length===0, mq:s.mq, setMq:e=>this.setState({mq:e.target.value}),
       noDemoHints:true,
       closeScanner:()=>{ if(s.busy) return; const p=s.prevScreen; this.go(p&&p!=='scanner'?p:'home'); }, openSearch:()=>this.setState({modal:'mSearch',mq:''}),
-      openAddClient:()=>locked?this.go('invite'):this.setState({modal:'addClient'}), addToJoin:()=>{ this.setState({modal:null}); this.go('join'); },
+      openAddClient:()=>!this.canEmployee('add_clients')?this.showToast('Votre responsable n’a pas autorisé cet accès.','error'):(locked?this.go('invite'):this.setState({modal:'addClient'})), addToJoin:()=>{ if(!this.canEmployee('add_clients'))return;this.setState({modal:null});this.go('join'); },
       mNRows:nv.nRows.map((r,i)=>({...r,bt:bt(i)}))
     };
   }
