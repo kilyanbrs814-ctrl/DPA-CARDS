@@ -1230,7 +1230,7 @@ a:hover{color:#1A36C4}
           <span class="material-symbols-rounded" style="font-size:36px;color:#9A9EA6">person_search</span>
           <div style="margin-top:10px;font-weight:700;font-size:17px">{{ emptyTitle }}</div>
           <div style="margin:6px auto 0;max-width:300px;color:#5E636B;font-size:15px;line-height:1.5">{{ emptyText }}</div>
-          <sc-if value="{{ noClientsAtAll }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openAddClient }}" style="margin-top:18px;min-height:52px;padding:0 20px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px">Ajouter un client</button></sc-if>
+          <sc-if value="{{ noClientsAtAll }}" hint-placeholder-val="{{ false }}"><sc-if value="{{ canAddClients }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ openAddClient }}" style="margin-top:18px;min-height:52px;padding:0 20px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px">Ajouter un client</button></sc-if></sc-if>
         </div>
       </sc-if>
       <sc-if value="{{ hasList }}" hint-placeholder-val="{{ true }}">
