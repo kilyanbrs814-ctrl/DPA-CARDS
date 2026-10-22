@@ -129,7 +129,7 @@ async function rows(table: string, fields: string, merchantId: string): Promise<
   const out: any[] = [];
   for (let start = 0; start < 100000; start += 1000) {
     const {data,error} = await admin.from(table).select(fields).eq('merchant_id',merchantId)
-      .range(start,start+999);
+      .order(({employee_invitations:'user_id',employee_scan_validations:'event_id'} as Record<string,string>)[table] || 'id', { ascending: true }).range(start,start+999);
     if(error) throw new AppError(500, 'team_stats_unavailable');
     out.push(...(data||[]));
     if (!data || data.length<1000) return out;
@@ -162,6 +162,7 @@ async function teamList(req: Request) {
   if (members.length >= 500) throw new AppError(503,'team_stats_too_large');
   const inviteById = new Map((invitations as Invitation[]).map(i => [i.user_id,i]));
   const customerByCard = new Map((cards as Card[]).map(c=>[c.id,c.customer_id]));
+  const franceDay = new Intl.DateTimeFormat('en-CA',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'});
   const corrected = new Set((events as Visit[]).filter(e=>e.type==='correction' && e.corrects_event_id).map(e=>e.corrects_event_id));
   const visits = (events as Visit[]).filter(e=>e.type==='visit' && !corrected.has(e.id));
   const validIds = new Set(visits.map(e=>e.id));
@@ -182,7 +183,7 @@ async function teamList(req: Request) {
       const cid = customerByCard.get(v.card_id);
       if (!cid) continue;
       if (!dayByCustomer.has(cid)) dayByCustomer.set(cid,new Set());
-      dayByCustomer.get(cid)!.add(v.created_at.slice(0,10));
+      dayByCustomer.get(cid)!.add(franceDay.format(new Date(v.created_at)));
     }
     const item={
       id: membership.user_id,
