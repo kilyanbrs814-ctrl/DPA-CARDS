@@ -205,16 +205,141 @@ async function teamList(req: Request) {
   return { active,pending };
 }
 
+
+type ActionKind = 'resend' | 'change-email' | 'delete';
+
+async function ownerForPending(req: Request, id: string) {
+  const jwt = /^Bearer\s+(.+)$/i.exec(req.headers.get('authorization') || '');
+  if (!jwt) throw new AppError(401, 'not_authenticated');
+  const {data: who,error: authError} = await admin.auth.getUser(jwt[1]);
+  if (authError || !who?.user) throw new AppError(401,'not_authenticated');
+  const merchantId = req.headers.get('x-merchant-id') || '';
+  if (!uuidRe.test(merchantId) || !uuidRe.test(id)) throw new AppError(400,'invalid_request');
+  const {data: owner,error: ownerError} = await admin.from('merchant_members')
+    .select('role').eq('merchant_id',merchantId).eq('user_id',who.user.id).maybeSingle();
+  if (ownerError) throw new AppError(500,'employee_membership_error');
+  if (owner?.role !== 'owner') throw new AppError(403,'owner_only');
+  const {data: membership,error: memberError} = await admin.from('merchant_members')
+    .select('created_at,role').eq('merchant_id',merchantId).eq('user_id',id).maybeSingle();
+  if (memberError) throw new AppError(500,'employee_membership_error');
+  if (membership?.role !== 'staff') throw new AppError(404,'employee_pending_not_found');
+  const [{data: target,error: targetError},{data: invitation,error: inviteError},{data: merchant,error: merchantError}] = await Promise.all([
+    admin.auth.admin.getUserById(id),
+    admin.from('employee_invitations').select('first_name,email,invited_at').eq('merchant_id',merchantId).eq('user_id',id).maybeSingle(),
+    admin.from('merchants').select('business_name').eq('id',merchantId).single(),
+  ]);
+  if (targetError || !target?.user || inviteError || merchantError || !merchant) throw new AppError(500,'employee_membership_error');
+  const invitedAt = invitation?.invited_at || membership.created_at;
+  const signedIn = target.user.last_sign_in_at;
+  if (signedIn && new Date(signedIn).getTime() >= new Date(invitedAt).getTime())
+    throw new AppError(409,'employee_already_active');
+  return {
+    merchantId, actorId:who.user.id, targetId:id, originalEmail:(target.user.email||'').toLowerCase(),
+    first:String(invitation?.first_name || target.user.user_metadata?.first_name || target.user.email?.split('@')[0] || 'Employé').trim().slice(0,80),
+    business:merchant.business_name,
+  };
+}
+
+async function generateEmployeeLink(email: string) {
+  let link = await admin.auth.admin.generateLink({
+    type:'invite',email,options:{redirectTo:site+'/'},
+  });
+  if (link.error && /already|registered|exists/i.test(link.error.message||'')) {
+    link = await admin.auth.admin.generateLink({
+      type:'recovery',email,options:{redirectTo:site+'/'},
+    });
+  }
+  if (link.error || !link.data?.user?.id || !link.data?.properties?.action_link)
+    throw new AppError(502,'employee_invite_link_failed');
+  return {id:link.data.user.id,href:link.data.properties.action_link};
+}
+async function deliverInvitation(email:string, first:string, business:string, href:string) {
+  if (!Deno.env.get('RESEND_API_KEY') || !Deno.env.get('EMAIL_FROM'))
+    throw new AppError(503,'employee_email_not_configured');
+  const mail = employeeInvitationMail({first,merchant:business,actionLink:href});
+  const sent = await sendEmail({
+    to:email,subject:'Invitation DPA Cards — '+business,text:mail.text,html:mail.html,
+  });
+  if (!sent.sent) throw new AppError(502,'employee_email_failed');
+}
+
+async function pendingAction(req:Request, action:ActionKind) {
+  const body = await req.json().catch(()=>({}));
+  const employeeId = String(body?.employeeId||'');
+  const context = await ownerForPending(req,employeeId);
+  const {merchantId,actorId,targetId,originalEmail,first,business} = context;
+  if (action === 'delete') {
+    const {data: gone,error: de} = await admin.from('merchant_members').delete()
+      .eq('merchant_id',merchantId).eq('user_id',targetId).eq('role','staff')
+      .select('user_id');
+    if (de) throw new AppError(500,'employee_delete_failed');
+    if (!gone?.length) throw new AppError(404,'employee_pending_not_found');
+    const {error: cleanError} = await admin.from('employee_invitations').delete()
+      .eq('merchant_id',merchantId).eq('user_id',targetId);
+    if (cleanError) console.error('employee invitation cleanup failed',cleanError.code);
+    // Intentionally do not delete auth.users: the account may belong to another commerce.
+    return {deleted:true};
+  }
+  if (!originalEmail) throw new AppError(409,'employee_email_invalid');
+  if (action === 'resend') {
+    const link = await generateEmployeeLink(originalEmail);
+    if (link.id !== targetId) throw new AppError(409,'employee_account_changed');
+    await deliverInvitation(originalEmail,first,business,link.href);
+    const {error: recordError} = await admin.from('employee_invitations').upsert({
+      merchant_id:merchantId,user_id:targetId,email:originalEmail,first_name:first,
+      invited_by:actorId,invited_at:new Date().toISOString(),
+    },{onConflict:'merchant_id,user_id'});
+    if (recordError) console.error('employee resend tracking failed',recordError.code);
+    return {sent:true};
+  }
+
+  const nextEmail=String(body?.email||'').trim().toLowerCase();
+  if (!emailRe.test(nextEmail) || nextEmail.length>254) throw new AppError(422,'employee_email_invalid');
+  if (nextEmail === originalEmail) throw new AppError(409,'employee_email_unchanged');
+  const link = await generateEmployeeLink(nextEmail);
+  if (link.id === targetId) throw new AppError(409,'employee_email_unchanged');
+  const {data: existing,error: exErr} = await admin.from('merchant_members')
+    .select('role').eq('merchant_id',merchantId).eq('user_id',link.id).maybeSingle();
+  if (exErr) throw new AppError(500,'employee_membership_error');
+  if (existing) throw new AppError(409,'employee_target_already_member');
+  const {error: addError} = await admin.from('merchant_members').insert({
+    merchant_id:merchantId,user_id:link.id,role:'staff',
+  });
+  if (addError) throw new AppError(500,'employee_membership_error');
+  try {
+    await deliverInvitation(nextEmail,first,business,link.href);
+  } catch(error) {
+    await admin.from('merchant_members').delete().eq('merchant_id',merchantId).eq('user_id',link.id);
+    throw error;
+  }
+  const {error: recordError} = await admin.from('employee_invitations').upsert({
+    merchant_id:merchantId,user_id:link.id,email:nextEmail,first_name:first,
+    invited_by:actorId,invited_at:new Date().toISOString(),
+  },{onConflict:'merchant_id,user_id'});
+  if (recordError) console.error('employee address update tracking failed',recordError.code);
+  const {error: revokeError} = await admin.from('merchant_members').delete()
+    .eq('merchant_id',merchantId).eq('user_id',targetId).eq('role','staff');
+  if (revokeError) throw new AppError(500,'employee_email_change_partial');
+  const {error: cleanError} = await admin.from('employee_invitations').delete()
+    .eq('merchant_id',merchantId).eq('user_id',targetId);
+  if (cleanError) console.error('employee old invitation cleanup failed',cleanError.code);
+  // Changing an invitation never changes or deletes the account behind the old email.
+  return {changed:true};
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
   const route = new URL(req.url).pathname;
-  if (req.method !== 'POST' || !(route.endsWith('/merchant-team/invite') || route.endsWith('/merchant-team/list')))
-    return reply(req, 404, { error: 'not_found' });
+  const known=['invite','list','resend','change-email','delete'];
+  const operation=known.find(name=>route.endsWith('/merchant-team/'+name));
+  if (req.method !== 'POST' || !operation) return reply(req, 404, { error: 'not_found' });
   try {
-    return reply(req, 200, route.endsWith('/merchant-team/list') ? await teamList(req) : await invite(req));
+    if (operation === 'invite') return reply(req,200,await invite(req));
+    if (operation === 'list') return reply(req,200,await teamList(req));
+    return reply(req,200,await pendingAction(req,operation as ActionKind));
   } catch (error) {
     if (error instanceof AppError) return reply(req, error.status, { error: error.code });
-    console.error('merchant-team invite failed', error instanceof Error ? error.name : 'unknown');
+    console.error('merchant-team operation failed', error instanceof Error ? error.name : 'unknown');
     return reply(req, 500, { error: 'employee_invite_failed' });
   }
 });
