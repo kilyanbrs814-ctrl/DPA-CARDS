@@ -30,3 +30,14 @@
 
 ## Règles visuelles
 Aucune flèche dans les boutons, comme demandé par le projet : `docs/visual-design-rules.md`.
+
+
+## Gestion d’une invitation en attente (22 octobre 2026)
+- Le propriétaire clique sur une ligne de **« Invitations en attente »** pour ouvrir le panneau « Gérer une invitation ».
+- **Renvoyer l’e-mail** : génère un nouveau lien sécurisé avec Supabase Auth, l’envoie via Resend au destinataire existant et actualise la date de l’invitation.
+- **Changer l’adresse e-mail** : saisie et validation d'une nouvelle adresse ; génération d'un lien pour ce destinataire ; rattachement du nouveau compte au même commerce uniquement ; envoi réussi requis avant le retrait de l’ancien rattachement.
+- **Supprimer l’invitation** : double validation avec message explicite ; retire l’accès au commerce et la trace de l’invitation, **sans supprimer** le compte Auth ni les appartenances à d’autres commerces.
+- Le serveur impose un **JWT valide**, le **rôle owner** dans le commerce sélectionné et vérifie que l’employé n’a pas activé son invitation. Les liens privés restent sur le serveur et ne sont jamais envoyés au navigateur.
+- Les vues mobile et desktop ont les mêmes actions, **sans icônes de flèche**.
+- Après chaque modification, l’interface actualise la liste. Un compte déjà activé n'est plus modifiable depuis cette fenêtre.
+- Déploiements GitHub, Vercel production et Supabase Edge Function vérifiés. **Le parcours de bout en bout avec un compte propriétaire connecté et un destinataire réel reste à tester** avant de déclarer l'envoi et le changement d’adresse validés en conditions réelles.
