@@ -654,6 +654,11 @@ async function notify(req: Request): Promise<Response> {
   const member = await selectedMembership(admin,req,user.id);
   if (!member) throw new HttpError(403, 'forbidden');
   const merchantId: string = member.merchant_id;
+  const {data:staffAccess,error:permError}=await admin.from('merchant_members')
+    .select('role,permissions').eq('merchant_id',merchantId).eq('user_id',user.id).maybeSingle();
+  if(permError||!staffAccess)throw new HttpError(403,'forbidden');
+  if(staffAccess.role!=='owner' && staffAccess.permissions?.notifications!==true)
+    throw new HttpError(403,'employee_permission_denied');
   await requireAccess(merchantId);
 
   const body = await req.json().catch(() => ({}));
