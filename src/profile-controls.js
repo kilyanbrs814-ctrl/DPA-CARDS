@@ -60,7 +60,7 @@ export function makeProfileControls(React) {
   ]:[];
   return h('div',{className:'dpa-profile-controls'},
    h('div',{style:{minWidth:0}},h('div',{style:{fontSize:12,color:'#5E636B'}},'Commerce actif'),h('strong',{style:{overflowWrap:'anywhere'}},merchant.business)),
-   (!native||profiles.length>1)&&h('button',{ref:trigger,type:'button',style:button,disabled:busy||working,onClick:()=>{if(!native&&profiles.length===1&&merchant.id&&profiles[0].role==='owner'){onAdd();return;}setOpen(true);setError('');}},profiles.length>1?'Changer de profil':'Ajouter un profil'),
+   (profiles.length>1 || (!native&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')))&&h('button',{ref:trigger,type:'button',style:button,disabled:busy||working,onClick:()=>{if(!native&&profiles.length===1&&merchant.id&&profiles[0].role==='owner'){onAdd();return;}setOpen(true);setError('');}},profiles.length>1?'Changer de commerce':'Ajouter un commerce'),
    !native&&needsActivation&&h('button',{type:'button',style:primary,disabled:busy||working,onClick:getQuote},'Activer ce commerce'),
    open&&h('div',{className:'dpa-profile-overlay',onClick:e=>{if(e.target===e.currentTarget)close();}},
     h('section',{ref:dialog,role:'dialog','aria-modal':true,'aria-labelledby':'profile-dialog-title',tabIndex:-1,onKeyDown:trap,className:'dpa-profile-dialog'},
@@ -72,7 +72,7 @@ export function makeProfileControls(React) {
        style:{...button,display:'flex',alignItems:'center',gap:12,textAlign:'left',borderColor:p.id===merchant.id?'#2448F0':'#D4D1C9'},
        onClick:()=>p.id!==merchant.id&&api.switchProfile(p.id)},p.logo&&h('img',{src:p.logo,alt:'',width:36,height:36,style:{objectFit:'contain',borderRadius:8}}),
        h('span',{style:{flex:1}},p.name),p.id===merchant.id&&h('span',{style:{color:'#2448F0'}},'Actif'))),
-      !native&&merchant.id&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')&&h('button',{type:'button',style:primary,disabled:working||busy,onClick:()=>{close();onAdd();}},'Ajouter un profil')),
+      !native&&merchant.id&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')&&h('button',{type:'button',style:primary,disabled:working||busy,onClick:()=>{close();onAdd();}},'Ajouter un commerce')),
      quote&&h(React.Fragment,null,
       h('dl',{style:{margin:0}},...rows.map(([k,v])=>h('div',{key:k,style:{display:'flex',justifyContent:'space-between',gap:16,padding:'12px 0',borderBottom:'1px solid #E4E1DA',flexWrap:'wrap'}},h('dt',null,k),h('dd',{style:{margin:0,fontWeight:700}},v)))),
       h('p',{style:{fontSize:14,color:'#5E636B',lineHeight:1.5}},'20 €/mois par commerce, sans remise dégressive. Les frais d’activation sont uniques et identiques avec ou sans engagement. Les modalités d’engagement existantes sont conservées.'),
