@@ -117,7 +117,7 @@ async function invite(req: Request) {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
-  if (req.method !== 'POST' || new URL(req.url).pathname !== '/merchant-team/invite')
+  if (req.method !== 'POST' || !new URL(req.url).pathname.endsWith('/merchant-team/invite'))
     return reply(req, 404, { error: 'not_found' });
   try {
     return reply(req, 200, await invite(req));
