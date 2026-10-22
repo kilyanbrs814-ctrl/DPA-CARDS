@@ -2,7 +2,8 @@
 // Un propriétaire authentifié peut inviter un collaborateur uniquement dans son commerce.
 // La clé secrète Supabase et le lien d'activation ne sont jamais renvoyés au navigateur.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { sendEmail, simpleMail } from '../_shared/email.ts';
+import { sendEmail } from '../_shared/email.ts';
+import { employeeInvitationMail } from '../_shared/employee-invite-mail.js';
 
 const url = Deno.env.get('SUPABASE_URL')!;
 function envKey(jsonVar: string, fallback: string): string {
@@ -96,11 +97,7 @@ async function invite(req: Request) {
   }
 
   const merchant = (membership.merchants as { business_name?: string } | null)?.business_name || 'votre commerce';
-  const mail = simpleMail('Bienvenue dans l’équipe ' + merchant, [
-    ['Bonjour', first],
-    ['Invitation', 'Vous avez été invité(e) à rejoindre ' + merchant + ' sur DPA Cards en tant qu’employé(e).'],
-    ['Votre accès', 'Cliquez sur le lien ci-dessous pour choisir votre mot de passe.'],
-  ], [['Créer mon mot de passe', actionLink]]);
+  const mail = employeeInvitationMail({ first, merchant, actionLink });
   const result = await sendEmail({
     to: email, subject: 'Invitation DPA Cards — ' + merchant, text: mail.text, html: mail.html,
   });
