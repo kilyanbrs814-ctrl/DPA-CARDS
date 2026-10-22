@@ -89,7 +89,7 @@ async function invite(req: Request) {
   let inserted = false;
   if (!already) {
     const { error: insertError } = await admin.from('merchant_members').insert({
-      merchant_id: merchantId, user_id: memberId, role: 'staff',
+      merchant_id: merchantId, user_id: memberId, role: 'staff', permissions: { scan: true, add_clients: false, rewards: false, corrections: false, notifications: false },
     });
     if (insertError) {
       if (insertError.code !== '23505') throw new AppError(500, 'employee_membership_error');
@@ -118,7 +118,7 @@ async function invite(req: Request) {
 }
 
 
-type TeamMember = { user_id: string; created_at: string };
+type TeamMember = { user_id: string; created_at: string; permissions: Record<string,boolean> };
 type Invitation = { user_id: string; first_name: string; email: string; invited_at: string };
 type Visit = { card_id: string; type: string; created_at: string; created_by: string | null; corrects_event_id: string | null; id: string };
 type Card = { id: string; customer_id: string };
@@ -150,7 +150,7 @@ async function teamList(req: Request) {
   if (owner?.role !== 'owner') throw new AppError(403,'owner_only');
 
   const [{data: staff,error: se}, invitations, events, cards, customers, scans] = await Promise.all([
-    admin.from('merchant_members').select('user_id,created_at').eq('merchant_id',merchantId).eq('role','staff').limit(500),
+    admin.from('merchant_members').select('user_id,created_at,permissions').eq('merchant_id',merchantId).eq('role','staff').limit(500),
     rows('employee_invitations','user_id,first_name,email,invited_at',merchantId),
     rows('card_events','id,card_id,type,created_by,created_at,corrects_event_id',merchantId),
     rows('cards','id,customer_id',merchantId),
@@ -187,6 +187,7 @@ async function teamList(req: Request) {
     }
     const item={
       id: membership.user_id,
+      permissions: membership.permissions || { scan: true, add_clients: false, rewards: false, corrections: false, notifications: false },
       first: invitation?.first_name || String(account.user_metadata?.first_name || '').trim() || (account.email||'').split('@')[0],
       email: invitation?.email || account.email || '',
       invitedAt,
@@ -303,7 +304,7 @@ async function pendingAction(req:Request, action:ActionKind) {
   if (exErr) throw new AppError(500,'employee_membership_error');
   if (existing) throw new AppError(409,'employee_target_already_member');
   const {error: addError} = await admin.from('merchant_members').insert({
-    merchant_id:merchantId,user_id:link.id,role:'staff',
+    merchant_id:merchantId,user_id:link.id,role:'staff', permissions: { scan: true, add_clients: false, rewards: false, corrections: false, notifications: false },
   });
   if (addError) throw new AppError(500,'employee_membership_error');
   try {
@@ -327,15 +328,46 @@ async function pendingAction(req:Request, action:ActionKind) {
   return {changed:true};
 }
 
+
+const CAPABILITIES = ['scan','add_clients','rewards','corrections','notifications'] as const;
+
+async function updatePermissions(req:Request) {
+  const token=/^Bearer\s+(\S+)$/i.exec(req.headers.get('authorization')||'')?.[1];
+  if(!token) throw new AppError(401,'not_authenticated');
+  const {data: identity,error:au}=await admin.auth.getUser(token);
+  if(au || !identity?.user) throw new AppError(401,'not_authenticated');
+  const mid=req.headers.get('x-merchant-id')||'';
+  const body=await req.json().catch(()=>({}));
+  const employeeId=String(body.employeeId||'');
+  if(!uuidRe.test(mid)||!uuidRe.test(employeeId))throw new AppError(400,'invalid_request');
+  const {data: owner,error:oe}=await admin.from('merchant_members').select('role')
+    .eq('merchant_id',mid).eq('user_id',identity.user.id).maybeSingle();
+  if(oe)throw new AppError(500,'employee_membership_error');
+  if(owner?.role!=='owner')throw new AppError(403,'owner_only');
+  const p=body.permissions;
+  if(!p||typeof p!=='object'||Array.isArray(p)||
+     Object.keys(p).length!==CAPABILITIES.length ||
+     !CAPABILITIES.every(cap=>typeof p[cap]==='boolean'))
+    throw new AppError(422,'employee_permissions_invalid');
+  const {data: staff,error:se}=await admin.from('merchant_members')
+    .update({permissions:Object.fromEntries(CAPABILITIES.map(k=>[k,p[k]]))})
+    .eq('merchant_id',mid).eq('user_id',employeeId).eq('role','staff')
+    .select('user_id,permissions').maybeSingle();
+  if(se)throw new AppError(500,'employee_permissions_save_failed');
+  if(!staff)throw new AppError(404,'employee_not_found');
+  return {saved:true,permissions:staff.permissions};
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
   const route = new URL(req.url).pathname;
-  const known=['invite','list','resend','change-email','delete'];
+  const known=['invite','list','resend','change-email','delete','permissions'];
   const operation=known.find(name=>route.endsWith('/merchant-team/'+name));
   if (req.method !== 'POST' || !operation) return reply(req, 404, { error: 'not_found' });
   try {
     if (operation === 'invite') return reply(req,200,await invite(req));
     if (operation === 'list') return reply(req,200,await teamList(req));
+    if (operation === 'permissions') return reply(req,200,await updatePermissions(req));
     return reply(req,200,await pendingAction(req,operation as ActionKind));
   } catch (error) {
     if (error instanceof AppError) return reply(req, error.status, { error: error.code });
