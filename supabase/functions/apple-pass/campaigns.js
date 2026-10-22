@@ -38,6 +38,11 @@ export async function notifyApple(req,{admin}){
   }
   if(!member)return send(req,403,{error:'forbidden'});
   const mid=member.merchant_id;
+  const {data:staffAccess,error:permissionError}=await admin.from('merchant_members')
+    .select('role,permissions').eq('merchant_id',mid).eq('user_id',user.id).maybeSingle();
+  if(permissionError||!staffAccess)return send(req,403,{error:'forbidden'});
+  if(staffAccess.role!=='owner'&&staffAccess.permissions?.notifications!==true)
+    return send(req,403,{error:'employee_permission_denied'});
   const {data:active,error:activeError}=await admin.rpc('merchant_has_access',{p_merchant:mid});
   if(activeError||active!==true)return send(req,403,{error:'subscription_required'});
   const b=await req.json().catch(()=>({}));
