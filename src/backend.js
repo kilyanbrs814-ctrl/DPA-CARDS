@@ -112,6 +112,9 @@ const DB_ERRORS = {
   unsupported_subscription: 'La configuration de cet abonnement nécessite une vérification avant l’ajout.',
   employee_invite_failed: 'Invitation impossible pour le moment. Réessayez plus tard.',
   employee_management_failed: 'Impossible de modifier cette invitation pour le moment.',
+  employee_permissions_invalid: 'Les autorisations choisies sont invalides.',
+  employee_permissions_save_failed: 'Impossible d’enregistrer les autorisations.',
+  employee_permission_denied: 'Votre responsable ne vous a pas autorisé à effectuer cette action.',
   employee_pending_not_found: 'Cette invitation n’est plus en attente. Actualisez la liste.',
   employee_already_active: 'Cet employé a déjà activé son accès. Actualisez la liste.',
   employee_account_changed: 'Ce compte a changé depuis la création de l’invitation. Contactez le support.',
@@ -348,7 +351,7 @@ async function loadAll(user) {
   // Subscription billing and the merchant's actual entitlement are independent.
   // This endpoint uses the exact server-side predicate used for customer access.
   const access = await invokeFn('wallet/merchant-access', {});
-  return { merchant, billingMerchantId,billedCount:activations.length,selectedActivated:activations.some(a=>a.merchant_id===merchant.id), profiles: await listProfiles(), program: prog ? toProgram(prog) : null, clients, role: mem.role, designRequest: toRequest(req), notifications, subscription: subscription || null,
+  return { merchant, billingMerchantId,billedCount:activations.length,selectedActivated:activations.some(a=>a.merchant_id===merchant.id), profiles: await listProfiles(), program: prog ? toProgram(prog) : null, clients, role: mem.role, permissions: mem.permissions, designRequest: toRequest(req), notifications, subscription: subscription || null,
     hasAccess: access.has_access===true, accessSource: access.source||'none', manualExpiresAt: access.manual_expires_at||null };
 }
 
@@ -455,6 +458,18 @@ const api = {
       try { info=(await error.context.json())||{}; } catch (e) {}
       const code=info.error||'team_stats_unavailable';
       throw Object.assign(new Error(code), { code });
+    }
+    return data;
+  },
+  async saveEmployeePermissions(employeeId, permissions) {
+    if (!activeMerchantId) throw new Error('merchant_required');
+    const {data,error}=await sb.functions.invoke('merchant-team/permissions', {
+      body:{employeeId,permissions},headers:{'x-merchant-id':activeMerchantId},
+    });
+    if(error){
+      let info={};try{info=(await error.context.json())||{};}catch(e){}
+      const code=info.error||'employee_permissions_save_failed';
+      throw Object.assign(new Error(code),{code});
     }
     return data;
   },
