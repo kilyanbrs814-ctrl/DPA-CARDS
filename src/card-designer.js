@@ -61,8 +61,8 @@ export function defaultDesign(project) {
     font: 'hanken', label: '',
     assets: { logo: asset(p.logo_path, p.logo_url), hero: asset(p.hero_path, p.hero_url), background: null, stamp: null, googleStrip: null, appleStrip: null, appleHeader: null, rewardLabel: null, businessFont: null, businessNameImage: null, googleLogo: null, googleBusinessNameImage: null, googleWideLogo: null },
     stamps: { shape: 'circle', icon: 'library', libraryId: 'cafe', emoji: '', style: 'outline', filled: '#F2C94C', empty: onColor(bg), size: 100, spacing: 100, inactiveOpacity: 22, rewardId: 'reward-star' },
-    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, headerMode: 'classic', showStampPanel: true, showStamps: true, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
-    google: { colors: {}, showStamps: true, reuseAppleStrip: true, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '', wideArtworkVersion: 0 },
+    apple: { colors: {}, showHero: true, showSubtitle: true, showBusinessName: false, headerMode: 'classic', showStampPanel: true, showStamps: true, stampSize: 100, stampSpacing: 100, headerArtworkVersion: 0, businessNameFont: 'system', showReward: false, rewardText: 'Débloque la coupe offerte !', rewardTextColor: '', useBackground: false, heroFocus: 50, label: '' },
+    google: { colors: {}, showStamps: true, stampSize: 100, stampSpacing: 100, reuseAppleStrip: true, showHero: true, showSubtitle: true, useBackground: false, heroFocus: 50, label: '', wideArtworkVersion: 0 },
     preview: { mode: p.mode === 'points' ? 'points' : 'passages', goal: p.goal || DEMO.goal, progress: Math.min(DEMO.progress, p.goal || DEMO.goal), reward: p.reward || DEMO.reward, available: DEMO.available, client: DEMO.client },
   };
 }
@@ -88,7 +88,8 @@ export function inactiveStampOpacity(raw) {
 }
 export function normalize(config, project) {
   const d = defaultDesign(project), c = config || {};
-  const plat = k => ({ ...d[k], ...(c[k] || {}), colors: { ...((c[k] || {}).colors || {}) } });
+  const plat = k => ({ ...d[k], ...(c[k] || {}), colors: { ...((c[k] || {}).colors || {}) },
+    stampSize:stampSizePercent(c[k]?.stampSize ?? c.stamps?.size),stampSpacing:stampSpacingPercent(c[k]?.stampSpacing ?? c.stamps?.spacing) });
   return { ...d, ...c, identity: { ...d.identity, ...(c.identity || {}) }, colors: { ...d.colors, ...(c.colors || {}) },
     assets: { ...d.assets, ...(c.assets || {}) }, stamps: { ...d.stamps, ...(c.stamps || {}), icon: c.stamps?.icon || (normalizeStampEmoji(c.stamps?.emoji) ? 'emoji' : d.stamps.icon), emoji: c.stamps && !Object.prototype.hasOwnProperty.call(c.stamps, 'emoji') ? '' : (c.stamps?.emoji ?? d.stamps.emoji), size: stampSizePercent(c.stamps?.size), spacing: stampSpacingPercent(c.stamps?.spacing), inactiveOpacity: inactiveStampOpacity(c.stamps?.inactiveOpacity) }, apple: plat('apple'), google: plat('google'),
     preview: { ...d.preview, ...(c.preview || {}) } };
@@ -121,6 +122,7 @@ export function prepareDesign(cardDesign, program, merchant, assetUrl) {
 export function effective(design, platform) {
   const p = design[platform] || {};
   return { ...design, colors: { ...design.colors, ...(p.colors || {}) }, opt: p,
+    stamps:{...design.stamps,size:stampSizePercent(p.stampSize ?? design.stamps?.size),spacing:stampSpacingPercent(p.stampSpacing ?? design.stamps?.spacing)},
     // Google-only logos override Apple artworks in the Google preview, not in Apple Wallet.
     assets: platform==='google'
       ? { ...design.assets,
@@ -1165,20 +1167,20 @@ export function makeCardDesigner(React, api) {
           h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }), h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }),
           h(Stamp, { on: false, st: design.stamps, size: 34, stampUrl:design.assets.stamp?.url }), h('span', { style: { color: '#FFFFFF', fontSize: 13, opacity: 0.8 } }, 'Rempli · Rempli · Vide')),
         h(ImagePick, { label: 'Ou importer un tampon PNG personnalisé', testId: 'stamp', asset: design.assets.stamp, busy: busy === 'up-stamp', onPick: pickFile('stamp'), onRemove: () => { set('assets.stamp', null); if (design.stamps.icon === 'custom') { set('stamps.icon', 'library'); set('stamps.libraryId', 'cafe'); } }, hint: 'Un seul PNG transparent : passages effectués en couleur, restants grisés à 22 %. 2 Mo maximum.' }),
-        h(Field,{label:'Taille des tampons : '+stampSizePercent(design.stamps.size)+' %'},
-          h('input',{type:'range',min:50,max:120,step:5,value:stampSizePercent(design.stamps.size),
-            'data-stamp-size-control':true,'aria-label':'Taille des tampons',
-            onChange:e=>set('stamps.size',+e.target.value),
-            style:{width:'100%',accentColor:'#2448F0'}}),
-          h('div',{style:{marginTop:5,fontSize:13,color:'#5E636B',lineHeight:1.4}},
-            '100 % = taille actuelle. Les tampons restent aux mêmes emplacements ; seul leur diamètre change sur Apple Wallet et Google Wallet. Sans effet pour les cartes à points.')),
-        h(Field,{label:'Espacement des tampons : '+stampSpacingPercent(design.stamps.spacing)+' %'},
-          h('input',{type:'range',min:50,max:120,step:5,value:stampSpacingPercent(design.stamps.spacing),
-            'data-stamp-spacing-control':true,'aria-label':'Espacement des tampons',
-            onChange:e=>set('stamps.spacing',+e.target.value),
-            style:{width:'100%',accentColor:'#2448F0'}}),
-          h('div',{style:{marginTop:5,fontSize:13,color:'#5E636B',lineHeight:1.4}},
-            '50 % = tampons resserrés au centre · 100 % = écartement actuel · 120 % = plus espacés. Les tampons se déplacent horizontalement et verticalement sans changer leur taille. Sans effet pour les cartes à points.')),
+        h('div',{'data-wallet-stamp-layout':platform,style:{padding:'12px 14px',background:'#EEF1FF',borderRadius:12,display:'flex',flexDirection:'column',gap:10}},
+          h('div',{style:{fontWeight:800,fontSize:15,color:'#1A36C4'}},'Disposition des tampons · '+pName),
+          h('p',{style:{fontSize:13,color:'#3E424A',lineHeight:1.45,margin:0}},'Ces deux réglages ne modifient que '+pName+'. Les autres cartes Wallet gardent leurs propres dimensions.'),
+          h(Field,{label:'Taille des tampons '+pName+' : '+stampSizePercent(po.stampSize)+' %'},
+            h('input',{type:'range',min:50,max:120,step:5,value:stampSizePercent(po.stampSize),
+              'data-stamp-size-control':platform,'aria-label':'Taille des tampons '+pName,
+              onChange:e=>set(platform+'.stampSize',+e.target.value),
+              style:{width:'100%',accentColor:'#2448F0'}})),
+          h(Field,{label:'Espacement des tampons '+pName+' : '+stampSpacingPercent(po.stampSpacing)+' %'},
+            h('input',{type:'range',min:50,max:120,step:5,value:stampSpacingPercent(po.stampSpacing),
+              'data-stamp-spacing-control':platform,'aria-label':'Espacement des tampons '+pName,
+              onChange:e=>set(platform+'.stampSpacing',+e.target.value),
+              style:{width:'100%',accentColor:'#2448F0'}})),
+          h('div',{style:{fontSize:12,color:'#4A4E55',lineHeight:1.4}},'100 % = rendu habituel · 50 % = plus resserré ou plus petit · 120 % = plus espacé ou plus grand. Sans effet sur les cartes à points.')),
         h(Field,{label:'Opacité des tampons non validés : '+inactiveStampOpacity(design.stamps.inactiveOpacity)+' %'},
           h('input',{type:'range',min:0,max:100,step:1,value:inactiveStampOpacity(design.stamps.inactiveOpacity),
             'data-stamp-opacity-control':true,'aria-label':'Opacité des tampons non validés',
