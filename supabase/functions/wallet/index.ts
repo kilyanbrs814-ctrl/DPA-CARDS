@@ -1628,13 +1628,35 @@ async function testFiles(id: string): Promise<string[]> {
   return out;
 }
 
+// Display-only labels for the team members who created demonstration cards.
+// Account ids come from the persisted created_by field; never trust a client-provided author name.
+const TEST_CREATOR_NAMES: Record<string,string> = {
+  'mael.81400@icloud.com': 'Maël',
+  'zakariabouras2020@gmail.com': 'Zak',
+  'contact@digitalprojectagency.fr': 'DPA Cards',
+  'kilyan.brs814@gmail.com': 'Kilyan',
+};
+async function testViewsWithCreators(cards: any[]): Promise<any[]> {
+  const labels = new Map<string,string>();
+  const uniqueIds = [...new Set(cards.map(card=>String(card.created_by||'')).filter(Boolean))];
+  await Promise.all(uniqueIds.map(async id=>{
+    try {
+      const {data,error} = await admin.auth.admin.getUserById(id);
+      if(error || !data?.user) return;
+      const u=data.user, email=String(u.email||'').trim().toLowerCase();
+      const first=String(u.user_metadata?.first_name||'').trim();
+      labels.set(id,TEST_CREATOR_NAMES[email] || (first && first.length<=50 ? first : 'Administrateur'));
+    } catch { /* A missing/removed account must not prevent the test-card list loading. */ }
+  }));
+  return cards.map(card=>({...testView(card),creator_name:labels.get(card.created_by)||'Administrateur'}));
+}
 async function adminTestCards(req: Request): Promise<Response> {
   const user=await requireAdmin(req);
   let q=admin.from('test_card_designs').select(TEST_SELECT).order('updated_at',{ascending:false}).limit(200);
   if(user.dpaRole!=='director') q=q.eq('created_by',user.id);
   const { data, error } = await q;
   if (error) throw new Error('db_test_cards');
-  return json(req, 200, { tests: (data ?? []).map(testView) });
+  return json(req, 200, { tests: await testViewsWithCreators(data ?? []) });
 }
 async function adminTestCardGet(req: Request): Promise<Response> {
   const user=await requireAdmin(req);
