@@ -655,6 +655,9 @@ export function makeCardDesigner(React, api) {
     const [project, setProject] = useState(null);
     const [design, setDesign] = useState(null);
     const [saved, setSaved] = useState('');
+    const [autoSaveError,setAutoSaveError]=useState('');
+    const latestSnapshot=useRef({key:'',value:''});
+    const failedSnapshot=useRef('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [platform, setPlatform] = useState('apple');
@@ -690,14 +693,14 @@ export function makeCardDesigner(React, api) {
       // Test card: a project of its own, linked to no merchant (same designer, same layouts).
       if (target.testId) {
         api.testGet(target.testId).then(r => { if (!live) return; const p = testProject(r.test), cfg = normalize(r.test.config, p);
-          setProject(p); setRequestId(null); setTestName(r.test.name); setDesign(cfg); setSaved(JSON.stringify(cfg) + '|' + r.test.name); setLoading(false); })
+          setProject(p); setRequestId(null); setTestName(r.test.name); setDesign(cfg); setSaved(JSON.stringify(cfg) + '|' + r.test.name); setAutoSaveError('');failedSnapshot.current=''; setLoading(false); })
           .catch(e => { if (live) { setLoading(false); setError(errText(e)); } });
         return () => { live = false; };
       }
       api.load(target.requestId ? { design_request_id: target.requestId } : { merchant_id: target.merchantId })
         .then(p => { if (!live) return; setProject(p); setRequestId(p.request ? p.request.id : null);
           const cfg = p.program ? normalize((p.draft && p.draft.config) || p.program.card_design || null, p) : null;
-          setDesign(cfg); setSaved(cfg ? JSON.stringify(cfg) : ''); setLoading(false);
+          setDesign(cfg); setSaved(cfg ? JSON.stringify(cfg) : ''); setAutoSaveError('');failedSnapshot.current=''; setLoading(false);
           if (p.merchant && target.merchantId !== p.merchant.id) onTarget({ merchantId: p.merchant.id, requestId: target.requestId || null }); })
         .catch(e => { if (live) { setLoading(false); setError(errText(e)); } });
       return () => { live = false; };
@@ -706,6 +709,7 @@ export function makeCardDesigner(React, api) {
     const isTest = !!(project && project.test);
     const snap = () => JSON.stringify(design) + (isTest ? '|' + testName : '');
     const dirty = !!design && snap() !== saved;
+    latestSnapshot.current={key,value:design?snap():''};
     useEffect(() => {
       const w = e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } };
       window.addEventListener('beforeunload', w); return () => window.removeEventListener('beforeunload', w);
@@ -785,12 +789,46 @@ export function makeCardDesigner(React, api) {
       finally { setBusy(null); }
     };
     const save = async () => {
-      if (busy) return; setBusy('save');
+      if (busy) return; failedSnapshot.current='';setAutoSaveError('');setBusy('save');
       try { const next=await forSave();
-        if (isTest) { const r = await api.testSave(project.test.id, testName, next); setProject(p => ({ ...p, test: r.test })); setDesign(next); setSaved(savedMark(next)); refreshTests(); toast('Carte test enregistrée.'); }
+        if (isTest) { const r = await api.testSave(project.test.id, testName, next); setProject(p => ({ ...p, test: r.test })); if(latestSnapshot.current.value===snap())setDesign(next); setSaved(savedMark(next)); refreshTests(); toast('Carte test enregistrée.'); }
         else { await api.save(project.program.id, requestId, next); setDesign(next); setSaved(savedMark(next)); toast('Brouillon enregistré.'); } }
       catch (e) { toast(errText(e)); } finally { setBusy(null); }
     };
+    // Test cards autosave after the admin stops typing or moving a slider.
+    // Writes are serialized by busy; changes made during a request are never overwritten.
+    useEffect(()=>{
+      if(!isTest||!project?.test?.id||!design||!dirty||loading||busy) return undefined;
+      if(target?.testId!==project.test.id) return undefined;
+      const signature=key+'|'+snap();
+      if(failedSnapshot.current===signature) return undefined;
+      const timer=setTimeout(async()=>{
+        if(latestSnapshot.current.key!==key || latestSnapshot.current.value!==snap())return;
+        const captured=snap(),capturedName=testName, capturedId=project.test.id;
+        setBusy('save');setAutoSaveError('');
+        try{
+          const next=await forSave();
+          const r=await api.testSave(capturedId,capturedName,next);
+          if(latestSnapshot.current.key!==key)return;
+          setProject(p=>p?.test?.id===capturedId?{...p,test:r.test}:p);
+          // If the editor changed while the server was saving, keep the newer draft;
+          // the next effect will save that newer snapshot as well.
+          if(latestSnapshot.current.value===captured)setDesign(next);
+          setSaved(JSON.stringify(next)+'|'+capturedName);
+          failedSnapshot.current='';
+          refreshTests();
+        }catch(e){
+          if(latestSnapshot.current.key===key){
+            failedSnapshot.current=signature;
+            setAutoSaveError(errText(e));
+          }
+        }finally{
+          if(latestSnapshot.current.key===key)setBusy(null);
+        }
+      },850);
+      return ()=>clearTimeout(timer);
+    },[key,isTest,dirty,design,testName,project?.test?.id,busy,loading,saved]);
+
     // ---- test cards
     const createTest = async () => {
       if (busy) return; if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Continuer ?')) return; setBusy('test');
@@ -990,7 +1028,7 @@ export function makeCardDesigner(React, api) {
     const data = { ...DEMO, client: pv.client || DEMO.client, progress: pv.progress, goal: pv.goal, mode: pv.mode, reward: pv.reward || DEMO.reward, available: pv.available,
       ...(isTest ? { qr: project.test.qr_value, cardNumber: project.test.card_number } : {}) };
     const po = design[platform], pName = platform === 'apple' ? 'Apple Wallet' : 'Google Wallet';
-    const status = isTest ? (dirty ? ['Modifications non enregistrées', '#FFF3DC', '#8A5A00'] : ['CARTE TEST · enregistrée le ' + fmtDate(project.test.updated_at), '#EEF1FF', '#1A36C4'])
+    const status = isTest ? (busy==='save' ? ['Enregistrement automatique…','#EEF1FF','#1A36C4'] : autoSaveError ? ['Échec de sauvegarde automatique','#FCEBEA','#B42318'] : dirty ? ['Sauvegarde automatique prévue…', '#FFF3DC', '#8A5A00'] : ['CARTE TEST · enregistrée le ' + fmtDate(project.test.updated_at), '#EEF1FF', '#1A36C4'])
       : project.draft && project.draft.status === 'validated' && !dirty ? ['Design validé le ' + fmtDate(project.draft.validated_at), '#E4F3EB', '#1F6B45']
       : dirty ? ['Modifications non enregistrées', '#FFF3DC', '#8A5A00']
       : project.draft ? ['Brouillon enregistré le ' + fmtDate(project.draft.updated_at), '#E8EDFF', '#1A36C4'] : ['Nouveau projet', '#EFEDE8', '#3E424A'];
@@ -1273,7 +1311,8 @@ export function makeCardDesigner(React, api) {
       top, summary,
       isTest ? h('div', { role: 'note', 'data-test-mode': true, style: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: '#1A36C4', color: '#FFFFFF' } }, icon('science', 24),
         h('div', null, h('div', { style: { fontWeight: 800, fontSize: 16, letterSpacing: '0.06em' } }, 'MODE TEST'), h('div', { style: { fontSize: 14, opacity: 0.9 } }, 'Carte de démonstration : aucun commerce, aucun compte, aucun client, aucun abonnement.'))) : null,
-      actions, deleteDialog,
+      actions, isTest ? h('div',{role:'status','data-autosave-status':true,style:{fontSize:13,color:autoSaveError?'#B42318':'#5E636B',lineHeight:1.4}},
+        autoSaveError?'Sauvegarde automatique échouée : '+autoSaveError+' · Utilise « Enregistrer la carte test » pour réessayer.':'Les changements de cette carte test sont enregistrés automatiquement après une courte pause.') : null, deleteDialog,
       onsiteOpen && !isTest ? modal([
         h('h2', { key: 'title', style: { margin: 0, fontSize: 22, fontWeight: 800 } }, 'Enregistrer les 50 € encaissés sur place'),
         h('p', { key: 'body', style: { fontSize: 14, lineHeight: 1.55, color: '#3E424A' } },
