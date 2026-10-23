@@ -982,8 +982,9 @@ export function makeCardDesigner(React, api) {
 
     const desk = width >= 1024, two = width >= 900;
     const list = created && !merchants.some(m => m.id === created.merchant.id) ? [...merchants, { id: created.merchant.id, name: created.merchant.business_name, program: true }] : merchants;
+    const testCardLabel = t => t.name + (t.creator_name ? ' (' + t.creator_name + ')' : '');
     const merchantOptions = [['', 'Sélectionner un commerce…'], ...list.map(m => [m.id, m.name + (m.program ? '' : ' (sans programme)')]),
-      ...(tests || []).map(t => ['t:' + t.id, 'Carte test · ' + t.name])];
+      ...(tests || []).map(t => ['t:' + t.id, 'Carte test · ' + testCardLabel(t)])];
     const selValue = adding ? '' : target && target.testId ? 't:' + target.testId : project && project.merchant && project.merchant.id ? project.merchant.id : (target && target.merchantId) || '';
     const pickSel = v => { if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Changer de carte ?')) return; setAdding(false); setCreated(null);
       onTarget(!v ? null : v.startsWith('t:') ? { testId: v.slice(2) } : { merchantId: v, requestId: null }); };
@@ -995,7 +996,7 @@ export function makeCardDesigner(React, api) {
       tests === null ? h('div', { role: 'status', style: { color: '#5E636B', fontSize: 14 } }, 'Chargement…')
         : !tests.length ? h('div', { style: { color: '#5E636B', fontSize: 14 } }, 'Aucune carte test. « + Créer une carte test » en crée une, avec le même générateur que les vraies cartes.')
         : tests.map(t => h('div', { key: t.id, 'data-test-row': t.id, style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid #EFEDE8' } },
-          h('div', { style: { flex: '1 1 200px', minWidth: 0 } }, h('div', { style: { fontWeight: 700, fontSize: 15, overflowWrap: 'anywhere' } }, t.name), h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Modifiée le ' + fmtDate(t.updated_at))),
+          h('div', { style: { flex: '1 1 200px', minWidth: 0 } }, h('div', { style: { fontWeight: 700, fontSize: 15, overflowWrap: 'anywhere' } }, testCardLabel(t)), h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Modifiée le ' + fmtDate(t.updated_at))),
           h('button', { type: 'button', onClick: () => pickSel('t:' + t.id), style: { minHeight: 40, padding: '0 12px', border: 0, borderRadius: 10, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 14 } }, 'Ouvrir'),
           h('button', { type: 'button', onClick: () => duplicateTest(t.id), disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: '1.5px solid #D4D1C9', borderRadius: 10, background: '#FFFFFF', fontWeight: 600, fontSize: 14 } }, 'Dupliquer'),
           h('button', { type: 'button', onClick: () => setAskDelete(t), disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: 0, borderRadius: 10, background: 'none', color: '#B42318', fontWeight: 600, fontSize: 14 } }, 'Supprimer'))));
