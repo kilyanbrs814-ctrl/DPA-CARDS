@@ -169,8 +169,8 @@ export async function makeGoogleStampHero(d, progress, goal, mode='passages', cu
     return demoPng(width,height,pixels);
   }
   const n=Math.max(1,Math.min(20,target)),rows=n<=6?1:n<=14?2:3,cols=Math.ceil(n/rows);
-  const stampFactor=stampScale(d?.stamps?.size);
-  const spacing=stampSpacing(d?.stamps?.spacing);
+  const stampFactor=stampScale(d?.google?.stampSize ?? d?.stamps?.size);
+  const spacing=stampSpacing(d?.google?.stampSpacing ?? d?.stamps?.spacing);
   const inactiveOpacity=stampOpacity(d?.stamps?.inactiveOpacity);
   for(let i=0;i<n;i++){
     const row=Math.floor(i/cols),col=i%cols;
