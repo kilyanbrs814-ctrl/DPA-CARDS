@@ -39,3 +39,18 @@ test('director has all merchants, sales rep attribution and separate temporary s
   assert.match(ui,/Accorder l’accès/);
   assert.match(ui,/Suspendre l’accès/);
 });
+
+
+test('admin shared test cards include server-derived creator names without exposing emails',()=>{
+  const designer=read('src/card-designer.js');
+  assert.match(wallet,/const TEST_CREATOR_NAMES:/);
+  assert.match(wallet,/'mael\.81400@icloud\.com': 'Maël'/);
+  assert.match(wallet,/'zakariabouras2020@gmail\.com': 'Zak'/);
+  assert.match(wallet,/admin\.auth\.admin\.getUserById\(id\)/);
+  assert.match(wallet,/tests: await testViewsWithCreators\(data \?\? \[\]\)/);
+  assert.match(wallet,/created_by, name, config, test_balance/);
+  assert.match(wallet,/if\(user\.dpaRole!=='director'\) q=q\.eq\('created_by',user\.id\)/);
+  assert.match(designer,/const testCardLabel = t => t\.name \+ \(t\.creator_name/);
+  assert.match(designer,/'Carte test · ' \+ testCardLabel\(t\)/);
+  assert.match(designer,/testCardLabel\(t\)\), h\('div'/);
+});
