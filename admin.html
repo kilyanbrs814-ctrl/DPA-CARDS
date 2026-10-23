@@ -514,7 +514,7 @@ class Component extends DCLogic {
     const genEl=s.tab==='gen'&&this.api&&this.api.designer?React.createElement(this.api.designer().CardDesigner,{merchants:D.map(m=>({id:m.id,name:m.business_name,program:!!m.program})),target:s.gen,width:s.w,
       onTarget:g=>{ this.setState({gen:g}); writeHash('gen',g); },toast:m=>this.toast(m),onMerchantsChanged:()=>this.load()}):null;
     const scannerApi=this.api&&this.api.scanner?this.api.scanner():null;
-    const scannerEl=tab==='scanner'&&scannerApi?React.createElement(scannerApi.AdminScanner):null;
+    const scannerEl=tab==='scanner'&&typeof scannerApi==='function'?React.createElement(scannerApi):null;
     const professions=new Map(); D.forEach(m=>{ const label=(m.activity||'').trim()||'Non renseignée', key=label.toLocaleLowerCase('fr'); const entry=professions.get(key)||{label,count:0}; entry.count++; professions.set(key,entry); });
     const professionCounts=[...professions.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,'fr'));
     return {professionCounts,tabs,tabGen:tab==='gen',tabScanner:tab==='scanner',scannerEl,tabList:tab==='list',tabSales:tab==='sales',salesEl,hasSalesEl:!!selSalesEl,selSalesEl,genEl,isDesk,isMob:!isDesk,kpis,tot:{googleOnly:nf(googleOnly),appleOnly:nf(appleOnly),both:nf(both),none:nf(none),
