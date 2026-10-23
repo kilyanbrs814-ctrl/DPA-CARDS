@@ -1227,7 +1227,9 @@ function cleanDesign(raw: any, folder: string) {
   const platform = (p: any) => {
     const o = p && typeof p === 'object' ? p : {};
     return { colors: colors(o.colors, null), showHero: o.showHero !== false, showSubtitle: o.showSubtitle !== false, useBackground: o.useBackground === true,
-      heroFocus: int(o.heroFocus, 0, 100, 50), label: str(o.label, 16) };
+      heroFocus: int(o.heroFocus, 0, 100, 50), label: str(o.label, 16),
+      stampSize:int(o.stampSize,50,120,int(r.stamps?.size,50,120,100)),
+      stampSpacing:int(o.stampSpacing,50,120,int(r.stamps?.spacing,50,120,100)) };
   };
   const s = r.stamps && typeof r.stamps === 'object' ? r.stamps : {};
   const pv = r.preview && typeof r.preview === 'object' ? r.preview : {};
