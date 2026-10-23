@@ -81,7 +81,7 @@ export function realAppleBrand(program, merchant, card) {
     stamp: d.stamps?.icon === 'custom' && assets.stamp?.path?.endsWith('.png') ? assetPath(assets.stamp, card, 'stamp') : null,
     libraryId: d.stamps?.icon === 'library' ? libraryStampId(d.stamps.libraryId) : '',
     artwork: backgroundImage || hero, heroFocus: Number.isFinite(+apple.heroFocus) ? Math.max(0, Math.min(100, +apple.heroFocus)) : 50,
-    stamps: d.stamps || {}, mode: program?.mode === 'points' ? 'points' : 'passages',
+    stamps: {...(d.stamps || {}),size:apple.stampSize??d.stamps?.size,spacing:apple.stampSpacing??d.stamps?.spacing}, mode: program?.mode === 'points' ? 'points' : 'passages',
     emoji: !['library','custom'].includes(d.stamps?.icon) && typeof d.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(d.stamps.emoji) ? d.stamps.emoji.slice(0,32) : '',
   };
 }
