@@ -557,3 +557,51 @@ test('Transparent source edges blend without dark halos during anti-aliased stri
  const i=(40*image.width+100)*4,rgba=[...image.pixels.slice(i,i+4)];
  assert.deepEqual(rgba,[106,128,149,255],'premultiplied-alpha box filter avoids black transparent borders');
 });
+
+
+test('Apple and Google use independent size and spacing values, while legacy values remain unchanged',async()=>{
+  const { normalize, effective, stampSizePercent, stampSpacingPercent }=await import('../src/card-designer.js');
+  const { realAppleBrand }=await import('../supabase/functions/apple-pass/real-card.js');
+  const { makeGoogleStampHero:walletGoogle }=await import('../supabase/functions/wallet/google-strip.js');
+  const legacy={colors:{primary:'#181818',secondary:'#414B65'},stamps:{icon:'none',size:85,spacing:90,filled:'#FF6600',empty:'#FFFFFF'},
+    preview:{goal:10,progress:3,mode:'passages'}};
+  const normalized=normalize(legacy,{});
+  assert.equal(normalized.apple.stampSize,85);
+  assert.equal(normalized.apple.stampSpacing,90);
+  assert.equal(normalized.google.stampSize,85);
+  assert.equal(normalized.google.stampSpacing,90);
+  const separate=normalize({...legacy,apple:{stampSize:50,stampSpacing:120},google:{stampSize:120,stampSpacing:50}},{});
+  assert.equal(effective(separate,'apple').stamps.size,50);
+  assert.equal(effective(separate,'apple').stamps.spacing,120);
+  assert.equal(effective(separate,'google').stamps.size,120);
+  assert.equal(effective(separate,'google').stamps.spacing,50);
+  assert.equal(stampSizePercent(undefined),100);
+  assert.equal(stampSpacingPercent(undefined),100);
+  const appleBase=await makeDemoStrip(legacy,1);
+  assert.deepEqual(appleBase,await makeDemoStrip({...legacy,apple:{stampSize:85,stampSpacing:90}},1));
+  assert.notDeepEqual(appleBase,await makeDemoStrip({...legacy,apple:{stampSize:50,stampSpacing:120}},1));
+  const googleBase=await walletGoogle(legacy,3,10);
+  assert.notDeepEqual(googleBase,await walletGoogle({...legacy,google:{stampSize:120,stampSpacing:50}},3,10));
+  assert.deepEqual(googleBase,await walletGoogle({...legacy,apple:{stampSize:50,stampSpacing:50}},3,10),'changing Apple must not change Google');
+  const card={merchant_id:'11111111-1111-1111-1111-111111111111',program_id:'22222222-2222-2222-2222-222222222222'};
+  const brand=realAppleBrand({card_design:separate}, {business_name:'Test'},card);
+  assert.equal(brand.stamps.size,50);
+  assert.equal(brand.stamps.spacing,120);
+  const plain=realAppleBrand({card_design:legacy},{business_name:'Test'},card);
+  assert.equal(plain.stamps.size,85);
+  assert.equal(plain.stamps.spacing,90);
+});
+
+test('test-card changes are auto-saved after a debounce, without affecting real card drafts',()=>{
+  const source=readFileSync(new URL('../src/card-designer.js',import.meta.url),'utf8');
+  const server=readFileSync(new URL('../supabase/functions/wallet/index.ts',import.meta.url),'utf8');
+  assert.ok(source.includes("data-wallet-stamp-layout"),'platform-specific control group exists');
+  assert.ok(source.includes("set(platform+'.stampSize'"),'size follows chosen wallet');
+  assert.ok(source.includes("set(platform+'.stampSpacing'"),'spacing follows chosen wallet');
+  assert.ok(source.includes("const timer=setTimeout(async()=>"),'asynchronous debounce is used');
+  assert.ok(source.includes("if(!isTest||"),'only test cards use autosave');
+  assert.ok(source.includes("if(latestSnapshot.current.value===captured)setDesign(next)"),'in-flight edits are never overwritten');
+  assert.ok(source.includes("failedSnapshot.current===signature"),'failed writes do not loop endlessly');
+  assert.ok(server.includes("stampSize:int(o.stampSize,50,120"),'server accepts size options');
+  assert.ok(server.includes("stampSpacing:int(o.stampSpacing,50,120"),'server accepts spacing options');
+});
