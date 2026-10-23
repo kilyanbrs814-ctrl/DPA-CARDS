@@ -354,6 +354,7 @@ function line(pixels, width, height, x1, y1, x2, y2, thickness, color) {
  * @param {{width:number,height:number,pixels:Uint8Array}|null} panelArt */
 export async function makeDemoStrip(config, scale = 1, customIcon=null, rewardArt=null, finalStar=null, panelArt=null) {
   if (![1, 2, 3].includes(scale)) throw new Error('invalid_demo_strip_scale');
+  config={...config,stamps:{...(config.stamps||{}),size:config.apple?.stampSize??config.stamps?.size,spacing:config.apple?.stampSpacing??config.stamps?.spacing}};
   if(config?.stamps?.emoji || customIcon) {
     const pv=config.preview||{};
     return makeEmojiCardStrip(config.stamps, {
