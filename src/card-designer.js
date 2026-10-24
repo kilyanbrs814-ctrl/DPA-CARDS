@@ -273,7 +273,7 @@ export function makeCardDesigner(React, api) {
     const ink = data.isTest ? (light > .62 ? '#181C25' : '#FFFFFF') : onColor(c.primary);
     const completed = geo.done, remaining = Math.max(0, geo.goal - completed);
     const isPoints = data.mode === 'points';
-    const digits = (String(data.cardNumber || '').replace(/\D/g, '') || '0000').slice(-4);
+    const digits = data.appleHeaderNumber || (String(data.cardNumber || '').replace(/\D/g, '') || '0000').slice(-4);
     const stampUrl = st.icon === 'library' ? stampImageUrl(st.libraryId) :
       st.icon === 'custom' ? d.assets.stamp?.url : '';
     const rewardUrl = stampImageUrl(st.rewardId) || '/assets/stamps/reward-star.png';
@@ -1009,7 +1009,9 @@ export function makeCardDesigner(React, api) {
     if (!project.program) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h('div', { style: { padding: '14px 16px', borderRadius: 14, background: '#FFF3DC', color: '#5C4200', fontWeight: 600 } }, 'Ce commerce n’a pas encore de programme de fidélité : terminez d’abord son inscription.'));
 
     const pg = project.program, req = (project.requests || []).find(r => r.id === requestId) || null, pv = design.preview;
-    const data = { ...DEMO, isTest, programName: pg.name, client: pv.client || DEMO.client, progress: pv.progress, goal: pv.goal, mode: pv.mode, reward: pv.reward || DEMO.reward, available: pv.available,
+    const demoHeaderRaw = isTest ? 'TEST ' + project.test.id.slice(0,4) + ' ' + String(project.test.qr_token || project.test.qr_value || '').replace(/^DPA_TEST:/,'').slice(0,4) : '';
+    const demoHeaderDigits = demoHeaderRaw.replace(/\D/g, '');
+    const data = { ...DEMO, isTest, appleHeaderNumber: isTest ? (demoHeaderDigits ? demoHeaderDigits.slice(-4) : demoHeaderRaw) : null, programName: pg.name, client: pv.client || DEMO.client, progress: pv.progress, goal: pv.goal, mode: pv.mode, reward: pv.reward || DEMO.reward, available: pv.available,
       ...(isTest ? { qr: project.test.qr_value, cardNumber: project.test.card_number } : {}) };
     const po = design[platform], pName = platform === 'apple' ? 'Apple Wallet' : 'Google Wallet';
     const status = isTest ? (busy==='save' ? ['Enregistrement automatique…','#EEF1FF','#1A36C4'] : autoSaveError ? ['Échec de sauvegarde automatique','#FCEBEA','#B42318'] : dirty ? ['Sauvegarde automatique prévue…', '#FFF3DC', '#8A5A00'] : ['CARTE TEST · enregistrée le ' + fmtDate(project.test.updated_at), '#EEF1FF', '#1A36C4'])
