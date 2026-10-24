@@ -11,6 +11,7 @@ import QRCode from 'qrcode';
 import { makeCropper } from './cropper.js';
 import { normalizeStampEmoji } from './emoji-stamps.js';
 import { stampImageUrl, makeStampLibraryPicker } from './stamp-library.js';
+import { applePassPreviewGeometry } from './apple-pass-preview-geometry.js';
 
 export const FONTS = {
   hanken: { label: 'Hanken Grotesk', css: "'Hanken Grotesk', system-ui, sans-serif" },
@@ -254,193 +255,175 @@ export function makeCardDesigner(React, api) {
   const label = (d, opt, data) => (opt.label || d.label || (data.mode === 'points' ? 'POINTS' : 'TAMPONS')).toUpperCase();
   const ellipsis = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 
-  // OneCup-inspired card arrangement. Preview remains illustrative: iOS/Google
-  // native Wallet apps control text placement and cannot guarantee pixel parity.
-  function WalletCard({ design, data, platform }) {
-    const d = effective(design, platform);
-    const c = d.colors;
-    const o = d.opt;
-    // The optional Apple artwork belongs to the entire native strip, not to the inset stamp panel.
-    const hasAppleStrip = platform === 'apple' && !!d.assets.appleStrip?.url;
-    const W = 340;
-
-    const goal = Math.max(1, Number(data.goal) || 10);
-    const done = Math.max(0, Math.min(goal, Number(data.progress) || 0));
-    const remaining = Math.max(0, goal - done);
+  // Native-structure preview only. Apple PassKit keeps ownership of the signed
+  // .pkpass, field typography and device-specific spacing; this HTML never signs a card.
+  function AppleCard({ design, data }) {
+    const d = effective(design, 'apple'), o = d.opt, c = d.colors;
+    const geo = applePassPreviewGeometry(d, data);
+    const W = 375, scale = 340 / W;
+    const st = d.stamps, hasPanelArt = !!d.assets.appleStrip?.url;
+    const nativeName = o.showBusinessName === true;
+    const composed = nativeName && o.headerMode === 'custom' &&
+      [4, 5, 6].includes(o.headerArtworkVersion) && !!d.assets.appleHeader?.url;
+    const name = String(d.identity.name || 'DPA Cards').slice(0, 40);
+    // A test pass derives these colors from its primary background, regardless
+    // of the editor's arbitrary font selection.
+    const rgb = (c.primary.match(/[0-9a-f]{2}/gi) || ['1c', '1f', '24']).map(v => parseInt(v, 16));
+    const light = (rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722) / 255;
+    const ink = data.isTest ? (light > .62 ? '#181C25' : '#FFFFFF') : onColor(c.primary);
+    const completed = geo.done, remaining = Math.max(0, geo.goal - completed);
     const isPoints = data.mode === 'points';
+    const digits = (String(data.cardNumber || '').replace(/\D/g, '') || '0000').slice(-4);
+    const stampUrl = st.icon === 'library' ? stampImageUrl(st.libraryId) :
+      st.icon === 'custom' ? d.assets.stamp?.url : '';
+    const rewardUrl = stampImageUrl(st.rewardId) || '/assets/stamps/reward-star.png';
+    const inactive = inactiveStampOpacity(st.inactiveOpacity);
+    const rewardUrlReady = !!(geo.rewardArt && d.assets.rewardLabel?.url);
+    const labelStyleNative = { fontSize: 11, lineHeight: '14px', fontWeight: 500,
+      textTransform: 'uppercase', letterSpacing: '.02em', opacity: .9 };
+    const absolute = (x, y, w, height) => ({ position: 'absolute', left: x - w / 2,
+      top: y - height / 2, width: w, height, boxSizing: 'border-box' });
 
-    return h('div', {
-      'data-layout': platform,
-      'data-onecup-inspired': true,
-      style: {
-        width: W,
-        borderRadius: 22,
-        overflow: 'hidden',
-        background: cardBg(d, o),
-        color: c.text,
-        fontFamily: platform==='apple' ? '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif' : FONTS[d.font].css,
-        boxShadow: '0 14px 36px rgba(20,22,28,.19)'
+    const stampView = (s, i) => {
+      const fade = inactive / 100;
+      const img = s.final ? rewardUrl : stampUrl;
+      // The signed strip uses color images for acquired stamps and grayscale,
+      // faded images for the empty slots.
+      if (s.type === 'image' && (img || st.emoji)) {
+        const style = { ...absolute(s.x, s.y, s.diameter, s.diameter),
+          objectFit: 'contain', display: 'block', opacity: s.done ? 1 : fade,
+          filter: s.done ? 'none' : 'grayscale(1)' };
+        return img
+          ? h('img', { key: i, src: img, alt: '', 'data-native-stamp': s.done ? 'filled' : 'empty', style })
+          : h('span', { key: i, 'data-native-stamp': s.done ? 'filled' : 'empty',
+              style: { ...style, display: 'grid', placeItems: 'center', fontSize: Math.round(s.diameter * .85) } },
+              st.emoji);
       }
-    },
+      if (s.type === 'image') return null;
+      const radius = s.diameter / 2;
+      const ring = { ...absolute(s.x, s.y, s.diameter, s.diameter), borderRadius: '50%',
+        background: s.done ? st.filled : c.primary };
+      if (!s.done) {
+        const opacity = inactive < 22 ? inactive / 22 : 1;
+        ring.border = (geo.real ? 3 : 2.4) * Math.max(.5, s.diameter / 26) +
+          'px solid ' + st.empty;
+        ring.opacity = opacity;
+      }
+      return h('div', { key: i, 'data-native-stamp': s.done ? 'filled' : 'empty',
+        style: ring }, s.done && st.icon === 'check'
+          ? h('span', { style: { color: c.primary, fontSize: 16, fontWeight: 700,
+              display: 'grid', placeItems: 'center', height: '100%' } }, '✓')
+          : null);
+    };
 
-      // 1. LOGO + NOM À GAUCHE / NUMÉRO À DROITE
-      h('div', {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          // Fixed-height native-style header: do not move the stamp rectangle.
-          height: platform==='apple' ? 80 : undefined,
-          boxSizing: 'border-box',
-          padding: platform==='apple' ? '0 17px' : '20px 17px'
-        }
-      },
-        h('div', {
-          style: {
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            flex: 1,
-            minWidth: 0
-          }
-        },
-          // The optional custom mode is one 160x50pt image; Classic keeps iOS text.
-          platform==='apple' && o.showBusinessName && o.headerMode==='custom' && o.headerArtworkVersion===APPLE_WORDMARK_VERSION && d.assets.appleHeader?.url
-            ? h(Img,{asset:d.assets.appleHeader,alt:'Logo, nom et activité du commerce',style:{width:160,height:50,objectFit:'contain',objectPosition:'left center',flexShrink:0}})
-            : platform==='apple' && o.showBusinessName && o.headerMode==='custom'
-              ? h('div',{'data-field':'apple-custom-business-header',style:{width:160,height:50,display:'flex',alignItems:'center',gap:4,flexShrink:0,overflow:'hidden'}},
-                  h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:d.assets.businessNameImage?.url?31:48,height:d.assets.businessNameImage?.url?31:48,objectFit:'contain',flexShrink:0}}),
-                  d.assets.businessNameImage?.url ? h(WordmarkImg,{asset:d.assets.businessNameImage,alt:'Logo texte du commerce',style:{width:124,height:48,objectFit:'contain',objectPosition:'left center',minWidth:0}}) : h('div',{style:{minWidth:0,flex:1,overflow:'hidden',lineHeight:1.12}},
-                    h('div',{style:{...ellipsis,fontWeight:750,fontSize:15}},d.identity.name||'Nom du commerce'),
-                    o.showSubtitle!==false && d.identity.subtitle && h('div',{style:{...ellipsis,fontSize:8,fontWeight:500,marginTop:4,textTransform:'uppercase'}},d.identity.subtitle)))
-              : platform==='apple' ? h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:o.showBusinessName?64:145,height:o.showBusinessName?48:45,objectFit:'contain',objectPosition:'left center',flexShrink:0}}) : d.assets.businessNameImage?.url ? h('div',{'data-field':'google-wide-logo',style:{display:'flex',gap:8,alignItems:'center',maxWidth:174,minWidth:0}},
-                 d.assets.logo?.url && h(Img,{asset:d.assets.logo,alt:'Logo symbole',style:{width:40,height:40,objectFit:'contain',flexShrink:0}}),
-                 h(WordmarkImg,{asset:d.assets.businessNameImage,alt:'Logo texte',style:{height:42,width:145,objectFit:'contain',objectPosition:'left center',minWidth:0}})) : h(Logo, { d, size: 40, round: false }),
-          platform==='apple' && o.showBusinessName && o.headerMode!=='custom' && h('div',{
-            'data-field':'apple-native-business-name',
-            style:{...ellipsis,minWidth:0,whiteSpace:'nowrap',fontFamily:'-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',fontSize:20,fontWeight:700,lineHeight:1.1}
-          },d.identity.name||'Nom du commerce'),
-          platform!=='apple' && !d.assets.businessNameImage?.url && h('div', {
-            'data-field': 'business',
-            style: {
-              ...ellipsis,
-              fontSize: 20,
-              fontWeight: 750,
-              lineHeight: 1.2
-            }
-          }, d.identity.name || 'Nom du commerce')
-        ),
+    const stripBackground = geo.artwork
+      ? c.primary
+      : geo.real
+        ? 'linear-gradient(90deg,' + c.primary + ' 50%,' +
+          (o.showStampPanel === false ? c.primary : c.secondary) + ' 50%)'
+        : o.showStampPanel === false
+          ? c.primary
+          : 'linear-gradient(108deg,' + c.secondary + ',' + c.primary + ')';
 
-        h('div', {
-          'data-field': 'card-number',
-          style: {
-            fontSize: 15,
-            fontWeight: 600,
-            opacity: 0.9,
-            flexShrink: 0,
-            fontVariantNumeric: 'tabular-nums'
-          }
-        }, (String(data.cardNumber || '').replace(/\D/g, '') || '0000').slice(-4))
-      ),
+    const strip = h('div', { 'data-apple-native-strip': true,
+      style: { position: 'relative', width: W, height: geo.height,
+        background: stripBackground, overflow: 'hidden' } },
+      geo.artwork && !hasPanelArt && o.showStampPanel !== false &&
+        h('div', { style: { position: 'absolute', left: 16, top: 3,
+          width: 343, height: geo.height - 6, background: c.secondary,
+          borderRadius: 15 } }),
+      hasPanelArt && h(Img, { asset: d.assets.appleStrip, alt: 'Bandeau Apple Wallet',
+        style: { position: 'absolute', inset: 0, width: W, height: geo.height,
+          objectFit: 'cover', objectPosition: 'center' } }),
+      geo.bar && h('div', { 'data-apple-native-progress': true,
+        style: { position: 'absolute', left: geo.bar.left, top: geo.bar.top,
+          width: geo.bar.width, height: geo.bar.height, background: st.empty } },
+        h('div', { style: { width: (geo.bar.fraction * 100) + '%',
+          height: '100%', background: st.filled } })),
+      geo.stamps.map(stampView),
+      !geo.artwork && h('div', { 'data-apple-native-primary': true,
+        style: { position: 'absolute', left: 17, top: geo.real ? 28 : 38,
+          width: 148, overflow: 'hidden' } },
+        h('div', { style: labelStyleNative },
+          (o.label || d.label || (isPoints ? 'POINTS' : 'TAMPONS')).slice(0, 16)),
+        h('div', { style: { fontWeight: 650, fontSize: 29, lineHeight: 1.3 } },
+          completed + ' / ' + geo.goal + (isPoints ? ' pts' : ''))),
+      geo.rewardArt && (rewardUrlReady
+        ? h(Img, { asset: d.assets.rewardLabel, alt: 'Récompense',
+            style: { position: 'absolute', left: 30, top: geo.height === 123 ? 91 : 112,
+              width: 315, height: 26, objectFit: 'contain' } })
+        : o.rewardText?.trim() && h('div', { 'data-apple-reward': true,
+            style: { position: 'absolute', left: 30, top: geo.height === 123 ? 91 : 112,
+              width: 315, height: 26, textAlign: 'center', fontSize: 15,
+              fontWeight: 700, color: rewardLabelColor(design),
+              overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' } },
+            o.rewardText.trim())));
 
-      // 2. RECTANGLE CENTRAL AVEC LES TAMPONS PNG (OU BANDEAU APPLE PLEINE LARGEUR)
-      h('div', {
-        'data-apple-stamp-panel': platform==='apple' ? (o.showStampPanel===false?'hidden':'visible') : undefined,
-        style: {
-          margin: hasAppleStrip ? 0 : '0 16px',
-          padding: '24px 12px',
-          minHeight: 145,
-          position: 'relative',
-          borderRadius: hasAppleStrip ? 0 : 15,
-          background: hasAppleStrip ? c.primary : platform==='apple' && o.showStampPanel===false ? 'transparent' : c.secondary,
-          backgroundImage: hasAppleStrip ? `url("${d.assets.appleStrip.url}")` : undefined,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          display: 'grid',
-          placeItems: 'center',
-          boxSizing: 'border-box'
-        }
-      },
-        (platform!=='apple' || o.showStamps!==false) && h('div',{style:platform==='apple' && o.showReward && o.rewardText?.trim()?
-          {transform:'translateY(-11px) scale(0.86)',transformOrigin:'center center'}:{}},
-          h(Progress, {
-            d,
-            data,
-            width: 275,
-            align: 'center',
-            dark: false, large:platform==='apple'
-          })),
-        platform==='apple' && o.showReward && o.rewardText?.trim() &&
-          h('div',{'data-apple-reward':true,style:{
-            position:'absolute',bottom:8,left:18,right:18,
-            textAlign:'center',fontSize:14,fontWeight:700,lineHeight:'20px',
-            overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis',
-            color:rewardLabelColor(design)
-          }},o.rewardText.trim())
-      ),
+    const field = (label, value, align, dataField) =>
+      h('div', { 'data-field': dataField || undefined,
+        style: { minWidth: 0, flex: 1, textAlign: align || 'left' } },
+        h('div', { style: { ...labelStyleNative, ...ellipsis } }, label),
+        h('div', { style: { fontWeight: 600, fontSize: geo.artwork ? 26 : 18,
+          lineHeight: '30px', ...ellipsis } }, String(value)));
 
-      // 3. Compteurs sur une seule ligne, côte à côte
-      h('div', {
-        style: {
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          padding: '20px 18px 24px'
-        }
-      },
-        h('div', {
-          style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }
-        },
-          h('span', {
-            style: { fontSize: 11, opacity: 0.85, whiteSpace: 'nowrap' }
-          }, isPoints ? 'Points gagnés' : 'Passages effectués'),
-          h('strong', {
-            'data-field': 'completed-count',
-            style: { fontSize: 21, fontWeight: 750, fontVariantNumeric: 'tabular-nums' }
-          }, String(done))
-        ),
-        h('div', {
-          style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }
-        },
-          h('span', {
-            style: { fontSize: 11, opacity: 0.85, whiteSpace: 'nowrap' }
-          }, isPoints ? 'Points restants' : 'Passages restants'),
-          h('strong', {
-            'data-field': 'remaining-count',
-            style: { fontSize: 21, fontWeight: 750, fontVariantNumeric: 'tabular-nums' }
-          }, String(remaining))
-        )
-      ),
+    const fields = geo.artwork
+      ? h('div', { 'data-native-apple-fields': 'counters',
+          style: { display: 'flex', justifyContent: 'space-between',
+            gap: 16, height: 88, boxSizing: 'border-box', padding: '19px 18px 12px' } },
+          field(isPoints ? 'Points gagnés' : 'Passages effectués',
+            completed, 'left', 'completed-count'),
+          field(isPoints ? 'Points restants' : 'Passages restants',
+            remaining, 'right', 'remaining-count'))
+      : h('div', { 'data-native-apple-fields': 'details',
+          style: { height: 130, boxSizing: 'border-box', padding: '16px 18px 8px' } },
+          h('div', { style: { display: 'flex', gap: 12 } },
+            field('CLIENT', data.client || 'Client test'),
+            field('RÉCOMPENSE', data.reward || 'Récompense fidélité')),
+          h('div', { style: { marginTop: 13, ...labelStyleNative } },
+            data.isTest ? 'DISPONIBLES' : 'CARTE'),
+          h('div', { style: { fontSize: 17, fontWeight: 600, marginTop: 2 } },
+            data.isTest ? String(data.available || 0) : String(data.cardNumber || '—')));
 
-      // 4. QR CODE CENTRÉ EN BAS
-      h('div', {
-        'data-field': 'qr',
-        style: {
-          display: 'flex',
-          justifyContent: 'center',
-          padding: '0 16px 25px'
-        }
-      },
-        h('div', {
-          style: {
-            background: '#FFFFFF',
-            padding: 12,
-            borderRadius: 14,
-            display: 'grid',
-            placeItems: 'center'
-          }
-        },
-          h(Qr, {
-            value: data.qr,
-            size: 125
-          })
-        )
-      )
-    );
+    const top = h('div', { style: { display: 'flex', alignItems: 'center',
+      justifyContent: 'space-between', gap: 10, width: W,
+      boxSizing: 'border-box', padding: '0 17px', height: 79 } },
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: 8,
+        minWidth: 0, flex: 1 } },
+        composed
+          ? h(Img, { asset: d.assets.appleHeader, alt: 'En-tête Apple',
+              style: { width: 160, height: 50, objectFit: 'contain', flexShrink: 0 } })
+          : h(Img, { asset: d.assets.logo, alt: 'Logo',
+              style: { width: nativeName ? 64 : 160, height: nativeName ? 48 : 50,
+                objectFit: 'contain', objectPosition: 'left center', flexShrink: 0 } }),
+        nativeName && !composed && h('div', {
+          'data-field': 'apple-native-business-name',
+          style: { ...ellipsis, fontWeight: 650, fontSize: 18,
+            fontFamily: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif' } },
+          name)),
+      geo.artwork
+        ? h('div', { 'data-field': 'card-number', style: { fontSize: 16,
+            fontWeight: 600, flexShrink: 0, fontVariantNumeric: 'tabular-nums' } }, digits)
+        : !data.isTest && h('div', { style: { fontSize: 12, fontWeight: 600,
+            maxWidth: 126, textAlign: 'right', ...ellipsis } },
+            String(data.programName || 'Fidélité').slice(0, 22)));
+
+    const qr = h('div', { 'data-field': 'qr',
+      style: { height: 176, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', gap: 9 } },
+      h('div', { style: { background: '#FFFFFF', borderRadius: 4,
+        padding: 10, lineHeight: 0 } }, h(Qr, { value: data.qr, size: 125 })),
+      h('div', { style: { fontSize: 11, opacity: .85 } }, 'Par DPA Cards'));
+    const nativeHeight = 79 + geo.height + (geo.artwork ? 88 : 130) + 176;
+    return h('div', { 'data-layout': 'apple', 'data-apple-passkit-preview': true,
+      style: { width: 340, height: Math.ceil(nativeHeight * scale),
+        position: 'relative' } },
+      h('div', { style: { width: W, height: nativeHeight, borderRadius: 22,
+        overflow: 'hidden', background: c.primary, color: ink,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
+        boxShadow: '0 14px 36px rgba(20,22,28,.19)', transform: 'scale(' + scale + ')',
+        transformOrigin: 'top left' } },
+        top, strip, fields, qr));
   }
-  function AppleCard({design,data}){return h(WalletCard,{design,data,platform:'apple'});}
   function GoogleCard({design,data}){
     const d=effective(design,'google'),c=d.colors;
     const art=d.assets.googleStrip || (d.opt.reuseAppleStrip!==false?d.assets.appleStrip:null);
@@ -1026,7 +1009,7 @@ export function makeCardDesigner(React, api) {
     if (!project.program) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h('div', { style: { padding: '14px 16px', borderRadius: 14, background: '#FFF3DC', color: '#5C4200', fontWeight: 600 } }, 'Ce commerce n’a pas encore de programme de fidélité : terminez d’abord son inscription.'));
 
     const pg = project.program, req = (project.requests || []).find(r => r.id === requestId) || null, pv = design.preview;
-    const data = { ...DEMO, client: pv.client || DEMO.client, progress: pv.progress, goal: pv.goal, mode: pv.mode, reward: pv.reward || DEMO.reward, available: pv.available,
+    const data = { ...DEMO, isTest, programName: pg.name, client: pv.client || DEMO.client, progress: pv.progress, goal: pv.goal, mode: pv.mode, reward: pv.reward || DEMO.reward, available: pv.available,
       ...(isTest ? { qr: project.test.qr_value, cardNumber: project.test.card_number } : {}) };
     const po = design[platform], pName = platform === 'apple' ? 'Apple Wallet' : 'Google Wallet';
     const status = isTest ? (busy==='save' ? ['Enregistrement automatique…','#EEF1FF','#1A36C4'] : autoSaveError ? ['Échec de sauvegarde automatique','#FCEBEA','#B42318'] : dirty ? ['Sauvegarde automatique prévue…', '#FFF3DC', '#8A5A00'] : ['CARTE TEST · enregistrée le ' + fmtDate(project.test.updated_at), '#EEF1FF', '#1A36C4'])
