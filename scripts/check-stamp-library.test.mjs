@@ -76,6 +76,9 @@ test('Google Drive stamps show only one entry alongside the built-in library, wi
   for(const label of ['emoji bao pain blanc graines noires','emoji burger deux pains noirs','emoji burger pain noir bas','emoji burger pain noir haut']){
     assert.ok(items.some(x=>x.label===label),'distinct variant remains: '+label);
   }
+  const importedPizza=items.find(x=>x.id===remote.find(y=>y.label==='pizza').id);
+  assert.equal(importedPizza.label,'Pizza','keep the familiar display name after deduplication');
+  assert.match(importedPizza.tags,/restaurant/,'keep original search tags when Drive artwork replaces built-in artwork');
   const pizza=remote.find(x=>x.label==='pizza');
   const staticPizza=mergedStampCatalog(remote,'pizza');
   assert.ok(staticPizza.some(x=>x.id==='pizza'),'an existing card with built-in pizza remains selected');
