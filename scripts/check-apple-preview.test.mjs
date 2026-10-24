@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { applePassPreviewGeometry } from '../src/apple-pass-preview-geometry.js';
+import { applePassPreviewGeometry, applePreviewTextColor } from '../src/apple-pass-preview-geometry.js';
+import { readFileSync } from 'node:fs';
 
 const design = (icon = 'library', options = {}) => ({
   opt: { showStampPanel: true, showStamps: true, ...options },
@@ -79,4 +80,18 @@ test('preview geometry is pure and does not modify saved designs or card data', 
   const saved = JSON.stringify({d, preview});
   applePassPreviewGeometry(d, preview);
   assert.equal(JSON.stringify({d, preview}), saved);
+});
+
+test('Apple Wallet preview applies selected golden text instead of automatic white', () => {
+  for (const fallback of ['#FFFFFF', '#181C25', '#1C1F24']) {
+    assert.equal(applePreviewTextColor('#D4AF37', fallback), '#D4AF37');
+    assert.equal(applePreviewTextColor('#d4af37', fallback), '#d4af37');
+    assert.equal(applePreviewTextColor('#A87932', fallback), '#A87932');
+    assert.equal(applePreviewTextColor('', fallback), fallback);
+    assert.equal(applePreviewTextColor('#BAD', fallback), fallback);
+  }
+  const designer = readFileSync(new URL('../src/card-designer.js', import.meta.url), 'utf8');
+  assert.match(designer, /const ink = applePreviewTextColor\(c\.text,\s*data\.isTest/);
+  assert.match(designer, /overflow: 'hidden', background: c\.primary, color: ink/);
+  assert.match(designer, /const d = effective\(design, 'apple'\)/);
 });

@@ -11,7 +11,7 @@ import QRCode from 'qrcode';
 import { makeCropper } from './cropper.js';
 import { normalizeStampEmoji } from './emoji-stamps.js';
 import { stampImageUrl, makeStampLibraryPicker } from './stamp-library.js';
-import { applePassPreviewGeometry } from './apple-pass-preview-geometry.js';
+import { applePassPreviewGeometry, applePreviewTextColor } from './apple-pass-preview-geometry.js';
 
 export const FONTS = {
   hanken: { label: 'Hanken Grotesk', css: "'Hanken Grotesk', system-ui, sans-serif" },
@@ -266,11 +266,12 @@ export function makeCardDesigner(React, api) {
     const composed = nativeName && o.headerMode === 'custom' &&
       [4, 5, 6].includes(o.headerArtworkVersion) && !!d.assets.appleHeader?.url;
     const name = String(d.identity.name || 'DPA Cards').slice(0, 40);
-    // A test pass derives these colors from its primary background, regardless
-    // of the editor's arbitrary font selection.
+    // The preview must follow the selected Apple text color (including gold).
+    // Automatic black/white remains a fallback only when no valid color exists.
     const rgb = (c.primary.match(/[0-9a-f]{2}/gi) || ['1c', '1f', '24']).map(v => parseInt(v, 16));
     const light = (rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722) / 255;
-    const ink = data.isTest ? (light > .62 ? '#181C25' : '#FFFFFF') : onColor(c.primary);
+    const ink = applePreviewTextColor(c.text,
+      data.isTest ? (light > .62 ? '#181C25' : '#FFFFFF') : onColor(c.primary));
     const completed = geo.done, remaining = Math.max(0, geo.goal - completed);
     const isPoints = data.mode === 'points';
     const digits = data.appleHeaderNumber || (String(data.cardNumber || '').replace(/\D/g, '') || '0000').slice(-4);
