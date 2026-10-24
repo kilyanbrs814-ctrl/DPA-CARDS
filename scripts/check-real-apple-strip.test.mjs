@@ -389,7 +389,7 @@ test('full Apple strip uses centered cover crop without squashing and leaves Goo
 
 test('Apple preview renders the native full-bleed strip and inset without artwork',()=>{
   const source=readFileSync(new URL('../src/card-designer.js',import.meta.url),'utf8');
-  assert.ok(source.includes('const hasPanelArt = !!d.assets.appleStrip?.url'));
+  assert.ok(source.includes('hasPanelArt = !!d.assets.appleStrip?.url'));
   assert.ok(source.includes('width: 343, height: geo.height - 6'));
   assert.ok(source.includes("objectFit: 'cover', objectPosition: 'center'"));
   assert.ok(source.includes("'data-apple-native-strip': true"));
