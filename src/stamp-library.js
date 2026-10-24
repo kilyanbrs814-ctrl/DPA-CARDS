@@ -174,8 +174,10 @@ export const STAMP_LIBRARY = [
   {"id":"cadeau","label":"Cadeau","tags":"gift récompense cadeau anniversaire"}
 ];
 const BY_ID = new Map(STAMP_LIBRARY.map(stamp=>[stamp.id,stamp]));
+const DRIVE_ID = /^gd-[A-Za-z0-9_-]{10,120}$/;
+const DYNAMIC_BASE=(import.meta.env.VITE_SUPABASE_URL||'')+'/storage/v1/object/public/program-assets/stamp-library/';
 export function stampById(id) { return typeof id === 'string' ? BY_ID.get(id) || null : null; }
-export function stampImageUrl(id) { return stampById(id) ? '/assets/stamps/'+id+'.png' : ''; }
+export function stampImageUrl(id) { return stampById(id) ? '/assets/stamps/'+id+'.png' : DRIVE_ID.test(String(id||'')) ? DYNAMIC_BASE+id+'.png' : ''; }
 function normalizeSearch(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
 export function filterStamps(query) {
   const q=normalizeSearch(query);
@@ -185,11 +187,25 @@ export function makeStampLibraryPicker(React) {
   const h=React.createElement;
   return function StampLibraryPicker({value,onChange,includeRewardStar=false}) {
     const [search,setSearch]=React.useState('');
+    const [synced,setSynced]=React.useState([]);
+    React.useEffect(()=>{
+      let live=true;
+      const load=async()=>{
+        try {
+          const r=await fetch((import.meta.env.VITE_SUPABASE_URL||'')+'/functions/v1/stamp-sync/catalog');
+          if(!r.ok)throw new Error('catalog_not_available');
+          const data=await r.json();
+          if(live)setSynced((data.items||[]).filter(x=>DRIVE_ID.test(String(x.id||''))&&typeof x.label==='string'&&x.label.length<=100));
+        }catch {if(live)setSynced([]);}
+      };
+      load();return ()=>{live=false;};
+    },[]);
+    const candidates=[...STAMP_LIBRARY,...synced.filter(x=>!BY_ID.has(x.id))];
     return h('div',{'data-stamp-library':true,style:{display:'flex',flexDirection:'column',gap:12}},
       h('label',{style:{fontSize:14,fontWeight:700}},'Choisir un tampon PNG'),
       h('input',{type:'search',value:search,onChange:e=>setSearch(e.target.value),placeholder:'Rechercher : burger, coiffeur, sushi…','aria-label':'Rechercher un tampon',style:{width:'100%',height:42,borderRadius:10,border:'1px solid #D4D1C9',padding:'0 12px',fontSize:14}}),
       h('div',{role:'group','aria-label':'Catalogue des tampons PNG',style:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(82px,1fr))',gap:8,maxHeight:288,overflowY:'auto',padding:'2px'}},
-        ...(includeRewardStar && (!search || normalizeSearch('étoile récompense par défaut star').includes(normalizeSearch(search))) ? [{id:'reward-star',label:'Étoile (actuelle)',tags:'étoile star'}] : []).concat(filterStamps(search)).map(item=>h('button',{key:item.id,type:'button',title:item.label,'aria-label':item.label,'aria-pressed':value===item.id,onClick:()=>onChange(item.id),style:{border:value===item.id?'2px solid #2448F0':'1px solid #E4E1DA',borderRadius:12,background:value===item.id?'#EEF2FF':'#FFFFFF',minHeight:98,padding:'7px 4px',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:4,cursor:'pointer'}},
+        ...(includeRewardStar && (!search || normalizeSearch('étoile récompense par défaut star').includes(normalizeSearch(search))) ? [{id:'reward-star',label:'Étoile (actuelle)',tags:'étoile star'}] : []).concat(search?candidates.filter(x=>normalizeSearch(x.label+' '+(x.tags||'')).includes(normalizeSearch(search))):candidates).map(item=>h('button',{key:item.id,type:'button',title:item.label,'aria-label':item.label,'aria-pressed':value===item.id,onClick:()=>onChange(item.id),style:{border:value===item.id?'2px solid #2448F0':'1px solid #E4E1DA',borderRadius:12,background:value===item.id?'#EEF2FF':'#FFFFFF',minHeight:98,padding:'7px 4px',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',gap:4,cursor:'pointer'}},
           h('img',{src:item.id==='reward-star'?'/assets/stamps/reward-star.png':stampImageUrl(item.id),alt:'',loading:'lazy',width:52,height:52,style:{objectFit:'contain',display:'block'}}),
           h('span',{style:{fontSize:11,fontWeight:value===item.id?800:550,lineHeight:1.2,color:'#252A33',textAlign:'center'}},item.label)))),
       h('small',{style:{color:'#5E636B'}},'Passage validé : image en couleur. Passage restant : la même image en gris, atténuée.'));
