@@ -215,7 +215,7 @@ export function mergedStampCatalog(imported=[],selectedId='') {
     if(slot!==undefined) {
       const previous=catalog[slot];
       if(previous.id===selectedId && item.id!==selectedId)continue;
-      if(previous.id===match || item.id===selectedId)catalog[slot]=item;
+      if(previous.id===match || item.id===selectedId)catalog[slot]={...item,label:STAMP_LIBRARY[slot].label,tags:STAMP_LIBRARY[slot].tags};
       continue;
     }
     const existing=driveSlots.get(key);
