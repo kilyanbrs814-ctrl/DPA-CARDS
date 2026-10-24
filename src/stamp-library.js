@@ -198,7 +198,7 @@ export function makeStampLibraryPicker(React) {
           if(live)setSynced((data.items||[]).filter(x=>DRIVE_ID.test(String(x.id||''))&&typeof x.label==='string'&&x.label.length<=100));
         }catch {if(live)setSynced([]);}
       };
-      load();return ()=>{live=false;};
+      load();const poll=setInterval(load,300000);return ()=>{live=false;clearInterval(poll);};
     },[]);
     const candidates=[...STAMP_LIBRARY,...synced.filter(x=>!BY_ID.has(x.id))];
     return h('div',{'data-stamp-library':true,style:{display:'flex',flexDirection:'column',gap:12}},
