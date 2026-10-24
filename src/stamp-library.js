@@ -188,7 +188,7 @@ export function filterStamps(query) {
 // These aliases describe exact known duplicates, not broad substring matches: all
 // distinct burger/bun variations must remain available.
 function matchKey(value) {
-  return normalizeSearch(value).replace(/[^a-z0-9]+/g,' ').replace(/\\s+/g,' ').trim();
+  return normalizeSearch(value).replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
 }
 const STATIC_MATCH_KEYS=new Map(STAMP_LIBRARY.flatMap(item=>[
   [matchKey(item.id),item.id],[matchKey(item.label),item.id],
