@@ -33,7 +33,8 @@ test('size changes the bitmap, spacing moves center positions only', () => {
     design('library', {stampSize: 50, stampSpacing: 120}), data(true));
   assert.equal(varied.stamps[0].diameter, 25);
   assert.equal(varied.stamps[0].x, Math.round(187.5 - 2 * 61 * 1.2));
-  assert.equal(varied.stamps[5].y, Math.round(72 + -.5 * 58 * 1.2));
+  assert.equal(varied.stamps[0].y, Math.round(72 - .5 * 58 * 1.2));
+  assert.equal(varied.stamps[5].y, Math.round(72 + .5 * 58 * 1.2));
   assert.notEqual(regular.stamps[0].x, varied.stamps[0].x);
 });
 
