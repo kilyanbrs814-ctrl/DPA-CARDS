@@ -387,13 +387,14 @@ test('full Apple strip uses centered cover crop without squashing and leaves Goo
   assert.deepEqual(await makeGoogleStampHero({...config,apple:{showStamps:false},assets:{appleStrip:{url:'unused'}}},3,10,'passages'),google);
 });
 
-test('the Apple editor uses a full-bleed strip only when artwork is selected',()=>{
+test('Apple preview renders the native full-bleed strip and inset without artwork',()=>{
   const source=readFileSync(new URL('../src/card-designer.js',import.meta.url),'utf8');
-  assert.ok(source.includes("const hasAppleStrip = platform === 'apple' && !!d.assets.appleStrip?.url"));
-  assert.ok(source.includes("margin: hasAppleStrip ? 0 : '0 16px'"));
-  assert.ok(source.includes('borderRadius: hasAppleStrip ? 0 : 15'));
+  assert.ok(source.includes('hasPanelArt = !!d.assets.appleStrip?.url'));
+  assert.ok(source.includes('width: 343, height: geo.height - 6'));
+  assert.ok(source.includes("objectFit: 'cover', objectPosition: 'center'"));
+  assert.ok(source.includes("'data-apple-native-strip': true"));
   assert.ok(source.includes('appleStrip: { aspect: RECOMMENDED_IMAGE_SIZES.appleStrip.width / RECOMMENDED_IMAGE_SIZES.appleStrip.height, outW: RECOMMENDED_IMAGE_SIZES.appleStrip.width, outH: RECOMMENDED_IMAGE_SIZES.appleStrip.height'));
-  assert.ok(source.includes('appleStrip: Object.freeze({ width: 1125, height: 432,'),'recommended pixel dimensions match the full-bleed strip export');
+  assert.ok(source.includes('appleStrip: Object.freeze({ width: 1125, height: 432,'));
 });
 test('Apple panel settings survive reload and asset paths remain scoped to their owner',async()=>{
   const {normalize,prepareDesign}=await import('../src/card-designer.js');
