@@ -33,15 +33,15 @@ test('admin preview and save backend include emoji settings',()=>{
   assert.ok(server.includes("emoji', 'none'"),'emoji variant accepted');
 });
 
-test('wallet designer preview renders only digits in card number and inline counts',()=>{
+test('Apple native preview separates artwork counters from classic fields',()=>{
   const designer=read('src/card-designer.js');
   const start=designer.indexOf('function AppleCard({ design, data })');
   const finish=designer.indexOf('function GoogleCard(',start);
   assert.ok(start>0 && finish>start);
   const preview=designer.slice(start,finish);
   assert.ok(preview.includes(String.raw`replace(/\D/g, '')`),'remove prefixes while retaining leading zeros');
-  assert.ok(preview.includes("'data-field': 'completed-count'"),'completed counter exists');
-  assert.ok(preview.includes("'data-field': 'remaining-count'"),'remaining counter exists');
+  assert.ok(preview.includes("'completed-count')"),'completed counter exists');
+  assert.ok(preview.includes("'remaining-count')"),'remaining counter exists');
   assert.ok(preview.includes("'data-native-apple-fields': 'details'"),'plain cards use native client and reward fields');
   assert.ok(preview.includes("'data-native-apple-fields': 'counters'"),'illustrated cards use native counters');
   assert.ok(preview.includes("'data-apple-native-strip': true"),'native strip exists');
