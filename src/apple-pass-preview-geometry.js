@@ -19,7 +19,7 @@ export function applePassPreviewGeometry(d, data) {
   const stripHeight = artwork || !real ? 144 : 123;
   let bar = null;
 
-  if (opt.showStamps !== false && (data.mode === 'points' || goal > 30)) {
+  if (opt.showStamps !== false && (artwork || !real) && (data.mode === 'points' || goal > 30)) {
     const left = artwork ? 70 : real ? 190 : 190;
     const width = artwork ? 235 : 165;
     const top = artwork ? 66 : real ? 54 : 63;
