@@ -1,6 +1,13 @@
 // Read-only geometry for the Apple Wallet editor preview.
 // Mirrors makeDemoStrip/makeRealStrip/makeEmojiCardStrip in the Apple Pass function.
 // Do not import this into the server: the signed pass and its layouts are unchanged.
+
+// Only the editor preview consumes this color. Its value must be the saved
+// Apple-specific text color (merged by effective()), not a light/dark guess.
+export function applePreviewTextColor(selected, automaticFallback) {
+  return typeof selected === 'string' && /^#[0-9a-f]{6}$/i.test(selected)
+    ? selected : automaticFallback;
+}
 const clamp = (n, low, high) => Math.max(low, Math.min(high, n));
 const percent = raw => raw == null || raw === '' || !Number.isFinite(Number(raw))
   ? 1 : clamp(Number(raw), 50, 120) / 100;
