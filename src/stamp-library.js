@@ -183,6 +183,47 @@ export function filterStamps(query) {
   const q=normalizeSearch(query);
   return q ? STAMP_LIBRARY.filter(x=>normalizeSearch(x.label+' '+x.tags).includes(q)) : STAMP_LIBRARY;
 }
+// The original 39 shipped icons remain valid for existing cards. Imported Drive images
+// may represent the same stamp under its original filename (not always its UI label).
+// These aliases describe exact known duplicates, not broad substring matches: all
+// distinct burger/bun variations must remain available.
+function matchKey(value) {
+  return normalizeSearch(value).replace(/[^a-z0-9]+/g,' ').replace(/\\s+/g,' ').trim();
+}
+const STATIC_MATCH_KEYS=new Map(STAMP_LIBRARY.flatMap(item=>[
+  [matchKey(item.id),item.id],[matchKey(item.label),item.id],
+]));
+const DRIVE_FILENAME_ALIASES=new Map(Object.entries({
+  donuts:'donut',crousty:'riz-crousty',fleurs:'fleuriste',
+  suhis:'sushi',chaussure:'sneaker',bague:'bijouterie',
+  teeshirt:'vetements',telephone:'telephonie',pneu:'pneumatique',
+  os:'animalerie','icone de cheveux bruns brillants en 3d':'cheveux-bruns',
+}));
+// One visible choice per stamp. Prefer the Drive version when there is no
+// existing selection, so freshly updated artwork stays selectable. An older
+// already-selected static or imported ID always stays visible and unchanged.
+export function mergedStampCatalog(imported=[],selectedId='') {
+  const catalog=STAMP_LIBRARY.slice();
+  const staticSlots=new Map(STAMP_LIBRARY.map((item,i)=>[item.id,i]));
+  const driveSlots=new Map();
+  for(const item of imported){
+    if(!item || !DRIVE_ID.test(String(item.id||'')) || typeof item.label!=='string')continue;
+    const key=matchKey(item.label);
+    if(!key)continue;
+    const match=STATIC_MATCH_KEYS.get(key)||DRIVE_FILENAME_ALIASES.get(key);
+    const slot=staticSlots.get(match);
+    if(slot!==undefined) {
+      const previous=catalog[slot];
+      if(previous.id===selectedId && item.id!==selectedId)continue;
+      if(previous.id===match || item.id===selectedId)catalog[slot]=item;
+      continue;
+    }
+    const existing=driveSlots.get(key);
+    if(existing===undefined){driveSlots.set(key,catalog.length);catalog.push(item);}
+    else if(item.id===selectedId)catalog[existing]=item;
+  }
+  return catalog;
+}
 export function makeStampLibraryPicker(React) {
   const h=React.createElement;
   return function StampLibraryPicker({value,onChange,includeRewardStar=false}) {
@@ -200,7 +241,7 @@ export function makeStampLibraryPicker(React) {
       };
       load();const poll=setInterval(load,300000);return ()=>{live=false;clearInterval(poll);};
     },[]);
-    const candidates=[...STAMP_LIBRARY,...synced.filter(x=>!BY_ID.has(x.id))];
+    const candidates=mergedStampCatalog(synced,value);
     return h('div',{'data-stamp-library':true,style:{display:'flex',flexDirection:'column',gap:12}},
       h('label',{style:{fontSize:14,fontWeight:700}},'Choisir un tampon PNG'),
       h('input',{type:'search',value:search,onChange:e=>setSearch(e.target.value),placeholder:'Rechercher : burger, coiffeur, sushi…','aria-label':'Rechercher un tampon',style:{width:'100%',height:42,borderRadius:10,border:'1px solid #D4D1C9',padding:'0 12px',fontSize:14}}),
