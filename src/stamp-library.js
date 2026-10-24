@@ -175,7 +175,7 @@ export const STAMP_LIBRARY = [
 ];
 const BY_ID = new Map(STAMP_LIBRARY.map(stamp=>[stamp.id,stamp]));
 const DRIVE_ID = /^gd-[A-Za-z0-9_-]{10,120}$/;
-const DYNAMIC_BASE=(import.meta.env.VITE_SUPABASE_URL||'')+'/storage/v1/object/public/program-assets/stamp-library/';
+const DYNAMIC_BASE=(import.meta.env?.VITE_SUPABASE_URL||'')+'/storage/v1/object/public/program-assets/stamp-library/';
 export function stampById(id) { return typeof id === 'string' ? BY_ID.get(id) || null : null; }
 export function stampImageUrl(id) { return stampById(id) ? '/assets/stamps/'+id+'.png' : DRIVE_ID.test(String(id||'')) ? DYNAMIC_BASE+id+'.png' : ''; }
 function normalizeSearch(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
@@ -192,7 +192,7 @@ export function makeStampLibraryPicker(React) {
       let live=true;
       const load=async()=>{
         try {
-          const r=await fetch((import.meta.env.VITE_SUPABASE_URL||'')+'/functions/v1/stamp-sync/catalog');
+          const r=await fetch((import.meta.env?.VITE_SUPABASE_URL||'')+'/functions/v1/stamp-sync/catalog');
           if(!r.ok)throw new Error('catalog_not_available');
           const data=await r.json();
           if(live)setSynced((data.items||[]).filter(x=>DRIVE_ID.test(String(x.id||''))&&typeof x.label==='string'&&x.label.length<=100));
