@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {readFileSync} from 'node:fs';
-import {STAMP_LIBRARY,stampById,stampImageUrl,filterStamps} from '../src/stamp-library.js';
+import {STAMP_LIBRARY,stampById,stampImageUrl,filterStamps,mergedStampCatalog} from '../src/stamp-library.js';
 import {decodePng} from '../supabase/functions/_shared/png.js';
 import {compositeEmoji} from '../supabase/functions/apple-pass/emoji-art.js';
 import {makeRealStrip,makeDemoStrip,makeGoogleStampHero} from '../supabase/functions/apple-pass/real-strip.js';
@@ -54,4 +54,38 @@ test('Wallet strips display original colors for completed PNG and grayscale for 
   const google=await makeGoogleStampHero({colors,stamps},3,10,'passages',icon);
   const gp=await decodePng(google,{maxDimension:1200,maxBytes:5000000});
   assert.deepEqual([gp.width,gp.height],[1032,812]);
+});
+
+test('Google Drive stamps show only one entry alongside the built-in library, without changing saved references',()=>{
+  const names=[
+    'baguette','cadeau','ciseaux','crousty','donuts','e liquide',
+    'emoji bao pain blanc graines noires','emoji burger deux pains noirs',
+    'emoji burger pain noir bas','emoji burger pain noir haut',
+    'glace','Icône de cheveux bruns brillants en 3D','pizza','tacos 2','vape','wok',
+  ];
+  const remote=names.map((label,n)=>({id:'gd-DRIVESTAMPS'+String(n).padStart(5,'0'),label}));
+  const original=STAMP_LIBRARY.map(x=>x.id);
+  const items=mergedStampCatalog(remote);
+  assert.equal(STAMP_LIBRARY.length,39,'the built-in library must stay intact');
+  assert.deepEqual(STAMP_LIBRARY.map(x=>x.id),original,'never mutate the static catalogue');
+  assert.equal(items.length,43,'12 overlapping icons are hidden, four distinct burger/bao designs remain');
+  for(const label of ['baguette','cadeau','ciseaux','crousty','donuts','e liquide','pizza','tacos 2','vape','wok']){
+    const item=remote.find(x=>x.label===label);
+    assert.equal(items.filter(x=>x.id===item.id).length,1,label);
+  }
+  for(const label of ['emoji bao pain blanc graines noires','emoji burger deux pains noirs','emoji burger pain noir bas','emoji burger pain noir haut']){
+    assert.ok(items.some(x=>x.label===label),'distinct variant remains: '+label);
+  }
+  const pizza=remote.find(x=>x.label==='pizza');
+  const staticPizza=mergedStampCatalog(remote,'pizza');
+  assert.ok(staticPizza.some(x=>x.id==='pizza'),'an existing card with built-in pizza remains selected');
+  assert.ok(!staticPizza.some(x=>x.id===pizza.id),'selected built-in pizza is not duplicated');
+  const drivePizza=mergedStampCatalog(remote,pizza.id);
+  assert.ok(drivePizza.some(x=>x.id===pizza.id),'an existing card with imported pizza remains selected');
+  assert.ok(!drivePizza.some(x=>x.id==='pizza'),'imported pizza and built-in pizza are not both shown');
+  const two=[{id:'gd-DRIVESTAMPS00997',label:'Pâtisserie artisanale'},
+    {id:'gd-DRIVESTAMPS00998',label:'patisserie-artisanale'}];
+  assert.equal(mergedStampCatalog(two).length,40,'different Drive files with the same label appear once');
+  assert.equal(mergedStampCatalog(two,two[1].id).at(-1).id,two[1].id,'keep the selected Drive duplicate');
+  assert.equal(mergedStampCatalog([{id:'invalid',label:'pizza'}]).length,39,'ignore invalid Drive ids');
 });
