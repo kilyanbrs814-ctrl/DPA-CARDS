@@ -1,4 +1,4 @@
-import { decodePng } from '../_shared/png.js';
+import { decodePng, decodePngOnce, crc32 } from '../_shared/png.js';
 import { resizeAppleLogo } from './logo-resize.js';
 import { notoEmoji, compositeEmoji } from './emoji-art.js';
 // Lightweight, dependency-free PNG for native Apple store-card strips.
@@ -33,14 +33,6 @@ const concat = chunks => {
   for (const part of chunks) { dest.set(part, offset); offset += part.length; }
   return dest;
 };
-function crc32(data) {
-  let crc = 0xffffffff;
-  for (const b of data) {
-    crc ^= b;
-    for (let k = 0; k < 8; k++) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0);
-  }
-  return (crc ^ 0xffffffff) >>> 0;
-}
 function chunk(type, payload) {
   const tag = new TextEncoder().encode(type);
   return concat([u32(payload.length), tag, payload, u32(crc32(concat([tag, payload])))]);
@@ -523,7 +515,7 @@ export async function makeAppleHeaderLogo(_name, _accent='#F2C94C', _background=
   if (![1,2,3].includes(scale)) throw new Error('invalid_header_scale');
   const width=(compact?64:160)*scale,height=(compact?48:50)*scale,pixels=new Uint8Array(width*height*4);
   if(logoBytes) {
-    const src=await decodePng(logoBytes);
+    const src=await decodePngOnce(logoBytes);
     pixels.set(resizeAppleLogo(src,width,height));
   }
   // Transparent when absent: no initials, tile or merchant name is baked into the PNG.
@@ -576,4 +568,13 @@ export async function makeGoogleStampHero(d, progress, goal, mode='passages', cu
     }
   }
   return demoPng(width,height,pixels);
+}
+
+// Square native Wallet icon, sourced from this program's actual logo.
+// Preserve transparent pixels and avoid a generated agency monogram.
+export async function makeAppleNotificationIcon(logoBytes, scale=1) {
+  if (![1,2,3].includes(scale)) throw new Error('invalid_icon_scale');
+  const side=38*scale;
+  const source=await decodePngOnce(logoBytes);
+  return demoPng(side,side,resizeAppleLogo(source,side,side,true));
 }
