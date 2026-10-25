@@ -1,4 +1,4 @@
-import { decodePng } from '../_shared/png.js';
+import { decodePngOnce as decodePng } from '../_shared/png.js';
 import { loadRewardStamp } from '../_shared/reward-stamp.js';
 import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 // DPA Cards: creates a signed Apple Wallet pass from one real loyalty card.
@@ -11,10 +11,11 @@ import { passAuthToken, passServiceUrl } from './auth.js';
 import { handlePasskit } from './web-service.js';
 import { processPassUpdates } from './push.js';
 import { notifyApple } from './campaigns.js';
+import { manageNotificationLogo } from './notification-logo.js';
 import { PKPass } from 'npm:passkit-generator@3.6.1';
 import { Buffer } from 'node:buffer';
 import { realApplePassData, visibleCardNumber, testAssetPath, appleHeaderName } from './real-card.js';
-import { decodePanelArt, makeRealStrip, makeDemoStrip, makeDemoLogo, makeAppleHeaderLogo } from './real-strip.js';
+import { decodePanelArt, makeRealStrip, makeDemoStrip, makeDemoLogo, makeAppleHeaderLogo, makeAppleNotificationIcon } from './real-strip.js';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 function serviceKey() { try { const k = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}'); if (k.default) return k.default; } catch {} return Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''; }
@@ -192,7 +193,7 @@ async function realLogo(path: string | null) {
     if (error || !data || data.size > 2097152) return null;
     const bytes = new Uint8Array(await data.arrayBuffer());
     await decodePng(bytes);
-    return Buffer.from(bytes);
+    return bytes;
   } catch { return null; }
 }
 
@@ -239,7 +240,7 @@ async function createRealPass(cardId: string) {
   if (cardError || !card) throw new SafeError(404, 'card_not_found');
   const [access, programResult, merchantResult, customerResult, eventResult] = await Promise.all([
     supabase.rpc('merchant_has_access', { p_merchant: card.merchant_id }),
-    supabase.from('programs').select('id, name, mode, goal, reward, bg, card_design, logo_path, design_status').eq('id', card.program_id).eq('merchant_id', card.merchant_id).single(),
+    supabase.from('programs').select('id, name, mode, goal, reward, bg, card_design, logo_path, notification_logo_path, design_status').eq('id', card.program_id).eq('merchant_id', card.merchant_id).single(),
     supabase.from('merchants').select('business_name').eq('id', card.merchant_id).single(),
     supabase.from('customers').select('first_name, last_name').eq('id', card.customer_id).eq('merchant_id', card.merchant_id).single(),
     supabase.from('card_events').select('seq, balance_after').eq('card_id', card.id).order('seq', { ascending: false }).limit(1),
@@ -260,9 +261,19 @@ async function createRealPass(cardId: string) {
   if(brand.appleHeader && !composed)throw new SafeError(422,'invalid_apple_header');
   const compact=brand.showBusinessName && !brand.appleHeader;
   const assets: Record<string, Uint8Array> = {
-    'icon.png': fallback, 'icon@2x.png': Buffer.from(await makeDemoLogo('DPA',brand.accent,2,'icon')),
+    'icon.png': fallback, 'icon@2x.png': fallback, 'icon@3x.png': fallback,
     ...(logo ? { 'logo.png': logo, 'logo@2x.png': logo } : {}),
   };
+  // Each real pass gets the logo of its OWN merchant/program, never an agency-wide icon.
+  // If a merchant has no usable logo, generate a merchant-name placeholder instead.
+  // Apple may cache an older icon on passes already installed on an iPhone.
+  try {
+    const customLogo = brand.notificationLogo ? await realLogo(brand.notificationLogo) : null;
+    const iconSource = customLogo || logo || Buffer.from(await makeDemoLogo(brand.issuer, brand.accent, 2, 'icon'));
+    assets['icon.png'] = Buffer.from(await makeAppleNotificationIcon(iconSource, 1));
+    assets['icon@2x.png'] = Buffer.from(await makeAppleNotificationIcon(iconSource, 2));
+    assets['icon@3x.png'] = Buffer.from(await makeAppleNotificationIcon(iconSource, 3));
+  } catch (e) { console.warn('apple_brand_icon_fallback', e instanceof Error ? e.name : 'unknown'); }
   assets['logo.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,composed||logo,1,compact));
   assets['logo@2x.png']=Buffer.from(await makeAppleHeaderLogo(brand.issuer,brand.accent,brand.primary,composed||logo,2,compact));
   const stampBytes=brand.stamp ? await realLogo(brand.stamp) : null;
@@ -294,7 +305,7 @@ async function createRealPass(cardId: string) {
     nextJson.storeCard = {...nextJson.storeCard,backFields:[
       ...(nextJson.storeCard.backFields||[]),
       {key:'notice',label:'MESSAGE DU COMMERCE',
-       value:notice.message_text+' · '+new Date(notice.changed_at).toISOString(),
+       value:notice.message_text,
        changeMessage:'%@'},
     ]};
   }
@@ -309,6 +320,7 @@ async function createRealPass(cardId: string) {
 }
 Deno.serve(async req => {
   if (new URL(req.url).pathname.endsWith('/apple-pass/notify')) return notifyApple(req,{admin:supabase});
+  if (new URL(req.url).pathname.endsWith('/apple-pass/notification-logo')) return manageNotificationLogo(req,{admin:supabase,decodePng});
   if (new URL(req.url).pathname.endsWith('/apple-pass/push') && req.method === 'POST') {
     return processPassUpdates(req,{admin:supabase});
   }
