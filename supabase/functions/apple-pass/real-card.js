@@ -41,7 +41,7 @@ const isUuid = s => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 // Only branded image files belonging to THIS program may be read with service role.
 export const assetPath = (value, card, kind) => {
   const path = typeof value === 'string' ? value : value?.path;
-  if (!isUuid(card?.merchant_id) || !isUuid(card?.program_id) || !['logo', 'hero', 'background', 'stamp', 'appleStrip', 'appleHeader', 'rewardLabel'].includes(kind)) return null;
+  if (!isUuid(card?.merchant_id) || !isUuid(card?.program_id) || !['logo', 'hero', 'background', 'stamp', 'appleStrip', 'appleHeader', 'rewardLabel', 'notification-logo'].includes(kind)) return null;
   const prefix = card.merchant_id + '/' + card.program_id + '/';
   if (!path?.startsWith(prefix)) return null;
   const suffix = path.slice(prefix.length);
@@ -77,7 +77,8 @@ export function realAppleBrand(program, merchant, card) {
       ? assetPath(assets.appleHeader,card,'appleHeader') : null,
     rewardEnabled: apple.showReward === true,
     rewardLabel: apple.showReward === true ? assetPath(assets.rewardLabel,card,'rewardLabel') : null,
-    logo: Object.hasOwn(assets,'logo') ? assetPath(assets.logo, card, 'logo') : assetPath(program?.logo_path, card, 'logo'),
+    notificationLogo: assetPath(program?.notification_logo_path,card,'notification-logo'),
+    logo: Object.hasOwn(assets,'logo') && assets.logo === null ? null : (assetPath(assets.logo,card,'logo') || assetPath(program?.logo_path,card,'logo')),
     stamp: d.stamps?.icon === 'custom' && assets.stamp?.path?.endsWith('.png') ? assetPath(assets.stamp, card, 'stamp') : null,
     libraryId: d.stamps?.icon === 'library' ? libraryStampId(d.stamps.libraryId) : '',
     artwork: backgroundImage || hero, heroFocus: Number.isFinite(+apple.heroFocus) ? Math.max(0, Math.min(100, +apple.heroFocus)) : 50,
