@@ -1544,6 +1544,25 @@ a:hover{color:#1A36C4}
     </sc-if>
 
     <sc-if value="{{ s.notifs }}" hint-placeholder-val="{{ false }}">
+
+    <section aria-labelledby="notif-logo-title" style="max-width:1000px;margin:18px auto 0;padding:18px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;display:flex;flex-direction:column;gap:12px;min-width:0">
+      <h2 id="notif-logo-title" style="margin:0;font-size:18px;font-weight:800">Logo des notifications Apple Wallet</h2>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="width:76px;height:76px;border-radius:17px;background:#F6F5F1;border:1px solid #E4E1DA;display:grid;place-items:center;overflow:hidden;flex:none">
+          <sc-if value="{{ nIconHasPreview }}"><img src="{{ nIconPreview }}" alt="Logo utilisé pour les notifications" style="display:block;width:100%;height:100%;object-fit:contain"></sc-if>
+          <sc-if value="{{ nIconHasPreview === false }}"><span class="material-symbols-rounded" style="font-size:30px;color:#5E636B">storefront</span></sc-if>
+        </div>
+        <div style="flex:1 1 230px;min-width:0">
+          <div style="font-size:14px;color:#3E424A;line-height:1.5">Ajoutez un logo carré <strong>PNG 600 × 600 px</strong>, indépendant du logo texte de la carte. Il sera utilisé pour les futures notifications Apple Wallet de ce commerce uniquement.</div>
+          <div style="font-size:12px;color:#6B6F76;margin-top:5px">Les anciennes cartes installées peuvent conserver l’icône en cache ; un nouvel ajout permet de vérifier le rendu.</div>
+        </div>
+        <sc-if value="{{ nIconCanEdit }}">
+          <label style="cursor:pointer;min-height:44px;border-radius:12px;padding:11px 15px;background:#2448F0;color:#FFFFFF;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:7px"><span class="material-symbols-rounded">upload</span>{{ nIconBusy ? 'Enregistrement…' : 'Importer un logo' }}<input type="file" accept="image/png,.png" onChange="{{ nIconUpload }}" disabled="{{ nIconBusy }}" style="display:none"></label>
+          <sc-if value="{{ nIconUsesCustom }}"><button type="button" onClick="{{ nIconRemove }}" disabled="{{ nIconBusy }}" style="min-height:44px;border:1px solid #D4D1C9;background:#FFFFFF;border-radius:12px;padding:9px 13px;font-size:14px;font-weight:700">Revenir au logo de la carte</button></sc-if>
+        </sc-if>
+      </div>
+      <sc-if value="{{ nIconHasError }}"><p role="alert" style="margin:0;color:#B42318;font-size:13px">{{ nIconError }}</p></sc-if>
+    </section>
 <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
     <div style="max-width:1000px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:20px">
       <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
@@ -1765,7 +1784,7 @@ a:hover{color:#1A36C4}
               <div style="background:#2A2D34;min-height:520px;padding:22px 12px 16px;display:flex;flex-direction:column;gap:14px;color:#FFFFFF">
                 <div style="text-align:center"><div style="font-size:13px;color:#D6D8DD">mercredi 30 septembre</div><div style="font-size:54px;font-weight:600;line-height:1.05;letter-spacing:-0.02em">12:41</div></div>
                 <div style="background:#F2F2F4;color:#1C1F24;border-radius:18px;padding:12px;display:flex;gap:10px;animation:dpaUp .25s ease-out">
-                  <div style="width:36px;height:36px;border-radius:9px;background:{{ P.bg }};color:{{ nPrev.fg }};display:grid;place-items:center;font-weight:800;font-size:9px;flex:none">{{ P.logo }}</div>
+                  <div style="width:36px;height:36px;border-radius:9px;background:{{ P.bg }};color:{{ nPrev.fg }};display:grid;place-items:center;font-weight:800;font-size:9px;flex:none;overflow:hidden"><sc-if value="{{ nIconHasPreview }}"><img src="{{ nIconPreview }}" alt="Logo du commerce" style="display:block;width:100%;height:100%;object-fit:contain"></sc-if><sc-if value="{{ nIconHasPreview === false }}">{{ P.logo }}</sc-if></div>
                   <div style="flex:1;min-width:0"><div style="display:flex;justify-content:space-between;gap:8px"><span style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ P.name }}</span><span style="font-size:12px;color:#5E636B;flex:none">maintenant</span></div><div style="margin-top:2px;font-size:14px;line-height:1.35;overflow-wrap:anywhere">{{ nPrev.appleText }}</div></div>
                 </div>
                 <div style="margin-top:auto;background:{{ P.bg }};color:{{ nPrev.fg }};border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px">
@@ -2392,7 +2411,7 @@ class Component extends DCLogic {
       f:{readerNo:'',loginEmail:'',loginPwd:'',suBiz:'',suFirst:'',suLast:'',suEmail:'',suPwd:'',fpEmail:'',manualNo:'',joinFirst:'Nora',joinEmail:'',pwdCur:'',pwdNew:'',pwdConf:'',corrNote:'',delConfirm:''},
       err:{}, showPwd:false, remember:true, busy:false,
       merchant:{...M0}, sd:{...M0}, program:{...P0}, draft:{...P0}, clients:demoClients(),
-      selId:null, notifs:demoNotifs(demoClients()), nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
+      selId:null, notifs:demoNotifs(demoClients()), nIconBusy:false,nIconError:'', nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
       modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple', employeeInvite:{first:'',email:''},employeeInviteSent:false,employeeInviteError:'',employeeSending:false,teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,
       ob:{step:1,biz:'',activity:'Restaurant',otherActivity:'',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
       section:'profile', loadingHome:false, analyticsYear:Number(TODAY.slice(0,4)),analyticsMonth:'all',retentionPeriod:'month', prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true, subscription:null, hasAccess:false, accessSource:'none', manualExpiresAt:null, billingPlan:null, tip:{open:null,pinned:false}, subVerify:null, billSum:null, billMsg:null,
@@ -2555,7 +2574,7 @@ class Component extends DCLogic {
     this.setState({busy:true,err:{}});
     try{
       const d=await api.loadAll(user);
-      const base={teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',permissions:d.permissions||null,subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
+      const base={teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',permissions:d.permissions||null,subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nIconBusy:false,nIconError:'',nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
         f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
       if(DPA_NATIVE_IOS&&(!d.merchant||!d.program||d.hasAccess!==true||d.program.designStatus==='draft')){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
@@ -3112,6 +3131,42 @@ class Component extends DCLogic {
     catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } };
   async logoutLive(){ this.setState({busy:true}); try{ await this.api.signOut(); }catch(e){} this.resetToLogin(); }
 
+
+  uploadNotificationLogo=async e=>{
+    const file=e.target.files&&e.target.files[0];
+    e.target.value='';
+    const mid=this.state.merchant?.id;
+    if(!file||!this.state.live||!this.canEmployee('notifications')||!this.state.hasAccess)return;
+    if(file.type!=='image/png'||file.size>2_000_000||file.size<64){
+      this.setState({nIconError:'Choisissez un fichier PNG de 600 × 600 pixels (2 Mo maximum).'});return;
+    }
+    this.setState({nIconBusy:true,nIconError:''});
+    try{
+      const result=await this.api.setNotificationLogo(file);
+      if(this.state.merchant?.id!==mid)return;
+      this.setState(x=>({nIconBusy:false,nIconError:'',program:{...x.program,notificationLogoPath:result.path,notificationLogoUrl:result.url}}));
+      this.showToast('Logo de notification enregistré pour ce commerce.');
+    }catch(err){
+      if(this.state.merchant?.id!==mid)return;
+      this.setState({nIconBusy:false,nIconError:err?.code==='notification_logo_dimensions'
+        ?'Le logo doit mesurer exactement 600 × 600 pixels.':this.api.errorMessage(err)});
+    }
+  };
+  removeNotificationLogo=async()=>{
+    const mid=this.state.merchant?.id;
+    if(!this.state.live||!this.canEmployee('notifications')||!this.state.hasAccess||this.state.nIconBusy)return;
+    this.setState({nIconBusy:true,nIconError:''});
+    try{
+      const result=await this.api.removeNotificationLogo();
+      if(this.state.merchant?.id!==mid)return;
+      this.setState(x=>({nIconBusy:false,program:{...x.program,notificationLogoPath:result.path,notificationLogoUrl:result.url}}));
+      this.showToast('Logo de notification retiré : le logo de la carte sera utilisé.');
+    }catch(err){
+      if(this.state.merchant?.id!==mid)return;
+      this.setState({nIconBusy:false,nIconError:this.api.errorMessage(err)});
+    }
+  };
+
   nh(k){ return this._h['n'+k] ||= e=>{ const v=e.target.value; this.setState(s=>({nf:{...s.nf,[k]:v},err:{...s.err,['n'+k]:null,nwhen:null}})); }; }
   setNf(p){ this.setState(s=>({nf:{...s.nf,...p},err:{}})); }
   blankN(){ return {id:null,audience:'all',segment:'reward',ids:[],platform:this.state.live?'google':'both',type:'message',title:'',body:'',gNotify:true,timing:'now',date:addDays(TODAY,1),time:'11:00',simFail:false}; }
@@ -3603,6 +3658,12 @@ class Component extends DCLogic {
     const toastM=scr==='scanner'?'calc(220px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))':(scr==='client'?'calc(160px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))':'calc(96px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))');
     return {
       s:S, isDesk, isMob, m, P, f:s.f, F, err, eb, inv, go, spin, scanLine, sheetAnim, busy:s.busy, notBusy:!s.busy,
+
+      nIconHasPreview:!!(P.notificationLogoUrl||P.logoUrl),nIconPreview:P.notificationLogoUrl||P.logoUrl||'',
+      nIconUsesCustom:!!P.notificationLogoPath,
+      nIconCanEdit:s.live&&s.hasAccess&&this.canEmployee('notifications'),
+      nIconBusy:!!s.nIconBusy,nIconError:s.nIconError||'',nIconHasError:!!s.nIconError,
+      nIconUpload:this.uploadNotificationLogo,nIconRemove:this.removeNotificationLogo,
       analytics,analyticsRows,analyticsNoRows:analyticsRows.every(c=>c.visits===0),analyticsYears:analytics.years.map(value=>({value,label:value})),
       analyticsMonths,analyticsYear:String(s.analyticsYear||TODAY.slice(0,4)),analyticsMonth:s.analyticsMonth||'all',
       setAnalyticsYear:e=>this.setState({analyticsYear:Number(e.target.value)}),
