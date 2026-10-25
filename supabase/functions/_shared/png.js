@@ -1,9 +1,26 @@
 // Strict bounded PNG decoder shared by upload validation and Apple rendering.
 // Browser uploads are normalized to RGBA8 before storage; legacy RGB/indexed PNGs also work.
+// Table lookup preserves the PNG CRC while avoiding eight bitwise rounds per byte.
+const crcTable = Uint32Array.from({ length: 256 }, (_, n) => {
+  for (let k = 0; k < 8; k++) n = (n >>> 1) ^ (n & 1 ? 0xedb88320 : 0);
+  return n >>> 0;
+});
 export function crc32(data) {
- let crc=0xffffffff;
- for(const b of data){crc^=b;for(let k=0;k<8;k++)crc=(crc>>>1)^(crc&1?0xedb88320:0);}
- return (crc^0xffffffff)>>>0;
+  let crc = 0xffffffff;
+  for (let i = 0; i < data.length; i++) crc = (crc >>> 8) ^ crcTable[(crc ^ data[i]) & 255];
+  return (crc ^ 0xffffffff) >>> 0;
+}
+// Rendering uses the same immutable bytes for validation and both header sizes.
+// Weak keys release pixels with the request; no cross-card/path cache can go stale.
+const decodedImages = new WeakMap();
+export function decodePngOnce(source) {
+  let pending = decodedImages.get(source);
+  if (!pending) {
+    pending = decodePng(source);
+    decodedImages.set(source, pending);
+    pending.catch(() => decodedImages.delete(source));
+  }
+  return pending;
 }
 const sig = [137,80,78,71,13,10,26,10];
 const rgba = (r,g,b,a) => [r,g,b,a];
@@ -70,7 +87,8 @@ export async function decodePng(source, limits = {}) {
       }
       row[x]=(v+predict)&255;
     }
-    for(let x=0;x<width;x++){
+    if(type===6) pixels.set(row,y*width*4);
+    else for(let x=0;x<width;x++){
       const src=x*bpp,dst=(y*width+x)*4;
       if(type===6){pixels.set(row.subarray(src,src+4),dst);}
       else if(type===2){const transparent=alpha?.length===6 && row[src]===alpha[1] && row[src+1]===alpha[3] && row[src+2]===alpha[5];pixels.set(rgba(row[src],row[src+1],row[src+2],transparent?0:255),dst);}
