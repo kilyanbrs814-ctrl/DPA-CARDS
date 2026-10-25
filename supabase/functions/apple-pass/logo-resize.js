@@ -4,7 +4,7 @@
 // 4x4 stratified coverage samples + bilinear interpolation smooth downscaled text.
 // Colour is alpha-premultiplied to prevent tinted fringes on dark wallet cards.
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
-export function resizeAppleLogo(source,frameW,frameH) {
+export function resizeAppleLogo(source,frameW,frameH,center=false) {
   const {width:sw,height:sh,pixels:src}=source;
   if(!Number.isInteger(frameW)||!Number.isInteger(frameH)||frameW<1||frameH<1||frameW>1000||frameH>600)
     throw new Error('invalid_logo_frame');
@@ -20,7 +20,7 @@ export function resizeAppleLogo(source,frameW,frameH) {
   const scale=Math.min(frameW/cw,frameH/ch);
   const w=Math.max(1,Math.min(frameW,Math.round(cw*scale)));
   const h=Math.max(1,Math.min(frameH,Math.round(ch*scale)));
-  const left=0,top=Math.floor((frameH-h)/2);
+  const left=center?Math.floor((frameW-w)/2):0,top=Math.floor((frameH-h)/2);
   // Oversample downsizing to avoid losing fine letters. Only 2x2 for near-1:1.
   const samples=scale<0.6?4:2;
   const inv=1/(samples*samples);
