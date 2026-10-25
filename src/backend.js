@@ -257,6 +257,7 @@ function toProgram(p) {
     pattern: p.pattern, logo: p.logo, conditions: p.conditions,
     designStatus: p.design_status || 'validated', designMode: p.design_mode || null,
     logoPath: p.logo_path || null, heroPath: p.hero_path || null, logoUrl: assetUrl(p.logo_path), heroUrl: assetUrl(p.hero_path),
+    notificationLogoPath: p.notification_logo_path || null, notificationLogoUrl: assetUrl(p.notification_logo_path),
     // Design validated in the admin card designer (layout, colours, images, stamps); null = classic card.
     cardDesign: p.card_design && typeof p.card_design === 'object' ? p.card_design : null,
   };
@@ -726,6 +727,16 @@ const api = {
   cgvUrl: LEGAL.CGV_URL || null,
   // PNG of the shop's sign-up QR code, for printing.
   qrPng: text => QRCode.toDataURL(text, { margin: 2, width: 1024, errorCorrectionLevel: 'M' }),
+  // Apple Wallet only: dedicated icon used by notifications. Does not alter card artwork.
+  async setNotificationLogo(file) {
+    const fd=new FormData(); fd.set('logo',file,'notification-logo.png');
+    const result=await invokeFn('apple-pass/notification-logo',fd);
+    return {path:result.notification_logo_path||null,url:assetUrl(result.notification_logo_path)};
+  },
+  async removeNotificationLogo() {
+    await invokeFn('apple-pass/notification-logo',{action:'remove'});
+    return {path:null,url:null};
+  },
   // ---- notifications: drafts are written with the merchant's session (RLS, drafts only);
   // sending goes through the Edge Function, which resolves the cards and Google objects itself.
   loadNotifications,
