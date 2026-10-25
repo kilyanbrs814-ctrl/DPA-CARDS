@@ -680,6 +680,41 @@ a:hover{color:#1A36C4}
           </sc-for>
         </div>
       </sc-if>
+
+        <section aria-label="Statistiques de fidélisation" style="display:flex;flex-direction:column;gap:16px;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div><h2 style="font-size:20px;font-weight:800;margin:0">Analyse de fidélité</h2><div style="font-size:13px;color:#5E636B;margin-top:4px">Passages validés, hors corrections. Données de votre commerce uniquement.</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px">
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">calendar_month</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.monthly }}</div><div style="font-size:13px;color:#4A4E55">Passages ce mois-ci</div></div>
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">monitoring</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.annual }}</div><div style="font-size:13px;color:#4A4E55">Passages sur l’année sélectionnée</div></div>
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">workspace_premium</span><div style="font-size:17px;font-weight:800;margin:8px 0 4px;overflow-wrap:anywhere">{{ analyticsKing }}</div><div style="font-size:13px;color:#4A4E55">Client roi · {{ analyticsKingVisits }} passages cette année</div></div>
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">repeat</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.retention }} %</div><div style="font-size:13px;color:#4A4E55">Clients revenus · {{ analytics.returned }} / {{ analytics.active }} actifs</div></div>
+          </div>
+          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:14px">
+            <h3 style="margin:0;font-size:17px;font-weight:750">Fréquentation par client</h3>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+              <label style="font-size:13px;color:#4A4E55;font-weight:600">Année <select value="{{ analyticsYear }}" onChange="{{ setAnalyticsYear }}" aria-label="Choisir une année" style="margin-left:6px;border:1px solid #D4D1C9;border-radius:9px;background:#FFFFFF;padding:8px;min-height:40px"><sc-for list="{{ analyticsYears }}" as="y"><option value="{{ y.value }}">{{ y.label }}</option></sc-for></select></label>
+              <label style="font-size:13px;color:#4A4E55;font-weight:600">Période <select value="{{ analyticsMonth }}" onChange="{{ setAnalyticsMonth }}" aria-label="Filtrer les passages par mois" style="margin-left:6px;border:1px solid #D4D1C9;border-radius:9px;background:#FFFFFF;padding:8px;min-height:40px"><sc-for list="{{ analyticsMonths }}" as="mo"><option value="{{ mo.value }}">{{ mo.label }}</option></sc-for></select></label>
+            </div>
+            <div style="font-size:13px;color:#5E636B">Nombre de passages de chaque client · {{ analyticsPeriodLabel }}</div>
+            <sc-if value="{{ analyticsNoRows }}"><p style="margin:0;padding:14px;color:#5E636B;background:#F6F5F1;border-radius:12px">Aucun passage enregistré sur cette période.</p></sc-if>
+            <div style="max-height:330px;overflow:auto">
+              <sc-for list="{{ analyticsRows }}" as="client">
+                <button type="button" onClick="{{ client.open }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 2px;border:0;border-bottom:1px solid #EFEDE8;background:transparent;text-align:left;min-height:54px">
+                  <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ client.name }}</div><div style="height:5px;border-radius:5px;background:#EFEDE8;margin-top:7px"><div style="width:{{ client.barWidth }};height:100%;border-radius:5px;background:#2448F0"></div></div></div><span style="white-space:nowrap;color:#3E424A;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">{{ client.lineLabel }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:12px">
+            <h3 style="margin:0;font-size:17px;font-weight:750">Taux de retour des clients</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ retentionFilters }}" as="period"><button type="button" onClick="{{ period.pick }}" aria-pressed="{{ period.selected }}" style="background:#F6F5F1;border:1px solid #D4D1C9;border-radius:999px;padding:9px 14px;min-height:42px;font-size:13px;font-weight:700">{{ period.label }}</button></sc-for></div>
+            <div style="display:flex;align-items:baseline;gap:10px"><strong style="font-size:28px;color:#2448F0;font-variant-numeric:tabular-nums">{{ analytics.retention }} %</strong><span style="font-size:13px;color:#4A4E55">{{ analytics.returned }} client(s) déjà venus sur {{ analytics.active }} client(s) actifs</span></div>
+            <p style="margin:0;font-size:12px;color:#6B6F76;line-height:1.5">Sur la période choisie (semaine en cours, mois en cours ou année en cours), part des clients ayant fait au moins un passage et possédant un passage antérieur à cette période.</p>
+          </section>
+        </section>
+
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:20px;align-items:start">
         <section aria-labelledby="act-h" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
@@ -812,6 +847,41 @@ a:hover{color:#1A36C4}
           </sc-for>
         </div>
       </sc-if>
+
+        <section aria-label="Statistiques de fidélisation" style="display:flex;flex-direction:column;gap:16px;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div><h2 style="font-size:20px;font-weight:800;margin:0">Analyse de fidélité</h2><div style="font-size:13px;color:#5E636B;margin-top:4px">Passages validés, hors corrections. Données de votre commerce uniquement.</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px">
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">calendar_month</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.monthly }}</div><div style="font-size:13px;color:#4A4E55">Passages ce mois-ci</div></div>
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">monitoring</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.annual }}</div><div style="font-size:13px;color:#4A4E55">Passages sur l’année sélectionnée</div></div>
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">workspace_premium</span><div style="font-size:17px;font-weight:800;margin:8px 0 4px;overflow-wrap:anywhere">{{ analyticsKing }}</div><div style="font-size:13px;color:#4A4E55">Client roi · {{ analyticsKingVisits }} passages cette année</div></div>
+            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">repeat</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.retention }} %</div><div style="font-size:13px;color:#4A4E55">Clients revenus · {{ analytics.returned }} / {{ analytics.active }} actifs</div></div>
+          </div>
+          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:14px">
+            <h3 style="margin:0;font-size:17px;font-weight:750">Fréquentation par client</h3>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+              <label style="font-size:13px;color:#4A4E55;font-weight:600">Année <select value="{{ analyticsYear }}" onChange="{{ setAnalyticsYear }}" aria-label="Choisir une année" style="margin-left:6px;border:1px solid #D4D1C9;border-radius:9px;background:#FFFFFF;padding:8px;min-height:40px"><sc-for list="{{ analyticsYears }}" as="y"><option value="{{ y.value }}">{{ y.label }}</option></sc-for></select></label>
+              <label style="font-size:13px;color:#4A4E55;font-weight:600">Période <select value="{{ analyticsMonth }}" onChange="{{ setAnalyticsMonth }}" aria-label="Filtrer les passages par mois" style="margin-left:6px;border:1px solid #D4D1C9;border-radius:9px;background:#FFFFFF;padding:8px;min-height:40px"><sc-for list="{{ analyticsMonths }}" as="mo"><option value="{{ mo.value }}">{{ mo.label }}</option></sc-for></select></label>
+            </div>
+            <div style="font-size:13px;color:#5E636B">Nombre de passages de chaque client · {{ analyticsPeriodLabel }}</div>
+            <sc-if value="{{ analyticsNoRows }}"><p style="margin:0;padding:14px;color:#5E636B;background:#F6F5F1;border-radius:12px">Aucun passage enregistré sur cette période.</p></sc-if>
+            <div style="max-height:330px;overflow:auto">
+              <sc-for list="{{ analyticsRows }}" as="client">
+                <button type="button" onClick="{{ client.open }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:12px 2px;border:0;border-bottom:1px solid #EFEDE8;background:transparent;text-align:left;min-height:54px">
+                  <div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ client.name }}</div><div style="height:5px;border-radius:5px;background:#EFEDE8;margin-top:7px"><div style="width:{{ client.barWidth }};height:100%;border-radius:5px;background:#2448F0"></div></div></div><span style="white-space:nowrap;color:#3E424A;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">{{ client.lineLabel }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </section>
+          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:12px">
+            <h3 style="margin:0;font-size:17px;font-weight:750">Taux de retour des clients</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ retentionFilters }}" as="period"><button type="button" onClick="{{ period.pick }}" aria-pressed="{{ period.selected }}" style="background:#F6F5F1;border:1px solid #D4D1C9;border-radius:999px;padding:9px 14px;min-height:42px;font-size:13px;font-weight:700">{{ period.label }}</button></sc-for></div>
+            <div style="display:flex;align-items:baseline;gap:10px"><strong style="font-size:28px;color:#2448F0;font-variant-numeric:tabular-nums">{{ analytics.retention }} %</strong><span style="font-size:13px;color:#4A4E55">{{ analytics.returned }} client(s) déjà venus sur {{ analytics.active }} client(s) actifs</span></div>
+            <p style="margin:0;font-size:12px;color:#6B6F76;line-height:1.5">Sur la période choisie (semaine en cours, mois en cours ou année en cours), part des clients ayant fait au moins un passage et possédant un passage antérieur à cette période.</p>
+          </section>
+        </section>
+
       <div style="display:flex;flex-direction:column;gap:10px">
         <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" style="min-height:76px;border:0;border-radius:20px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:14px;padding:12px 18px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25);transition:transform .12s ease" style-active="transform:scale(0.98);background:#1A36C4">
           <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,0.16);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:30px">qr_code_scanner</span></div>
@@ -2187,6 +2257,39 @@ const PREPAID_ST={paid:'Payé',partially_refunded:'Payé · remboursé en partie
 // Same calendar rule as the server: same day N months later, clamped to the month's last day.
 function addMonthsCal(d,n){ const r=new Date(d.getFullYear(),d.getMonth()+n,1,d.getHours(),d.getMinutes()); r.setDate(Math.min(d.getDate(),new Date(r.getFullYear(),r.getMonth()+1,0).getDate())); return r; }
 // Without a valid subscription the dashboard stays open in a locked mode: these screens show a lock instead.
+
+/* Statistiques fidélité : chaque ligne "visit" non corrigée vaut un passage.
+   Les clients et événements sont déjà limités au commerce sélectionné par RLS. */
+function dpaLoyaltyAnalytics(clients, year, month, retentionPeriod, today) {
+  const yy=String(year), currentMonth=today.slice(0,7), monthKey=month==='all'?null:yy+'-'+month;
+  const dateNow=new Date(today+'T12:00:00');
+  const weekStart=new Date(dateNow);
+  const day=(dateNow.getDay()+6)%7;
+  weekStart.setDate(weekStart.getDate()-day);
+  const weekKey=weekStart.getFullYear()+'-'+String(weekStart.getMonth()+1).padStart(2,'0')+'-'+String(weekStart.getDate()).padStart(2,'0');
+  const retentionStart=retentionPeriod==='week'?weekKey:retentionPeriod==='year'?today.slice(0,4)+'-01-01':currentMonth+'-01';
+  const rows=(clients||[]).map(c=>{
+    const visits=(c.history||[]).filter(h=>h.type==='visit'&&!h.corrected&&/^\d{4}-\d{2}-\d{2}$/.test(h.date||'')&&h.date<=today).map(h=>h.date);
+    const annual=visits.filter(d=>d.startsWith(yy)).length;
+    const filtered=monthKey?visits.filter(d=>d.startsWith(monthKey)).length:annual;
+    const current=visits.filter(d=>d.startsWith(currentMonth)).length;
+    const activeInPeriod=visits.some(d=>d>=retentionStart);
+    const returning=activeInPeriod&&visits.some(d=>d<retentionStart);
+    return {id:c.id,name:[c.first,c.last].filter(Boolean).join(' ').trim()||'Client',
+      annual,visits:filtered,current,activeInPeriod,returning};
+  });
+  rows.sort((a,b)=>b.visits-a.visits||a.name.localeCompare(b.name,'fr'));
+  const champions=rows.slice().sort((a,b)=>b.annual-a.annual||a.name.localeCompare(b.name,'fr'));
+  const top=champions.find(c=>c.annual>0)||null;
+  const active=rows.filter(c=>c.activeInPeriod);
+  const returned=active.filter(c=>c.returning).length;
+  const retention=active.length?Math.round(returned/active.length*100):0;
+  const years=new Set([today.slice(0,4)]);
+  (clients||[]).forEach(c=>(c.history||[]).forEach(h=>{if(h.type==='visit'&&/^\d{4}-/.test(h.date||''))years.add(h.date.slice(0,4));}));
+  return {monthly:rows.reduce((n,c)=>n+c.current,0),annual:rows.reduce((n,c)=>n+c.annual,0),
+    top,retention,returned,active:active.length,rows,years:[...years].sort().reverse()};
+}
+
 const LOCKED_SCREENS=['invite','scanner','clients','client','notifs','notifNew','join','joinDone'];
 const LOCK_TEXT={invite:['Activez votre abonnement pour inviter vos clients','Votre lien d’inscription et votre QR code seront disponibles dès l’activation de votre abonnement.'],
   scanner:['Scanner verrouillé','Le scanner sera disponible après activation de votre abonnement.'],
@@ -2292,7 +2395,7 @@ class Component extends DCLogic {
       selId:null, notifs:demoNotifs(demoClients()), nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
       modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple', employeeInvite:{first:'',email:''},employeeInviteSent:false,employeeInviteError:'',employeeSending:false,teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,
       ob:{step:1,biz:'',activity:'Restaurant',otherActivity:'',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
-      section:'profile', loadingHome:false, prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true, subscription:null, hasAccess:false, accessSource:'none', manualExpiresAt:null, billingPlan:null, tip:{open:null,pinned:false}, subVerify:null, billSum:null, billMsg:null,
+      section:'profile', loadingHome:false, analyticsYear:Number(TODAY.slice(0,4)),analyticsMonth:'all',retentionPeriod:'month', prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true, subscription:null, hasAccess:false, accessSource:'none', manualExpiresAt:null, billingPlan:null, tip:{open:null,pinned:false}, subVerify:null, billSum:null, billMsg:null,
       ...(JOIN_SLUG?{screen:'joinLoading',pubSlug:JOIN_SLUG,pubErr:null,pubWallet:null,pubApple:null,clients:[],notifs:[],consent:false,merchant:{...M0,business:'',slug:JOIN_SLUG}}:{}) };
   }
   componentDidMount(){
@@ -3324,6 +3427,20 @@ class Component extends DCLogic {
       {label:'Récompenses disponibles',value:clients.filter(c=>c.balance>=goal).length,icon:'redeem'},
       {label:'Récompenses utilisées ce mois-ci',value:allActs.filter(a=>a.type==='reward'&&a.date.startsWith(TODAY.slice(0,7))).length,icon:'task_alt'}];
 
+
+    const analytics=dpaLoyaltyAnalytics(clients,s.analyticsYear||Number(TODAY.slice(0,4)),s.analyticsMonth||'all',s.retentionPeriod||'month',TODAY);
+    const monthNames=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+    const analyticsMonths=[{value:'all',label:'Toute l’année'},...monthNames.map((label,i)=>({value:String(i+1).padStart(2,'0'),label}))];
+    const analyticsRows=analytics.rows.map(c=>({
+      ...c,open:()=>this.go('client',{selId:c.id}),
+      lineLabel:c.visits+' passage'+(c.visits!==1?'s':''),
+      barWidth:(analytics.rows[0]?.visits?Math.max(2,Math.round(c.visits/analytics.rows[0].visits*100)):0)+'%'
+    }));
+    const retentionFilters=['week','month','year'].map((key,i)=>({
+      key,label:['Semaine','Mois','Année'][i],selected:(s.retentionPeriod||'month')===key,
+      pick:()=>this.setState({retentionPeriod:key})
+    }));
+
     const q=s.q.trim().toLowerCase(), qd=q.replace(/\D/g,'');
     const views=clients.map(cv);
     const counts={all:views.length,reward:views.filter(v=>v.hasReward).length,new:views.filter(v=>v.isNew).length};
@@ -3486,6 +3603,14 @@ class Component extends DCLogic {
     const toastM=scr==='scanner'?'calc(220px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))':(scr==='client'?'calc(160px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))':'calc(96px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))');
     return {
       s:S, isDesk, isMob, m, P, f:s.f, F, err, eb, inv, go, spin, scanLine, sheetAnim, busy:s.busy, notBusy:!s.busy,
+      analytics,analyticsRows,analyticsNoRows:analyticsRows.every(c=>c.visits===0),analyticsYears:analytics.years.map(value=>({value,label:value})),
+      analyticsMonths,analyticsYear:String(s.analyticsYear||TODAY.slice(0,4)),analyticsMonth:s.analyticsMonth||'all',
+      setAnalyticsYear:e=>this.setState({analyticsYear:Number(e.target.value)}),
+      setAnalyticsMonth:e=>this.setState({analyticsMonth:e.target.value}),
+      retentionFilters,analyticsKing:analytics.top?analytics.top.name:'Aucun pour le moment',
+      analyticsKingVisits:analytics.top?analytics.top.annual:0,
+      analyticsPeriodLabel:(s.analyticsMonth==='all'?'Année '+(s.analyticsYear||TODAY.slice(0,4)):(monthNames[Number(s.analyticsMonth)-1]||'Mois')+' '+(s.analyticsYear||TODAY.slice(0,4))),
+
       offerTitle:s.billingMerchantId&&m.id!==s.billingMerchantId&&!s.selectedActivated?'Activez votre nouveau commerce':'Choisissez votre offre',
       offerSubtitle:s.billingMerchantId&&m.id!==s.billingMerchantId&&!s.selectedActivated?'Utilisez « Activer ce commerce » pour vérifier les montants et confirmer l’ajout à votre facturation existante.':'15 jours d’essai gratuit sur votre abonnement initial.',
       profileControl:!DPA_NATIVE_IOS&&s.live&&this.api&&s.profiles&&s.profiles.length?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,onAdd:this.beginAddProfile,
