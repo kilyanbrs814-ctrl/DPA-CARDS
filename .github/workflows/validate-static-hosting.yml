@@ -36,6 +36,7 @@ jobs:
       - run: npm run test:png-ui
       - run: npm run test:profiles-ui
       - run: npm run test:wallet-surfaces
+      - run: npm run test:wallet-recovery
 
   edge-check:
     runs-on: ubuntu-latest
