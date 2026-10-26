@@ -3441,7 +3441,7 @@ class Component extends DCLogic {
     const key=JSON.stringify([p.cardDesign,p.designMode,p.selfServiceStampId,p.logoPath,p.logoUrl,p.heroPath,p.heroUrl,business,p.bg,p.accent,p.mode,p.goal]);
     if(this._cdKey!==key){ this._cdKey=key; this._cd=api.prepareCardDesign(p,business,(this.state.merchant||{}).activity||''); }
     if(!this._cd) return null; const goal=Math.max(1,+p.goal||1), b=c?Math.max(0,+c.balance||0):0;
-    return React.createElement(api.cardKit().FitCard,{design:this._cd,platform,data:{isTest:false,programName:p.name,mode:p.mode==='points'?'points':'passages',goal,progress:b,reward:p.reward||'',available:Math.floor(b/goal),
+    return React.createElement(api.cardKit().FitCard,{design:this._cd,platform,data:{isTest:false,onboarding:!!c?.onboarding,programName:p.name,mode:p.mode==='points'?'points':'passages',goal,progress:b,reward:p.reward||'',available:Math.floor(b/goal),
       client:c?c.name:'Client',qr:c&&c.qr?c.qr:null,cardNumber:c&&c.card?c.card:''}}); }
   cardProps(p,business,member,value,cardNo,qr,showQr){
     const dark=lum(p.bg)<0.4, adark=lum(p.accent)<0.4;
@@ -3587,7 +3587,7 @@ class Component extends DCLogic {
     const wp={bg:wbg,fg:wdark?'#FFFFFF':'#1F1F1F',sub:wdark?'rgba(255,255,255,0.72)':'rgba(31,31,31,0.62)',logoBg:wdark?'rgba(255,255,255,0.16)':'#EFEDE8',
       logo:wLogo,issuer:(o.biz||'').trim()||'Nom du commerce',program:(o.design==='dpa'?'':(o.prog||'').trim())||'Nom du programme',unit:o.mode==='points'?'Points':'Passages',
       qr:qrSvg('preview',112),hasHero:o.design!=='dpa'&&!!pr.heroUrl,hero:pr.heroUrl||'',
-      caption:o.design==='dpa'?'Aperçu neutre : le design sera créé par DPA Cards.':'Aperçus Apple Wallet et Google Wallet indicatifs. Le rendu final peut varier selon l’appareil et la version de l’application.'};
+      caption:o.design==='dpa'?'Aperçu neutre : le design sera créé par DPA Cards.':'Aperçus de personnalisation indicatifs. Apple et Google Wallet imposent leur disposition native ; l’en-tête Google peut être organisé différemment sur le téléphone.'};
     const ib=s.imgBusy;
     const thumb=(url,icon)=>url?React.createElement('img',{src:url,alt:'',style:{width:'100%',height:'100%',objectFit:'cover',display:'block'}}):React.createElement('span',{className:'material-symbols-rounded',style:{fontSize:26}},icon);
     const dz={logoThumb:thumb(pr.logoUrl,'add_photo_alternate'),heroThumb:thumb(pr.heroUrl,'panorama'),hasLogo:!!pr.logoUrl&&!ib,hasHero:!!pr.heroUrl&&!ib,
@@ -3615,8 +3615,8 @@ class Component extends DCLogic {
       selfServiceStampId:o.mode==='points'?null:(o.stampId||null),cardDesign:o.design==='dpa'?null:pr.cardDesign,
       logoUrl:o.design==='dpa'?null:pr.logoUrl,logoPath:o.design==='dpa'?null:pr.logoPath};
     const obCard=this.cardProps({...obAppleProgram,logo:'LOGO',pattern:'none',heroUrl:null},o.biz||'Nom du commerce','Client exemple',`0 / ${o.goal}`,'',null,false);
-    const obAppleCard=this.designCard(obAppleProgram,'apple',{name:'Client exemple',balance:0,card:'',qr:null},o.biz||'Nom du commerce');
-    const obGoogleCard=this.designCard(obAppleProgram,'google',{name:'Client exemple',balance:0,card:'',qr:null},o.biz||'Nom du commerce');
+    const obAppleCard=this.designCard(obAppleProgram,'apple',{onboarding:true,name:'Client exemple',balance:0,card:'',qr:null},o.biz||'Nom du commerce');
+    const obGoogleCard=this.designCard(obAppleProgram,'google',{onboarding:true,name:'Client exemple',balance:0,card:'',qr:null},o.biz||'Nom du commerce');
     const obSteps=[{n:1,label:'Mon commerce'},{n:2,label:'Mon programme'},{n:3,label:'Ma carte'}].map(x=>({...x,bg:x.n<=o.step?'#2448F0':'#E3E1DA',fg:x.n<=o.step?'#1C1F24':'#6B6F76',current:x.n===o.step}));
     const obActs=ACTIVITIES.map(a=>{ const on=o.activity===a; return {label:a,bg:on?'#1C1F24':'#FFFFFF',fg:on?'#FFFFFF':'#1C1F24',border:on?'#1C1F24':'#D4D1C9',pressed:on,pick:()=>this.setState(x=>({ob:{...x.ob,activity:a}}))}; });
 

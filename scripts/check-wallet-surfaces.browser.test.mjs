@@ -55,12 +55,19 @@ test('dashboard enrollment, effective Wallet previews, onboarding fallback and p
     // Step 1 starts before a program exists: no stamp is selected or displayed.
     await page.evaluate(()=>{const a=window.__testApp;a.setState({screen:'ob',program:null,clients:[],toast:null,ob:{...a.initState().ob,biz:'spaceessentials'},tab:'apple'})});
     const apple=page.getByLabel('Aperçu de la carte Apple Wallet',{exact:true});await apple.waitFor();
-    assert.match(await apple.innerText(),/LOGO/);assert.doesNotMatch(await apple.innerText(),/BASH|Club/);
+    assert.match(await apple.innerText(),/LOGO/);assert.doesNotMatch(await apple.innerText(),/BASH|Club|Nom du programme|\bCARTE\b/);
+    assert.ok((await apple.boundingBox()).height<360,'Apple onboarding preview shrinks without program and card rows');
     assert.equal(await apple.locator('[data-native-stamp]').count(),0);
     await page.screenshot({path:fileURLToPath(new URL('onboarding-apple.png',dir)),fullPage:true});
     await page.getByRole('tab',{name:'Aperçu Google Wallet'}).click();
     const google=page.getByLabel('Aperçu de la carte Google Wallet',{exact:true});
-    assert.match(await google.innerText(),/spaceessentials/);assert.match(await google.innerText(),/Nom du programme/);
+    assert.match(await google.innerText(),/spaceessentials/);assert.doesNotMatch(await google.innerText(),/Nom du programme|N° de carte/);
+    assert.match(await google.innerText(),/Membre/);assert.match(await google.innerText(),/Votre récompense/);
+    assert.ok((await google.boundingBox()).height<400,'Google onboarding preview shrinks without extra rows');
+    const brand=google.locator('[data-google-brand="centered"]'),logo=brand.locator('[data-logo-placeholder]');
+    const logoBounds=await logo.boundingBox(),brandBounds=await brand.boundingBox();
+    assert.ok(Math.abs(logoBounds.x+logoBounds.width/2-brandBounds.x-brandBounds.width/2)<2,'Google logo is centered');
+    assert.ok((await brand.getByText('spaceessentials',{exact:true}).boundingBox()).y>=logoBounds.y+logoBounds.height,'Commerce is below the logo');
     assert.equal(await google.locator('[data-stamp-slot]').count(),0);
     await page.screenshot({path:fileURLToPath(new URL('onboarding-google.png',dir)),fullPage:true});
     await page.evaluate(()=>{const a=window.__testApp;a.setState({ob:{...a.state.ob,step:3,design:'custom',stampId:'',hex:'#D4AF37',prog:'Programme test'},program:{...a.initState().program,logoUrl:'/assets/dpa-cards-logo.png'}})});

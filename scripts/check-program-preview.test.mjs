@@ -27,6 +27,12 @@ test('new self-service preview uses real progression and gift at slot ten, witho
 test('old self-service has its generic layout and saved designs retain all overrides',()=>{
   const old=draw({...p,selfServiceStampId:null});
   assert.match(old,/Club Boulangerie/);assert.doesNotMatch(old,/data-native-stamp/);assert.match(old,/CARTE/);
+  for(const platform of ['apple','google']) {
+    const compact=draw({...p,selfServiceStampId:null},platform,{onboarding:true});
+    assert.doesNotMatch(compact,/data-field="program"|>CARTE<|N° de carte|Club Boulangerie/);
+    assert.match(compact,/Nora/);assert.match(compact,/Café/);
+    if(platform==='google')assert.match(compact,/data-google-brand="centered"/);
+  }
   const advanced={...p,cardDesign:{identity:{name:'Sur mesure'},colors:{primary:'#123456'},stamps:{icon:'library',libraryId:'pizza',rewardId:'reward-star'},apple:{showBusinessName:true},google:{colors:{primary:'#654321'}}}};
   const saved=JSON.stringify(advanced),design=prepareProgramPreview(advanced,'Boulangerie','',x=>x);
   assert.equal(design.previewKind,undefined);assert.equal(design.stamps.rewardId,'reward-star');

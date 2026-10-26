@@ -454,11 +454,11 @@ export function makeCardDesigner(React, api) {
           alt:i===9?'Cadeau (10e tampon)':s.done?'Tampon acquis':'Tampon restant',
           style:{position:'absolute',left:(s.x-s.diameter/2)*340/375,top:(s.y-s.diameter/2)*340/375,
             width:s.diameter*340/375,height:s.diameter*340/375,objectFit:'contain',opacity:s.done?1:.32,filter:s.done?'none':'grayscale(1)'}})))
-        : h('div',{'data-field':'program',style:{padding:'0 16px 12px',fontSize:22,fontWeight:700,overflowWrap:'anywhere'}},data.programName||'Nom du programme'),
+        : !data.onboarding && h('div',{'data-field':'program',style:{padding:'0 16px 12px',fontSize:22,fontWeight:700,overflowWrap:'anywhere'}},data.programName||'Nom du programme'),
       h('div',{style:{display:'flex',gap:16,padding:'16px'}},
-        stamped?field('MEMBRE',data.client||'Client'):field('RÉCOMPENSE',data.reward||'Votre récompense'),
-        stamped?field('RÉCOMPENSE',data.reward||'Votre récompense'):field('MEMBRE',data.client||'Client')),
-      !stamped&&h('div',{style:{padding:'0 16px 10px'}},field('CARTE',data.cardNumber||'—')),
+        stamped||data.onboarding?field('MEMBRE',data.client||'Client'):field('RÉCOMPENSE',data.reward||'Votre récompense'),
+        stamped||data.onboarding?field('RÉCOMPENSE',data.reward||'Votre récompense'):field('MEMBRE',data.client||'Client')),
+      !stamped&&!data.onboarding&&h('div',{style:{padding:'0 16px 10px'}},field('CARTE',data.cardNumber||'—')),
       h('div',{'data-field':'qr',style:{display:'flex',flexDirection:'column',alignItems:'center',gap:9,padding:'12px 16px 20px'}},
         h('div',{style:{padding:10,background:'#FFFFFF',borderRadius:4}},h(Qr,{value:data.qr,size:112})),
         h('div',{style:{fontSize:10}},'Par DPA Cards')));
@@ -496,16 +496,16 @@ export function makeCardDesigner(React, api) {
     const fg=nativeOnColor(d.colors.primary),points=data.mode==='points';
     const field=(label,value)=>h('div',{style:{flex:1,minWidth:0}},h('div',{style:{fontSize:11,opacity:.75}},label),h('div',{style:{fontSize:17,marginTop:3,overflowWrap:'anywhere'}},value));
     return h('div',{'data-layout':'google','data-preview-kind':design.previewKind,style:{width:340,borderRadius:22,overflow:'hidden',background:d.colors.primary,color:fg,fontFamily:'Roboto,system-ui,sans-serif',boxShadow:'0 12px 32px rgba(20,22,28,.14)'}},
-      h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'16px 18px 0'}},
+      h('div',{'data-google-brand':data.onboarding?'centered':'native',style:{display:'flex',alignItems:'center',flexDirection:data.onboarding?'column':'row',gap:10,padding:'16px 18px 0',textAlign:data.onboarding?'center':'left'}},
         h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:40,height:40,borderRadius:'50%',objectFit:'contain'},fallback:h('div',{'data-logo-placeholder':true,style:{width:40,height:40,display:'grid',placeItems:'center',borderRadius:'50%',fontSize:10,fontWeight:700,background:'#EFEDE8',color:'#1C1F24'}},'LOGO')}),
         h('div',{style:{fontSize:15,overflowWrap:'anywhere'}},d.identity.name||'Nom du commerce')),
-      h('div',{'data-field':'program',style:{padding:'14px 18px 0',fontSize:22,overflowWrap:'anywhere'}},data.programName||'Nom du programme'),
-      h('div',{style:{display:'flex',gap:12,padding:'18px 18px 0'}},field('Membre',data.client||'Client'),field('N° de carte',String(data.cardNumber||'').replace(/\D/g,'')||'—')),
+      !data.onboarding && h('div',{'data-field':'program',style:{padding:'14px 18px 0',fontSize:22,overflowWrap:'anywhere'}},data.programName||'Nom du programme'),
+      h('div',{style:{display:'flex',gap:12,padding:'18px 18px 0'}},field('Membre',data.client||'Client'),data.onboarding?field('Récompense',data.reward||'Votre récompense'):field('N° de carte',String(data.cardNumber||'').replace(/\D/g,'')||'—')),
       h('div',{style:{display:'flex',gap:12,padding:'18px'}},field(points?'Points gagnés':'Passages effectués',done),stamped&&field(points?'Points restants':'Passages restants',Math.max(0,goal-done))),
       h('div',{'data-field':'qr',style:{display:'flex',justifyContent:'center',padding:'0 18px 18px'}},h('div',{style:{background:'#FFFFFF',padding:12,borderRadius:14}},h(Qr,{value:data.qr,size:112}))),
       stamped?h(GoogleProgramStampHero,{d,data})
         :d.assets.hero?.url&&h(Img,{asset:d.assets.hero,alt:'Visuel du programme',style:{width:340,aspectRatio:'1032 / 812',objectFit:'cover'}}),
-      h('details',{'data-google-details':true,style:{padding:'12px 18px',fontSize:13,borderTop:'1px solid '+rgba(fg,.15)}},h('summary',null,'Renseignements de la carte'),h('p',null,'Récompense : '+(data.reward||'Votre récompense'))));
+      !data.onboarding && h('details',{'data-google-details':true,style:{padding:'12px 18px',fontSize:13,borderTop:'1px solid '+rgba(fg,.15)}},h('summary',null,'Renseignements de la carte'),h('p',null,'Récompense : '+(data.reward||'Votre récompense'))));
   }
 
   function GoogleProgramStampHero({d,data}) {

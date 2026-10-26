@@ -19,6 +19,13 @@ carte, la zone QR est un emplacement neutre. Aucun tampon ni cadeau n’est affi
 avant le choix explicite du tampon à l’étape 3 ; ce choix actualise les deux aperçus. L’import
 du vrai logo demeure disponible ; « LOGO » est uniquement un remplacement visuel.
 
+Les aperçus de création de compte masquent le titre du programme et le numéro de
+carte pour ne conserver que les renseignements membre/récompense. Leur hauteur
+s’adapte au contenu restant. L’en-tête Google de cet aperçu de personnalisation
+centre le logo et place le commerce en dessous. Ce choix de présentation est
+limité au créateur : Google contrôle l’en-tête natif des passes et sa position
+ne peut pas être librement réorganisée par le template de fidélité.
+
 Le point d’entrée public renvoie désormais `design_mode` et
 `self_service_stamp_id`. L’inscription idempotente relit la progression du registre
 de la carte résolue côté serveur. Elle n’accepte aucun identifiant de carte
