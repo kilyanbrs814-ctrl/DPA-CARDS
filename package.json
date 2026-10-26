@@ -18,6 +18,7 @@
     "test:profiles-ui": "node --test scripts/check-profiles.browser.test.mjs",
     "test:wallet-surfaces": "node --test scripts/check-program-preview.test.mjs scripts/check-wallet-surfaces.browser.test.mjs",
     "test:wallet-recovery": "node --test scripts/check-wallet-recovery.test.mjs scripts/check-wallet-recovery.browser.test.mjs",
+    "test:onboarding-logo": "node --test scripts/check-program-assets-policy.test.mjs scripts/check-onboarding-logo.browser.test.mjs",
     "test:apple-updates": "node --test scripts/check-apple-web-service.test.mjs",
     "prebuild": "node scripts/prepare-stamp-assets.mjs",
     "predev": "node scripts/prepare-stamp-assets.mjs"

@@ -165,6 +165,7 @@ const DB_ERRORS = {
   invalid_hero: 'L’image de couverture ne respecte pas le format attendu. Importez-la à nouveau.',
   invalid_color: 'La couleur de fond doit être au format #RRGGBB.',
   invalid_image_path: 'Emplacement d’image non autorisé.',
+  image_upload_access_denied: 'Le logo ne peut pas être enregistré dans ce commerce avec votre accès. Actualisez la page puis réessayez.',
   invalid_file_path: 'Emplacement de fichier non autorisé.',
   'exceeded the maximum allowed size': 'Fichier trop volumineux.',
   'mime type': 'Format de fichier non accepté.',
@@ -541,7 +542,10 @@ const api = {
     const ext = blob.type === 'image/png' ? 'png' : 'jpg';
     const path = `${program.merchantId}/${program.id}/${kind}-${crypto.randomUUID()}.${ext}`;
     const up = await sb.storage.from('program-assets').upload(path, blob, { contentType: blob.type, upsert: false, cacheControl: '31536000' });
-    if (up.error) throw up.error;
+    if (up.error) {
+      if (/row-level security|permission denied/i.test(up.error.message || '')) throw new Error('image_upload_access_denied');
+      throw up.error;
+    }
     const col = kind === 'logo' ? 'logo_path' : 'hero_path';
     const old = kind === 'logo' ? program.logoPath : program.heroPath;
     const { data, error } = await sb.from('programs').update({ [col]: path }).eq('id', program.id).select().single();
