@@ -285,6 +285,7 @@ a:hover{color:#1A36C4}
                   </button>
                 </sc-for>
               </div>
+              <sc-if value="{{ err.obstamp }}" hint-placeholder-val="{{ false }}"><div role="alert" style="color:#B42318;margin-top:8px;font-size:13px">{{ err.obstamp }}</div></sc-if>
               <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#3E424A;margin-top:10px">
                 <img src="/assets/stamps/cadeau.png" alt="" width="30" height="30" style="object-fit:contain">
                 <strong>10ᵉ tampon : cadeau (fixe)</strong>
