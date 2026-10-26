@@ -206,13 +206,15 @@ test('self-service Apple Wallet uses the clean onboarding layout, real customer 
   assert.equal(brand.primary,'#FFFFFF');
   assert.equal(json.foregroundColor,'rgb(28, 31, 36)');
   assert.equal(json.logoText,'Commerce réel');
-  assert.equal(json.storeCard.headerFields[0].value,'3 / 10');
-  assert.equal(json.storeCard.primaryFields[0].value,'Club jul94');
-  assert.equal(json.storeCard.secondaryFields[0].value,'café offert');
-  assert.equal(json.storeCard.secondaryFields[1].value,'Nicolas Moreau');
-  assert.equal(json.storeCard.auxiliaryFields[0].value,'DPA 0001');
+  assert.equal(json.storeCard,undefined,'no store-card primary/strip zone for self service');
+  assert.ok(json.generic,'generic renders with no reserved strip zone');
+  assert.equal(json.generic.headerFields[0].value,'3 / 10');
+  assert.equal(json.generic.primaryFields[0].value,'Club jul94');
+  assert.equal(json.generic.secondaryFields[0].value,'café offert');
+  assert.equal(json.generic.secondaryFields[1].value,'Nicolas Moreau');
+  assert.equal(json.generic.auxiliaryFields[0].value,'DPA 0001');
   assert.equal(json.barcode.message,'DPA1:'+token);
-  assert.equal(json.storeCard.backFields[0].label,'CONDITIONS');
+  assert.equal(json.generic.backFields[0].label,'CONDITIONS');
 });
 
 test('self-service uses the selected background color; advanced and legacy passes keep their layout', () => {
@@ -226,7 +228,22 @@ test('self-service uses the selected background color; advanced and legacy passe
   const before=realApplePassData({program,merchant,customer,card,balance:2});
   const after=realApplePassData({program:advanced,merchant,customer,card,balance:2});
   assert.equal(after.brand.selfService,false);
+  assert.equal(after.json.generic,undefined,'advanced design remains a store card');
   assert.deepEqual(after.json.storeCard,before.json.storeCard);
   const legacy = {...self,design_mode:null};
   assert.equal(realApplePassData({program:legacy,merchant,customer,card,balance:1}).brand.selfService,false);
+});
+
+test('self-service compact layout includes QR and conditions with an accessible three-field row', () => {
+  const simple={name:'Club DPA',design_mode:'custom',mode:'passages',goal:10,reward:'presta offerte',bg:'#7239A5',card_design:null};
+  const {json}=realApplePassData({program:simple,merchant,customer,card,balance:0});
+  assert.ok(json.generic);
+  assert.equal(json.storeCard,undefined);
+  assert.equal(json.generic.secondaryFields.length + json.generic.auxiliaryFields.length,3);
+  assert.equal(json.generic.primaryFields[0].value,'Club DPA');
+  assert.equal(json.generic.secondaryFields[0].label,'RÉCOMPENSE');
+  assert.equal(json.generic.secondaryFields[1].label,'MEMBRE');
+  assert.equal(json.generic.auxiliaryFields[0].label,'CARTE');
+  assert.equal(json.barcode.message,'DPA1:'+token);
+  assert.equal(json.generic.backFields[0].label,'CONDITIONS');
 });
