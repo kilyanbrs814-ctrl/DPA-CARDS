@@ -59,7 +59,8 @@ export function realAppleBrand(program, merchant, card) {
   // Keep elaborate, saved DPA designs completely unchanged.
   const selfService = program?.design_mode === 'custom' && !program?.card_design;
   const color = (name, fallback) => hex(overrides[name], hex(base[name], fallback));
-  const primary = selfService ? '#FFFFFF' : color('primary', hex(program?.bg, '#1C1F24'));
+  // Respect the merchant-selected background color (#FFFFFF is the onboarding default).
+  const primary = color('primary', hex(program?.bg, '#1C1F24'));
   const secondary = color('secondary', hex(program?.accent, primary));
   const accent = color('accent', secondary);
   const foreground = onBackground(primary, color('text', ''));
