@@ -3577,8 +3577,8 @@ class Component extends DCLogic {
       pickerValue:hexOk?o.hex.toLowerCase():'#ffffff'};
     const choice=(k,label,sub,icon,price)=>{ const on=o.design===k; return {label,sub,icon,on,price:price||'',bg:on?'#EEF1FF':'#FFFFFF',border:on?'#2448F0':'#D4D1C9',pick:()=>this.setState(x=>({ob:{...x.ob,design:k},err:{}}))}; };
     const obChoices=[choice('custom','Personnaliser ma carte','Nom, logo, couleur et choix des tampons.','palette'),choice('dpa','Confier le design à DPA Cards','Nous créons votre carte à partir de votre logo, vos couleurs et vos références visuelles.','brush','29,90 € TTC — paiement unique')];
-    const q=(o.stampSearch||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
-    const obStampChoices=(this.api?.stampCatalog||[]).filter(it=>!q||(it.label+' '+it.tags).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q)).map(it=>({
+    const stampQuery=(o.stampSearch||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    const obStampChoices=(this.api?.stampCatalog||[]).filter(it=>!stampQuery||(it.label+' '+it.tags).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(stampQuery)).map(it=>({
       id:it.id,label:it.label,url:'/assets/stamps/'+it.id+'.png',
       selected:o.stampId===it.id,border:o.stampId===it.id?'#2448F0':'#D4D1C9',background:o.stampId===it.id?'#EEF1FF':'#FFFFFF',
       pick:()=>this.setState(x=>({ob:{...x.ob,stampId:it.id},err:{...x.err,obstamp:null}})),
