@@ -1,6 +1,6 @@
 import { decodePng } from '../_shared/png.js';
 import { selectedMembership } from '../_shared/merchant-context.ts';
-import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
+import { libraryStampId, loadLibraryStamp, LIBRARY_STAMP_IDS } from '../_shared/stamp-library.js';
 import { loadRewardStamp } from '../_shared/reward-stamp.js';
 // DPA Cards — Google Wallet Edge Function.
 //
@@ -439,6 +439,10 @@ async function finalizeDesign(req: Request): Promise<Response> {
   const { user, userClient } = await authUser(req);
   const member = await selectedMembership(admin,req,user.id);
   if (!member || member.role !== 'owner') throw new HttpError(403, 'forbidden');
+  // The customer cannot substitute arbitrary image URLs or modify another merchant's card.
+  const payload = await req.json().catch(() => ({}));
+  const chosenStamp = typeof payload.stamp_id === 'string' ? payload.stamp_id : 'cafe';
+  if (chosenStamp === 'cadeau' || !LIBRARY_STAMP_IDS.includes(chosenStamp)) throw new HttpError(422, 'invalid_stamp');
   // Read through the caller's session (RLS) — the browser sends no ids at all.
   const { data: found } = await userClient.from('programs').select('*').eq('merchant_id', member.merchant_id).eq('is_active', true).maybeSingle();
   if (!found) throw new HttpError(404, 'no_program');
@@ -452,7 +456,7 @@ async function finalizeDesign(req: Request): Promise<Response> {
     await checkImage(program.logo_path, 'logo', program.merchant_id, program.id);
     if (program.hero_path) await checkImage(program.hero_path, 'hero', program.merchant_id, program.id);
     // Lock only the exact images that were checked (a concurrent change makes this a no-op).
-    let q = admin.from('programs').update({ design_mode: 'custom', design_status: 'validated', design_validated_at: new Date().toISOString() })
+    let q = admin.from('programs').update({ design_mode: 'custom', design_status: 'validated', self_service_stamp_id: chosenStamp, design_validated_at: new Date().toISOString() })
       .eq('id', program.id).eq('design_status', 'draft').eq('logo_path', program.logo_path);
     q = program.hero_path ? q.eq('hero_path', program.hero_path) : q.is('hero_path', null);
     const { data: locked } = await q.select().maybeSingle();
