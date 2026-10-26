@@ -180,7 +180,8 @@ function drawFadedRing(pixels,width,height,cx,cy,outer,inner,ink,alpha) {
  * @param {{width:number,height:number,pixels:Uint8Array}|null} panelArt */
 export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, scale=1, customIcon=null, rewardArt=null, finalStar=null, panelArt=null) {
   if (![1,2,3].includes(scale)) throw new Error('invalid_strip_scale');
-  const width=375*scale,height=144*scale,pixels=new Uint8Array(width*height*4);
+  // Native store cards allocate a 375x123pt strip. Keep legacy designs at 144pt.
+  const width=375*scale,height=(colors?.selfServiceStamps?123:144)*scale,pixels=new Uint8Array(width*height*4);
   const primary=rgb(colors?.primary,'#1C1F24');
   const secondary=rgb(colors?.secondary,'#2448F0');
   const done=Math.max(0,Number(progress)||0),target=Math.max(1,Math.round(Number(goal)||10));
