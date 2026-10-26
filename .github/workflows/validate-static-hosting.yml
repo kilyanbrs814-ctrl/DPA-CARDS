@@ -39,6 +39,7 @@ jobs:
       - run: npm run test:wallet-recovery
       - run: npm run test:onboarding-logo
       - run: npm run test:optional-stamps
+      - run: npm run test:wallet-context
 
   edge-check:
     runs-on: ubuntu-latest

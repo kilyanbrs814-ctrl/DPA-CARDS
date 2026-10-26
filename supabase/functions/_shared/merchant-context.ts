@@ -1,6 +1,16 @@
 // The header selects context, never grants access. Every Edge route validates
 // membership. Older signed iOS builds omit the header; when an owner gains new
 // profiles, pin the old build to the original merchant instead of breaking it.
+export function walletUserHeaders(req: Request): Record<string, string> {
+  const selected = req.headers.get('x-merchant-id');
+  return {
+    Authorization: req.headers.get('authorization') ?? '',
+    // Explicit selection needs the web membership view in internal PostgREST
+    // requests too. This never bypasses auth.uid() or route membership checks.
+    ...(selected ? {'x-merchant-id': selected, 'x-dpa-web-profiles': '1'} : {}),
+  };
+}
+
 export async function selectedMembership(admin: any, req: Request, userId: string) {
   const selected = req.headers.get('x-merchant-id');
   const { data, error } = await admin.from('merchant_members')

@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,readdirSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
+import {walletUserHeaders} from '../supabase/functions/_shared/merchant-context.ts';
 const read=n=>readFileSync(new URL('../supabase/migrations/'+n,import.meta.url),'utf8');
 const migration=readdirSync(new URL('../supabase/migrations/',import.meta.url)).find(n=>n.endsWith('_merchant_profiles.sql'));
 const u='10000000-0000-0000-0000-000000000001',other='10000000-0000-0000-0000-000000000002';
@@ -44,6 +45,20 @@ test('migration preserves a legacy commerce; profiles, grants, RLS and serialize
  assert.equal((await db.query('select count(*)::int n from public.merchant_activations')).rows[0].n,1);
  // Legacy iPhone only sees the primary membership and primary business data.
  assert.deepEqual((await db.query('select merchant_id from public.merchant_members order by created_at')).rows.map(x=>x.merchant_id),[a]);
+ // Reproduce the Wallet Edge client's lost web-view header: selecting B alone
+ // returns no program, even though it was created and is owned by this user.
+ await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify({'x-merchant-id':b.merchant.id})]);
+ assert.equal((await db.query('select id from programs where merchant_id=$1',[b.merchant.id])).rows.length,0);
+ const edgeHeaders=walletUserHeaders(new Request('https://example.test/finalize-design',{headers:{authorization:'Bearer test-owner','x-merchant-id':b.merchant.id}}));
+ await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify(edgeHeaders)]);
+ assert.equal((await db.query('select id from programs where merchant_id=$1',[b.merchant.id])).rows.length,1,'Wallet can now find the selected draft under real RLS');
+ assert.equal((await db.query('select id from merchants where id=$1',[b.merchant.id])).rows.length,1);
+ await db.exec(`set request.test_uid='${other}';`);
+ assert.equal((await db.query('select id from programs where merchant_id=$1',[b.merchant.id])).rows.length,0,'Forging profile headers grants no access');
+ await db.exec(`set request.test_uid='${u}';`);
+ const legacyHeaders=walletUserHeaders(new Request('https://example.test/finalize-design',{headers:{authorization:'Bearer test-owner'}}));
+ await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify(legacyHeaders)]);
+ assert.deepEqual((await db.query('select merchant_id from merchant_members')).rows.map(x=>x.merchant_id),[a],'Unselected old iPhone still sees only its primary commerce');
  assert.equal((await db.query(`select app_private.selected_merchant() id`)).rows[0].id,a);
  // A browser opts in to all *its own* memberships; the selected header scopes actions.
  await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify({'x-dpa-web-profiles':'1','x-merchant-id':b.merchant.id})]);

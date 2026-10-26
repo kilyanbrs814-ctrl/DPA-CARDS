@@ -1,5 +1,5 @@
 import { decodePng } from '../_shared/png.js';
-import { selectedMembership } from '../_shared/merchant-context.ts';
+import { selectedMembership, walletUserHeaders } from '../_shared/merchant-context.ts';
 import { selfServiceChoice, selfServiceWithoutStamps, simpleGoogleTemplate, simpleGoogleFields } from '../_shared/self-service-layout.js';
 import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 import { loadRewardStamp } from '../_shared/reward-stamp.js';
@@ -405,7 +405,7 @@ async function authUser(req: Request) {
   const auth = req.headers.get('authorization') ?? '';
   if (!/^Bearer\s+\S+/.test(auth)) throw new HttpError(401, 'not_authenticated');
   const userClient: SupabaseClient = createClient(SUPABASE_URL, PUBLISHABLE_KEY, {
-    global: { headers: { Authorization: auth,...(req.headers.get('x-merchant-id')?{'x-merchant-id':req.headers.get('x-merchant-id')!}:{}) } }, auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: walletUserHeaders(req) }, auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: { user } } = await userClient.auth.getUser(auth.replace(/^Bearer\s+/, ''));
   if (!user) throw new HttpError(401, 'not_authenticated');
@@ -460,7 +460,8 @@ async function finalizeDesign(req: Request): Promise<Response> {
   try { choice = selfServiceChoice(payload); }
   catch(e) { throw new HttpError(422,(e as Error).message); }
   // Read through the caller's session (RLS) — the browser sends no ids at all.
-  const { data: found } = await userClient.from('programs').select('*').eq('merchant_id', member.merchant_id).eq('is_active', true).maybeSingle();
+  const { data: found, error: programError } = await userClient.from('programs').select('*').eq('merchant_id', member.merchant_id).eq('is_active', true).maybeSingle();
+  if (programError) throw new Error('db_programs');
   if (!found) throw new HttpError(404, 'no_program');
   const { data: merchant } = await userClient.from('merchants').select('business_name').eq('id', member.merchant_id).single();
   let program = found;
