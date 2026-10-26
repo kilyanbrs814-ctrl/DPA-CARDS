@@ -303,9 +303,10 @@ async function createRealPass(cardId: string) {
     ...json, webServiceURL:passServiceUrl(SUPABASE_URL),
     authenticationToken:await passAuthToken(card.id,keyPem),
   };
-  if(notice?.message_text && nextJson.storeCard) {
-    nextJson.storeCard = {...nextJson.storeCard,backFields:[
-      ...(nextJson.storeCard.backFields||[]),
+  const styleKey = nextJson.generic ? 'generic' : 'storeCard';
+  if(notice?.message_text && nextJson[styleKey]) {
+    nextJson[styleKey] = {...nextJson[styleKey],backFields:[
+      ...(nextJson[styleKey].backFields||[]),
       {key:'notice',label:'MESSAGE DU COMMERCE',
        value:notice.message_text,
        changeMessage:'%@'},
