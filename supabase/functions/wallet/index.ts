@@ -184,7 +184,10 @@ const walletCounter = (done: number, goal: number, mode: string) => {
 };
 const hasSavedStampArt = (design: any) => !!(design?.stamps && typeof design.stamps === 'object');
 // Retain the existing Google Wallet layout and signed stamp-board route.
-const hasStampEmoji = (program: any) => program?.mode !== 'points' && hasSavedStampArt(program?.card_design);
+const isSelfServiceStamp = (program: any) => !program?.card_design && program?.mode !== 'points'
+  && !!libraryStampId(program?.self_service_stamp_id);
+const hasStampEmoji = (program: any) => program?.mode !== 'points'
+  && (hasSavedStampArt(program?.card_design) || isSelfServiceStamp(program));
 async function stampBoardUrl(id: string, revision = 0, test = false) {
   const tag=(test?'test-':'')+id;
   return SUPABASE_URL+'/functions/v1/wallet/stamp-board/'+
@@ -209,11 +212,14 @@ async function publicStampBoard(req: Request, path: string) {
     goal=Number(design.preview?.goal)||10;mode=design.preview?.mode||'passages';
   }else{
     const {data,error}=await admin.from('cards')
-      .select('id,merchant_id,program_id,programs(goal,mode,card_design)').eq('id',id).maybeSingle();
+      .select('id,merchant_id,program_id,programs(goal,mode,bg,card_design,self_service_stamp_id)').eq('id',id).maybeSingle();
     if(error||!data)return new Response('Not found',{status:404});
     const prog=(data as any).programs;
     if(!prog||!hasStampEmoji(prog))return new Response('Not found',{status:404});
-    design=prog.card_design;goal=prog.goal;mode=prog.mode;
+    design=isSelfServiceStamp(prog) ? {
+      colors:{primary:prog.bg||'#FFFFFF'},stamps:{icon:'library',libraryId:prog.self_service_stamp_id,rewardId:'cadeau',inactiveOpacity:32},selfServiceStamps:true
+    } : prog.card_design;
+    goal=prog.goal;mode=prog.mode;
     owner=(data as any).merchant_id+'/'+(data as any).program_id+'/designer';
     const now=await latest(id);
     progress=now.balance;
@@ -230,7 +236,8 @@ async function publicStampBoard(req: Request, path: string) {
       if(data && data.size<=2097152)icon=await decodePng(new Uint8Array(await data.arrayBuffer()));
     }
   }
-  const finalStar=await loadRewardStamp(design.stamps?.rewardId);
+  const finalStar=design.selfServiceStamps?await loadLibraryStamp('cadeau'):await loadRewardStamp(design.stamps?.rewardId);
+  if(design.selfServiceStamps && !finalStar)return new Response('Image unavailable',{status:503});
   let panelArt=null;
   const artwork=design.assets?.googleStrip || (design.google?.reuseAppleStrip!==false ? design.assets?.appleStrip : null);
   const artPath=artwork?.path;
@@ -276,7 +283,8 @@ function classBranding(program: any, businessName: string) {
     ...(validWidePath ? {wideProgramLogo: {sourceUri:{uri:assetUrl(widePath)},contentDescription:text(issuer)}} : {}),
     ...(showHero && program.hero_path ? { heroImage: { sourceUri: { uri: assetUrl(program.hero_path) }, contentDescription: text(program.name) } } : {}),
     hexBackgroundColor: HEX_RE.test(colors.primary ?? '') ? colors.primary : program.bg,
-    ...(d ? { accountNameLabel: 'Client', accountIdLabel: 'N° de carte' } : {}),
+    ...(isSelfServiceStamp(program) ? {accountNameLabel:'Membre',accountIdLabel:'N° de carte'}
+      : (d ? { accountNameLabel: 'Client', accountIdLabel: 'N° de carte' } : {})),
   };
 }
 
@@ -327,9 +335,9 @@ async function ensureObject(card: any, classId: string): Promise<string> {
       classId,
       state: 'ACTIVE',
       accountId: hasStampEmoji(program) ? walletCardDigits(card.card_number) : card.card_number,
-      ...(hasStampEmoji(program) ? {} : {
+      ...((!hasStampEmoji(program) || isSelfServiceStamp(program)) ? {
         accountName:[card.customers.first_name,card.customers.last_name].filter(Boolean).join(' '),
-      }),
+      } : {}),
       ...(hasStampEmoji(program) ? walletCounter(now.balance,program.goal,program.mode)
         : {loyaltyPoints:{label:unitLabel(program.mode),balance:{int:now.balance}}}),
       // Identifies the card at the counter. It authorises nothing on its own.
@@ -337,7 +345,8 @@ async function ensureObject(card: any, classId: string): Promise<string> {
       ...(hasStampEmoji(program) ? {
         heroImage: { sourceUri: { uri: await stampBoardUrl(card.id,now.seq) } },
       } : {}),
-      ...(hasStampEmoji(program) ? { textModulesData: [] } : {
+      ...(hasStampEmoji(program) ? { textModulesData: isSelfServiceStamp(program) ?
+        [{id:'reward',header:'Récompense',body:String(program.reward||'')}] : [] } : {
         textModulesData:[{id:'reward',header:'Récompense',
           body:`${program.goal} ${program.mode === 'points'?'points':'passages'} = ${program.reward}`}]
       }),
@@ -363,13 +372,13 @@ async function runSync(limit = 20): Promise<{ synced: number; failed: number }> 
       // Keep the Google stamp image and native emoji fallback current when points change.
       // A failed auxiliary lookup must not block the existing balance synchronization.
       try {
-        const {data:row}=await admin.from('cards').select('id,card_number,programs(mode,goal,reward,card_design)').eq('id',r.card_id).maybeSingle();
+        const {data:row}=await admin.from('cards').select('id,card_number,programs(mode,goal,reward,card_design,self_service_stamp_id)').eq('id',r.card_id).maybeSingle();
         const prog=(row as any)?.programs;
         if(row && hasStampEmoji(prog)){
           update.heroImage={sourceUri:{uri:await stampBoardUrl(r.card_id,r.seq)}};
           Object.assign(update,walletCounter(r.balance,prog.goal,prog.mode));
           update.accountId=walletCardDigits((row as any).card_number);
-          update.textModulesData=[];
+          update.textModulesData=isSelfServiceStamp(prog)?[{id:'reward',header:'Récompense',body:String(prog.reward||'')}]:[];
         }
       } catch { console.error('wallet stamp sync auxiliary error'); }
       const res = await google('PATCH', `/loyaltyObject/${encodeURIComponent(r.google_object_id)}`, update);
@@ -480,7 +489,7 @@ async function finalizeDesign(req: Request): Promise<Response> {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const CARD_SELECT = 'id, merchant_id, card_number, qr_token, customers(first_name, last_name), programs(id, merchant_id, name, mode, goal, reward, bg, logo_path, hero_path, design_status, card_design), merchants(business_name)';
+const CARD_SELECT = 'id, merchant_id, card_number, qr_token, customers(first_name, last_name), programs(id, merchant_id, name, mode, goal, reward, bg, logo_path, hero_path, design_status, card_design, self_service_stamp_id), merchants(business_name)';
 
 // Class + object for one card already authorised by the caller, then the signed save link.
 async function signedSaveUrl(req: Request, card: any): Promise<string> {
