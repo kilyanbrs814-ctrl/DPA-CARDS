@@ -454,7 +454,7 @@ export function makeCardDesigner(React, api) {
           key:i,'data-native-stamp':s.done?'filled':'empty',src:stampImageUrl(i===9?'cadeau':d.stamps.libraryId),
           alt:i===9?'Cadeau (10e tampon)':s.done?'Tampon acquis':'Tampon restant',
           style:{position:'absolute',left:(s.x-s.diameter/2)*340/375,top:(s.y-s.diameter/2)*340/375,
-            width:s.diameter*340/375,height:s.diameter*340/375,objectFit:'contain',opacity:s.done?1:.32,filter:s.done?'none':'grayscale(1)'}})))
+            width:s.diameter*340/375,height:s.diameter*340/375,objectFit:'contain',opacity:s.done?1:inactiveStampOpacity(d.stamps.inactiveOpacity)/100,filter:s.done?'none':'grayscale(1)'}})))
         : !compact && h('div',{'data-field':'program',style:{padding:'0 16px 12px',fontSize:22,fontWeight:700,overflowWrap:'anywhere'}},data.programName||'Nom du programme'),
       h('div',{style:{display:'flex',gap:16,padding:'16px'}},
         stamped||compact?field('MEMBRE',data.client||'Client'):field('RÉCOMPENSE',data.reward||'Votre récompense'),

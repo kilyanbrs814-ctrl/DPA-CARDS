@@ -1,5 +1,10 @@
 # Choix avec ou sans tampons — 26 octobre 2026
 
+> Historique : le 27 octobre, le choix de création « Sans tampons » a été retiré
+> et remplacé par les tampons obligatoires avec réglage d'opacité. Voir
+> [la décision actuelle](self-service-stamp-opacity.md). Les cartes déjà validées
+> conservent leur rendu antérieur.
+
 La création d'une carte self-service propose « Avec tampons » et « Sans tampons ».
 Avec tampons, aucune illustration n'apparaît avant un choix explicite ; après le
 choix, le dixième emplacement reste le cadeau. Sans tampons, le catalogue et la

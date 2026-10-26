@@ -15,7 +15,7 @@ export function prepareProgramPreview(p, business, activity, assetUrl) {
   d.assets.logo = p.logoUrl ? {url:p.logoUrl} : null;
   d.assets.hero = self && p.selfServiceShowStamps === false ? null : p.heroUrl ? {url:p.heroUrl} : null;
   d.stamps = {...d.stamps, icon:stamp?'library':'none', libraryId:stamp?.id || '',
-    rewardId:stamp?'cadeau':'reward-star', inactiveOpacity:stamp?32:22};
+    rewardId:stamp?'cadeau':'reward-star', inactiveOpacity:stamp?(p.selfServiceInactiveOpacity??32):22};
   d.apple = {...d.apple, showBusinessName:self, showStampPanel:!self};
   return d;
 }

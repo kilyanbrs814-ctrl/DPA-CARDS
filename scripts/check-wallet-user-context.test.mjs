@@ -54,13 +54,13 @@ test('real finalization keeps owner checks and selected program; errors are not 
   const finalize=extract('async function finalizeDesign','const CARD_SELECT',{
    authUser:async()=>({user:{id:'owner'},userClient}),admin,selectedMembership,selfServiceChoice,HttpError,
    checkImage:async(path)=>{assert.equal(path,program.logo_path);checks++;},
-   ensureClass:async p=>{assert.equal(p.id,'program-b');assert.equal(p.self_service_show_stamps,false);return 'class-b';},
+   ensureClass:async p=>{assert.equal(p.id,'program-b');assert.equal(p.self_service_show_stamps,true);assert.equal(p.self_service_inactive_opacity,67);return 'class-b';},
    json:(req,status,body)=>({status,body}),console
   });
-  const req=new Request('https://test/finalize-design',{method:'POST',headers:{'Content-Type':'application/json','x-merchant-id':'secondary'},body:JSON.stringify({show_stamps:false,stamp_id:null})});
+  const req=new Request('https://test/finalize-design',{method:'POST',headers:{'Content-Type':'application/json','x-merchant-id':'secondary'},body:JSON.stringify({show_stamps:true,stamp_id:'pizza',inactive_opacity:67})});
   if(mode==='success'){
    assert.equal((await finalize(req)).status,200);assert.equal(checks,1);
-   assert.equal(patch.self_service_show_stamps,false);assert.equal(patch.self_service_stamp_id,null);
+   assert.equal(patch.self_service_show_stamps,true);assert.equal(patch.self_service_stamp_id,'pizza');assert.equal(patch.self_service_inactive_opacity,67);
   }else{
    const expected={staff:'forbidden',foreign:'forbidden','query-error':'db_programs','no-program':'no_program'}[mode];
    await assert.rejects(finalize(req),e=>e.message===expected);assert.equal(patch,undefined);

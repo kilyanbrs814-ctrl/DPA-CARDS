@@ -240,7 +240,7 @@ async function createRealPass(cardId: string) {
   if (cardError || !card) throw new SafeError(404, 'card_not_found');
   const [access, programResult, merchantResult, customerResult, eventResult] = await Promise.all([
     supabase.rpc('merchant_has_access', { p_merchant: card.merchant_id }),
-    supabase.from('programs').select('id, name, mode, goal, reward, bg, card_design, logo_path, notification_logo_path, design_status, design_mode, self_service_stamp_id, self_service_show_stamps').eq('id', card.program_id).eq('merchant_id', card.merchant_id).single(),
+    supabase.from('programs').select('id, name, mode, goal, reward, bg, card_design, logo_path, notification_logo_path, design_status, design_mode, self_service_stamp_id, self_service_show_stamps, self_service_inactive_opacity').eq('id', card.program_id).eq('merchant_id', card.merchant_id).single(),
     supabase.from('merchants').select('business_name').eq('id', card.merchant_id).single(),
     supabase.from('customers').select('first_name, last_name').eq('id', card.customer_id).eq('merchant_id', card.merchant_id).single(),
     supabase.from('card_events').select('seq, balance_after').eq('card_id', card.id).order('seq', { ascending: false }).limit(1),

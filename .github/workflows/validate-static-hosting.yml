@@ -40,6 +40,7 @@ jobs:
       - run: npm run test:onboarding-logo
       - run: npm run test:optional-stamps
       - run: npm run test:wallet-context
+      - run: npm run test:stamp-opacity
 
   edge-check:
     runs-on: ubuntu-latest

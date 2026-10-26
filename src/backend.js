@@ -152,6 +152,8 @@ const DB_ERRORS = {
   not_authenticated: 'Votre session a expiré. Reconnectez-vous.',
   consent_required: 'Le consentement du client est requis.',
   no_program: 'Créez d’abord votre programme de fidélité.',
+  stamps_required: 'Choisissez un tampon : les tampons sont obligatoires pour cette carte.',
+  invalid_stamp_opacity: 'Choisissez une opacité entre 0 et 100 %.',
   request_conflict: 'Requête en conflit. Réessayez.',
   wallet_not_configured: 'Google Wallet n’est pas encore configuré sur le serveur.',
   design_pending: 'Le design de votre carte est en cours de création par DPA Cards. L’ajout à Google Wallet sera disponible une fois le design validé.',
@@ -262,6 +264,7 @@ function toProgram(p) {
     designStatus: p.design_status || 'validated', designMode: p.design_mode || null,
     selfServiceStampId: p.self_service_stamp_id || null,
     selfServiceShowStamps: p.self_service_show_stamps ?? null,
+    selfServiceInactiveOpacity: p.self_service_inactive_opacity ?? 32,
     logoPath: p.logo_path || null, heroPath: p.hero_path || null, logoUrl: assetUrl(p.logo_path), heroUrl: assetUrl(p.hero_path),
     notificationLogoPath: p.notification_logo_path || null, notificationLogoUrl: assetUrl(p.notification_logo_path),
     // Design validated in the admin card designer (layout, colours, images, stamps); null = classic card.
@@ -563,8 +566,8 @@ const api = {
     return toProgram(data);
   },
   stampCatalog: STAMP_LIBRARY.filter(stamp => stamp.id !== 'cadeau'),
-  async finalizeDesign(stampId, showStamps = true) {
-    const { data, error } = await sb.functions.invoke('wallet/finalize-design', { body: { show_stamps: showStamps, stamp_id: showStamps ? (stampId || 'cafe') : null } });
+  async finalizeDesign(stampId, inactiveOpacity = 32) {
+    const { data, error } = await sb.functions.invoke('wallet/finalize-design', { body: { show_stamps: true, stamp_id: stampId || 'cafe', inactive_opacity: inactiveOpacity } });
     if (error) {
       let code = '';
       try { code = (await error.context.json()).error || ''; } catch (e) {}

@@ -1,6 +1,7 @@
 // Shared, pure mapping from a REAL, validated DPA Cards design to a native Apple store card.
 // The Apple Wallet preview in the editor is illustrative: PassKit owns native layout.
 // Keep this module free of Supabase, Deno and signing secrets so it can be unit tested.
+import { selfServiceOpacity } from '../_shared/self-service-layout.js';
 import { libraryStampId } from '../_shared/stamp-library.js';
 const HEX = /^#[0-9a-fA-F]{6}$/;
 // Keep the actual DB card number for scanning. The number on the pass is
@@ -89,7 +90,7 @@ export function realAppleBrand(program, merchant, card) {
     stamp: d.stamps?.icon === 'custom' && assets.stamp?.path?.endsWith('.png') ? assetPath(assets.stamp, card, 'stamp') : null,
     libraryId: selfServiceStamps ? selfServiceStampId : (d.stamps?.icon === 'library' ? libraryStampId(d.stamps.libraryId) : ''),
     artwork: selfServiceStamps ? null : backgroundImage || hero, heroFocus: Number.isFinite(+apple.heroFocus) ? Math.max(0, Math.min(100, +apple.heroFocus)) : 50,
-    stamps: {...(d.stamps || {}),size:apple.stampSize??d.stamps?.size,spacing:apple.stampSpacing??d.stamps?.spacing,...(selfServiceStamps?{rewardId:'cadeau',inactiveOpacity:32}:{})}, mode: program?.mode === 'points' ? 'points' : 'passages',
+    stamps: {...(d.stamps || {}),size:apple.stampSize??d.stamps?.size,spacing:apple.stampSpacing??d.stamps?.spacing,...(selfServiceStamps?{rewardId:'cadeau',inactiveOpacity:selfServiceOpacity(program?.self_service_inactive_opacity)}:{})}, mode: program?.mode === 'points' ? 'points' : 'passages',
     emoji: !['library','custom'].includes(d.stamps?.icon) && typeof d.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(d.stamps.emoji) ? d.stamps.emoji.slice(0,32) : '',
   };
 }

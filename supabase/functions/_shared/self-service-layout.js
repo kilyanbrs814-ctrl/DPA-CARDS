@@ -1,14 +1,19 @@
 import {LIBRARY_STAMP_IDS} from './stamp-library.js';
 
-// Old requests keep their existing stamp default. An explicit false never
-// falls back to café, including when an earlier stamp selection is still sent.
+export function selfServiceOpacity(value) {
+  return Number.isInteger(value) && value >= 0 && value <= 100 ? value : 32;
+}
+
+// New self-service cards require stamps. Retain rendering support below for
+// existing validated cards, without creating more no-stamp designs.
 export function selfServiceChoice(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('invalid_stamp_mode');
   if (Object.hasOwn(payload, 'show_stamps') && typeof payload.show_stamps !== 'boolean') throw new Error('invalid_stamp_mode');
-  if (payload.show_stamps === false) return {showStamps:false, stampId:null};
+  if (payload.show_stamps === false) throw new Error('stamps_required');
   const stampId = typeof payload.stamp_id === 'string' ? payload.stamp_id : 'cafe';
   if (stampId === 'cadeau' || !LIBRARY_STAMP_IDS.includes(stampId)) throw new Error('invalid_stamp');
-  return {showStamps:true, stampId};
+  if (Object.hasOwn(payload,'inactive_opacity') && selfServiceOpacity(payload.inactive_opacity) !== payload.inactive_opacity) throw new Error('invalid_stamp_opacity');
+  return {showStamps:true, stampId, inactiveOpacity:selfServiceOpacity(payload.inactive_opacity)};
 }
 
 export const selfServiceWithoutStamps = p => p?.design_mode === 'custom'

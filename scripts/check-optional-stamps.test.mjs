@@ -5,10 +5,12 @@ import {realApplePassData} from '../supabase/functions/apple-pass/real-card.js';
 import {readFileSync} from 'node:fs';
 import {PGlite} from '@electric-sql/pglite';
 
-test('stamp choice validates input and explicit false never restores the café default',()=>{
- assert.deepEqual(selfServiceChoice({show_stamps:false,stamp_id:'pizza'}),{showStamps:false,stampId:null});
- assert.deepEqual(selfServiceChoice({show_stamps:true,stamp_id:'pizza'}),{showStamps:true,stampId:'pizza'});
- assert.equal(selfServiceChoice({}).stampId,'cafe','old client default remains compatible');
+test('new cards require stamps and accept only integer opacity percentages',()=>{
+ assert.throws(()=>selfServiceChoice({show_stamps:false,stamp_id:'pizza'}),/stamps_required/);
+ assert.deepEqual(selfServiceChoice({show_stamps:true,stamp_id:'pizza',inactive_opacity:67}),{showStamps:true,stampId:'pizza',inactiveOpacity:67});
+ assert.equal(selfServiceChoice({}).inactiveOpacity,32,'old callers retain historical opacity');
+ for(const value of [0,100])assert.equal(selfServiceChoice({stamp_id:'pizza',inactive_opacity:value}).inactiveOpacity,value);
+ for(const value of [-1,101,3.5,'50',null])assert.throws(()=>selfServiceChoice({stamp_id:'pizza',inactive_opacity:value}),/invalid_stamp_opacity/);
  for(const p of [{show_stamps:'false'},{show_stamps:null},{show_stamps:true,stamp_id:'cadeau'},{stamp_id:'../logo'}])assert.throws(()=>selfServiceChoice(p),/invalid_stamp/);
 });
 const program={design_mode:'custom',design_status:'validated',self_service_show_stamps:false,self_service_stamp_id:'pizza',card_design:null,name:'Club interne',mode:'passages',goal:10,reward:'café offert',bg:'#FFFFFF'};

@@ -81,29 +81,26 @@ test('dashboard enrollment, effective Wallet previews, onboarding fallback and p
     assert.equal(await apple.locator('img[src="/assets/dpa-cards-logo.png"]').count(),1);
     assert.equal(await apple.locator('img[src="/assets/stamps/pizza.png"]').count(),9);
     assert.equal(await apple.locator('img[src="/assets/stamps/cadeau.png"]').count(),1);
-    // An explicit no-stamp choice must remove both panels immediately, retain
-    // the selected stamp for switching back, and stay compact on mobile.
-    await page.getByRole('radio',{name:'Sans tampons',exact:true}).click();
-    assert.equal(await page.getByRole('radio',{name:'Sans tampons',exact:true}).getAttribute('aria-checked'),'true');
-    assert.equal(await page.getByRole('searchbox',{name:'Rechercher un tampon'}).count(),0);
-    assert.equal(await apple.locator('[data-native-stamp]').count(),0);
-    assert.doesNotMatch(await apple.innerText(),/Programme test|\bCARTE\b/);
-    await page.screenshot({path:fileURLToPath(new URL('onboarding-without-stamps-apple.png',dir)),fullPage:true});
+    assert.equal(await page.getByRole('radio',{name:'Sans tampons',exact:true}).count(),0);
+    const slider=page.getByRole('slider',{name:/Opacité des tampons non acquis/});
+    await slider.fill('67');
+    assert.equal(await apple.locator('[data-native-stamp="empty"]').first().evaluate(e=>getComputedStyle(e).opacity),'0.67');
     await page.getByRole('tab',{name:'Aperçu Google Wallet'}).click();
-    assert.equal(await google.locator('[data-stamp-slot]').count(),0);
-    assert.match(await google.innerText(),/0 \/ 10/);
-    await page.getByRole('radio',{name:'Avec tampons',exact:true}).click();
-    assert.equal(await google.locator('[data-stamp-slot]').count(),10);
-    await page.getByRole('radio',{name:'Sans tampons',exact:true}).click();
+    assert.equal(await google.locator('[data-stamp="empty-library-png"]').first().evaluate(e=>getComputedStyle(e).opacity),'0.67');
+    await slider.fill('0');
+    assert.equal(await google.locator('[data-stamp="empty-library-png"]').first().evaluate(e=>getComputedStyle(e).opacity),'0');
+    await slider.fill('100');
+    assert.equal(await google.locator('[data-stamp="empty-library-png"]').first().evaluate(e=>getComputedStyle(e).opacity),'1');
+    await slider.fill('67');
     await page.setViewportSize({width:393,height:852});
-    assert.equal(await page.locator('[data-native-stamp],[data-stamp-slot]').count(),0);
-    await page.screenshot({path:fileURLToPath(new URL('onboarding-without-stamps-mobile.png',dir)),fullPage:true});
-    // The same effective program drives customer/public surfaces after saving.
+    await slider.scrollIntoViewIfNeeded();
+    await page.screenshot({path:fileURLToPath(new URL('onboarding-opacity-mobile.png',dir)),fullPage:true});
     await page.setViewportSize({width:1440,height:1100});
-    await page.evaluate(()=>{const a=window.__testApp;a.setState({screen:'home',hasAccess:true,role:'owner',program:{...a.state.program,designMode:'custom',selfServiceShowStamps:false,selfServiceStampId:null}})});
-    await home.locator('[data-preview-kind="self-service-simple"]').waitFor();
-    assert.equal(await home.locator('[data-native-stamp]').count(),0);
-    assert.doesNotMatch(await home.innerText(),/Club Boulangerie|\bCARTE\b/);
+    await page.getByRole('tab',{name:'Aperçu Apple Wallet'}).click();
+    await page.screenshot({path:fileURLToPath(new URL('onboarding-opacity-desktop.png',dir)),fullPage:true});
+    await page.evaluate(()=>{const a=window.__testApp;a.setState({screen:'home',hasAccess:true,role:'owner',program:{...a.state.program,designMode:'custom',selfServiceShowStamps:true,selfServiceStampId:'pizza',selfServiceInactiveOpacity:67}})});
+    await home.locator('[data-preview-kind="self-service-stamps"]').waitFor();
+    assert.equal(await home.locator('[data-native-stamp="empty"]').first().evaluate(e=>getComputedStyle(e).opacity),'0.67');
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);assert.equal(overflow,false);
     assert.deepEqual(errors,[]);
   } finally {await browser.close();await server.close();}

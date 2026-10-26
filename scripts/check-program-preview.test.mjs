@@ -56,3 +56,12 @@ test('explicit no-stamp programs stay compact outside onboarding and ignore an e
     assert.doesNotMatch(html,/data-native-stamp|data-stamp-slot|cadeau.png|old-hero.png|Club Boulangerie|>CARTE<|N° de carte/);
   }
 });
+
+test('self-service previews use saved opacity for remaining stamps while earned stamps stay opaque',()=>{
+ for(const platform of ['apple','google']){
+  const html=draw({...p,selfServiceInactiveOpacity:67},platform);
+  assert.match(html,/opacity:0\.67/);assert.match(html,/opacity:1/);
+  const hidden=draw({...p,selfServiceInactiveOpacity:0},platform);
+  assert.match(hidden,/opacity:0;/);assert.match(hidden,/opacity:1/);
+ }
+});

@@ -37,13 +37,11 @@ test('self-service card validation opens offer selection immediately when access
  await a.obValidateCustom(); assert.equal(a.state.screen,'billing'); assert.equal(a.state.hasAccess,false);
 });
 
-test('without stamps skips catalogue validation and persists false, with stamps still requires a choice',async()=>{
- const a=app();a.state.live=true;a.state.ob={...a.state.ob,biz:'Fleurs',prog:'Programme',hex:'#FFFFFF',showStamps:true,stampId:''};a.state.program={logoPath:'logo.png'};
- let saved;
- a.saveDraftNow=async()=>{};
- a.api={stampCatalog:[{id:'cafe'}],finalizeDesign:async(id,visible)=>{saved={id,visible};return {};},session:async()=>({user:{id:'u'}}),loadAll:async()=>({program:{selfServiceShowStamps:false},merchant:{},hasAccess:false})};
+test('every new card requires a selected stamp and forwards the chosen opacity',async()=>{
+ const a=app();a.state.live=true;a.state.ob={...a.state.ob,biz:'Fleurs',prog:'Programme',hex:'#FFFFFF',stampId:'',stampOpacity:67};a.state.program={logoPath:'logo.png'};
+ let saved;a.saveDraftNow=async()=>{};
+ a.api={stampCatalog:[{id:'cafe'}],finalizeDesign:async(id,opacity)=>{saved={id,opacity};return {};},session:async()=>({user:{id:'u'}}),loadAll:async()=>({program:{selfServiceShowStamps:true,selfServiceInactiveOpacity:67},merchant:{},hasAccess:false})};
  await a.obValidateCustom();assert.ok(a.state.err.obstamp);assert.equal(saved,undefined);
- a.state.ob.showStamps=false;await a.obValidateCustom();assert.deepEqual(saved,{id:'',visible:false});assert.equal(a.state.screen,'billing');
- const resumed=a.obStep3({business:'Fleurs',activity:'Restaurant',first:'A',last:'B'},{mode:'passages',goal:10,selfServiceShowStamps:false});
- assert.equal(resumed.showStamps,false);
+ a.state.ob.stampId='cafe';await a.obValidateCustom();assert.deepEqual(saved,{id:'cafe',opacity:67});assert.equal(a.state.screen,'billing');
+ const resumed=a.obStep3({business:'Fleurs',activity:'Restaurant',first:'A',last:'B'},{mode:'passages',goal:10,selfServiceInactiveOpacity:67});assert.equal(resumed.stampOpacity,67);
 });

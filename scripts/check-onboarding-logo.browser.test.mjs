@@ -65,13 +65,14 @@ test('onboarding imports and crops a logo into the actual Storage API and saves 
     await page.waitForFunction(()=>window.__testApp.state.imgBusy===null&&window.__testApp.state.modal===null);
     assert.equal((await page.evaluate(()=>window.__testApp.state.program)).logoPath,saved);
     await page.screenshot({path:fileURLToPath(new URL('logo-saved-mobile.png',out)),fullPage:true});
-    await page.getByRole('radio',{name:'Sans tampons',exact:true}).click();
+    await page.getByRole('radio',{name:'Pizza',exact:true}).click();
+    await page.getByRole('slider').fill('67');
     await page.evaluate(()=>{const a=window.__testApp;a.saveDraftNow=async()=>{};a.api={...a.api,
-      session:async()=>({user:{id:'test-owner'}}),loadAll:async()=>({merchant:a.state.merchant,hasAccess:false,program:{...a.state.program,selfServiceShowStamps:false,selfServiceStampId:null,designStatus:'validated',designMode:'custom'}})};});
+      session:async()=>({user:{id:'test-owner'}}),loadAll:async()=>({merchant:a.state.merchant,hasAccess:false,program:{...a.state.program,selfServiceShowStamps:true,selfServiceStampId:'pizza',selfServiceInactiveOpacity:67,designStatus:'validated',designMode:'custom'}})};});
     await page.getByRole('button',{name:'Valider ma carte',exact:true}).click();
     await page.waitForFunction(()=>window.__testApp.state.screen==='billing');
-    assert.deepEqual(finalized,{show_stamps:false,stamp_id:null});
-    assert.equal((await page.evaluate(()=>window.__testApp.state.program)).selfServiceShowStamps,false);
+    assert.deepEqual(finalized,{show_stamps:true,stamp_id:'pizza',inactive_opacity:67});
+    assert.equal((await page.evaluate(()=>window.__testApp.state.program)).selfServiceInactiveOpacity,67);
     assert.deepEqual(errors,[]);
   } finally {await browser.close();await server.close();}
 });

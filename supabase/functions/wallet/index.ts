@@ -1,6 +1,6 @@
 import { decodePng } from '../_shared/png.js';
 import { selectedMembership, walletUserHeaders } from '../_shared/merchant-context.ts';
-import { selfServiceChoice, selfServiceWithoutStamps, simpleGoogleTemplate, simpleGoogleFields } from '../_shared/self-service-layout.js';
+import { selfServiceChoice, selfServiceOpacity, selfServiceWithoutStamps, simpleGoogleTemplate, simpleGoogleFields } from '../_shared/self-service-layout.js';
 import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 import { loadRewardStamp } from '../_shared/reward-stamp.js';
 // DPA Cards — Google Wallet Edge Function.
@@ -214,12 +214,12 @@ async function publicStampBoard(req: Request, path: string) {
     goal=Number(design.preview?.goal)||10;mode=design.preview?.mode||'passages';
   }else{
     const {data,error}=await admin.from('cards')
-      .select('id,merchant_id,program_id,programs(goal,mode,bg,card_design,self_service_stamp_id,self_service_show_stamps)').eq('id',id).maybeSingle();
+      .select('id,merchant_id,program_id,programs(goal,mode,bg,card_design,self_service_stamp_id,self_service_show_stamps,self_service_inactive_opacity)').eq('id',id).maybeSingle();
     if(error||!data)return new Response('Not found',{status:404});
     const prog=(data as any).programs;
     if(!prog||!hasStampEmoji(prog))return new Response('Not found',{status:404});
     design=isSelfServiceStamp(prog) ? {
-      colors:{primary:prog.bg||'#FFFFFF'},stamps:{icon:'library',libraryId:prog.self_service_stamp_id,rewardId:'cadeau',inactiveOpacity:32},selfServiceStamps:true
+      colors:{primary:prog.bg||'#FFFFFF'},stamps:{icon:'library',libraryId:prog.self_service_stamp_id,rewardId:'cadeau',inactiveOpacity:selfServiceOpacity(prog.self_service_inactive_opacity)},selfServiceStamps:true
     } : prog.card_design;
     goal=prog.goal;mode=prog.mode;
     owner=(data as any).merchant_id+'/'+(data as any).program_id+'/designer';
@@ -377,7 +377,7 @@ async function runSync(limit = 20): Promise<{ synced: number; failed: number }> 
       // Keep the Google stamp image and native emoji fallback current when points change.
       // A failed auxiliary lookup must not block the existing balance synchronization.
       try {
-        const {data:row}=await admin.from('cards').select('id,card_number,programs(mode,goal,reward,card_design,design_mode,self_service_stamp_id,self_service_show_stamps)').eq('id',r.card_id).maybeSingle();
+        const {data:row}=await admin.from('cards').select('id,card_number,programs(mode,goal,reward,card_design,design_mode,self_service_stamp_id,self_service_show_stamps,self_service_inactive_opacity)').eq('id',r.card_id).maybeSingle();
         const prog=(row as any)?.programs;
         if(row && selfServiceWithoutStamps(prog)) Object.assign(update,simpleGoogleFields(prog,r.balance));
         if(row && hasStampEmoji(prog)){
@@ -473,7 +473,7 @@ async function finalizeDesign(req: Request): Promise<Response> {
     await checkImage(program.logo_path, 'logo', program.merchant_id, program.id);
     if (program.hero_path) await checkImage(program.hero_path, 'hero', program.merchant_id, program.id);
     // Lock only the exact images that were checked (a concurrent change makes this a no-op).
-    let q = admin.from('programs').update({ design_mode: 'custom', design_status: 'validated', self_service_stamp_id: choice.stampId, self_service_show_stamps: choice.showStamps, design_validated_at: new Date().toISOString() })
+    let q = admin.from('programs').update({ design_mode: 'custom', design_status: 'validated', self_service_stamp_id: choice.stampId, self_service_show_stamps: true, self_service_inactive_opacity: choice.inactiveOpacity, design_validated_at: new Date().toISOString() })
       .eq('id', program.id).eq('design_status', 'draft').eq('logo_path', program.logo_path);
     q = program.hero_path ? q.eq('hero_path', program.hero_path) : q.is('hero_path', null);
     const { data: locked } = await q.select().maybeSingle();
@@ -497,7 +497,7 @@ async function finalizeDesign(req: Request): Promise<Response> {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const CARD_SELECT = 'id, merchant_id, card_number, qr_token, customers(first_name, last_name), programs(id, merchant_id, name, mode, goal, reward, bg, logo_path, hero_path, design_status, design_mode, card_design, self_service_stamp_id, self_service_show_stamps), merchants(business_name)';
+const CARD_SELECT = 'id, merchant_id, card_number, qr_token, customers(first_name, last_name), programs(id, merchant_id, name, mode, goal, reward, bg, logo_path, hero_path, design_status, design_mode, card_design, self_service_stamp_id, self_service_show_stamps, self_service_inactive_opacity), merchants(business_name)';
 
 // Class + object for one card already authorised by the caller, then the signed save link.
 async function signedSaveUrl(req: Request, card: any): Promise<string> {
@@ -583,7 +583,7 @@ async function publicProgramBySlug(raw: unknown) {
   if (error) throw new Error('db_merchants');
   if (!m) throw new HttpError(404, 'program_not_found');
   const { data: p, error: pe } = await admin.from('programs')
-    .select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, logo_path, hero_path, design_status, design_mode, self_service_stamp_id, self_service_show_stamps, card_design, registration_page')
+    .select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, logo_path, hero_path, design_status, design_mode, self_service_stamp_id, self_service_show_stamps, self_service_inactive_opacity, card_design, registration_page')
     .eq('merchant_id', m.id).eq('is_active', true).maybeSingle();
   if (pe) throw new Error('db_programs');
   if (!p) throw new HttpError(404, 'program_not_found');
