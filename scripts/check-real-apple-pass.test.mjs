@@ -259,8 +259,8 @@ test('self-service selected library stamp renders without program title and with
   assert.equal(brand.showStampPanel,false);
   assert.equal(json.generic,undefined,'stamps require the storeCard strip');
   assert.ok(json.storeCard,'native Apple storeCard strip is enabled');
-  assert.equal(json.storeCard.primaryFields[0].value,'\\u00a0');
-  assert.ok(!JSON.stringify(json.storeCard).includes('Club Boulangerie'),'title is on the back only');
+  assert.equal(json.storeCard.primaryFields[0].value,'\u00a0');
+  assert.ok(!JSON.stringify(json.storeCard.primaryFields).includes('Club Boulangerie'),'title is on the back only');
   assert.equal(json.storeCard.secondaryFields[0].label,'MEMBRE');
   assert.equal(json.storeCard.secondaryFields[0].value,'Nicolas Moreau');
   assert.equal(json.storeCard.secondaryFields[1].label,'RÉCOMPENSE');

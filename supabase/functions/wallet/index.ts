@@ -575,7 +575,7 @@ async function publicProgramBySlug(raw: unknown) {
   if (error) throw new Error('db_merchants');
   if (!m) throw new HttpError(404, 'program_not_found');
   const { data: p, error: pe } = await admin.from('programs')
-    .select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, logo_path, hero_path, design_status, card_design, registration_page')
+    .select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, logo_path, hero_path, design_status, design_mode, self_service_stamp_id, card_design, registration_page')
     .eq('merchant_id', m.id).eq('is_active', true).maybeSingle();
   if (pe) throw new Error('db_programs');
   if (!p) throw new HttpError(404, 'program_not_found');
@@ -625,9 +625,12 @@ async function publicJoin(req: Request): Promise<Response> {
   let apple: { url?: string; error?: string };
   try { apple = { url: await appleDownloadLink(data.card.id) }; }
   catch (e) { apple = { error: e instanceof HttpError ? e.code : 'apple_wallet_unavailable' }; }
+  // The idempotent enrollment may return an existing card. Read its ledger,
+  // scoped to the card resolved by public_enroll; never trust a browser card id.
+  const progress = await latest(data.card.id);
   return json(req, 200, {
     first: data.customer.first_name, card_number: data.card.card_number, qr_value: `DPA1:${data.card.qr_token}`,
-    joined: data.card.created_at, wallet, apple,
+    joined: data.card.created_at, balance: progress.balance, wallet, apple,
   });
 }
 

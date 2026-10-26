@@ -40,13 +40,14 @@ const index = readFileSync(join(dist, 'index.html'), 'utf8');
 assert.ok(index.includes('cards.digitalprojectagency.fr'), 'Public QR origin not updated');
 for (const [kind,pixels] of [
   ['merchant-logo','660 × 660 px'],
-  ['merchant-hero','1032 × 812 px'],
   ['brief-logo','660 × 660 px'],
   ['brief-references','1032 × 812 px'],
 ]) {
   assert.ok(index.includes('data-recommended-size="'+kind+'"'),'Image-upload guidance missing: '+kind);
   assert.ok(index.includes(pixels),'Recommended size missing from card creation: '+kind);
 }
+assert.ok(!index.includes('data-recommended-size="merchant-hero"'), 'Self-service uses the stamp catalogue instead of a hero upload');
+assert.ok(index.includes('onChange="{{ obPickLogo }}"'), 'The real merchant logo upload must remain available');
 assert.ok(!index.includes('dpa-cards.vercel.app'), 'Legacy Vercel hostname still in site output');
 const admin = readFileSync(join(dist, 'admin.html'), 'utf8');
 assert.ok(admin.includes('admin-auth'), 'Admin page appears invalid');

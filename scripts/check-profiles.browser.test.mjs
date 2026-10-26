@@ -16,11 +16,11 @@ test('web profiles: header, selector, always-visible addition, new onboarding an
    a.enterDemo();a.setState({live:true,demo:false,role:'owner',hasAccess:true,billingMerchantId:'a',billedCount:1,
     merchant:{...a.state.merchant,id:'a',business:'Commerce A'},profiles:[{id:'a',name:'Commerce A',role:'owner'},{id:'b',name:'Commerce B',role:'owner'}]});
   });
-  await page.getByRole('button',{name:'Changer de profil',exact:true}).click();
+  await page.getByRole('button',{name:'Changer de commerce',exact:true}).click();
   const dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'Vos commerces'}).waitFor();
   assert.equal(await dialog.getByRole('button',{name:'Commerce A Actif'}).getAttribute('aria-current'),'true');
   await dialog.getByRole('button',{name:'Commerce B',exact:true}).click();assert.equal(await page.evaluate(()=>window.__switched),'b');
-  await dialog.getByRole('button',{name:'Ajouter un profil',exact:true}).click();
+  await dialog.getByRole('button',{name:'Ajouter un commerce',exact:true}).click();
   assert.equal(await page.evaluate(()=>window.__testApp.state.screen),'ob');
   assert.equal(await page.evaluate(()=>window.__testApp.state.clients.length),0);
   assert.equal(await page.evaluate(()=>window.__testApp.state.merchant.id),null);
@@ -64,8 +64,8 @@ test('native iPhone stays single-commerce: no signup, profile selector or Stripe
     profiles:[{id:'primary',name:'Premier commerce',role:'owner'},{id:'second',name:'Deuxième commerce',role:'owner'}]});
   });
   // Multi-commerce controls are deliberately web-only, even with two memberships.
-  assert.equal(await page.getByRole('button',{name:'Changer de profil',exact:true}).count(),0);
-  assert.equal(await page.getByRole('button',{name:'Ajouter un profil',exact:true}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'Changer de commerce',exact:true}).count(),0);
+  assert.equal(await page.getByRole('button',{name:'Ajouter un commerce',exact:true}).count(),0);
   assert.equal(await page.getByRole('button',{name:'Activer ce commerce',exact:true}).count(),0);
   assert.equal(await page.evaluate(()=>window.__nativeSelected),undefined);
   await page.evaluate(()=>{

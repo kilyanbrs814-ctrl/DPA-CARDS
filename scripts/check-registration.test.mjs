@@ -19,7 +19,7 @@ test('workspace membership and merchant reads are separately scoped to the authe
  const members=[{merchant_id:'m',role:'owner'},{merchant_id:'n',role:'owner'}];
  const calls=[];const client={from(table){calls.push(table);return {select(columns){calls.push(columns);return this},eq(key,value){calls.push([key,value]);return this},async order(){return {data:members}},async single(){return {data:{id:'n',business_name:'Shop'}}}}}};
  const storage={getItem:()=> 'n',setItem(){}};
- assert.deepEqual(await workspaceIdentity(client,{id:'u'},storage),{role:'owner',merchants:{id:'n',business_name:'Shop'},memberships:members});assert.ok(calls.some(x=>Array.isArray(x)&&x[0]==='user_id'&&x[1]==='u'));assert.ok(calls.some(x=>Array.isArray(x)&&x[0]==='id'&&x[1]==='n'));assert.ok(!calls.includes('role, merchants(*)'));
+ assert.deepEqual(await workspaceIdentity(client,{id:'u'},storage),{role:'owner',permissions:undefined,merchants:{id:'n',business_name:'Shop'},memberships:members});assert.ok(calls.some(x=>Array.isArray(x)&&x[0]==='user_id'&&x[1]==='u'));assert.ok(calls.some(x=>Array.isArray(x)&&x[0]==='id'&&x[1]==='n'));assert.ok(!calls.includes('role, merchants(*)'));
 });
 test('legacy Vercel authentication landing keeps path, query and fragment on the canonical site',()=>{
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');const code=html.match(/<script>(if\(location.protocol==='https:'[^<]+)<\/script>/)[1];let destination;

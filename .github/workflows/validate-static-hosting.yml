@@ -35,6 +35,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:png-ui
       - run: npm run test:profiles-ui
+      - run: npm run test:wallet-surfaces
 
   edge-check:
     runs-on: ubuntu-latest

@@ -353,22 +353,7 @@ a:hover{color:#1A36C4}
         <div role="tablist" aria-label="Aperçus Wallet" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;background:#DEDBD3;border-radius:14px;width:100%"><sc-for list="{{ obPreviewTabs }}" as="t" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{ t.pressed }}" onClick="{{ t.pick }}" style="min-height:54px;padding:8px;border:0;border-radius:10px;background:{{ t.bg }};color:{{ t.fg }};box-shadow:{{ t.shadow }};font-weight:700;font-size:15px">{{ t.label }}</button></sc-for></div>
         <sc-if value="{{ obPreviewApple }}" hint-placeholder-val="{{ true }}"><div aria-label="Aperçu de la carte Apple Wallet" style="width:100%;max-width:340px"><sc-if value="{{ obAppleCard }}" hint-placeholder-val="{{ false }}">{{ obAppleCard }}</sc-if><sc-if value="{{ !obAppleCard }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ obCard }}" hint-size="100%,470px"></dc-import></sc-if></div></sc-if>
         <sc-if value="{{ obPreviewGoogle }}" hint-placeholder-val="{{ false }}">
-        <div aria-label="Aperçu de la carte Google Wallet" style="width:100%;max-width:340px;border-radius:24px;overflow:hidden;background:{{ wp.bg }};color:{{ wp.fg }};box-shadow:0 12px 32px rgba(20,22,28,0.14), 0 1px 3px rgba(20,22,28,0.08);font-family:Roboto,'Hanken Grotesk',system-ui,sans-serif">
-          <div style="display:flex;align-items:center;gap:10px;padding:16px 18px 0">
-            <div style="width:40px;height:40px;border-radius:50%;overflow:hidden;flex:none;background:{{ wp.logoBg }};display:grid;place-items:center;color:{{ wp.sub }}">{{ wp.logo }}</div>
-            <div style="min-width:0;font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ wp.issuer }}</div>
-          </div>
-          <div style="padding:14px 18px 0;font-size:22px;line-height:1.25;overflow-wrap:anywhere">{{ wp.program }}</div>
-          <div style="display:flex;justify-content:space-between;gap:12px;padding:18px 18px 0">
-            <div><div style="font-size:12px;color:{{ wp.sub }}">{{ wp.unit }}</div><div style="font-size:18px;margin-top:2px">0</div></div>
-            <div style="text-align:right;min-width:0"><div style="font-size:12px;color:{{ wp.sub }}">Membre</div><div style="font-size:18px;margin-top:2px">Client</div></div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px 18px 22px">
-            <div style="background:#FFFFFF;border-radius:14px;padding:10px;line-height:0">{{ wp.qr }}</div>
-            <div style="font-size:13px;color:{{ wp.sub }};font-family:'IBM Plex Mono',monospace">0000 0000</div>
-          </div>
-          <sc-if value="{{ wp.hasHero }}" hint-placeholder-val="{{ false }}"><img src="{{ wp.hero }}" alt="" style="display:block;width:100%;aspect-ratio:1032/812;object-fit:cover"></sc-if>
-        </div>
+        <div aria-label="Aperçu de la carte Google Wallet" style="width:100%;max-width:340px">{{ obGoogleCard }}</div>
         </sc-if>
         <div style="font-size:13px;color:#5E636B;text-align:center;max-width:320px;line-height:1.45">{{ wp.caption }}</div>
       </div>
@@ -720,6 +705,7 @@ a:hover{color:#1A36C4}
         </section>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:20px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
         <section aria-labelledby="act-h" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <h2 id="act-h" style="margin:0;font-weight:700;font-size:18px">Dernières activités</h2>
@@ -740,6 +726,36 @@ a:hover{color:#1A36C4}
             </sc-for>
           </ul>
         </section>
+        <sc-if value="{{ canEnrollHome }}">
+          <section aria-label="Ajouter un client depuis l’accueil" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
+            <h2 style="margin:0;font-size:20px;font-weight:800">Ajouter un client</h2>
+            <p style="margin:0;color:#5E636B;font-size:14px;line-height:1.5">Le client peut scanner ce QR code avec son téléphone, ou remplir le formulaire ci-dessous avec son accord.</p>
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+              <div style="line-height:0">{{ qrBizSm }}</div>
+              <div style="flex:1;min-width:160px;display:flex;flex-direction:column;gap:10px">
+                <button type="button" onClick="{{ copyLink }}" style="min-height:46px;padding:10px;border:1px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-weight:700;color:#2448F0">Copier le lien d’inscription</button>
+                <button type="button" onClick="{{ downloadQr }}" disabled="{{ qrSaving }}" style="min-height:46px;padding:10px;border:1px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-weight:600">{{ qrDownloadLabel }}</button>
+              </div>
+            </div>
+        <form onSubmit="{{ submitJoin }}" noValidate="{{ true }}" style="padding:0;display:flex;flex-direction:column;gap:18px">
+          <div>
+            <label for="home-jf" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Prénom</label>
+            <input id="home-jf" autoComplete="given-name" value="{{ f.joinFirst }}" onChange="{{ F.joinFirst }}" aria-invalid="{{ inv.joinFirst }}" style="width:100%;height:54px;padding:0 16px;border:1.5px solid {{ eb.joinFirst }};border-radius:12px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#1C1F24;box-shadow:0 0 0 4px #E4E1DA">
+            <sc-if value="{{ err.joinFirst }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:8px;color:#B42318;font-size:14px;font-weight:500">{{ err.joinFirst }}</div></sc-if>
+          </div>
+          <div>
+            <label for="home-jm" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">E-mail <span style="font-weight:400;color:#5E636B">(facultatif)</span></label>
+            <input id="home-jm" type="email" autoComplete="email" value="{{ f.joinEmail }}" onChange="{{ F.joinEmail }}" aria-invalid="{{ inv.joinEmail }}" style="width:100%;height:54px;padding:0 16px;border:1.5px solid {{ eb.joinEmail }};border-radius:12px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#1C1F24;box-shadow:0 0 0 4px #E4E1DA">
+            <sc-if value="{{ err.joinEmail }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:8px;color:#B42318;font-size:14px;font-weight:500">{{ err.joinEmail }}</div></sc-if>
+          </div>
+          <label style="display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.45;color:#3E424A;cursor:pointer"><input type="checkbox" checked="{{ consent }}" onChange="{{ toggleConsent }}" style="width:20px;height:20px;accent-color:#1C1F24;margin:1px 0 0;flex:none"><span>J’accepte les conditions du programme et l’utilisation de mon prénom (et de mon e-mail si je le renseigne) par {{ m.business }} pour gérer ma carte de fidélité. DPA Cards fournit l’infrastructure technique de ce programme. <a href="/confidentialite" target="_blank" rel="noopener">Politique de confidentialité</a></span></label>
+          <sc-if value="{{ err.consent }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:-8px;color:#B42318;font-size:14px;font-weight:500">{{ err.consent }}</div></sc-if>
+          <button type="submit" disabled="{{ busy }}" style="height:56px;border:0;border-radius:14px;background:{{ joinPage.button }};color:{{ joinButtonFg }};font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ homeJoinLabel }}</button>
+          <p style="margin:0;font-size:13px;color:#5E636B;line-height:1.45">{{ P.conditions }}</p>
+        </form>
+          </section>
+        </sc-if>
+        </div>
         <div style="display:flex;flex-direction:column;gap:20px">
           <section aria-label="Ma carte" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
             <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-weight:700;font-size:18px">Ma carte</h2></div>
@@ -2579,7 +2595,7 @@ class Component extends DCLogic {
     try{
       const d=await api.loadAll(user);
       const base={teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',permissions:d.permissions||null,subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nIconBusy:false,nIconError:'',nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
-        f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
+        consent:false,f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
       if(DPA_NATIVE_IOS&&(!d.merchant||!d.program||d.hasAccess!==true||d.program.designStatus==='draft')){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
         const m=d.merchant||{...M0,first:String(md.first_name||''),last:String(md.last_name||''),email:user.email,business:biz};
@@ -2772,6 +2788,7 @@ class Component extends DCLogic {
     if(screen==='card') n.draft={...s.program};
     if(screen==='settings') n.sd={...s.merchant};
     if(screen==='join'&&s.live){ n.f={...s.f,joinFirst:'',joinEmail:''}; n.consent=false; n.joinedId=null; }
+    if(screen==='home'&&s.live&&s.screen==='joinDone'){ n.f={...s.f,joinFirst:'',joinEmail:''}; n.consent=false; }
     this.setState(n); this.scrollTop();
   }
   enterDemo(){
@@ -2973,7 +2990,7 @@ class Component extends DCLogic {
     setTimeout(()=>{ const id='c'+Date.now(); const card='DPA 4821 '+String(2400+Math.floor(Math.random()*500));
       const c={id,first:f.joinFirst.trim(),last:'',card,joined:TODAY,balance:0,history:[{id:'h'+(UID++),type:'join',date:TODAY,time:nowTime(),delta:0,label:'Inscription au programme'}]};
       this.setState(s=>({busy:false,clients:[c,...s.clients],joinedId:id,screen:'joinDone'})); this.scrollTop(); },900); };
-  async joinLive(f){ this.setState({busy:true});
+  async joinLive(f){ if(!this.canEmployee('add_clients')||!this.state.hasAccess) return this.showToast('Vous ne pouvez pas inscrire de client avec cet accès.','error'); this.setState({busy:true});
     try{ const c=await this.api.enroll(this.reqId('join'),f.joinFirst.trim(),f.joinEmail.trim()); this.settleReq('join');
       this.setState(s=>({busy:false,clients:s.clients.some(x=>x.id===c.id)?s.clients:[c,...s.clients],joinedId:c.id,screen:'joinDone'})); this.scrollTop(); }
     catch(e){ this.settleReq('join',e); this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
@@ -3036,7 +3053,7 @@ class Component extends DCLogic {
   pubReqId(){ return this._pubReq||(this._pubReq=this.api.uuid()); }
   async joinPublic(f){ this.setState({busy:true});
     try{ const r=await this.api.publicJoin(this.state.pubSlug,this.pubReqId(),f.joinFirst.trim(),f.joinEmail.trim());
-      const c={id:'pub-card',customerId:null,first:r.first,last:'',card:r.cardNumber,joined:TODAY,balance:0,history:[],wallet:null,qrValue:r.qrValue};
+      const c={id:'pub-card',customerId:null,first:r.first,last:'',card:r.cardNumber,joined:r.joined?ymdOf(new Date(r.joined)):TODAY,balance:r.balance??0,history:[],wallet:null,qrValue:r.qrValue};
       this.setState({busy:false,clients:[c],joinedId:c.id,pubWallet:r.wallet,pubApple:r.apple,screen:'joinDone'}); this.scrollTop(); }
     catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
   openPublicApple(){ const s=this.state, w=s.pubApple||{}; if(s.busy) return;
@@ -3045,7 +3062,7 @@ class Component extends DCLogic {
       return this.showToast('Apple Wallet est en cours de configuration. Votre carte de fidélité existe déjà : présentez son QR code en caisse.','info');
     this.setState({busy:true});
     this.api.publicJoin(s.pubSlug,this.pubReqId(),s.f.joinFirst.trim(),s.f.joinEmail.trim())
-      .then(r=>{ this.setState({busy:false,pubApple:r.apple,pubWallet:r.wallet});
+      .then(r=>{ this.setState(s=>({busy:false,pubApple:r.apple,pubWallet:r.wallet,clients:s.clients.map(c=>c.id===s.joinedId?{...c,balance:r.balance??c.balance}:c)}));
         if(r.apple.url) window.location.assign(r.apple.url);
         else this.showToast(this.api.errorMessage(new Error(r.apple.error||'apple_wallet_unavailable')),'error'); })
       .catch(e=>{ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); });
@@ -3056,7 +3073,7 @@ class Component extends DCLogic {
     if(w.error==='design_pending'||w.error==='wallet_not_configured') return this.showToast('L’ajout à Google Wallet sera bientôt disponible pour ce programme. Votre carte est bien créée : présentez son QR code en caisse.','info');
     this.setState({busy:true});
     this.api.publicJoin(s.pubSlug,this.pubReqId(),s.f.joinFirst.trim(),s.f.joinEmail.trim())
-      .then(r=>{ this.setState({busy:false,pubWallet:r.wallet}); if(r.wallet.url) open(r.wallet.url); else this.showToast(this.api.errorMessage(new Error(r.wallet.error||'wallet_unavailable')),'error'); })
+      .then(r=>{ this.setState(s=>({busy:false,pubWallet:r.wallet,clients:s.clients.map(c=>c.id===s.joinedId?{...c,balance:r.balance??c.balance}:c)})); if(r.wallet.url) open(r.wallet.url); else this.showToast(this.api.errorMessage(new Error(r.wallet.error||'wallet_unavailable')),'error'); })
       .catch(e=>{ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); }); }
   async downloadJoinQr(){ const m=this.state.merchant;if(this.state.qrSaving)return;this.setState({qrSaving:true});
     try{ const href=await this.api.qrPng(joinUrl(m.slug));
@@ -3420,11 +3437,11 @@ class Component extends DCLogic {
   }
   // Card drawn from the design validated in the admin (programs.card_design), with this card's live data:
   // customer name, balance, rewards available, card number and its own QR code (DPA1:<qr_token>). null = classic card.
-  designCard(p,platform,c,business){ const api=this.api; if(!api||!api.prepareCardDesign||!p||!p.cardDesign) return null;
-    const key=JSON.stringify(p.cardDesign)+'|'+p.logoPath+'|'+p.heroPath+'|'+business+'|'+p.bg+'|'+p.accent;
+  designCard(p,platform,c,business){ const api=this.api; if(!api||!api.prepareCardDesign||!p) return null;
+    const key=JSON.stringify([p.cardDesign,p.designMode,p.selfServiceStampId,p.logoPath,p.logoUrl,p.heroPath,p.heroUrl,business,p.bg,p.accent,p.mode,p.goal]);
     if(this._cdKey!==key){ this._cdKey=key; this._cd=api.prepareCardDesign(p,business,(this.state.merchant||{}).activity||''); }
     if(!this._cd) return null; const goal=Math.max(1,+p.goal||1), b=c?Math.max(0,+c.balance||0):0;
-    return React.createElement(api.cardKit().FitCard,{design:this._cd,platform,data:{mode:p.mode==='points'?'points':'passages',goal,progress:b,reward:p.reward||'',available:Math.floor(b/goal),
+    return React.createElement(api.cardKit().FitCard,{design:this._cd,platform,data:{isTest:false,programName:p.name,mode:p.mode==='points'?'points':'passages',goal,progress:b,reward:p.reward||'',available:Math.floor(b/goal),
       client:c?c.name:'Client',qr:c&&c.qr?c.qr:null,cardNumber:c&&c.card?c.card:''}}); }
   cardProps(p,business,member,value,cardNo,qr,showQr){
     const dark=lum(p.bg)<0.4, adark=lum(p.accent)<0.4;
@@ -3449,7 +3466,7 @@ class Component extends DCLogic {
     const locked=!!s.live&&!s.hasAccess;
     let lockKind=s.screen==='locked'?s.lockKind:null;
     if(locked) LOCKED_SCREENS.forEach(k=>{ if(S[k]){ S[k]=false; S.locked=true; lockKind=k; } });
-    const m=s.merchant, P=s.program, goal=+P.goal, unit=this.unitOf(P), step=this.stepOf(P);
+    const m=s.merchant, P=s.program||{mode:'passages',goal:10,bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',name:'',reward:''}, goal=+P.goal, unit=this.unitOf(P), step=this.stepOf(P);
     const canScan=this.canEmployee('scan'),canAddClients=this.canEmployee('add_clients'),canReward=this.canEmployee('rewards'),canCorrections=this.canEmployee('corrections'),canNotify=this.canEmployee('notifications');
     const F={}, err=s.err, eb={}, inv={};
     Object.keys(s.f).forEach(k=>F[k]=this.fh(k));
@@ -3566,7 +3583,7 @@ class Component extends DCLogic {
     const O={}; ['biz','logo','reward','otherActivity'].forEach(k=>O[k]=this.oh(k)); ['prog','hex','picker','stampSearch','drColors','drDesc','drName','drEmail','drPhone'].forEach(k=>O[k]=this.oh2(k)); O.biz=this.oh2('biz');
     const pr=s.program||{}, hexOk=/^#[0-9A-F]{6}$/.test(o.hex||''), wbg=o.design==='dpa'?'#FFFFFF':(hexOk?o.hex:'#FFFFFF'), wdark=lum(wbg)<0.45;
     const wLogo=o.design!=='dpa'&&pr.logoUrl?React.createElement('img',{src:pr.logoUrl,alt:'',style:{width:'100%',height:'100%',objectFit:'cover',display:'block'}})
-      :((o.biz||'').trim()?initials(o.biz).slice(0,2):React.createElement('span',{className:'material-symbols-rounded',style:{fontSize:22}},'storefront'));
+      :'LOGO';
     const wp={bg:wbg,fg:wdark?'#FFFFFF':'#1F1F1F',sub:wdark?'rgba(255,255,255,0.72)':'rgba(31,31,31,0.62)',logoBg:wdark?'rgba(255,255,255,0.16)':'#EFEDE8',
       logo:wLogo,issuer:(o.biz||'').trim()||'Nom du commerce',program:(o.design==='dpa'?'':(o.prog||'').trim())||'Nom du programme',unit:o.mode==='points'?'Points':'Passages',
       qr:qrSvg('preview',112),hasHero:o.design!=='dpa'&&!!pr.heroUrl,hero:pr.heroUrl||'',
@@ -3593,24 +3610,13 @@ class Component extends DCLogic {
       mime:s.crop.kind==='logo'?'image/png':'image/jpeg',round:s.crop.kind==='logo',title:s.crop.kind==='logo'?'Recadrer le logo':'Recadrer l’image de couverture',
       hint:s.crop.kind==='logo'?'Google Wallet affiche le logo dans un cercle. Gardez l’essentiel à l’intérieur du cercle pointillé.':'L’image occupe toute la largeur en bas de la carte (format 1032 × 812 px).',
       onCancel:()=>this.closeCrop(),onDone:b=>this.cropDone(s.crop.kind,b)}):null;
-    const obP={name:'Club '+(o.biz||'Mon commerce'),mode:o.mode,goal:o.goal,reward:o.reward||'Votre récompense',bg:o.bg,accent:o.accent,pattern:o.pattern,logo:(o.logo||initials(o.biz)).slice(0,4).toUpperCase()};
-    const obCard=this.cardProps({...obP,...pr,name:o.prog||obP.name,bg:wbg,mode:o.mode,goal:o.goal,reward:o.reward||'Votre récompense'},o.biz||'Mon commerce','Client exemple',`0 / ${o.goal}`,'DPA 0000 0000',qrSvg('onb',96),true);
-    const obAppleProgram={...obP,...pr,name:o.prog||obP.name,bg:wbg,mode:o.mode,goal:o.goal,reward:o.reward||'Votre récompense'};
-
-    const h=React.createElement, obStampTotal=Math.max(1,Math.min(20,Number(o.goal)||10));
-    const obStampCells=Array.from({length:obStampTotal},(_,i)=>h('img',{key:i,src:'/assets/stamps/'+(i===9?'cadeau':o.stampId||'cafe')+'.png',alt:i===9?'Cadeau (10e tampon)':'Tampon non acquis',style:{width:'100%',maxWidth:46,aspectRatio:'1',objectFit:'contain',filter:'grayscale(1)',opacity:.32}}));
-    const obCompactCard=h('div',{style:{width:'100%',background:wbg,color:wdark?'#FFFFFF':'#1C1F24',borderRadius:18,minHeight:370,boxShadow:'0 6px 18px rgba(0,0,0,.1)',padding:'18px 17px',boxSizing:'border-box',display:'flex',flexDirection:'column',gap:16}},
-      h('div',{style:{display:'flex',alignItems:'center',gap:9}},
-        pr.logoUrl?h('img',{src:pr.logoUrl,alt:'',style:{width:42,height:42,objectFit:'contain',borderRadius:8,background:'#FFFFFF'}}):h('div',{style:{width:42,height:42,borderRadius:8,background:'#EFEDE8'}}),
-        h('span',{style:{fontSize:15,fontWeight:700,flex:1,overflowWrap:'anywhere'}},o.biz||'Mon commerce'),
-        h('span',{style:{textAlign:'right',fontSize:14,fontWeight:700}},'PASSAGES',h('div',{style:{fontSize:19}},'0 / '+obStampTotal))),
-      h('div',{style:{display:'grid',gridTemplateColumns:'repeat(5,minmax(0,1fr))',justifyItems:'center',columnGap:9,rowGap:12,padding:'12px 0'}},...obStampCells),
-      h('div',{style:{display:'flex',gap:12,justifyContent:'space-between',fontSize:15}},
-        h('div',null,h('div',{style:{fontSize:11,fontWeight:700,opacity:.7}},'MEMBRE'),h('div',null,'Client exemple')),
-        h('div',null,h('div',{style:{fontSize:11,fontWeight:700,opacity:.7}},'RÉCOMPENSE'),h('div',null,o.reward||'Votre récompense'))),
-      h('div',{style:{margin:'auto auto 0',textAlign:'center'}},qrSvg('onb-stamp',95),h('div',{style:{fontSize:10}},'Par DPA Cards'))
-    );
-    const obAppleCard=o.design==='custom'?obCompactCard:(o.design!=='dpa'&&pr.cardDesign?this.designCard(obAppleProgram,'apple',null,o.biz||'Mon commerce'):null);
+    const obAppleProgram={...pr,name:o.prog||'Nom du programme',bg:wbg,accent:o.accent||'#EFEDE8',mode:o.mode,goal:o.goal,
+      reward:o.reward||'Votre récompense',designMode:'custom',
+      selfServiceStampId:o.mode==='points'?null:(o.stampId||'cafe'),cardDesign:o.design==='dpa'?null:pr.cardDesign,
+      logoUrl:o.design==='dpa'?null:pr.logoUrl,logoPath:o.design==='dpa'?null:pr.logoPath};
+    const obCard=this.cardProps({...obAppleProgram,logo:'LOGO',pattern:'none',heroUrl:null},o.biz||'Nom du commerce','Client exemple',`0 / ${o.goal}`,'',null,false);
+    const obAppleCard=this.designCard(obAppleProgram,'apple',{name:'Client exemple',balance:0,card:'',qr:null},o.biz||'Nom du commerce');
+    const obGoogleCard=this.designCard(obAppleProgram,'google',{name:'Client exemple',balance:0,card:'',qr:null},o.biz||'Nom du commerce');
     const obSteps=[{n:1,label:'Mon commerce'},{n:2,label:'Mon programme'},{n:3,label:'Ma carte'}].map(x=>({...x,bg:x.n<=o.step?'#2448F0':'#E3E1DA',fg:x.n<=o.step?'#1C1F24':'#6B6F76',current:x.n===o.step}));
     const obActs=ACTIVITIES.map(a=>{ const on=o.activity===a; return {label:a,bg:on?'#1C1F24':'#FFFFFF',fg:on?'#FFFFFF':'#1C1F24',border:on?'#1C1F24':'#D4D1C9',pressed:on,pick:()=>this.setState(x=>({ob:{...x.ob,activity:a}}))}; });
 
@@ -3641,11 +3647,11 @@ class Component extends DCLogic {
     const SD={}; ['first','last','email','phone','business','activity','address'].forEach(k=>SD[k]=this.sh(k));
 
     const joined=cv(clients.find(c=>c.id===s.joinedId));
-    const joinCard=joined?this.cardProps(P,m.business,joined.first,`0 / ${goal}`,joined.card,this.cardQr(clients.find(c=>c.id===s.joinedId),112),true):null;
+    const joinCard=joined?this.cardProps(P,m.business,joined.first,joined.value,joined.card,this.cardQr(clients.find(c=>c.id===s.joinedId),112),true):null;
     const homeCard=this.cardProps(P,m.business,sampleC?sampleC.first:'Client',sampleC?`${Math.min(sampleC.balance,goal)} / ${goal}`:`0 / ${goal}`,'',null,false);
     const selCard=sel?this.cardProps(P,m.business,sel.full,sel.value,sel.card,this.cardQr(clients.find(c=>c.id===s.selId),96),true):null;
     // Validated card design: Apple layout in DPA Cards, Google layout on Android for the public page.
-    const cdOn=!!(s.live||s.pubSlug)&&!!(P&&P.cardDesign), liveQr=c=>c&&(s.live||s.pubSlug)&&c.qrValue?c.qrValue:null;
+    const cdOn=!!(s.live||s.pubSlug)&&!!P&&!!this.api?.prepareCardDesign, liveQr=c=>c&&(s.live||s.pubSlug)&&c.qrValue?c.qrValue:null;
     const rawSel=sel?clients.find(c=>c.id===s.selId):null, rawJoin=joined?clients.find(c=>c.id===s.joinedId):null;
     const cdHome=cdOn?this.designCard(P,'apple',sampleC?{name:(sampleC.first+' '+(sampleC.last||'')).trim(),balance:sampleC.balance,card:sampleC.card,qr:liveQr(sampleC)}:null,m.business):null;
     const cdSel=cdOn&&sel?this.designCard(P,'apple',{name:sel.full,balance:sel.balance,card:sel.card,qr:liveQr(rawSel)},m.business):null;
@@ -3748,13 +3754,13 @@ class Component extends DCLogic {
       joinBanner:s.demo?'Aperçu de la page publique · démonstration, aucune donnée n’est collectée':'Inscription sur cet appareil · le client est enregistré dans votre espace',
       logoutNote:s.demo?'Vous devrez vous reconnecter pour scanner des cartes. Les données de démonstration seront réinitialisées.':'Vous devrez vous reconnecter pour scanner des cartes. Vos données restent enregistrées.',
       authCard,
-      ob:o, O, obOther:o.activity==='Autre', obPreviewApple:s.tab==='apple', obPreviewGoogle:s.tab!=='apple', obPreviewTabs:tabs.map(t=>({...t,label:'Aperçu '+t.label})), obAppleCard, obSteps, obActs, obCard, obStep1:o.step===1, obStep2:o.step===2, obStep3:o.step===3, obNotFirst:o.step>1, obNext:this.obNext, obBack:()=>this.setState(x=>({ob:{...x.ob,step:x.ob.step-1},err:{}})),
+      ob:o, O, obOther:o.activity==='Autre', obPreviewApple:s.tab==='apple', obPreviewGoogle:s.tab!=='apple', obPreviewTabs:tabs.map(t=>({...t,label:'Aperçu '+t.label})), obAppleCard, obGoogleCard, obSteps, obActs, obCard, obStep1:o.step===1, obStep2:o.step===2, obStep3:o.step===3, obNotFirst:o.step>1, obNext:this.obNext, obBack:()=>this.setState(x=>({ob:{...x.ob,step:x.ob.step-1},err:{}})),
       obNextLabel:o.step===3?(o.design==='custom'?(s.busy?'Validation…':'Valider ma carte'):o.design==='dpa'?(s.hasAccess?(s.busy?'Redirection vers le paiement…':'Commander mon design — 29,90 €'):(s.busy?'Enregistrement…':'Enregistrer ma demande et choisir mon offre')):'Continuer'):(s.busy?'Enregistrement…':'Continuer'),
       obDpaNote:s.hasAccess?'Paiement unique de 29,90 € TTC par carte bancaire (Stripe). Votre demande est transmise à DPA Cards dès le paiement confirmé.':'Paiement unique de 29,90 € TTC, proposé juste après le paiement de votre offre. Si vous choisissez votre offre plus tard, aucun paiement de design n’est demandé d’ici là.',
       obChoices, obStampChoices, obCustom:o.design==='custom', obDpa:o.design==='dpa', wp, dz, dr:drV, dReq, designPending:!!s.live&&pr.designStatus==='pending_dpa'&&!!rq, cropEl,
       obPickLogo:this.obPick('logo'), obPickHero:this.obPick('hero'), obRemoveLogo:()=>this.removeImage('logo'), obRemoveHero:()=>this.removeImage('hero'),
       drPickLogo:this.drPick(false), drPickRefs:this.drPick(true), drRemoveLogo:()=>this.setState({drLogo:null}), obMode:mkMode('ob'), obGoalDown:stepGoal('ob',-1), obGoalUp:stepGoal('ob',1), obUnit:o.mode==='points'?'points':'passages',
-      obBg:mkSw(BGS,'bg','ob'), obAccent:mkSw(ACCENTS,'accent','ob'), obPat:mkPat('ob'), obLogoPreview:obP.logo,
+      obBg:mkSw(BGS,'bg','ob'), obAccent:mkSw(ACCENTS,'accent','ob'), obPat:mkPat('ob'), obLogoPreview:'LOGO',
       obDoneGo:()=>{ if(s.live&&!s.hasAccess) return this.go('billing'); this.go('home',{loadingHome:true}); setTimeout(()=>this.setState({loadingHome:false}),600); },
       qrBiz:locked?null:(this.api?this.realQr(pubUrl,200,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,200)), qrBizSm:locked?null:(this.api?this.realQr(pubUrl,168,'QR code d’inscription au programme'):qrSvg('biz-'+m.slug,168)), link, pubUrl, hasLink:!!link, noLink:!link,
       copyLink:()=>locked?this.go('invite'):this.copyJoinLink(),
@@ -3779,7 +3785,7 @@ class Component extends DCLogic {
         return {ok:false,retry:false,loading:true,notLoading:false,icon:'',bg:'#E8EDFF',fg:'#2448F0',title:'Confirmation du paiement…',text:'Nous vérifions votre paiement auprès de Stripe.'}; })(),
       resumeDesign:this.resumeDesign, designContinue:this.designContinue,
       downloadQr:()=>locked?this.go('invite'):(s.live?this.downloadJoinQr():this.showToast('Démo : le téléchargement du QR code n’est pas activé.','info')),
-      canScan,canAddClients,canReward,canCorrections,canNotify,
+      canScan,canAddClients,canReward,canCorrections,canNotify,canEnrollHome:canAddClients&&!locked,homeJoinLabel:s.busy?'Création de la carte…':'Créer la carte du client',
       mobNav, deskNav, toScanner:go('scanner'), toMore:go('more'), toInvite:go('invite'), toCard:go('card'), toClients:go('clients'), toJoin:()=>{ if(locked) return this.go('invite'); const w=window.open(pubUrl,'_blank'); if(w) w.opener=null; else window.location.assign(pubUrl); }, toHome:go('home'),
       mInitials:initials(m.first+' '+m.last),moreInitials:s.live&&s.role==='staff'?'EM':initials(m.first+' '+m.last),
        moreHeading:s.live&&s.role==='staff'?'Espace employé':(m.first+' '+m.last).trim(),

@@ -48,6 +48,11 @@ export function lum(hex) {
   return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
 }
 const onColor = hex => (lum(hex) < 0.45 ? '#FFFFFF' : '#1C1F24');
+// Same contrast choice as the native self-service Apple pass mapper.
+const nativeOnColor = hex => {
+  const bg=lum(hex),dark=lum('#1C1F24');
+  return 1.05/(bg+.05)>(Math.max(bg,dark)+.05)/(Math.min(bg,dark)+.05)?'#FFFFFF':'#1C1F24';
+};
 const rgba = (hex, a) => { const h = (HEX.test(hex || '') ? hex : '#000000').slice(1); return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`; };
 
 // New project: everything the program and the merchant already have.
@@ -258,6 +263,7 @@ export function makeCardDesigner(React, api) {
   // Native-structure preview only. Apple PassKit keeps ownership of the signed
   // .pkpass, field typography and device-specific spacing; this HTML never signs a card.
   function AppleCard({ design, data }) {
+    if (design.previewKind?.startsWith('self-service')) return h(SimpleAppleCard, {design, data});
     const d = effective(design, 'apple'), o = d.opt, c = d.colors;
     const geo = applePassPreviewGeometry(d, data);
     const W = 375, scale = 340 / W;
@@ -425,7 +431,40 @@ export function makeCardDesigner(React, api) {
         transformOrigin: 'top left' } },
         top, strip, fields, qr));
   }
+  // Mirrors realApplePassData's two self-service branches: old generic passes
+  // keep their program title; newly selected stamps use the native strip.
+  function SimpleAppleCard({design, data}) {
+    const d=effective(design,'apple'), stamped=design.previewKind==='self-service-stamps';
+    const color=nativeOnColor(d.colors.primary), goal=Math.max(1,Number(data.goal)||10);
+    const field=(label,value)=>h('div',{style:{minWidth:0,flex:1}},
+      h('div',{style:{fontSize:10,opacity:.8,letterSpacing:'.03em'}},label),
+      h('div',{style:{fontSize:16,fontWeight:600,overflowWrap:'anywhere',marginTop:4}},value));
+    return h('div',{'data-layout':'apple','data-preview-kind':design.previewKind,
+      style:{width:340,background:d.colors.primary,color,borderRadius:20,overflow:'hidden',
+        boxShadow:'0 12px 32px rgba(20,22,28,.14)',fontFamily:'-apple-system,BlinkMacSystemFont,system-ui,sans-serif'}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:9,padding:'16px'}},
+        h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:42,height:42,objectFit:'contain'},fallback:h('div',{'data-logo-placeholder':true,style:{fontSize:10,fontWeight:800,padding:7,borderRadius:8,background:'#EFEDE8',color:'#1C1F24'}},'LOGO')}),
+        h('strong',{style:{flex:1,minWidth:0,fontSize:14,overflowWrap:'anywhere'}},d.identity.name||'Nom du commerce'),
+        h('div',{'data-field':'progress',style:{textAlign:'right',flexShrink:0}},
+          h('div',{style:{fontSize:9}},data.mode==='points'?'POINTS':'PASSAGES'),
+          h('strong',{style:{fontSize:19}},Math.max(0,Number(data.progress)||0)+' / '+goal))),
+      stamped ? h('div',{'data-apple-native-strip':true,style:{position:'relative',width:340,height:144*340/375}},
+        ...applePassPreviewGeometry(d,{...data,isTest:false}).stamps.map((s,i)=>h('img',{
+          key:i,'data-native-stamp':s.done?'filled':'empty',src:stampImageUrl(i===9?'cadeau':d.stamps.libraryId),
+          alt:i===9?'Cadeau (10e tampon)':s.done?'Tampon acquis':'Tampon restant',
+          style:{position:'absolute',left:(s.x-s.diameter/2)*340/375,top:(s.y-s.diameter/2)*340/375,
+            width:s.diameter*340/375,height:s.diameter*340/375,objectFit:'contain',opacity:s.done?1:.32,filter:s.done?'none':'grayscale(1)'}})))
+        : h('div',{'data-field':'program',style:{padding:'0 16px 12px',fontSize:22,fontWeight:700,overflowWrap:'anywhere'}},data.programName||'Nom du programme'),
+      h('div',{style:{display:'flex',gap:16,padding:'16px'}},
+        stamped?field('MEMBRE',data.client||'Client'):field('RÉCOMPENSE',data.reward||'Votre récompense'),
+        stamped?field('RÉCOMPENSE',data.reward||'Votre récompense'):field('MEMBRE',data.client||'Client')),
+      !stamped&&h('div',{style:{padding:'0 16px 10px'}},field('CARTE',data.cardNumber||'—')),
+      h('div',{'data-field':'qr',style:{display:'flex',flexDirection:'column',alignItems:'center',gap:9,padding:'12px 16px 20px'}},
+        h('div',{style:{padding:10,background:'#FFFFFF',borderRadius:4}},h(Qr,{value:data.qr,size:112})),
+        h('div',{style:{fontSize:10}},'Par DPA Cards')));
+  }
   function GoogleCard({design,data}){
+    if (design.previewKind) return h(ProgramGoogleCard,{design,data});
     const d=effective(design,'google'),c=d.colors;
     const art=d.assets.googleStrip || (d.opt.reuseAppleStrip!==false?d.assets.appleStrip:null);
     const done=Math.max(0,Number(data.progress)||0),goal=Math.max(1,Number(data.goal)||10);
@@ -446,6 +485,40 @@ export function makeCardDesigner(React, api) {
       h('div',{'data-google-stamp-panel':true,style:{position:'relative',width:340,height:340*812/1032,display:'grid',placeItems:'center',background:c.primary}},
         art?.url && h('img',{src:art.url,alt:'Visuel Google Wallet',style:{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'contain'}}),
         d.opt.showStamps!==false && h('div',{style:{position:'relative'}},h(Progress,{d,data,width:250,align:'center',dark:false,large:false}))))
+  }
+
+  // Google loyalty cards place the issuer/logo first, program and account fields
+  // above the barcode, and the generated hero (stamps) below it. Reward modules
+  // belong to card details; their precise placement is owned by Google Wallet.
+  function ProgramGoogleCard({design,data}) {
+    const d=effective(design,'google'),stamped=design.previewKind==='self-service-stamps';
+    const done=Math.max(0,Number(data.progress)||0),goal=Math.max(1,Number(data.goal)||10);
+    const fg=nativeOnColor(d.colors.primary),points=data.mode==='points';
+    const field=(label,value)=>h('div',{style:{flex:1,minWidth:0}},h('div',{style:{fontSize:11,opacity:.75}},label),h('div',{style:{fontSize:17,marginTop:3,overflowWrap:'anywhere'}},value));
+    return h('div',{'data-layout':'google','data-preview-kind':design.previewKind,style:{width:340,borderRadius:22,overflow:'hidden',background:d.colors.primary,color:fg,fontFamily:'Roboto,system-ui,sans-serif',boxShadow:'0 12px 32px rgba(20,22,28,.14)'}},
+      h('div',{style:{display:'flex',alignItems:'center',gap:10,padding:'16px 18px 0'}},
+        h(Img,{asset:d.assets.logo,alt:'Logo',style:{width:40,height:40,borderRadius:'50%',objectFit:'contain'},fallback:h('div',{'data-logo-placeholder':true,style:{width:40,height:40,display:'grid',placeItems:'center',borderRadius:'50%',fontSize:10,fontWeight:700,background:'#EFEDE8',color:'#1C1F24'}},'LOGO')}),
+        h('div',{style:{fontSize:15,overflowWrap:'anywhere'}},d.identity.name||'Nom du commerce')),
+      h('div',{'data-field':'program',style:{padding:'14px 18px 0',fontSize:22,overflowWrap:'anywhere'}},data.programName||'Nom du programme'),
+      h('div',{style:{display:'flex',gap:12,padding:'18px 18px 0'}},field('Membre',data.client||'Client'),field('N° de carte',String(data.cardNumber||'').replace(/\D/g,'')||'—')),
+      h('div',{style:{display:'flex',gap:12,padding:'18px'}},field(points?'Points gagnés':'Passages effectués',done),stamped&&field(points?'Points restants':'Passages restants',Math.max(0,goal-done))),
+      h('div',{'data-field':'qr',style:{display:'flex',justifyContent:'center',padding:'0 18px 18px'}},h('div',{style:{background:'#FFFFFF',padding:12,borderRadius:14}},h(Qr,{value:data.qr,size:112}))),
+      stamped?h(GoogleProgramStampHero,{d,data})
+        :d.assets.hero?.url&&h(Img,{asset:d.assets.hero,alt:'Visuel du programme',style:{width:340,aspectRatio:'1032 / 812',objectFit:'cover'}}),
+      h('details',{'data-google-details':true,style:{padding:'12px 18px',fontSize:13,borderTop:'1px solid '+rgba(fg,.15)}},h('summary',null,'Renseignements de la carte'),h('p',null,'Récompense : '+(data.reward||'Votre récompense'))));
+  }
+
+  function GoogleProgramStampHero({d,data}) {
+    // makeGoogleStrip uses a 1032×812 hero and 130px stamp bitmaps.
+    const n=Math.max(1,Math.min(20,Number(data.goal)||10)),rows=n<=6?1:n<=14?2:3,cols=Math.ceil(n/rows),k=340/1032;
+    const height=812*k,size=130*k,done=Math.max(0,Number(data.progress)||0);
+    return h('div',{'data-google-stamp-panel':true,style:{position:'relative',width:340,height}},
+      ...Array.from({length:n},(_,i)=>{
+        const row=Math.floor(i/cols),col=i%cols,count=Math.min(cols,n-row*cols);
+        const x=(516+(col-(count-1)/2)*(rows===1?152:cols>5?115:154))*k;
+        const y=(406+(row-(rows-1)/2)*(rows===1?0:Math.min(rows===2?235:192,812/(rows+1))))*k;
+        return h('div',{key:i,'data-stamp-slot':true,style:{position:'absolute',left:x-size/2,top:y-size/2,width:size,height:size}},h(Stamp,{on:i<done,st:d.stamps,size,final:i===9}));
+      }));
   }
 
   function CardPreview({ design, data, platform }) { return h(platform === 'google' ? GoogleCard : AppleCard, { design, data }); }

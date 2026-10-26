@@ -1,5 +1,6 @@
 import { registrationPage, registrationPayload } from './registration-page.js';
 import { STAMP_LIBRARY } from './stamp-library.js';
+import { prepareProgramPreview } from './program-card-preview.js';
 import { saveQrToPhotos } from './qr-photo.js';
 import { workspaceIdentity } from './workspace-identity.js';
 import { changeProfile, rememberProfile } from './merchant-profiles.js';
@@ -16,7 +17,7 @@ import { completePasswordSetup } from './password-setup.js';
 import { createClient } from '@supabase/supabase-js';
 import QRCode from 'qrcode';
 import { makeCropper } from './cropper.js';
-import { makeCardDesigner, prepareDesign } from './card-designer.js';
+import { makeCardDesigner } from './card-designer.js';
 import { LEGAL } from './legal-config.js';
 import { listenForAdminDeepLinks, forwardAdminAuthToPage } from './native-admin-link.js';
 import { scanDevice, canUseCamera, cameraPermission, decodeKeys, parseCode, qrPath, requestCamera, cameraErrorKind, makeCameraView } from './scanner.js';
@@ -518,8 +519,7 @@ const api = {
   // Cards drawn from programs.card_design (Apple / Google layouts). Customer data is passed per card.
   cardKit() { return cardKitInstance || (cardKitInstance = makeCardDesigner(window.React, null)); },
   prepareCardDesign(program, business, activity) {
-    return program && program.cardDesign ? prepareDesign(program.cardDesign, { bg: program.bg, accent: program.accent, mode: program.mode, goal: program.goal, reward: program.reward,
-      logo_path: program.logoPath, hero_path: program.heroPath }, { business_name: business, activity }, assetUrl) : null;
+    return prepareProgramPreview(program, business, activity, assetUrl);
   },
   async saveRules(programId, { mode, goal, reward }) {
     const { data, error } = await sb.from('programs').update({ mode, goal: +goal, reward: reward.trim() }).eq('id', programId).select().single();
@@ -665,7 +665,7 @@ const api = {
       try { code = (await error.context.json()).error || ''; } catch (e) {}
       throw Object.assign(new Error(code || error.message || 'wallet_unavailable'), { code, name: code ? 'Error' : error.name });
     }
-    return { first: data.first, cardNumber: data.card_number, qrValue: data.qr_value, wallet: data.wallet || {}, apple: data.apple || {} };
+    return { first: data.first, cardNumber: data.card_number, qrValue: data.qr_value, balance: data.balance ?? 0, joined: data.joined, wallet: data.wallet || {}, apple: data.apple || {} };
   },
   // ---- personal data. Deletions go through the Edge Function (owner session, merchant and
   // customer derived on the server); the export reads with the merchant's own session (RLS).
