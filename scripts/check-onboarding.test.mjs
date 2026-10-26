@@ -31,7 +31,7 @@ test('returning unpaid merchant resumes at offer selection instead of dashboard'
  await a.openLive({user:{id:'u'}}); assert.equal(a.state.screen,'billing');
 });
 test('self-service card validation opens offer selection immediately when access is absent',async()=>{
- const a=app(); a.state.live=true; a.state.ob={...a.state.ob,biz:'Fleurs',prog:'Club Fleurs',hex:'#FFFFFF'}; a.state.program={logoPath:'logo.png'};
+ const a=app(); a.state.live=true; a.state.ob={...a.state.ob,biz:'Fleurs',prog:'Club Fleurs',hex:'#FFFFFF',stampId:'cafe'}; a.state.program={logoPath:'logo.png'};
  a.saveDraftNow=async()=>{};
  a.api={stampCatalog:[{id:'cafe'}],finalizeDesign:async()=>({}),session:async()=>({user:{id:'u'}}),loadAll:async()=>({program:{},merchant:{},hasAccess:false})};
  await a.obValidateCustom(); assert.equal(a.state.screen,'billing'); assert.equal(a.state.hasAccess,false);

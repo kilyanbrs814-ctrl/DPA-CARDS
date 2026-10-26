@@ -15,8 +15,8 @@ n’est migré ni réenregistré par cette correction.
 Accueil, fiche client, page « Votre carte est prête » et créateur utilisent ces
 données communes. Les données individuelles disponibles (nom, progression,
 numéro, QR personnel) sont passées séparément au rendu. Avant création d’une
-carte, la zone QR est un emplacement neutre. L’étape 1 peut afficher le tampon
-café proposé par défaut ; le choix à l’étape 3 modifie les deux aperçus. L’import
+carte, la zone QR est un emplacement neutre. Aucun tampon ni cadeau n’est affiché
+avant le choix explicite du tampon à l’étape 3 ; ce choix actualise les deux aperçus. L’import
 du vrai logo demeure disponible ; « LOGO » est uniquement un remplacement visuel.
 
 Le point d’entrée public renvoie désormais `design_mode` et

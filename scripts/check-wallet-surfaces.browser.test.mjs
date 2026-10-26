@@ -52,24 +52,28 @@ test('dashboard enrollment, effective Wallet previews, onboarding fallback and p
     await page.evaluate(async()=>{const a=window.__testApp;window.__enrolled=null;await a.joinLive({joinFirst:'Forbidden',joinEmail:''})});
     assert.equal(await page.evaluate(()=>window.__enrolled),null);
     await page.evaluate(()=>window.__testApp.setState({role:'owner',hasAccess:false}));assert.equal(await enroll.count(),0);
-    // Step 1 starts before a program exists, with neutral logo and usable stamps.
+    // Step 1 starts before a program exists: no stamp is selected or displayed.
     await page.evaluate(()=>{const a=window.__testApp;a.setState({screen:'ob',program:null,clients:[],toast:null,ob:{...a.initState().ob,biz:'spaceessentials'},tab:'apple'})});
     const apple=page.getByLabel('Aperçu de la carte Apple Wallet',{exact:true});await apple.waitFor();
     assert.match(await apple.innerText(),/LOGO/);assert.doesNotMatch(await apple.innerText(),/BASH|Club/);
-    assert.equal(await apple.locator('[data-native-stamp]').count(),10);
+    assert.equal(await apple.locator('[data-native-stamp]').count(),0);
     await page.screenshot({path:fileURLToPath(new URL('onboarding-apple.png',dir)),fullPage:true});
     await page.getByRole('tab',{name:'Aperçu Google Wallet'}).click();
     const google=page.getByLabel('Aperçu de la carte Google Wallet',{exact:true});
     assert.match(await google.innerText(),/spaceessentials/);assert.match(await google.innerText(),/Nom du programme/);
-    assert.equal(await google.locator('[data-stamp-slot]').count(),10);
+    assert.equal(await google.locator('[data-stamp-slot]').count(),0);
     await page.screenshot({path:fileURLToPath(new URL('onboarding-google.png',dir)),fullPage:true});
-    await page.evaluate(()=>{const a=window.__testApp;a.setState({ob:{...a.state.ob,step:3,design:'custom',stampId:'pizza',hex:'#D4AF37',prog:'Programme test'},program:{...a.initState().program,logoUrl:'/assets/dpa-cards-logo.png'}})});
+    await page.evaluate(()=>{const a=window.__testApp;a.setState({ob:{...a.state.ob,step:3,design:'custom',stampId:'',hex:'#D4AF37',prog:'Programme test'},program:{...a.initState().program,logoUrl:'/assets/dpa-cards-logo.png'}})});
     await page.locator('input[type="file"][accept="image/png,image/jpeg,image/webp"]').waitFor({state:'attached'});
     assert.equal(await google.locator('img[src="/assets/dpa-cards-logo.png"]').count(),1);
+    assert.equal(await google.locator('[data-stamp-slot]').count(),0);
+    await page.getByRole('radio',{name:'Pizza',exact:true}).click();
     assert.equal(await google.locator('img[src="/assets/stamps/pizza.png"]').count(),9);
+    assert.equal(await google.locator('img[src="/assets/stamps/cadeau.png"]').count(),1);
     await page.getByRole('tab',{name:'Aperçu Apple Wallet'}).click();
     assert.equal(await apple.locator('img[src="/assets/dpa-cards-logo.png"]').count(),1);
     assert.equal(await apple.locator('img[src="/assets/stamps/pizza.png"]').count(),9);
+    assert.equal(await apple.locator('img[src="/assets/stamps/cadeau.png"]').count(),1);
     const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);assert.equal(overflow,false);
     assert.deepEqual(errors,[]);
   } finally {await browser.close();await server.close();}
