@@ -225,7 +225,7 @@ export async function makeEmojiCardStrip(stamps, colors, progress, goal, mode, s
       const row=Math.floor(i/per),col=i%per,rowCount=Math.min(per,n-row*per);
       const x=Math.round(cx+(col-(rowCount-1)/2)*(size+gap*scale)*spacing);
       const y=Math.round(cy+(row-(rows-1)/2)*rowGap*spacing);
-      const stamp=i===n-1&&finalStar?finalStar:icon;
+      const stamp=i===(colors?.selfServiceStamps?9:n-1)&&finalStar?finalStar:icon;
       if(stamp)compositeEmoji(pixels,width,height,x,y,visualSize,stamp,i<done,inactiveOpacity);
     }
   }
