@@ -179,7 +179,7 @@ export async function makeGoogleStampHero(d, progress, goal, mode='passages', cu
     const x=Math.round(width/2+(col-(rowCount-1)/2)*spaceX*spacing);
     const spaceY=rows===1?0:Math.min(rows===2?235:192,artHeight/(rows+1));
     const y=Math.round(height/2+(row-(rows-1)/2)*spaceY*spacing);
-    const stamp=i===n-1&&finalStar?finalStar:bitmap;
+    const stamp=i===(d?.selfServiceStamps?9:n-1)&&finalStar?finalStar:bitmap;
     if(stamp)compositeEmoji(pixels,width,height,x,y,Math.round(130*stampFactor),stamp,i<done,inactiveOpacity);
     else {
       const ink=rgb(d?.stamps?.filled,'#F2C94C'),empty=rgb(d?.stamps?.empty,'#FFFFFF');
