@@ -240,7 +240,7 @@ async function createRealPass(cardId: string) {
   if (cardError || !card) throw new SafeError(404, 'card_not_found');
   const [access, programResult, merchantResult, customerResult, eventResult] = await Promise.all([
     supabase.rpc('merchant_has_access', { p_merchant: card.merchant_id }),
-    supabase.from('programs').select('id, name, mode, goal, reward, bg, card_design, logo_path, notification_logo_path, design_status, design_mode').eq('id', card.program_id).eq('merchant_id', card.merchant_id).single(),
+    supabase.from('programs').select('id, name, mode, goal, reward, bg, card_design, logo_path, notification_logo_path, design_status, design_mode, self_service_stamp_id').eq('id', card.program_id).eq('merchant_id', card.merchant_id).single(),
     supabase.from('merchants').select('business_name').eq('id', card.merchant_id).single(),
     supabase.from('customers').select('first_name, last_name').eq('id', card.customer_id).eq('merchant_id', card.merchant_id).single(),
     supabase.from('card_events').select('seq, balance_after').eq('card_id', card.id).order('seq', { ascending: false }).limit(1),
@@ -283,17 +283,19 @@ async function createRealPass(cardId: string) {
   if(brand.rewardLabel && !rewardBytes)throw new SafeError(422,'invalid_reward_label');
   const rewardArt=rewardBytes ? await decodePng(rewardBytes) : null;
   const panelArt=await loadPanelArt(brand.appleStrip);
-  const finalStar=await loadRewardStamp(brand.stamps?.rewardId);
+  const finalStar=brand.selfServiceStamps ? await loadLibraryStamp('cadeau') : await loadRewardStamp(brand.stamps?.rewardId);
+  if(brand.selfServiceStamps && !finalStar) throw new SafeError(503,'gift_stamp_unavailable');
   if(rewardArt && (rewardArt.width!==630||rewardArt.height!==52))throw new SafeError(422,'invalid_reward_label');
   // Strip is optional: a rendering issue should not prevent a customer from
   // receiving a valid pass containing all native fields and QR code.
   try {
-    if (!brand.selfService) {
+    if (!brand.selfService || brand.selfServiceStamps) {
     assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1, stamp, rewardArt, finalStar, panelArt));
     assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2, stamp, rewardArt, finalStar, panelArt));
     if(panelArt)assets['strip@3x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 3, stamp, rewardArt, finalStar, panelArt));
     }
   } catch {
+    if (brand.selfServiceStamps) throw new SafeError(503, 'self_service_stamps_unavailable');
     console.error('apple-pass real strip unavailable');
   }
   const {data:notice,error:noticeError}=await supabase.from('apple_wallet_changes')
