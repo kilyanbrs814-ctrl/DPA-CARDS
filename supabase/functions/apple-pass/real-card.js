@@ -97,7 +97,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
   const modePoints = program.mode === 'points';
   const client = [txt(customer?.first_name, 80), txt(customer?.last_name, 80)].filter(Boolean).join(' ') || 'Client';
   const barcode = { format: 'PKBarcodeFormatQR', message: 'DPA1:' + card.qr_token, messageEncoding: 'iso-8859-1', altText: 'Par DPA Cards' };
-  return { brand, goal, balance: b, json: {
+  const pass = { brand, goal, balance: b, json: {
     formatVersion: 1,
     passTypeIdentifier: 'pass.fr.digitalprojectagency.cards',
     teamIdentifier: 'HDK7R3283T',
@@ -158,4 +158,12 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     },
     barcode, barcodes: [barcode],
   }};
+  // Apple reserves a large strip/primary zone on storeCard even with no strip image.
+  // Generic has no strip zone, so self-service pass fields group more closely.
+  // Advanced/custom-designed programs retain their existing storeCard layout.
+  if (brand.selfService) {
+    pass.json.generic = pass.json.storeCard;
+    delete pass.json.storeCard;
+  }
+  return pass;
 }
