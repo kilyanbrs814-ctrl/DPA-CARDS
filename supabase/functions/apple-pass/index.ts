@@ -240,7 +240,7 @@ async function createRealPass(cardId: string) {
   if (cardError || !card) throw new SafeError(404, 'card_not_found');
   const [access, programResult, merchantResult, customerResult, eventResult] = await Promise.all([
     supabase.rpc('merchant_has_access', { p_merchant: card.merchant_id }),
-    supabase.from('programs').select('id, name, mode, goal, reward, bg, card_design, logo_path, notification_logo_path, design_status').eq('id', card.program_id).eq('merchant_id', card.merchant_id).single(),
+    supabase.from('programs').select('id, name, mode, goal, reward, bg, card_design, logo_path, notification_logo_path, design_status, design_mode').eq('id', card.program_id).eq('merchant_id', card.merchant_id).single(),
     supabase.from('merchants').select('business_name').eq('id', card.merchant_id).single(),
     supabase.from('customers').select('first_name, last_name').eq('id', card.customer_id).eq('merchant_id', card.merchant_id).single(),
     supabase.from('card_events').select('seq, balance_after').eq('card_id', card.id).order('seq', { ascending: false }).limit(1),
@@ -259,7 +259,7 @@ async function createRealPass(cardId: string) {
   const logo = await realLogo(brand.logo);
   const composed=brand.appleHeader ? await realLogo(brand.appleHeader) : null;
   if(brand.appleHeader && !composed)throw new SafeError(422,'invalid_apple_header');
-  const compact=brand.showBusinessName && !brand.appleHeader;
+  const compact=(brand.selfService || brand.showBusinessName) && !brand.appleHeader;
   const assets: Record<string, Uint8Array> = {
     'icon.png': fallback, 'icon@2x.png': fallback, 'icon@3x.png': fallback,
     ...(logo ? { 'logo.png': logo, 'logo@2x.png': logo } : {}),
@@ -288,9 +288,11 @@ async function createRealPass(cardId: string) {
   // Strip is optional: a rendering issue should not prevent a customer from
   // receiving a valid pass containing all native fields and QR code.
   try {
+    if (!brand.selfService) {
     assets['strip.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 1, stamp, rewardArt, finalStar, panelArt));
     assets['strip@2x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 2, stamp, rewardArt, finalStar, panelArt));
     if(panelArt)assets['strip@3x.png'] = Buffer.from(await makeRealStrip(brand, balance, goal, 3, stamp, rewardArt, finalStar, panelArt));
+    }
   } catch {
     console.error('apple-pass real strip unavailable');
   }
