@@ -195,3 +195,38 @@ test('custom Apple header is opt-in, keeps QR and preserves instant return to na
   assert.equal(brand.appleHeader,null,'old bitmap is ignored');
   assert.equal(json.logoText,'Boulangerie des Arts');
 });
+
+
+test('self-service Apple Wallet uses the clean onboarding layout, real customer data and QR', () => {
+  const p = { name: 'Club jul94', mode: 'passages', goal: 10, reward: 'café offert',
+    design_mode: 'custom', design_status: 'validated', bg: '#FFFFFF',
+    accent: '#EFEDE8', logo_path: logo, card_design: null };
+  const { brand, json } = realApplePassData({program:p,merchant,customer,card,balance:3});
+  assert.equal(brand.selfService,true);
+  assert.equal(brand.primary,'#FFFFFF');
+  assert.equal(json.foregroundColor,'rgb(28, 31, 36)');
+  assert.equal(json.logoText,'Commerce réel');
+  assert.equal(json.storeCard.headerFields[0].value,'3 / 10');
+  assert.equal(json.storeCard.primaryFields[0].value,'Club jul94');
+  assert.equal(json.storeCard.secondaryFields[0].value,'café offert');
+  assert.equal(json.storeCard.secondaryFields[1].value,'Nicolas Moreau');
+  assert.equal(json.storeCard.auxiliaryFields[0].value,'DPA 0001');
+  assert.equal(json.barcode.message,'DPA1:'+token);
+  assert.equal(json.storeCard.backFields[0].label,'CONDITIONS');
+});
+
+test('self-service uses the selected background color; advanced and legacy passes keep their layout', () => {
+  const self = {name:'Mon Club',mode:'passages',goal:10,reward:'Service',
+    design_mode:'custom',bg:'#FFEEDD',card_design:null};
+  const result = realApplePassData({program:self,merchant,customer,card,balance:1});
+  assert.equal(result.brand.selfService,true);
+  assert.equal(result.brand.primary,'#FFEEDD');
+  assert.equal(result.json.backgroundColor,'rgb(255, 238, 221)');
+  const advanced = {...program,design_mode:'custom'};
+  const before=realApplePassData({program,merchant,customer,card,balance:2});
+  const after=realApplePassData({program:advanced,merchant,customer,card,balance:2});
+  assert.equal(after.brand.selfService,false);
+  assert.deepEqual(after.json.storeCard,before.json.storeCard);
+  const legacy = {...self,design_mode:null};
+  assert.equal(realApplePassData({program:legacy,merchant,customer,card,balance:1}).brand.selfService,false);
+});
