@@ -247,3 +247,35 @@ test('self-service compact layout includes QR and conditions with an accessible 
   assert.equal(json.barcode.message,'DPA1:'+token);
   assert.equal(json.generic.backFields[0].label,'CONDITIONS');
 });
+
+test('self-service selected library stamp renders without program title and with member/reward underneath', () => {
+  const p={name:'Club Boulangerie',design_mode:'custom',mode:'passages',goal:10,reward:'Croissant offert',
+    bg:'#FFFFFF',self_service_stamp_id:'croissant',card_design:null};
+  const {brand,json}=realApplePassData({program:p,merchant,customer,card,balance:3});
+  assert.equal(brand.selfService,true);
+  assert.equal(brand.selfServiceStamps,true);
+  assert.equal(brand.libraryId,'croissant');
+  assert.equal(brand.stamps.rewardId,'cadeau');
+  assert.equal(brand.showStampPanel,false);
+  assert.equal(json.generic,undefined,'stamps require the storeCard strip');
+  assert.ok(json.storeCard,'native Apple storeCard strip is enabled');
+  assert.equal(json.storeCard.primaryFields[0].value,'\\u00a0');
+  assert.ok(!JSON.stringify(json.storeCard).includes('Club Boulangerie'),'title is on the back only');
+  assert.equal(json.storeCard.secondaryFields[0].label,'MEMBRE');
+  assert.equal(json.storeCard.secondaryFields[0].value,'Nicolas Moreau');
+  assert.equal(json.storeCard.secondaryFields[1].label,'RÉCOMPENSE');
+  assert.equal(json.storeCard.secondaryFields[1].value,'Croissant offert');
+  assert.equal(json.storeCard.backFields.find(f=>f.key==='program').value,'Club Boulangerie');
+  assert.equal(json.barcode.message,'DPA1:'+token);
+});
+
+test('unchosen self-service passes and advanced designs keep their earlier native layouts', () => {
+  const self={name:'Club',design_mode:'custom',mode:'passages',goal:10,reward:'Dessert',
+    bg:'#FFFFFF',self_service_stamp_id:null,card_design:null};
+  assert.ok(realApplePassData({program:self,merchant,customer,card,balance:2}).json.generic);
+  const adv={...program,self_service_stamp_id:'cafe'};
+  const {brand,json}=realApplePassData({program:adv,merchant,customer,card,balance:2});
+  assert.equal(brand.selfServiceStamps,false);
+  assert.ok(json.storeCard);
+  assert.equal(json.storeCard.primaryFields[0].label,'TAMPONS');
+});
