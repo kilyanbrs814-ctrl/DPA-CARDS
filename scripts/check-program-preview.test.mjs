@@ -46,3 +46,13 @@ test('Google preview orders issuer, program, member, counters, QR and stamp hero
   assert.equal((html.match(/stamps\/cadeau.png/g)||[]).length,1);
   assert.match(html,/Nora/);assert.match(html,/1234/);assert.match(html,/Café/);
 });
+
+test('explicit no-stamp programs stay compact outside onboarding and ignore an earlier stamp and hero',()=>{
+  const simple={...p,selfServiceShowStamps:false,heroUrl:'/old-hero.png'};
+  for(const platform of ['apple','google']) {
+    const html=draw(simple,platform);
+    assert.match(html,/self-service-simple/);assert.match(html,/3 \/ 10/);
+    assert.match(html,/Nora/);assert.match(html,/Café/);assert.match(html,/data-dpa-qr="DPA1:test"/);
+    assert.doesNotMatch(html,/data-native-stamp|data-stamp-slot|cadeau.png|old-hero.png|Club Boulangerie|>CARTE<|N° de carte/);
+  }
+});

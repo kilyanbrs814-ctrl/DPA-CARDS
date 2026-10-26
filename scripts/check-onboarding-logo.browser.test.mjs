@@ -20,9 +20,13 @@ test('onboarding imports and crops a logo into the actual Storage API and saves 
   const out=new URL('../test-results/onboarding-logo/',import.meta.url);mkdirSync(out,{recursive:true});
   try {
     const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[],uploads=[];let saved=null,deny=true;
+    let finalized;
     page.setDefaultTimeout(6000);page.on('pageerror',e=>errors.push(e.message));
     await page.route('https://*.supabase.co/**',async route=>{
       const req=route.request(),url=new URL(req.url());
+      if(url.pathname==='/functions/v1/wallet/finalize-design'){
+        finalized=req.postDataJSON();return route.fulfill({json:{status:'validated',wallet:'ready'}});
+      }
       if(url.pathname.startsWith('/storage/v1/object/program-assets/')&&req.method()==='POST'){
         const path=decodeURIComponent(url.pathname.split('/program-assets/')[1]);uploads.push(path);
         assert.ok(path.startsWith(merchant+'/'+program+'/logo-'));
@@ -39,7 +43,7 @@ test('onboarding imports and crops a logo into the actual Storage API and saves 
       return route.abort();
     });
     await page.route(origin,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
-    await page.goto(origin);await page.waitForFunction(()=>window.__testApp);
+    await page.goto(origin,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__testApp);
     await page.evaluate(async({row,merchant})=>{
       const a=window.__testApp;a.api=await window.dpaReady;
       a.setState({live:true,demo:false,screen:'ob',role:'owner',hasAccess:false,clients:[],program:a.api.toProgram(row),
@@ -61,6 +65,13 @@ test('onboarding imports and crops a logo into the actual Storage API and saves 
     await page.waitForFunction(()=>window.__testApp.state.imgBusy===null&&window.__testApp.state.modal===null);
     assert.equal((await page.evaluate(()=>window.__testApp.state.program)).logoPath,saved);
     await page.screenshot({path:fileURLToPath(new URL('logo-saved-mobile.png',out)),fullPage:true});
+    await page.getByRole('radio',{name:'Sans tampons',exact:true}).click();
+    await page.evaluate(()=>{const a=window.__testApp;a.saveDraftNow=async()=>{};a.api={...a.api,
+      session:async()=>({user:{id:'test-owner'}}),loadAll:async()=>({merchant:a.state.merchant,hasAccess:false,program:{...a.state.program,selfServiceShowStamps:false,selfServiceStampId:null,designStatus:'validated',designMode:'custom'}})};});
+    await page.getByRole('button',{name:'Valider ma carte',exact:true}).click();
+    await page.waitForFunction(()=>window.__testApp.state.screen==='billing');
+    assert.deepEqual(finalized,{show_stamps:false,stamp_id:null});
+    assert.equal((await page.evaluate(()=>window.__testApp.state.program)).selfServiceShowStamps,false);
     assert.deepEqual(errors,[]);
   } finally {await browser.close();await server.close();}
 });

@@ -9,11 +9,11 @@ export function prepareProgramPreview(p, business, activity, assetUrl) {
   const merchant = { business_name:business, activity };
   if (p.cardDesign) return prepareDesign(p.cardDesign, program, merchant, assetUrl);
   const d = defaultDesign({merchant, program});
-  const stamp = STAMP_LIBRARY.find(s => s.id === p.selfServiceStampId);
+  const stamp = p.selfServiceShowStamps === false ? null : STAMP_LIBRARY.find(s => s.id === p.selfServiceStampId);
   const self = p.designMode === 'custom';
-  d.previewKind = self ? (stamp && p.mode !== 'points' ? 'self-service-stamps' : 'self-service') : 'legacy';
+  d.previewKind = self ? (p.selfServiceShowStamps === false ? 'self-service-simple' : stamp && p.mode !== 'points' ? 'self-service-stamps' : 'self-service') : 'legacy';
   d.assets.logo = p.logoUrl ? {url:p.logoUrl} : null;
-  d.assets.hero = p.heroUrl ? {url:p.heroUrl} : null;
+  d.assets.hero = self && p.selfServiceShowStamps === false ? null : p.heroUrl ? {url:p.heroUrl} : null;
   d.stamps = {...d.stamps, icon:stamp?'library':'none', libraryId:stamp?.id || '',
     rewardId:stamp?'cadeau':'reward-star', inactiveOpacity:stamp?32:22};
   d.apple = {...d.apple, showBusinessName:self, showStampPanel:!self};

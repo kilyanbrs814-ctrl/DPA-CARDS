@@ -274,6 +274,15 @@ a:hover{color:#1A36C4}
               <sc-if value="{{ err.oblogo }}" hint-placeholder-val="{{ false }}"><div role="alert" style="display:flex;gap:6px;align-items:center;margin-top:8px;color:#B42318;font-size:14px;font-weight:500"><span class="material-symbols-rounded" style="font-size:18px">error</span>{{ err.oblogo }}</div></sc-if>
             </div>
             <div>
+              <div style="font-weight:700;font-size:15px;margin-bottom:8px">Affichage de la fidélité</div>
+              <div role="radiogroup" aria-label="Affichage des tampons" style="display:flex;gap:10px;margin-bottom:10px">
+                <sc-for list="{{ obStampModes }}" as="mode" hint-placeholder-count="2">
+                  <button type="button" role="radio" aria-checked="{{ mode.selected }}" onClick="{{ mode.pick }}" style="flex:1;min-height:48px;padding:10px;border:2px solid {{ mode.border }};border-radius:12px;background:{{ mode.background }};font-weight:700;color:#1C1F24">{{ mode.label }}</button>
+                </sc-for>
+              </div>
+              <p style="font-size:13px;color:#5E636B;margin:0">Le compteur de fidélité et le QR code restent présents dans les deux cas.</p>
+            </div>
+            <sc-if value="{{ obShowStamps }}" hint-placeholder-val="{{ true }}"><div>
               <div style="display:block;font-weight:700;font-size:15px;margin-bottom:8px">Choisir mes tampons</div>
               <p style="font-size:13px;color:#5E636B;margin:0 0 10px">Choisissez le tampon des passages. Le 10ᵉ tampon est toujours un cadeau 🎁, automatiquement.</p>
               <input type="search" aria-label="Rechercher un tampon" placeholder="Rechercher : café, pizza, ciseaux…" value="{{ ob.stampSearch }}" onChange="{{ O.stampSearch }}" style="width:100%;height:46px;padding:0 14px;border-radius:12px;border:1px solid #D4D1C9;background:#FFFFFF;margin-bottom:12px">
@@ -290,7 +299,7 @@ a:hover{color:#1A36C4}
                 <img src="/assets/stamps/cadeau.png" alt="" width="30" height="30" style="object-fit:contain">
                 <strong>10ᵉ tampon : cadeau (fixe)</strong>
               </div>
-            </div>
+            </div></sc-if>
             <div>
               <label for="obc3" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Couleur de fond</label>
               <div style="display:flex;align-items:center;gap:12px">
@@ -2433,7 +2442,7 @@ class Component extends DCLogic {
       merchant:{...M0}, sd:{...M0}, program:{...P0}, draft:{...P0}, clients:demoClients(),
       selId:null, notifs:demoNotifs(demoClients()), nIconBusy:false,nIconError:'', nfilter:'all', nf:null, nsel:null, nTab:'apple', nResult:null, cam:null, scan:{st:'permission',id:null,added:false,used:false,msg:''},
       modal:null, target:null, toast:null, q:'', filter:'all', tab:'apple', employeeInvite:{first:'',email:''},employeeInviteSent:false,employeeInviteError:'',employeeSending:false,teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,
-      ob:{step:1,biz:'',activity:'Restaurant',otherActivity:'',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',stampId:'',stampSearch:'',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
+      ob:{step:1,biz:'',activity:'Restaurant',otherActivity:'',logo:'',mode:'passages',goal:10,reward:'',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design:null,prog:'',hex:'#FFFFFF',stampId:'',showStamps:true,stampSearch:'',drColors:'',drDesc:'',drName:'',drEmail:'',drPhone:''}, crop:null, imgBusy:null, drLogo:null, drRefs:[], designReq:null,
       section:'profile', loadingHome:false, analyticsYear:Number(TODAY.slice(0,4)),analyticsMonth:'all',retentionPeriod:'month', prevScreen:'home', mq:'', flash:null, corr:{client:null,entry:null,motif:''}, consent:true, joinedId:null, demo:false, live:false, pos:{loading:false,err:null,merr:null}, camErr:null, camErrName:null, camStream:null, pageVisible:true, winFocus:true, subscription:null, hasAccess:false, accessSource:'none', manualExpiresAt:null, billingPlan:null, tip:{open:null,pinned:false}, subVerify:null, billSum:null, billMsg:null,
       ...(JOIN_SLUG?{screen:'joinLoading',pubSlug:JOIN_SLUG,pubErr:null,pubWallet:null,pubApple:null,clients:[],notifs:[],consent:false,merchant:{...M0,business:'',slug:JOIN_SLUG}}:{}) };
   }
@@ -2617,7 +2626,7 @@ class Component extends DCLogic {
     }catch(e){ this._liveUid=null; useCalendar(false); this.setState({busy:false,screen:'workspaceError',workspaceError:api.errorMessage(e),err:{}}); }
     finally{ this._opening=false; }
   }
-  obStep3(m,p,design){ return {...this.initState().ob,step:3,biz:m.business,activity:ACTIVITIES.includes(m.activity)?m.activity:'Autre',otherActivity:ACTIVITIES.includes(m.activity)?'':(m.activity||''),mode:p.mode,goal:p.goal,reward:p.reward,prog:p.name,hex:(p.bg||'#FFFFFF').toUpperCase(),stampId:p.selfServiceStampId||'',drName:(m.first+' '+m.last).trim(),drEmail:m.email,...(design?{design}:{})}; }
+  obStep3(m,p,design){ return {...this.initState().ob,step:3,biz:m.business,activity:ACTIVITIES.includes(m.activity)?m.activity:'Autre',otherActivity:ACTIVITIES.includes(m.activity)?'':(m.activity||''),mode:p.mode,goal:p.goal,reward:p.reward,prog:p.name,hex:(p.bg||'#FFFFFF').toUpperCase(),stampId:p.selfServiceStampId||'',showStamps:p.selfServiceShowStamps!==false,drName:(m.first+' '+m.last).trim(),drEmail:m.email,...(design?{design}:{})}; }
   beginAddProfile=()=>{
     if(DPA_NATIVE_IOS||this.state.busy||this.state.role!=='owner')return;
     this.stopCamera();
@@ -2895,9 +2904,9 @@ class Component extends DCLogic {
     catch(e){ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); } }
   async obValidateCustom(){ const s=this.state, o=s.ob, p=s.program;
     if(!this.validate([['obbiz',o.biz.trim(),'Indiquez le nom de votre commerce.'],['obprog',o.prog.trim(),'Indiquez le nom du programme.'],
-      ['obhex',/^#[0-9A-F]{6}$/.test(o.hex),'Couleur invalide : utilisez le format #RRGGBB.'],['oblogo',!!p.logoPath,'Ajoutez le logo de votre commerce : il est obligatoire pour Google Wallet.'],['obstamp',!!(this.api.stampCatalog||[]).find(x=>x.id===o.stampId),'Choisissez un tampon.']])) return;
+      ['obhex',/^#[0-9A-F]{6}$/.test(o.hex),'Couleur invalide : utilisez le format #RRGGBB.'],['oblogo',!!p.logoPath,'Ajoutez le logo de votre commerce : il est obligatoire pour Google Wallet.'],['obstamp',o.showStamps===false||!!(this.api.stampCatalog||[]).find(x=>x.id===o.stampId),'Choisissez un tampon.']])) return;
     this.setState({busy:true});
-    try{ await this.saveDraftNow(); const r=await this.api.finalizeDesign(o.stampId);
+    try{ await this.saveDraftNow(); const r=await this.api.finalizeDesign(o.stampId,o.showStamps!==false);
       const d=await this.api.loadAll((await this.api.session()).user);
       this.setState({busy:false,program:d.program,draft:{...d.program},merchant:d.merchant,sd:{...d.merchant},hasAccess:d.hasAccess===true,subscription:d.subscription||null,screen:d.hasAccess===true?'obDone':'billing'}); this.scrollTop();
       if(r&&r.wallet==='retry') this.showToast('Carte validée. Google Wallet sera finalisé lors du premier ajout d’une carte client.','info'); }
@@ -3595,6 +3604,11 @@ class Component extends DCLogic {
       pickerValue:hexOk?o.hex.toLowerCase():'#ffffff'};
     const choice=(k,label,sub,icon,price)=>{ const on=o.design===k; return {label,sub,icon,on,price:price||'',bg:on?'#EEF1FF':'#FFFFFF',border:on?'#2448F0':'#D4D1C9',pick:()=>this.setState(x=>({ob:{...x.ob,design:k},err:{}}))}; };
     const obChoices=[choice('custom','Personnaliser ma carte','Nom, logo, couleur et choix des tampons.','palette'),choice('dpa','Confier le design à DPA Cards','Nous créons votre carte à partir de votre logo, vos couleurs et vos références visuelles.','brush','29,90 € TTC — paiement unique')];
+    const obStampModes=[{value:true,label:'Avec tampons'},{value:false,label:'Sans tampons'}].map(it=>{
+      const selected=(o.showStamps!==false)===it.value;
+      return {...it,selected,border:selected?'#2448F0':'#D4D1C9',background:selected?'#EEF1FF':'#FFFFFF',
+        pick:()=>this.setState(x=>({ob:{...x.ob,showStamps:it.value},err:{...x.err,obstamp:null}}))};
+    });
     const stampQuery=(o.stampSearch||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
     const obStampChoices=(this.api?.stampCatalog||[]).filter(it=>!stampQuery||(it.label+' '+it.tags).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(stampQuery)).map(it=>({
       id:it.id,label:it.label,url:'/assets/stamps/'+it.id+'.png',
@@ -3612,7 +3626,7 @@ class Component extends DCLogic {
       onCancel:()=>this.closeCrop(),onDone:b=>this.cropDone(s.crop.kind,b)}):null;
     const obAppleProgram={...pr,name:o.prog||'Nom du programme',bg:wbg,accent:o.accent||'#EFEDE8',mode:o.mode,goal:o.goal,
       reward:o.reward||'Votre récompense',designMode:'custom',
-      selfServiceStampId:o.mode==='points'?null:(o.stampId||null),cardDesign:o.design==='dpa'?null:pr.cardDesign,
+      selfServiceStampId:o.mode==='points'||o.showStamps===false?null:(o.stampId||null),selfServiceShowStamps:o.showStamps===false?false:null,cardDesign:o.design==='dpa'?null:pr.cardDesign,
       logoUrl:o.design==='dpa'?null:pr.logoUrl,logoPath:o.design==='dpa'?null:pr.logoPath};
     const obCard=this.cardProps({...obAppleProgram,logo:'LOGO',pattern:'none',heroUrl:null},o.biz||'Nom du commerce','Client exemple',`0 / ${o.goal}`,'',null,false);
     const obAppleCard=this.designCard(obAppleProgram,'apple',{onboarding:true,name:'Client exemple',balance:0,card:'',qr:null},o.biz||'Nom du commerce');
@@ -3757,7 +3771,7 @@ class Component extends DCLogic {
       ob:o, O, obOther:o.activity==='Autre', obPreviewApple:s.tab==='apple', obPreviewGoogle:s.tab!=='apple', obPreviewTabs:tabs.map(t=>({...t,label:'Aperçu '+t.label})), obAppleCard, obGoogleCard, obSteps, obActs, obCard, obStep1:o.step===1, obStep2:o.step===2, obStep3:o.step===3, obNotFirst:o.step>1, obNext:this.obNext, obBack:()=>this.setState(x=>({ob:{...x.ob,step:x.ob.step-1},err:{}})),
       obNextLabel:o.step===3?(o.design==='custom'?(s.busy?'Validation…':'Valider ma carte'):o.design==='dpa'?(s.hasAccess?(s.busy?'Redirection vers le paiement…':'Commander mon design — 29,90 €'):(s.busy?'Enregistrement…':'Enregistrer ma demande et choisir mon offre')):'Continuer'):(s.busy?'Enregistrement…':'Continuer'),
       obDpaNote:s.hasAccess?'Paiement unique de 29,90 € TTC par carte bancaire (Stripe). Votre demande est transmise à DPA Cards dès le paiement confirmé.':'Paiement unique de 29,90 € TTC, proposé juste après le paiement de votre offre. Si vous choisissez votre offre plus tard, aucun paiement de design n’est demandé d’ici là.',
-      obChoices, obStampChoices, obCustom:o.design==='custom', obDpa:o.design==='dpa', wp, dz, dr:drV, dReq, designPending:!!s.live&&pr.designStatus==='pending_dpa'&&!!rq, cropEl,
+      obChoices, obStampChoices, obStampModes, obShowStamps:o.showStamps!==false, obCustom:o.design==='custom', obDpa:o.design==='dpa', wp, dz, dr:drV, dReq, designPending:!!s.live&&pr.designStatus==='pending_dpa'&&!!rq, cropEl,
       obPickLogo:this.obPick('logo'), obPickHero:this.obPick('hero'), obRemoveLogo:()=>this.removeImage('logo'), obRemoveHero:()=>this.removeImage('hero'),
       drPickLogo:this.drPick(false), drPickRefs:this.drPick(true), drRemoveLogo:()=>this.setState({drLogo:null}), obMode:mkMode('ob'), obGoalDown:stepGoal('ob',-1), obGoalUp:stepGoal('ob',1), obUnit:o.mode==='points'?'points':'passages',
       obBg:mkSw(BGS,'bg','ob'), obAccent:mkSw(ACCENTS,'accent','ob'), obPat:mkPat('ob'), obLogoPreview:'LOGO',

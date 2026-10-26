@@ -1,6 +1,7 @@
 import { decodePng } from '../_shared/png.js';
 import { selectedMembership } from '../_shared/merchant-context.ts';
-import { libraryStampId, loadLibraryStamp, LIBRARY_STAMP_IDS } from '../_shared/stamp-library.js';
+import { selfServiceChoice, selfServiceWithoutStamps, simpleGoogleTemplate, simpleGoogleFields } from '../_shared/self-service-layout.js';
+import { libraryStampId, loadLibraryStamp } from '../_shared/stamp-library.js';
 import { loadRewardStamp } from '../_shared/reward-stamp.js';
 // DPA Cards — Google Wallet Edge Function.
 //
@@ -185,6 +186,7 @@ const walletCounter = (done: number, goal: number, mode: string) => {
 const hasSavedStampArt = (design: any) => !!(design?.stamps && typeof design.stamps === 'object');
 // Retain the existing Google Wallet layout and signed stamp-board route.
 const isSelfServiceStamp = (program: any) => !program?.card_design && program?.mode !== 'points'
+  && program?.self_service_show_stamps !== false
   && !!libraryStampId(program?.self_service_stamp_id);
 const hasStampEmoji = (program: any) => program?.mode !== 'points'
   && (hasSavedStampArt(program?.card_design) || isSelfServiceStamp(program));
@@ -212,7 +214,7 @@ async function publicStampBoard(req: Request, path: string) {
     goal=Number(design.preview?.goal)||10;mode=design.preview?.mode||'passages';
   }else{
     const {data,error}=await admin.from('cards')
-      .select('id,merchant_id,program_id,programs(goal,mode,bg,card_design,self_service_stamp_id)').eq('id',id).maybeSingle();
+      .select('id,merchant_id,program_id,programs(goal,mode,bg,card_design,self_service_stamp_id,self_service_show_stamps)').eq('id',id).maybeSingle();
     if(error||!data)return new Response('Not found',{status:404});
     const prog=(data as any).programs;
     if(!prog||!hasStampEmoji(prog))return new Response('Not found',{status:404});
@@ -266,7 +268,8 @@ function classBranding(program: any, businessName: string) {
   const d = program.card_design && typeof program.card_design === 'object' ? program.card_design : null;
   const colors = { ...(d?.colors ?? {}), ...(d?.google?.colors ?? {}) };
   const issuer = String(d?.identity?.name || businessName || program.name).slice(0, 40);
-  const showHero = d ? d.google?.showHero !== false : true;
+  const simple = selfServiceWithoutStamps(program);
+  const showHero = simple ? false : d ? d.google?.showHero !== false : true;
   const googleLogoPath=d?.assets?.googleLogo?.path;
   const validGoogleLogo=typeof googleLogoPath==='string'
     && designerPath(program.merchant_id + '/' + program.id).test(googleLogoPath)
@@ -277,12 +280,13 @@ function classBranding(program: any, businessName: string) {
     && /\/googleWideLogo-[0-9a-f-]{36}\.png$/i.test(widePath);
   return {
     issuerName: issuer,
-    programName: program.name,
+    programName: simple ? issuer : program.name,
     // Programs created before the design flow have no uploaded logo: they keep the generic one.
     programLogo: { sourceUri: { uri: validGoogleLogo ? assetUrl(googleLogoPath) : program.logo_path ? assetUrl(program.logo_path) : LOGO_URL }, contentDescription: text(issuer) },
     ...(validWidePath ? {wideProgramLogo: {sourceUri:{uri:assetUrl(widePath)},contentDescription:text(issuer)}} : {}),
     ...(showHero && program.hero_path ? { heroImage: { sourceUri: { uri: assetUrl(program.hero_path) }, contentDescription: text(program.name) } } : {}),
     hexBackgroundColor: HEX_RE.test(colors.primary ?? '') ? colors.primary : program.bg,
+    ...(simple ? {accountNameLabel:'Membre',classTemplateInfo:simpleGoogleTemplate()} : {}),
     ...(isSelfServiceStamp(program) ? {accountNameLabel:'Membre',accountIdLabel:'N° de carte'}
       : (d ? { accountNameLabel: 'Client', accountIdLabel: 'N° de carte' } : {})),
   };
@@ -334,14 +338,14 @@ async function ensureObject(card: any, classId: string): Promise<string> {
       id: objectId,
       classId,
       state: 'ACTIVE',
-      accountId: hasStampEmoji(program) ? walletCardDigits(card.card_number) : card.card_number,
+      ...(!selfServiceWithoutStamps(program) ? {accountId: hasStampEmoji(program) ? walletCardDigits(card.card_number) : card.card_number} : {}),
       ...((!hasStampEmoji(program) || isSelfServiceStamp(program)) ? {
         accountName:[card.customers.first_name,card.customers.last_name].filter(Boolean).join(' '),
       } : {}),
       ...(hasStampEmoji(program) ? walletCounter(now.balance,program.goal,program.mode)
         : {loyaltyPoints:{label:unitLabel(program.mode),balance:{int:now.balance}}}),
       // Identifies the card at the counter. It authorises nothing on its own.
-      barcode: { type: 'QR_CODE', value: `DPA1:${card.qr_token}`, alternateText: hasStampEmoji(program) ? walletCardDigits(card.card_number) : card.card_number },
+      barcode: { type: 'QR_CODE', value: `DPA1:${card.qr_token}`, alternateText: selfServiceWithoutStamps(program) ? 'Par DPA Cards' : hasStampEmoji(program) ? walletCardDigits(card.card_number) : card.card_number },
       ...(hasStampEmoji(program) ? {
         heroImage: { sourceUri: { uri: await stampBoardUrl(card.id,now.seq) } },
       } : {}),
@@ -350,6 +354,7 @@ async function ensureObject(card: any, classId: string): Promise<string> {
         textModulesData:[{id:'reward',header:'Récompense',
           body:`${program.goal} ${program.mode === 'points'?'points':'passages'} = ${program.reward}`}]
       }),
+      ...(selfServiceWithoutStamps(program) ? simpleGoogleFields(program,now.balance) : {}),
     });
     if (ins.status !== 200 && ins.status !== 409) throw gErr('object_insert', ins);
   } else if (got.status !== 200) {
@@ -372,8 +377,9 @@ async function runSync(limit = 20): Promise<{ synced: number; failed: number }> 
       // Keep the Google stamp image and native emoji fallback current when points change.
       // A failed auxiliary lookup must not block the existing balance synchronization.
       try {
-        const {data:row}=await admin.from('cards').select('id,card_number,programs(mode,goal,reward,card_design,self_service_stamp_id)').eq('id',r.card_id).maybeSingle();
+        const {data:row}=await admin.from('cards').select('id,card_number,programs(mode,goal,reward,card_design,design_mode,self_service_stamp_id,self_service_show_stamps)').eq('id',r.card_id).maybeSingle();
         const prog=(row as any)?.programs;
+        if(row && selfServiceWithoutStamps(prog)) Object.assign(update,simpleGoogleFields(prog,r.balance));
         if(row && hasStampEmoji(prog)){
           update.heroImage={sourceUri:{uri:await stampBoardUrl(r.card_id,r.seq)}};
           Object.assign(update,walletCounter(r.balance,prog.goal,prog.mode));
@@ -450,8 +456,9 @@ async function finalizeDesign(req: Request): Promise<Response> {
   if (!member || member.role !== 'owner') throw new HttpError(403, 'forbidden');
   // The customer cannot substitute arbitrary image URLs or modify another merchant's card.
   const payload = await req.json().catch(() => ({}));
-  const chosenStamp = typeof payload.stamp_id === 'string' ? payload.stamp_id : 'cafe';
-  if (chosenStamp === 'cadeau' || !LIBRARY_STAMP_IDS.includes(chosenStamp)) throw new HttpError(422, 'invalid_stamp');
+  let choice;
+  try { choice = selfServiceChoice(payload); }
+  catch(e) { throw new HttpError(422,(e as Error).message); }
   // Read through the caller's session (RLS) — the browser sends no ids at all.
   const { data: found } = await userClient.from('programs').select('*').eq('merchant_id', member.merchant_id).eq('is_active', true).maybeSingle();
   if (!found) throw new HttpError(404, 'no_program');
@@ -465,7 +472,7 @@ async function finalizeDesign(req: Request): Promise<Response> {
     await checkImage(program.logo_path, 'logo', program.merchant_id, program.id);
     if (program.hero_path) await checkImage(program.hero_path, 'hero', program.merchant_id, program.id);
     // Lock only the exact images that were checked (a concurrent change makes this a no-op).
-    let q = admin.from('programs').update({ design_mode: 'custom', design_status: 'validated', self_service_stamp_id: chosenStamp, design_validated_at: new Date().toISOString() })
+    let q = admin.from('programs').update({ design_mode: 'custom', design_status: 'validated', self_service_stamp_id: choice.stampId, self_service_show_stamps: choice.showStamps, design_validated_at: new Date().toISOString() })
       .eq('id', program.id).eq('design_status', 'draft').eq('logo_path', program.logo_path);
     q = program.hero_path ? q.eq('hero_path', program.hero_path) : q.is('hero_path', null);
     const { data: locked } = await q.select().maybeSingle();
@@ -489,7 +496,7 @@ async function finalizeDesign(req: Request): Promise<Response> {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const CARD_SELECT = 'id, merchant_id, card_number, qr_token, customers(first_name, last_name), programs(id, merchant_id, name, mode, goal, reward, bg, logo_path, hero_path, design_status, card_design, self_service_stamp_id), merchants(business_name)';
+const CARD_SELECT = 'id, merchant_id, card_number, qr_token, customers(first_name, last_name), programs(id, merchant_id, name, mode, goal, reward, bg, logo_path, hero_path, design_status, design_mode, card_design, self_service_stamp_id, self_service_show_stamps), merchants(business_name)';
 
 // Class + object for one card already authorised by the caller, then the signed save link.
 async function signedSaveUrl(req: Request, card: any): Promise<string> {
@@ -575,7 +582,7 @@ async function publicProgramBySlug(raw: unknown) {
   if (error) throw new Error('db_merchants');
   if (!m) throw new HttpError(404, 'program_not_found');
   const { data: p, error: pe } = await admin.from('programs')
-    .select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, logo_path, hero_path, design_status, design_mode, self_service_stamp_id, card_design, registration_page')
+    .select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, logo_path, hero_path, design_status, design_mode, self_service_stamp_id, self_service_show_stamps, card_design, registration_page')
     .eq('merchant_id', m.id).eq('is_active', true).maybeSingle();
   if (pe) throw new Error('db_programs');
   if (!p) throw new HttpError(404, 'program_not_found');

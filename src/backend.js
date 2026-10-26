@@ -261,6 +261,7 @@ function toProgram(p) {
     pattern: p.pattern, logo: p.logo, conditions: p.conditions,
     designStatus: p.design_status || 'validated', designMode: p.design_mode || null,
     selfServiceStampId: p.self_service_stamp_id || null,
+    selfServiceShowStamps: p.self_service_show_stamps ?? null,
     logoPath: p.logo_path || null, heroPath: p.hero_path || null, logoUrl: assetUrl(p.logo_path), heroUrl: assetUrl(p.hero_path),
     notificationLogoPath: p.notification_logo_path || null, notificationLogoUrl: assetUrl(p.notification_logo_path),
     // Design validated in the admin card designer (layout, colours, images, stamps); null = classic card.
@@ -562,8 +563,8 @@ const api = {
     return toProgram(data);
   },
   stampCatalog: STAMP_LIBRARY.filter(stamp => stamp.id !== 'cadeau'),
-  async finalizeDesign(stampId) {
-    const { data, error } = await sb.functions.invoke('wallet/finalize-design', { body: { stamp_id: stampId || 'cafe' } });
+  async finalizeDesign(stampId, showStamps = true) {
+    const { data, error } = await sb.functions.invoke('wallet/finalize-design', { body: { show_stamps: showStamps, stamp_id: showStamps ? (stampId || 'cafe') : null } });
     if (error) {
       let code = '';
       try { code = (await error.context.json()).error || ''; } catch (e) {}
