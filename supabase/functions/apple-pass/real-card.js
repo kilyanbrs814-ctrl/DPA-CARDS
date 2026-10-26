@@ -58,6 +58,8 @@ export function realAppleBrand(program, merchant, card) {
   // Self-service onboarding validates a program without an advanced designer config.
   // Keep elaborate, saved DPA designs completely unchanged.
   const selfService = program?.design_mode === 'custom' && !program?.card_design;
+  const selfServiceStampId = selfService ? libraryStampId(program?.self_service_stamp_id) : '';
+  const selfServiceStamps = !!selfServiceStampId;
   const color = (name, fallback) => hex(overrides[name], hex(base[name], fallback));
   // Respect the merchant-selected background color (#FFFFFF is the onboarding default).
   const primary = color('primary', hex(program?.bg, '#1C1F24'));
@@ -71,9 +73,9 @@ export function realAppleBrand(program, merchant, card) {
   const backgroundImage = apple.useBackground === true ? assetPath(assets.background, card, 'background') : null;
   const hero = showHero ? (assetPath(assets.hero, card, 'hero') || assetPath(program?.hero_path, card, 'hero')) : null;
   return {
-    issuer, subtitle, label, primary, secondary, accent, foreground, selfService,
+    issuer, subtitle, label, primary, secondary, accent, foreground, selfService, selfServiceStamps,
     showBusinessName: apple.showBusinessName === true,
-    showStampPanel: apple.showStampPanel !== false,
+    showStampPanel: selfServiceStamps ? false : apple.showStampPanel !== false,
     showStamps: apple.showStamps !== false,
     appleStrip: assetPath(assets.appleStrip, card, 'appleStrip'),
     // Explicit new custom mode only. Legacy combined PNGs never override native text.
@@ -84,9 +86,9 @@ export function realAppleBrand(program, merchant, card) {
     notificationLogo: assetPath(program?.notification_logo_path,card,'notification-logo'),
     logo: Object.hasOwn(assets,'logo') && assets.logo === null ? null : (assetPath(assets.logo,card,'logo') || assetPath(program?.logo_path,card,'logo')),
     stamp: d.stamps?.icon === 'custom' && assets.stamp?.path?.endsWith('.png') ? assetPath(assets.stamp, card, 'stamp') : null,
-    libraryId: d.stamps?.icon === 'library' ? libraryStampId(d.stamps.libraryId) : '',
-    artwork: backgroundImage || hero, heroFocus: Number.isFinite(+apple.heroFocus) ? Math.max(0, Math.min(100, +apple.heroFocus)) : 50,
-    stamps: {...(d.stamps || {}),size:apple.stampSize??d.stamps?.size,spacing:apple.stampSpacing??d.stamps?.spacing}, mode: program?.mode === 'points' ? 'points' : 'passages',
+    libraryId: selfServiceStamps ? selfServiceStampId : (d.stamps?.icon === 'library' ? libraryStampId(d.stamps.libraryId) : ''),
+    artwork: selfServiceStamps ? null : backgroundImage || hero, heroFocus: Number.isFinite(+apple.heroFocus) ? Math.max(0, Math.min(100, +apple.heroFocus)) : 50,
+    stamps: {...(d.stamps || {}),size:apple.stampSize??d.stamps?.size,spacing:apple.stampSpacing??d.stamps?.spacing,...(selfServiceStamps?{rewardId:'cadeau',inactiveOpacity:32}:{})}, mode: program?.mode === 'points' ? 'points' : 'passages',
     emoji: !['library','custom'].includes(d.stamps?.icon) && typeof d.stamps?.emoji === 'string' && /\p{Extended_Pictographic}/u.test(d.stamps.emoji) ? d.stamps.emoji.slice(0,32) : '',
   };
 }
@@ -110,7 +112,21 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     backgroundColor: toRgb(brand.primary),
     foregroundColor: toRgb(brand.foreground),
     labelColor: toRgb(brand.foreground),
-    storeCard: brand.selfService ? {
+    storeCard: brand.selfServiceStamps ? {
+      headerFields: [{key:'progress',label:modePoints?'POINTS':'PASSAGES',value:b + ' / ' + goal,changeMessage:'Votre fidélité a été mise à jour : %@'}],
+      // The native primary content is intentionally invisible so Apple can show the strip.
+      primaryFields: [{key:'artwork',label:'',value:'\u00a0'}],
+      secondaryFields: [
+        {key:'member',label:'MEMBRE',value:client},
+        {key:'reward',label:'RÉCOMPENSE',value:txt(program.reward,60)||'Récompense fidélité'},
+      ],
+      backFields: [
+        {key:'card',label:'NUMÉRO DE CARTE',value:txt(card.card_number,42)},
+        {key:'program',label:'PROGRAMME',value:txt(program.name,60)||'Fidélité'},
+        {key:'rule',label:'CONDITIONS',value:goal+(modePoints?' points pour ':' passages pour ')+txt(program.reward,90)},
+        {key:'info',label:'DPA Cards',value:'Présentez votre QR code en caisse. Vos tampons sont actualisés automatiquement.'},
+      ],
+    } : brand.selfService ? {
       headerFields: [{ key:'progress', label: modePoints ? 'POINTS' : 'PASSAGES', value: b + ' / ' + goal, changeMessage:'Votre fidélité a été mise à jour : %@' }],
       primaryFields: [{ key:'program', label:'', value:txt(program.name,40) || 'Fidélité' }],
       secondaryFields: [
@@ -161,7 +177,7 @@ export function realApplePassData({ program, merchant, customer, card, balance }
   // Apple reserves a large strip/primary zone on storeCard even with no strip image.
   // Generic has no strip zone, so self-service pass fields group more closely.
   // Advanced/custom-designed programs retain their existing storeCard layout.
-  if (brand.selfService) {
+  if (brand.selfService && !brand.selfServiceStamps) {
     pass.json.generic = pass.json.storeCard;
     delete pass.json.storeCard;
   }
