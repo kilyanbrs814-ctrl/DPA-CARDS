@@ -55,8 +55,11 @@ export function testAssetPath(value, testId, kind) {
 export function realAppleBrand(program, merchant, card) {
   const d = program?.card_design && typeof program.card_design === 'object' ? program.card_design : {};
   const apple = d.apple || {}, base = d.colors || {}, overrides = apple.colors || {}, assets = d.assets || {};
+  // Self-service onboarding validates a program without an advanced designer config.
+  // Keep elaborate, saved DPA designs completely unchanged.
+  const selfService = program?.design_mode === 'custom' && !program?.card_design;
   const color = (name, fallback) => hex(overrides[name], hex(base[name], fallback));
-  const primary = color('primary', hex(program?.bg, '#1C1F24'));
+  const primary = selfService ? '#FFFFFF' : color('primary', hex(program?.bg, '#1C1F24'));
   const secondary = color('secondary', hex(program?.accent, primary));
   const accent = color('accent', secondary);
   const foreground = onBackground(primary, color('text', ''));
@@ -67,7 +70,7 @@ export function realAppleBrand(program, merchant, card) {
   const backgroundImage = apple.useBackground === true ? assetPath(assets.background, card, 'background') : null;
   const hero = showHero ? (assetPath(assets.hero, card, 'hero') || assetPath(program?.hero_path, card, 'hero')) : null;
   return {
-    issuer, subtitle, label, primary, secondary, accent, foreground,
+    issuer, subtitle, label, primary, secondary, accent, foreground, selfService,
     showBusinessName: apple.showBusinessName === true,
     showStampPanel: apple.showStampPanel !== false,
     showStamps: apple.showStamps !== false,
@@ -100,13 +103,25 @@ export function realApplePassData({ program, merchant, customer, card, balance }
     serialNumber: card.id,
     organizationName: brand.issuer,
     // Native PassKit logoText is rendered by iOS with its own crisp system font.
-    ...(brand.showBusinessName && !brand.appleHeader ? { logoText: appleHeaderName(brand.issuer) } : {}),
+    ...((brand.selfService || brand.showBusinessName) && !brand.appleHeader ? { logoText: appleHeaderName(brand.issuer) } : {}),
     description: 'Carte de fidélité ' + brand.issuer,
 
     backgroundColor: toRgb(brand.primary),
     foregroundColor: toRgb(brand.foreground),
     labelColor: toRgb(brand.foreground),
-    storeCard: (brand.emoji || brand.stamp || brand.libraryId) ? {
+    storeCard: brand.selfService ? {
+      headerFields: [{ key:'progress', label: modePoints ? 'POINTS' : 'PASSAGES', value: b + ' / ' + goal, changeMessage:'Votre fidélité a été mise à jour : %@' }],
+      primaryFields: [{ key:'program', label:'', value:txt(program.name,40) || 'Fidélité' }],
+      secondaryFields: [
+        { key:'reward', label:'RÉCOMPENSE', value:txt(program.reward,60) || 'Récompense fidélité' },
+        { key:'client', label:'MEMBRE', value:client },
+      ],
+      auxiliaryFields: [{ key:'card', label:'CARTE', value:txt(card.card_number,42) }],
+      backFields: [
+        { key:'rule', label:'CONDITIONS', value:goal + (modePoints ? ' points pour ' : ' passages pour ') + txt(program.reward,90) },
+        { key:'info', label:'DPA Cards', value:'Présentez votre QR code en caisse. Votre progression est mise à jour automatiquement.' },
+      ],
+    } : (brand.emoji || brand.stamp || brand.libraryId) ? {
       // Apple controls native StoreCard placement. A tiny neutral primary
       // field reserves the strip artwork; no progress text obscures emojis.
       headerFields: [{key:'number',label:'',value:visibleCardNumber(card.card_number)}],
