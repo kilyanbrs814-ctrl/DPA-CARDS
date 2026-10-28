@@ -5,7 +5,7 @@ export function makeProfileControls(React) {
  const h=React.createElement;
  const button={minHeight:46,padding:'10px 16px',border:'1px solid #D4D1C9',borderRadius:12,background:'#FFF',fontWeight:700};
  const primary={...button,background:'#2448F0',color:'#FFF',borderColor:'#2448F0'};
- return function ProfileControls({api,profiles,merchant,busy,onAdd,needsActivation,onActivated,initialChoice,onInitialDone,native=false}) {
+ return function ProfileControls({api,profiles,merchant,busy,onAdd,needsActivation,hasAccess=false,accessSource='none',onActivated,initialChoice,onInitialDone,native=false}) {
   const [open,setOpen]=React.useState(false),[operation,setOperation]=React.useState(null),[quote,setQuote]=React.useState(null);
   const [working,setWorking]=React.useState(false),[error,setError]=React.useState(''),[confirmed,setConfirmed]=React.useState(false);
   const dialog=React.useRef(null),trigger=React.useRef(null);
@@ -59,19 +59,22 @@ export function makeProfileControls(React) {
    ['À payer immédiatement',money(quote.immediate_cents)]
   ]:[];
   return h('div',{className:'dpa-profile-controls'},
-   h('div',{style:{minWidth:0}},h('div',{style:{fontSize:12,color:'#5E636B'}},'Commerce actif'),h('strong',{style:{overflowWrap:'anywhere'}},merchant.business)),
+   h('div',{style:{minWidth:0}},h('div',{style:{fontSize:12,color:'#5E636B'}},'Commerce sélectionné'),h('strong',{style:{overflowWrap:'anywhere'}},merchant.business),
+    h('div',{style:{fontSize:12,marginTop:4,color:hasAccess?'#1F7A4F':'#B42318'}},
+      hasAccess?(accessSource==='manual'?'Accès DPA Cards : autorisé manuellement':'Accès DPA Cards : actif'):'Accès DPA Cards : non activé')),
    (profiles.length>1 || (!native&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')))&&h('button',{ref:trigger,type:'button',style:button,disabled:busy||working,onClick:()=>{if(!native&&profiles.length===1&&merchant.id&&profiles[0].role==='owner'){onAdd();return;}setOpen(true);setError('');}},profiles.length>1?'Changer de commerce':'Ajouter un commerce'),
    !native&&needsActivation&&h('button',{type:'button',style:primary,disabled:busy||working,onClick:getQuote},'Activer ce commerce'),
    open&&h('div',{className:'dpa-profile-overlay',onClick:e=>{if(e.target===e.currentTarget)close();}},
     h('section',{ref:dialog,role:'dialog','aria-modal':true,'aria-labelledby':'profile-dialog-title',tabIndex:-1,onKeyDown:trap,className:'dpa-profile-dialog'},
      h('h2',{id:'profile-dialog-title',style:{margin:0,fontSize:24}},quote?'Confirmer les montants':'Vos commerces'),
+     !quote&&!initial&&h('p',{style:{margin:'8px 0 0',fontSize:13,color:'#5E636B',lineHeight:1.5}},'« Sélectionné » indique seulement l’espace affiché, pas son activation ni sa facturation.'),
      error&&h('p',{role:'alert',style:{color:'#B42318'}},error),
      working&&h('p',{role:'status'},'Vérification en cours…'),
      !quote&&!initial&&h(React.Fragment,null,
       ...profiles.map(p=>h('button',{key:p.id,type:'button',disabled:working||busy,'aria-current':p.id===merchant.id?'true':undefined,
        style:{...button,display:'flex',alignItems:'center',gap:12,textAlign:'left',borderColor:p.id===merchant.id?'#2448F0':'#D4D1C9'},
        onClick:()=>p.id!==merchant.id&&api.switchProfile(p.id)},p.logo&&h('img',{src:p.logo,alt:'',width:36,height:36,style:{objectFit:'contain',borderRadius:8}}),
-       h('span',{style:{flex:1}},p.name),p.id===merchant.id&&h('span',{style:{color:'#2448F0'}},'Actif'))),
+       h('span',{style:{flex:1}},p.name),p.id===merchant.id&&h('span',{style:{color:'#2448F0'}},'Sélectionné'))),
       !native&&merchant.id&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')&&h('button',{type:'button',style:primary,disabled:working||busy,onClick:()=>{close();onAdd();}},'Ajouter un commerce')),
      quote&&h(React.Fragment,null,
       h('dl',{style:{margin:0}},...rows.map(([k,v])=>h('div',{key:k,style:{display:'flex',justifyContent:'space-between',gap:16,padding:'12px 0',borderBottom:'1px solid #E4E1DA',flexWrap:'wrap'}},h('dt',null,k),h('dd',{style:{margin:0,fontWeight:700}},v)))),
