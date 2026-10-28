@@ -40,7 +40,7 @@ if (!ALLOWED_ORIGINS.includes('https://cards.digitalprojectagency.fr')) ALLOWED_
 // The native iOS WebView uses this fixed origin for authenticated admin payment setup.
 // The actual Stripe checkout still happens on Stripe, outside the WebView.
 if (!ALLOWED_ORIGINS.includes('capacitor://localhost')) ALLOWED_ORIGINS.push('capacitor://localhost');
-const TRIAL_DAYS = 15;
+const TRIAL_MONTHS = 1;
 const ACCESS = ['trialing', 'active'];
 
 function envKey(jsonVar: string, legacyVar: string): string {
@@ -59,8 +59,8 @@ const cryptoProvider = Stripe.createSubtleCryptoProvider();
 // wrong price is never used. Custom design: 29,90 € TTC one-time, never an amount from the browser.
 const PRICES = {
   setup_no_commitment: { lookup: 'dpa_setup_no_commitment', cents: 5000, recurring: false },
-  monthly_no_commitment: { lookup: 'dpa_monthly_no_commitment', cents: 2000, recurring: true },
-  setup_commitment: { lookup: 'dpa_setup_commitment', cents: 5000, recurring: false },
+  monthly_no_commitment: { lookup: 'dpa_monthly_no_commitment', cents: 3000, recurring: true },
+  setup_commitment: { lookup: 'dpa_setup_commitment', cents: 2500, recurring: false },
   monthly_commitment: { lookup: 'dpa_monthly_commitment', cents: 2000, recurring: true },
   custom_design: { lookup: 'dpa_custom_design', cents: 2990, recurring: false },
 } as const;
@@ -135,7 +135,7 @@ async function billingQuantity(merchantId:string) {
  if(me)throw new Error('db_profiles');
  const {data:activations,error}=await admin.from('merchant_activations').select('merchant_id').eq('account_id',m.billing_account_id);
  if(error)throw new Error('db_profiles');
- return {quantity:Math.max(1,activations.length),setup:activations.some(x=>x.merchant_id===merchantId)?0:5000};
+ return {quantity:Math.max(1,activations.length),activated:activations.some(x=>x.merchant_id===merchantId)};
 }
 
 type CheckoutActor = {user: {id: string; email?: string | null}; merchantId: string; adminCheckout?: boolean};
@@ -185,11 +185,11 @@ async function initialQuote(req:Request,actor?:CheckoutActor):Promise<Response> 
   const {error}=await admin.from('merchant_initial_checkouts').update({closed_at:new Date().toISOString()}).eq('id',open.id);
   if(error)throw new Error('db_checkout_claim');
  }
- return json(req,200,{quote:{current_count:b.setup?0:b.quantity,new_count:b.quantity,activation_cents:b.setup,
-  current_monthly_cents:row&&ACCESS.includes(row.status)?row.monthly_amount_cents:0,new_monthly_cents:b.quantity*2000,
-  monthly_difference_cents:b.quantity*2000-(row&&ACCESS.includes(row.status)?row.monthly_amount_cents:0),proration_cents:0,
-  immediate_cents:b.setup+(pre?b.quantity*2000*plan.commitmentMonths:0),effective_at:new Date().toISOString(),
-  proration_collection:pre?'now':'after_trial',billing:pre?'prepaid':'monthly',quantity:b.quantity,setup:b.setup}});
+ return json(req,200,{quote:{current_count:b.setup?0:b.quantity,new_count:b.quantity,activation_cents:b.activated?0:PRICES[plan.setup].cents,
+  current_monthly_cents:row&&ACCESS.includes(row.status)?row.monthly_amount_cents:0,new_monthly_cents:b.quantity*PRICES[plan.monthly].cents,
+  monthly_difference_cents:b.quantity*PRICES[plan.monthly].cents-(row&&ACCESS.includes(row.status)?row.monthly_amount_cents:0),proration_cents:0,
+  immediate_cents:(b.activated?0:PRICES[plan.setup].cents)+(pre?b.quantity*PRICES[plan.monthly].cents*(plan.commitmentMonths-1):0),effective_at:new Date().toISOString(),
+  proration_collection:pre?'now':'after_trial',billing:pre?'prepaid':'monthly',quantity:b.quantity,setup:b.activated?0:PRICES[plan.setup].cents}});
 }
 
 // ---------------------------------------------------------------- dates (Europe/Paris)
@@ -335,14 +335,14 @@ async function ensureSubscription(session: Stripe.Checkout.Session) {
   const plan = PLANS[planType];
   // A pre-deployment checkout retains its explicitly accepted price.
   const monthlyPrice = row?.stripe_price_id || (await priceIds())[plan.monthly];
-  const trialEnd = (session.created ?? Math.floor(Date.now() / 1000)) + TRIAL_DAYS * 86400;
+  const trialEnd = addMonths(session.created ?? Math.floor(Date.now() / 1000), TRIAL_MONTHS);
   const safeTrialEnd = Math.max(trialEnd, Math.floor(Date.now() / 1000) + 3600);
-  const anchor = firstOfNextMonthParis(safeTrialEnd);
+  const anchor = safeTrialEnd;
   const metadata: Record<string, string> = { merchant_id: merchantId, plan_type: planType, checkout_session: session.id };
   if (plan.commitmentMonths) {
     // Commitment: 12 full monthly periods counted from the first full invoice (the anchor).
     metadata.commitment_start = new Date((session.created ?? Date.now() / 1000) * 1000).toISOString();
-    metadata.commitment_end = new Date(addMonths(anchor, plan.commitmentMonths) * 1000).toISOString();
+    metadata.commitment_end = new Date(addMonths(session.created ?? Math.floor(Date.now() / 1000), plan.commitmentMonths) * 1000).toISOString();
   }
   await s.customers.update(customer, { invoice_settings: { default_payment_method: paymentMethod } });
   const sub = await s.subscriptions.create({
@@ -435,7 +435,7 @@ async function checkoutPrepaid(req: Request, user: { id: string; email?: string 
   const [setupPrice, monthlyPrice] = await Promise.all([s.prices.retrieve(ids[plan.setup]), s.prices.retrieve(ids[plan.monthly])]);
   // priceIds() already checked these amounts against PRICES; the purchase is computed from them only.
   const commerce=await billingQuantity(merchantId);
-  const monthly = monthlyPrice.unit_amount!*commerce.quantity, setup = commerce.setup, months = plan.commitmentMonths;
+  const monthly = monthlyPrice.unit_amount!*commerce.quantity, setup = commerce.activated?0:PRICES[plan.setup].cents, months = plan.commitmentMonths;
 
   const { error: xe } = await admin.rpc('prepaid_expire', { p_merchant: merchantId });
   if (xe) throw new Error('db_prepaid');
@@ -460,7 +460,7 @@ async function checkoutPrepaid(req: Request, user: { id: string; email?: string 
       payment_method_types: ['card', 'sepa_debit'],
       line_items: [
         ...(setup?[{price:setupPrice.id,quantity:1}]:[]),
-        { price_data: { currency: 'eur', unit_amount: monthly, product_data: { name: `Offre avec engagement — mensualité (${months} mois payés en une fois)` }, ...taxBehavior }, quantity: months },
+        { price_data: { currency: 'eur', unit_amount: monthly, product_data: { name: `Offre avec engagement — mensualité (${months} mois payés en une fois)` }, ...taxBehavior }, quantity: months-1 },
       ],
       payment_intent_data: { metadata, description: `DPA Cards — offre avec engagement payée en une fois (${months} mois)` },
       invoice_creation: { enabled: true, invoice_data: { metadata, description: `Offre avec engagement DPA Cards — ${months} mois payés en une fois + frais de mise en place` } },
@@ -608,7 +608,7 @@ async function checkout(req: Request, actor?: CheckoutActor): Promise<Response> 
   // Reserve the incomplete row BEFORE Checkout can deliver a webhook. A late
   // response may attach a session but can never overwrite an active subscription.
   const pendingRow={merchant_id:merchantId,stripe_customer_id:customer,plan_type:planType,commitment_months:plan.commitmentMonths,
-    stripe_setup_price_id:setupId,stripe_price_id:monthlyId,setup_amount_cents:commerce.setup,monthly_amount_cents:monthlyPrice.unit_amount!*commerce.quantity,
+    stripe_setup_price_id:setupId,stripe_price_id:monthlyId,setup_amount_cents:commerce.activated?0:PRICES[plan.setup].cents,monthly_amount_cents:monthlyPrice.unit_amount!*commerce.quantity,
     status:'incomplete',stripe_subscription_id:null,stripe_checkout_session_id:null,stripe_setup_payment_intent_id:null,setup_paid_at:null,
     trial_start:null,trial_end:null,current_period_start:null,current_period_end:null,billing_cycle_anchor:null,commitment_start:null,commitment_end:null,
     cancel_at_period_end:false,cancel_at:null,canceled_at:null,cancel_requested_at:null,latest_invoice_status:null,billing_mode:'monthly',prepaid_purchase_id:null};
@@ -617,19 +617,19 @@ async function checkout(req: Request, actor?: CheckoutActor): Promise<Response> 
   if(reserved.error)throw new Error('db_subscriptions');
   const metadata = { merchant_id: merchantId, plan_type: planType, user_id: user.id,commerce_quantity:String(commerce.quantity),initial_claim:claim.id };
   const session = await s.checkout.sessions.create({
-    mode: commerce.setup?'payment':'setup',
+    mode: !commerce.activated?'payment':'setup',
     customer,
     // Show both card and SEPA debit in Stripe-hosted Checkout.
     // Checkout collects the card details or IBAN and mandate securely; the
     // merchant never gives this information to the DPA Cards admin interface.
     payment_method_types: ['card', 'sepa_debit'],
     // Save a reusable method for the existing off-session subscription flow.
-    ...(commerce.setup?{line_items:[{price_data:{currency:'eur',unit_amount:commerce.setup,product:typeof setupPrice.product==='string'?setupPrice.product:setupPrice.product.id},quantity:1}],
+    ...(!commerce.activated?{line_items:[{price_data:{currency:'eur',unit_amount:PRICES[plan.setup].cents,product:typeof setupPrice.product==='string'?setupPrice.product:setupPrice.product.id},quantity:1}],
       payment_intent_data:{setup_future_usage:'off_session' as const,metadata,description:'DPA Cards — frais d’activation'},
       invoice_creation:{enabled:true,invoice_data:{metadata,description:'Activation DPA Cards'}}}:{setup_intent_data:{metadata}}),
     metadata,
     locale: 'fr',
-    custom_text: { submit: { message: `Aujourd’hui : ${eur(commerce.setup)} d’activation. Votre abonnement à ${eur(monthlyPrice.unit_amount!*commerce.quantity)}/mois pour ${commerce.quantity} commerce(s) commence après ${TRIAL_DAYS} jours d’essai gratuit, au prorata jusqu’au 1er du mois suivant, puis chaque 1er du mois${plan.commitmentMonths ? ', avec un engagement de 12 mois' : ', sans engagement'}.` } },
+    custom_text: { submit: { message: `Aujourd’hui : ${eur(commerce.activated?0:PRICES[plan.setup].cents)} d’activation. Votre abonnement à ${eur(monthlyPrice.unit_amount!*commerce.quantity)}/mois pour ${commerce.quantity} commerce(s) commence après un mois d’essai gratuit, au prorata jusqu’au 1er du mois suivant, puis chaque 1er du mois${plan.commitmentMonths ? ', avec un engagement de 12 mois' : ', sans engagement'}.` } },
     success_url: actor?.adminCheckout ? `${origin}/activation-result.html?status=success` : `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: actor?.adminCheckout ? `${origin}/activation-result.html?status=cancel` : `${origin}/subscription/cancel`,
   },{idempotencyKey:`dpa-initial-checkout-${claim.id}`});
