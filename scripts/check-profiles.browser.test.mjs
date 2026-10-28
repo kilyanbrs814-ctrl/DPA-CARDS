@@ -13,7 +13,7 @@ test('web profiles: header, selector, always-visible addition, new onboarding an
    const a=window.__testApp;a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),uuid:()=>crypto.randomUUID(),
     switchProfile:id=>window.__switched=id,billing:{profileQuote:async()=>({operation:{id:'op2',quote:{current_count:1,new_count:2,activation_cents:3000,current_monthly_cents:2490,new_monthly_cents:4000,monthly_difference_cents:1510,
      effective_at:'2026-10-18T12:00:00Z',proration_cents:850,proration_collection:'next_invoice',immediate_cents:3000}}}),profileAccept:async()=>{window.__accepted=(window.__accepted||0)+1;return {operation:{status:'complete'}}}}};
-   a.enterDemo();a.setState({live:true,demo:false,role:'owner',hasAccess:true,billingMerchantId:'a',billedCount:1,primaryActivated:true,
+   a.enterDemo();a.setState({live:true,demo:false,role:'owner',hasAccess:true,billingMerchantId:'a',billedCount:1,primaryActivated:true,subscription:{status:'active',billing_mode:'monthly'},
     merchant:{...a.state.merchant,id:'a',business:'Commerce A'},profiles:[{id:'a',name:'Commerce A',role:'owner'},{id:'b',name:'Commerce B',role:'owner'}]});
   });
   await page.getByRole('button',{name:'Changer de commerce',exact:true}).click();
@@ -37,8 +37,6 @@ test('web profiles: header, selector, always-visible addition, new onboarding an
   assert.deepEqual(errors,[]);
  }finally{await browser.close();await server.close();}
 });
-
-
 
 test('web profiles: a secondary merchant cannot start a quote before the primary is billed',async()=>{
  const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=server.resolvedUrls.local[0];
