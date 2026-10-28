@@ -43,7 +43,7 @@ export function profileBilling(d: any) {
   const p=check(await admin.from('programs').select('design_status').eq('merchant_id',c.merchantId).eq('is_active',true).single());
   const request=check(await admin.from('design_requests').select('id').eq('merchant_id',c.merchantId).eq('status','pending_payment').limit(1).maybeSingle());
   if(!p || (p.design_status==='draft' && !request))throw new HttpError(409,'onboarding_incomplete');
-  const n=activations.length,now=Math.floor(Date.now()/1000),next=monthlyTotal(n+1);
+  const n=activations.length,now=Math.floor(Date.now()/1000),next=monthlyTotal(n+1,c.row.plan_type);
   const q:any={current_count:n,new_count:n+1,activation_cents:activationFee(n+1),new_monthly_cents:next,
    effective_at:new Date(now*1000).toISOString(),proration_date:now,currency:'eur',billing_mode:c.row.billing_mode,
    primary_merchant_id:c.account.primary_merchant_id};
