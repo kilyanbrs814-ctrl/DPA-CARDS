@@ -2300,10 +2300,10 @@ function joinUrl(slug){ return PUBLIC_SITE+'/join/'+slug; }
 const SUB_RETURN=(()=>{ try{ const r=/^\/subscription\/(success|cancel)\/?$/.exec(window.location.pathname); return r?r[1]:null; }catch(e){ return null; } })();
 // Display only: prices, trial and billing dates are decided by the server and Stripe.
 const PLAN_UI=[
-  {key:'no_commitment',title:'Sans engagement',setup:'50 €',monthly:'20 €',lead:['15 jours gratuits','Sans engagement']},
-  {key:'commitment',title:'Engagement 12 mois',setup:'50 €',monthly:'20 €',lead:['15 jours gratuits','Engagement 12 mois','Exactement les mêmes fonctionnalités'],
+  {key:'no_commitment',title:'Sans engagement',setup:'50 €',monthly:'30 €',lead:['1 mois gratuit','Sans engagement']},
+  {key:'commitment',title:'Engagement 12 mois',setup:'25 €',monthly:'20 €',lead:['1 mois gratuit inclus dans les 12 mois','Engagement 12 mois','Exactement les mêmes fonctionnalités'],
    // "Paiement en une fois": 12 × the monthly price + the setup fee once, no discount (amounts in cents, display only).
-   prepaid:{months:12,monthlyCents:2000,setupCents:5000,lead:['Payé en une fois','Engagement 12 mois','Exactement les mêmes fonctionnalités']}}];
+   prepaid:{months:12,monthlyCents:2000,setupCents:2500,lead:['Payé en une fois','Engagement 12 mois','Exactement les mêmes fonctionnalités']}}];
 const PLAN_FEATURES=['Cartes de fidélité digitales','Google Wallet','Apple Wallet (dès sa disponibilité)','Scanner QR','Gestion des clients','Récompenses','Notifications','Tableau de bord','Support'];
 const SUB_ST={trialing:'Essai gratuit',active:'Actif',past_due:'Paiement en retard',unpaid:'Impayé',canceled:'Résilié',incomplete:'Paiement non finalisé',incomplete_expired:'Expiré',paused:'Suspendu',expired:'Offre terminée'};
 const PREPAID_ST={paid:'Payé',partially_refunded:'Payé · remboursé en partie',refunded:'Remboursé',processing:'En cours de traitement',failed:'Échoué'};
@@ -3371,8 +3371,8 @@ class Component extends DCLogic {
       const issue=!!(sub&&sub.stripe_subscription_id&&['past_due','unpaid','paused'].includes(sub.status));
       // Commitment offer: "Paiement mensuel" (unchanged) or "Paiement en une fois" (prepaid, no renewal).
       const pp=p.prepaid, pre=!!pp&&s.billMode==='prepaid';
-      const qty=Math.max(1,s.billedCount||0),setup=s.selectedActivated?0:5000,monthly=qty*2000;
-      const base=pp?monthly*pp.months:0, total=pp?base+setup:0, start=new Date(), end=pp?addMonthsCal(start,pp.months):null;
+      const qty=Math.max(1,s.billedCount||0),setup=s.selectedActivated?0:(p.key==='commitment'?2500:5000),monthly=qty*(p.key==='commitment'?2000:3000);
+      const base=pp?monthly*(pp.months-1):0, total=pp?base+setup:0, start=new Date(), end=pp?addMonthsCal(start,pp.months):null;
       const modes=pp?[['monthly','Paiement mensuel'],['prepaid','Paiement en une fois']].map(([k,l])=>{ const on=(s.billMode||'monthly')===k;
         return {label:l,on,bg:on?'#FFFFFF':'transparent',color:on?'#1C1F24':'#4A4E55',weight:on?700:600,shadow:on?'0 1px 4px rgba(20,22,28,0.14)':'none',pick:()=>this.setState({billMode:k})}; }):[];
       return {hid:'plan-'+p.key,title:p.title,badge:p.badge||'',setup:eur(setup),saving:p.saving||'',
@@ -3440,8 +3440,8 @@ class Component extends DCLogic {
     return {plans,bill,billDesignNote,retractText:'La rétractation concerne l’abonnement. Les frais de mise en place restent dus dès lors que la prestation de configuration a commencé. Les périodes d’abonnement déjà consommées restent également dues.',
       hasCgv:!!(this.api&&this.api.cgvUrl),noCgv:!(this.api&&this.api.cgvUrl),cgvUrl:(this.api&&this.api.cgvUrl)||'',
       billNote:s.billMode==='prepaid'
-        ?'Paiement mensuel : aujourd’hui, seuls les frais de mise en place sont débités, puis l’abonnement est facturé chaque mois après 15 jours d’essai gratuit. Paiement en une fois (offre avec engagement) : le montant total est débité aujourd’hui, sans prélèvement mensuel ni renouvellement automatique.'
-        :'Aujourd’hui, seuls les frais de mise en place sont débités. Votre abonnement démarre après 15 jours d’essai gratuit : la première facture couvre, au prorata, la période jusqu’au 1er du mois suivant, puis l’abonnement est facturé le 1er de chaque mois.',
+        ?'Paiement mensuel : aujourd’hui, seuls les frais de mise en place sont débités, puis l’abonnement est facturé chaque mois après un mois gratuit. Paiement en une fois (offre avec engagement) : le montant total est débité aujourd’hui, sans prélèvement mensuel ni renouvellement automatique.'
+        :'Aujourd’hui, seuls les frais de mise en place sont débités. Votre abonnement démarre après un mois gratuit : la première facture couvre, au prorata, la période jusqu’au 1er du mois suivant, puis l’abonnement est facturé le 1er de chaque mois.',
       sv,resumeBilling:this.resumeBilling,toHome:()=>{ clearTimeout(this._toHome); this.go('home'); },
       bs:{loading:!!sum.loading,rows,invoices,noInvoices:!sum.loading&&invoices.length===0,hasMessage:!!msg,message:msg,canCancel:!pre&&!!(ss&&['trialing','active','past_due'].includes(ss.status)&&!ss.cancel_at_period_end),
         portalLabel:pre?'Mes factures':'Gérer mon abonnement',
