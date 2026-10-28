@@ -185,7 +185,7 @@ async function initialQuote(req:Request,actor?:CheckoutActor):Promise<Response> 
   const {error}=await admin.from('merchant_initial_checkouts').update({closed_at:new Date().toISOString()}).eq('id',open.id);
   if(error)throw new Error('db_checkout_claim');
  }
- return json(req,200,{quote:{current_count:b.setup?0:b.quantity,new_count:b.quantity,activation_cents:b.activated?0:PRICES[plan.setup].cents,
+ return json(req,200,{quote:{current_count:b.activated?b.quantity:0,new_count:b.quantity,activation_cents:b.activated?0:PRICES[plan.setup].cents,
   current_monthly_cents:row&&ACCESS.includes(row.status)?row.monthly_amount_cents:0,new_monthly_cents:b.quantity*PRICES[plan.monthly].cents,
   monthly_difference_cents:b.quantity*PRICES[plan.monthly].cents-(row&&ACCESS.includes(row.status)?row.monthly_amount_cents:0),proration_cents:0,
   immediate_cents:(b.activated?0:PRICES[plan.setup].cents)+(pre?b.quantity*PRICES[plan.monthly].cents*(plan.commitmentMonths-1):0),effective_at:new Date().toISOString(),
@@ -460,10 +460,10 @@ async function checkoutPrepaid(req: Request, user: { id: string; email?: string 
       payment_method_types: ['card', 'sepa_debit'],
       line_items: [
         ...(setup?[{price:setupPrice.id,quantity:1}]:[]),
-        { price_data: { currency: 'eur', unit_amount: monthly, product_data: { name: `Offre avec engagement — mensualité (${months} mois payés en une fois)` }, ...taxBehavior }, quantity: months-1 },
+        { price_data: { currency: 'eur', unit_amount: monthly, product_data: { name: `Offre avec engagement — mensualité (${months-1} mensualités payées, 1 mois offert sur 12)` }, ...taxBehavior }, quantity: months-1 },
       ],
       payment_intent_data: { metadata, description: `DPA Cards — offre avec engagement payée en une fois (${months} mois)` },
-      invoice_creation: { enabled: true, invoice_data: { metadata, description: `Offre avec engagement DPA Cards — ${months} mois payés en une fois + frais de mise en place` } },
+      invoice_creation: { enabled: true, invoice_data: { metadata, description: `Offre avec engagement DPA Cards — ${months-1} mois payants sur ${months} + frais de mise en place` } },
       metadata,
       locale: 'fr',
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
@@ -540,7 +540,7 @@ async function checkout(req: Request, actor?: CheckoutActor): Promise<Response> 
   const planType = String(body?.plan ?? '') as PlanType;
   if(body.confirmed!==true)throw new HttpError(422,'confirmation_required');
   const commerce=await billingQuantity(merchantId);
-  if(body.quote?.quantity!==commerce.quantity || body.quote?.setup!==commerce.setup)throw new HttpError(409,'quote_changed');
+  if(body.quote?.quantity!==commerce.quantity || body.quote?.setup!==(commerce.activated?0:PRICES[plan.setup].cents))throw new HttpError(409,'quote_changed');
   if (!(planType in PLANS)) throw new HttpError(422, 'invalid_plan');
   const billing = String(body?.billing ?? 'monthly');
   if (!['monthly', 'prepaid'].includes(billing) || (billing === 'prepaid' && planType !== PREPAID_PLAN)) throw new HttpError(422, 'invalid_plan');
@@ -550,7 +550,7 @@ async function checkout(req: Request, actor?: CheckoutActor): Promise<Response> 
   const current=await rowOf(merchantId);
   if(current&&ACCESS.includes(current.status))throw new HttpError(409,'already_subscribed');
   if(current?.stripe_subscription_id&&['past_due','unpaid','paused'].includes(current.status))throw new HttpError(409,'payment_issue');
-  const {data:claim,error:claimError}=await admin.rpc('claim_initial_checkout',{p_merchant:merchantId,p_plan:planType,p_billing:billing,p_quantity:commerce.quantity,p_setup:commerce.setup});
+  const {data:claim,error:claimError}=await admin.rpc('claim_initial_checkout',{p_merchant:merchantId,p_plan:planType,p_billing:billing,p_quantity:commerce.quantity,p_setup:commerce.activated?0:PRICES[plan.setup].cents});
   if(claimError)throw new HttpError(409,'checkout_in_progress');
   if(!claim.stripe_session_id && current?.stripe_customer_id){
     for await(const candidate of s.checkout.sessions.list({customer:current.stripe_customer_id,limit:100})){
