@@ -5,8 +5,8 @@
 //   - 5 prices, found again through their lookup_key (the billing Edge Function looks them up
 //     by lookup_key and checks the amount, so no price id is stored in the secrets):
 //       dpa_setup_no_commitment   50,00 € one-time (first commerce)
-//       dpa_monthly_no_commitment 20,00 € / month / commerce
-//       dpa_setup_commitment      50,00 € one-time (first commerce)
+//       dpa_monthly_no_commitment 30,00 € / month / commerce
+//       dpa_setup_commitment      25,00 € one-time (first commerce)
 //       dpa_monthly_commitment    20,00 € / month / commerce
 //       dpa_custom_design         29,90 € one-time
 //     When an amount changes, a new price takes over the lookup_key and every other active
@@ -51,8 +51,8 @@ function flatten(o, prefix = '', acc = []) {
 // Same amounts as PRICES in supabase/functions/billing/index.ts.
 const PRICES = [
   ['dpa_setup_no_commitment', 5000, null, 'Activation du premier commerce — sans engagement', 'main'],
-  ['dpa_monthly_no_commitment', 2000, 'month', 'Abonnement par commerce — sans engagement', 'main'],
-  ['dpa_setup_commitment', 5000, null, 'Activation du premier commerce — engagement 12 mois', 'main'],
+  ['dpa_monthly_no_commitment', 3000, 'month', 'Abonnement par commerce — sans engagement', 'main'],
+  ['dpa_setup_commitment', 2500, null, 'Activation du premier commerce — engagement 12 mois', 'main'],
   ['dpa_monthly_commitment', 2000, 'month', 'Abonnement par commerce — engagement 12 mois', 'main'],
   ['dpa_custom_design', 2990, null, 'Création de carte sur mesure', 'design'],
 ];
