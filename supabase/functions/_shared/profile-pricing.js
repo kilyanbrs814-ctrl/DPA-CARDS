@@ -7,9 +7,9 @@ export function activationTotal(alreadyConfirmed, quantity = 1) {
   if (!Number.isSafeInteger(alreadyConfirmed) || alreadyConfirmed < 0 || !Number.isSafeInteger(quantity) || quantity < 1) throw new Error('invalid_quantity');
   return Array.from({length:quantity},(_,i)=>activationFee(alreadyConfirmed+i+1)).reduce((a,b)=>a+b,0);
 }
-export function monthlyTotal(count) {
+export function monthlyTotal(count, plan = 'commitment') {
   if (!Number.isSafeInteger(count) || count < 0) throw new Error('invalid_quantity');
-  return count * MONTHLY_PER_COMMERCE;
+  return count * (plan === 'no_commitment' ? 3000 : MONTHLY_PER_COMMERCE);
 }
 export function prepaidProration(currentMonthly, newMonthly, start, end, effective, months) {
   const remaining=Math.max(0,Math.min(end-effective,end-start));
