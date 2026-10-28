@@ -467,7 +467,7 @@ async function checkoutPrepaid(req: Request, user: { id: string; email?: string 
       metadata,
       locale: 'fr',
       expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
-      custom_text: { submit: { message: `Paiement unique de ${eur(purchase.total_cents)} : ${months} × ${eur(monthly)} + ${eur(setup)} de mise en place. Accès de ${months} mois à partir de la confirmation du paiement. Aucun prélèvement mensuel, aucun renouvellement automatique.` } },
+      custom_text: { submit: { message: `Paiement unique de ${eur(purchase.total_cents)} : ${months-1} × ${eur(monthly)} + ${eur(setup)} de mise en place. Accès de ${months} mois à partir de la confirmation du paiement. Aucun prélèvement mensuel, aucun renouvellement automatique.` } },
       success_url: adminCheckout ? `${origin}/activation-result.html?status=success` : `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: adminCheckout ? `${origin}/activation-result.html?status=cancel` : `${origin}/subscription/cancel`,
     }, { idempotencyKey: `dpa-prepaid-${purchase.id}` });
@@ -540,7 +540,7 @@ async function checkout(req: Request, actor?: CheckoutActor): Promise<Response> 
   const planType = String(body?.plan ?? '') as PlanType;
   if(body.confirmed!==true)throw new HttpError(422,'confirmation_required');
   const commerce=await billingQuantity(merchantId);
-  if(body.quote?.quantity!==commerce.quantity || body.quote?.setup!==(commerce.activated?0:PRICES[plan.setup].cents))throw new HttpError(409,'quote_changed');
+  if(body.quote?.quantity!==commerce.quantity || body.quote?.setup!==(commerce.activated?0:PRICES[PLANS[planType]?.setup ?? 'setup_no_commitment'].cents))throw new HttpError(409,'quote_changed');
   if (!(planType in PLANS)) throw new HttpError(422, 'invalid_plan');
   const billing = String(body?.billing ?? 'monthly');
   if (!['monthly', 'prepaid'].includes(billing) || (billing === 'prepaid' && planType !== PREPAID_PLAN)) throw new HttpError(422, 'invalid_plan');
