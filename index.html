@@ -425,6 +425,15 @@ a:hover{color:#1A36C4}
       <span style="padding:5px 12px;border-radius:999px;background:#E8EDFF;color:#1A36C4;font-size:13px;font-weight:700">Dernière étape</span>
       <h1 style="margin:0;font-weight:800;font-size:clamp(30px,6vw,42px);letter-spacing:-0.03em;line-height:1.05">{{ offerTitle }}</h1>
       <p style="margin:0;color:#4A4E55;font-size:17px;line-height:1.5">{{ offerSubtitle }}</p>
+      <sc-if value="{{ offerNeedsPrimary }}" hint-placeholder-val="{{ false }}">
+        <div role="alert" style="width:100%;max-width:700px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;padding:18px 20px;border:1px solid #F2D49B;border-radius:16px;background:#FFF3DC;color:#5C4200;font-size:15px;line-height:1.6">
+          <div>{{ offerAccessNote }}</div>
+          <div style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap">
+            <sc-if value="{{ offerSwitchToPrimary }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ switchToPrimary }}" style="min-height:44px;padding:8px 16px;border:0;border-radius:10px;background:#1C1F24;color:white;font-weight:700">Revenir au commerce principal</button></sc-if>
+            <a href="mailto:contact@digitalprojectagency.fr?subject=Activation%20DPA%20Cards" style="font-weight:700;color:#1A36C4;text-underline-offset:3px">Contacter l’assistance</a>
+          </div>
+        </div>
+      </sc-if>
       <sc-if value="{{ canSkipBilling }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ skipBilling }}" style="min-height:44px;padding:0 12px;border:0;background:none;color:#2448F0;font-weight:600;font-size:15px;text-decoration:underline;text-underline-offset:3px">Choisir mon offre plus tard</button></sc-if>
     </div>
     <sc-if value="{{ billDesignNote }}" hint-placeholder-val="{{ false }}">
@@ -2599,7 +2608,7 @@ class Component extends DCLogic {
     this.setState({busy:true,err:{}});
     try{
       const d=await api.loadAll(user);
-      const base={teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',permissions:d.permissions||null,subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nIconBusy:false,nIconError:'',nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
+      const base={teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,primaryActivated:!!d.primaryActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',permissions:d.permissions||null,subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nIconBusy:false,nIconError:'',nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
         consent:false,f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
       if(DPA_NATIVE_IOS&&(!d.merchant||!d.program||d.hasAccess!==true||d.program.designStatus==='draft')){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
@@ -3691,6 +3700,11 @@ class Component extends DCLogic {
     const mResults=views.filter(v=>!mqs||v.full.toLowerCase().includes(mqs)||(mqd.length>=2&&v.card.replace(/\D/g,'').includes(mqd))).slice(0,30).map((v,i)=>({...v,bt:bt(i),pick:()=>this.setState({modal:null,mq:'',scan:{st:'found',id:v.id,added:false,used:false,msg:''}})}));
     const wrapRun=o=>({...o,run:()=>{ this.setState({modal:null}); o.run(); }});
     const toastM=scr==='scanner'?'calc(220px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))':(scr==='client'?'calc(160px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))':'calc(96px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)))');
+    const secondaryNeedsActivation=!!s.live&&!!m.id&&!!s.billingMerchantId&&m.id!==s.billingMerchantId&&!s.selectedActivated&&!s.hasAccess;
+    // The server refuses the second merchant's quote until the PRIMARY merchant
+    // has a confirmed billing activation and a valid subscription, even when
+    // the primary merchant enjoys separate, manually granted DPA Cards access.
+    const secondaryBlocked=secondaryNeedsActivation&&(!s.primaryActivated||!subOk(s.subscription));
     return {
       s:S, isDesk, isMob, m, P, f:s.f, F, err, eb, inv, go, spin, scanLine, sheetAnim, busy:s.busy, notBusy:!s.busy,
 
@@ -3708,10 +3722,14 @@ class Component extends DCLogic {
       analyticsKingVisits:analytics.top?analytics.top.annual:0,
       analyticsPeriodLabel:(s.analyticsMonth==='all'?'Année '+(s.analyticsYear||TODAY.slice(0,4)):(monthNames[Number(s.analyticsMonth)-1]||'Mois')+' '+(s.analyticsYear||TODAY.slice(0,4))),
 
-      offerTitle:s.billingMerchantId&&m.id!==s.billingMerchantId&&!s.selectedActivated?'Activez votre nouveau commerce':'Choisissez votre offre',
-      offerSubtitle:s.billingMerchantId&&m.id!==s.billingMerchantId&&!s.selectedActivated?'Utilisez « Activer ce commerce » pour vérifier les montants et confirmer l’ajout à votre facturation existante.':'15 jours d’essai gratuit sur votre abonnement initial.',
-      profileControl:!DPA_NATIVE_IOS&&s.live&&this.api&&s.profiles&&s.profiles.length?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,onAdd:this.beginAddProfile,
-        needsActivation:!DPA_NATIVE_IOS&&!!m.id&&m.id!==s.billingMerchantId&&!s.selectedActivated&&!s.hasAccess&&P&&(P.designStatus!=='draft'||designUnpaid(s.designReq)),
+      offerTitle:secondaryBlocked?'Activation du commerce en attente':secondaryNeedsActivation?'Activez votre nouveau commerce':'Choisissez votre offre',
+      offerSubtitle:secondaryBlocked?'Ce commerce est sélectionné, mais son accès DPA Cards n’est pas encore autorisé. L’ajout à la facturation nécessite d’abord une activation confirmée et une offre en cours pour le commerce principal.':secondaryNeedsActivation?'Ce commerce est sélectionné, mais son accès DPA Cards n’est pas encore activé. Utilisez « Activer ce commerce » pour consulter et confirmer les montants avant tout paiement.':'15 jours d’essai gratuit sur votre abonnement initial.',
+      offerNeedsPrimary:secondaryBlocked,
+      offerAccessNote:secondaryBlocked?(!s.primaryActivated?'Le commerce principal n’est pas activé dans la facturation. Même si son accès à DPA Cards est autorisé manuellement, cela ne remplace pas l’activation de l’abonnement. Revenez au commerce principal pour vérifier son offre, ou contactez l’assistance si ces commerces servent aux tests.':'L’offre du commerce principal n’est plus active. Revenez au commerce principal pour vérifier son abonnement avant d’ajouter un établissement, ou contactez l’assistance.'):'',
+      offerSwitchToPrimary:secondaryBlocked&&(s.profiles||[]).some(p=>p.id===s.billingMerchantId),
+      switchToPrimary:()=>this.api.switchProfile(s.billingMerchantId),
+      profileControl:!DPA_NATIVE_IOS&&s.live&&this.api&&s.profiles&&s.profiles.length?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,onAdd:this.beginAddProfile,hasAccess:s.hasAccess,accessSource:s.accessSource,
+        needsActivation:!DPA_NATIVE_IOS&&s.role==='owner'&&!secondaryBlocked&&!!m.id&&m.id!==s.billingMerchantId&&!s.selectedActivated&&!s.hasAccess&&P&&(P.designStatus!=='draft'||designUnpaid(s.designReq)),
         onActivated:async()=>{const session=await this.api.session();await this.openLive(session);},initialChoice:s.initialChoice,onInitialDone:()=>this.setState({initialChoice:null})}):null,
       canInviteEmployee:s.live&&s.role==='owner'&&s.hasAccess&&!!m.id,
        openEmployeeInvite:this.openEmployeeInvite,

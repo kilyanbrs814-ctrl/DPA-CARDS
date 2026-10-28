@@ -361,7 +361,7 @@ async function loadAll(user) {
   // Subscription billing and the merchant's actual entitlement are independent.
   // This endpoint uses the exact server-side predicate used for customer access.
   const access = await invokeFn('wallet/merchant-access', {});
-  return { merchant, billingMerchantId,billedCount:activations.length,selectedActivated:activations.some(a=>a.merchant_id===merchant.id), profiles: await listProfiles(), program: prog ? toProgram(prog) : null, clients, role: mem.role, permissions: mem.permissions, designRequest: toRequest(req), notifications, subscription: subscription || null,
+  return { merchant, billingMerchantId,billedCount:activations.length,selectedActivated:activations.some(a=>a.merchant_id===merchant.id), primaryActivated:activations.some(a=>a.merchant_id===billingMerchantId), profiles: await listProfiles(), program: prog ? toProgram(prog) : null, clients, role: mem.role, permissions: mem.permissions, designRequest: toRequest(req), notifications, subscription: subscription || null,
     hasAccess: access.has_access===true, accessSource: access.source||'none', manualExpiresAt: access.manual_expires_at||null };
 }
 
