@@ -117,35 +117,9 @@ a:hover{color:#1A36C4}
       <div role="alert" style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:14px;background:#FCEBEA;color:#7A1A13;font-size:15px;font-weight:600"><span class="material-symbols-rounded" style="font-size:22px">error</span>{{ error }}</div>
     </sc-if>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px">
-      <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="6">
-        <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px">
-          <span class="material-symbols-rounded" style="font-size:22px;color:{{ k.color }}">{{ k.icon }}</span>
-          <div style="font-weight:800;font-size:30px;letter-spacing:-0.02em;line-height:1;font-variant-numeric:tabular-nums">{{ k.value }}</div>
-          <div style="font-size:14px;color:#4A4E55;line-height:1.3">{{ k.label }}</div>
-        </div>
-      </sc-for>
-    </div>
+    {{ dashboardInsights }}
 
-    <section aria-label="Répartition des professions" style="padding:18px 20px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px"><h2 style="margin:0 0 12px;font-size:16px">Commerces par profession</h2><div style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ professionCounts }}" as="p" hint-placeholder-count="3"><span style="padding:8px 12px;background:#EEF1FF;border-radius:10px;font-size:14px">{{ p.label }} · <strong>{{ p.count }}</strong></span></sc-for></div></section>
-    <section aria-label="Cartes selon les passes Wallet générés" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
-      <div style="font-weight:700">Passes Wallet générés pour les clients</div>
-      <div style="display:flex;gap:14px;flex-wrap:wrap;color:#3E424A;font-size:14px">
-        <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#2448F0"></span>Google uniquement · {{ tot.googleOnly }}</span>
-        <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#111111"></span>Apple uniquement · {{ tot.appleOnly }}</span>
-        <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#7C65B5"></span>Deux plateformes · {{ tot.both }}</span>
-        <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#C9C6BE"></span>Aucun pass généré · {{ tot.none }}</span>
-      </div>
-      <div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:#ECEAE4">
-        <div style="width:{{ tot.googleOnlyPct }};background:#2448F0"></div>
-        <div style="width:{{ tot.appleOnlyPct }};background:#111111"></div>
-        <div style="width:{{ tot.bothPct }};background:#7C65B5"></div>
-        <div style="width:{{ tot.nonePct }};background:#C9C6BE"></div>
-      </div>
-      <p style="margin:0;font-size:12px;line-height:1.45;color:#5E636B">Ces chiffres mesurent les passes Google préparés et les fichiers Apple Wallet effectivement générés, pas les installations confirmées sur les téléphones. Les cartes test ne sont pas comptées.</p>
-    </section>
-
-    <div style="display:flex;flex-direction:column;gap:12px">
+    <div id="admin-merchant-list" tabindex="-1" style="display:flex;flex-direction:column;gap:12px;scroll-margin-top:76px">
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <div role="search" style="position:relative;flex:1;min-width:240px">
           <label for="aq" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Rechercher un commerçant</label>
@@ -384,7 +358,6 @@ SUBST.blocked=['Accès suspendu','#FCEBEA','#A11D14'];
 const eurC=c=>c==null?'—':(c/100).toLocaleString('fr-FR',{style:'currency',currency:'EUR'});
 const DESIGN={validated:'validé',draft:'brouillon',pending_dpa:'en cours de création par DPA Cards'};
 function lum(hex){ const h=(hex||'#FFFFFF').replace('#',''); const v=[0,2,4].map(i=>{const c=parseInt(h.substr(i,2),16)/255; return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);}); return 0.2126*v[0]+0.7152*v[1]+0.0722*v[2]; }
-const pct=(a,b)=>b?Math.round(a/b*100)+'%':'0%';
 const nf=n=>(+n||0).toLocaleString('fr-FR');
 const unitOf=p=>p&&p.mode==='points'?'points':'passages';
 const statusOf=m=>['trialing','active','manual'].includes(subKey(m))?'active':'setup';
@@ -453,15 +426,15 @@ class Component extends DCLogic {
   renderVals(){
     const s=this.state, isDesk=s.w>=1024, D=s.data, K=s.kpis||{};
     const kpis=[
-      {label:'Commerces inscrits',value:nf(K.merchants),icon:'storefront',color:'#2448F0'},
-      {label:'Clients',value:nf(K.customers),icon:'group',color:'#2448F0'},
-      {label:'Cartes de fidélité',value:nf(K.cards),icon:'style',color:'#2448F0'},
-      {label:'Programmes',value:nf(K.programs),icon:'loyalty',color:'#1C1F24'},
-      {label:'Notifications envoyées',value:nf(K.notifications_sent),icon:'notifications',color:'#1C1F24'},
-      {label:'Passes Google Wallet créés',value:nf(K.wallet_passes),icon:'account_balance_wallet',color:'#2448F0'},
-      {label:'Passes Apple Wallet générés',value:nf(K.apple_wallet_downloads),icon:'phone_iphone',color:'#111111'},
-      {label:'Abonnements actifs',value:nf(K.subscriptions_valid),icon:'credit_card',color:'#1F7A4F'},
-      {label:'Designs à traiter',value:nf(K.designs_to_process),icon:'brush',color:'#B4530A'}];
+      {label:'Commerces inscrits',value:nf(K.merchants),icon:'storefront'},
+      {label:'Clients',value:nf(K.customers),icon:'group'},
+      {label:'Cartes de fidélité',value:nf(K.cards),icon:'style'},
+      {label:'Programmes',value:nf(K.programs),icon:'loyalty'},
+      {label:'Notifications envoyées',value:nf(K.notifications_sent),icon:'notifications'},
+      {label:'Passes Google Wallet créés',value:nf(K.wallet_passes),icon:'account_balance_wallet'},
+      {label:'Passes Apple Wallet générés',value:nf(K.apple_wallet_downloads),icon:'phone_iphone'},
+      {label:'Abonnements actifs',value:nf(K.subscriptions_valid),icon:'credit_card'},
+      {label:'Designs à traiter',value:nf(K.designs_to_process),icon:'brush'}];
     const cards=+K.cards||0, google=+K.wallet_passes||0, apple=+K.apple_wallet_downloads||0;
     const both=Math.min(google,apple,+K.wallet_both||0);
     const googleOnly=Math.max(0,google-both), appleOnly=Math.max(0,apple-both);
@@ -517,9 +490,18 @@ class Component extends DCLogic {
     const scannerApi=this.api&&this.api.scanner?this.api.scanner():null;
     const scannerEl=tab==='scanner'&&typeof scannerApi==='function'?React.createElement(scannerApi):null;
     const professions=new Map(); D.forEach(m=>{ const label=(m.activity||'').trim()||'Non renseignée', key=label.toLocaleLowerCase('fr'); const entry=professions.get(key)||{label,count:0}; entry.count++; professions.set(key,entry); });
-    const professionCounts=[...professions.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,'fr'));
-    return {professionCounts,tabs,tabGen:tab==='gen',tabScanner:tab==='scanner',scannerEl,tabList:tab==='list',tabSales:tab==='sales',salesEl,hasSalesEl:!!selSalesEl,selSalesEl,genEl,isDesk,isMob:!isDesk,kpis,tot:{googleOnly:nf(googleOnly),appleOnly:nf(appleOnly),both:nf(both),none:nf(none),
-      googleOnlyPct:pct(googleOnly,cards),appleOnlyPct:pct(appleOnly,cards),bothPct:pct(both,cards),nonePct:pct(none,cards)},
+    const professionCounts=[...professions.values()].sort((a,b)=>b.count-a.count||a.label.localeCompare(b.label,'fr')).map(({label,count:value})=>({label,value}));
+    const dashboardInsights=tab==='list'&&!s.loading&&!s.error&&this.api?.DashboardInsights
+      ?React.createElement(this.api.DashboardInsights,{
+        kpis,merchants:D,professions:professionCounts,open:id=>this.open(id),
+        wallet:[
+          {label:'Google uniquement',value:googleOnly},
+          {label:'Apple uniquement',value:appleOnly},
+          {label:'Deux plateformes',value:both},
+          {label:'Aucun pass généré',value:none}
+        ]
+      }):null;
+    return {dashboardInsights,tabs,tabGen:tab==='gen',tabScanner:tab==='scanner',scannerEl,tabList:tab==='list',tabSales:tab==='sales',salesEl,hasSalesEl:!!selSalesEl,selSalesEl,genEl,isDesk,isMob:!isDesk,
       loading:s.loading,hasError:!!s.error,error:s.error||'',reload:()=>this.load(),
       q:s.q,setQ:e=>this.setState({q:e.target.value}),sort:s.sort,setSort:e=>this.setState({sort:e.target.value}),
       statusFilters,rows:s.loading?[]:list.map(m=>this.view(m)),emptyAll:!s.loading&&!s.error&&D.length===0,emptyFiltered:!s.loading&&D.length>0&&list.length===0,

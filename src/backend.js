@@ -1,3 +1,5 @@
+import { makeDashboardInsights } from './dashboard-insights.js';
+import './dashboard-insights.css';
 import { registrationPage, registrationPayload } from './registration-page.js';
 import { STAMP_LIBRARY } from './stamp-library.js';
 import { prepareProgramPreview } from './program-card-preview.js';
@@ -460,6 +462,7 @@ const api = {
     if(error)throw error;return toProgram(data);
   },
   loadAll,
+  DashboardInsights: makeDashboardInsights(window.React).Merchant,
   ProfileControls: makeProfileControls(window.React),
   WalletRecoveryPanel: makeWalletRecoveryPanel(window.React),
   switchProfile: id => changeProfile(localStorage,window.location,profileUser.id,id,memberships),

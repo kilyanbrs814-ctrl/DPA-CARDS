@@ -1,3 +1,5 @@
+import { makeDashboardInsights } from './dashboard-insights.js';
+import './dashboard-insights.css';
 import { createClient } from '@supabase/supabase-js';
 import QRCode from 'qrcode';
 import { merchantMfa, makeMerchantMfaPanel } from './merchant-mfa.js';
@@ -439,6 +441,7 @@ let scanner = null;
 
 refreshAccess();
 window.__dpaAdminResolve({
+  DashboardInsights: makeDashboardInsights(window.React).Admin,
   designer: () => designer || (designer = makeCardDesigner(window.React, designerApi)),
   sales: () => sales || (sales = makeSales(window.React, salesApi)),
   scanner: () => scanner || (scanner = makeAdminScanner(window.React,scannerApi)),

@@ -687,15 +687,7 @@ a:hover{color:#1A36C4}
       </sc-if>
 
         <section aria-label="Statistiques de fidélisation" style="display:flex;flex-direction:column;gap:16px;min-width:0">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-            <div><h2 style="font-size:20px;font-weight:800;margin:0">Analyse de fidélité</h2><div style="font-size:13px;color:#5E636B;margin-top:4px">Passages validés, hors corrections. Données de votre commerce uniquement.</div></div>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px">
-            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">calendar_month</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.monthly }}</div><div style="font-size:13px;color:#4A4E55">Passages ce mois-ci</div></div>
-            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">monitoring</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.annual }}</div><div style="font-size:13px;color:#4A4E55">Passages sur l’année sélectionnée</div></div>
-            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">workspace_premium</span><div style="font-size:17px;font-weight:800;margin:8px 0 4px;overflow-wrap:anywhere">{{ analyticsKing }}</div><div style="font-size:13px;color:#4A4E55">Client roi · {{ analyticsKingVisits }} passages cette année</div></div>
-            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">repeat</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.retention }} %</div><div style="font-size:13px;color:#4A4E55">Clients revenus · {{ analytics.returned }} / {{ analytics.active }} actifs</div></div>
-          </div>
+          {{ dashboardInsights }}
           <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:14px">
             <h3 style="margin:0;font-size:17px;font-weight:750">Fréquentation par client</h3>
             <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
@@ -711,12 +703,6 @@ a:hover{color:#1A36C4}
                 </button>
               </sc-for>
             </div>
-          </section>
-          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:12px">
-            <h3 style="margin:0;font-size:17px;font-weight:750">Taux de retour des clients</h3>
-            <div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ retentionFilters }}" as="period"><button type="button" onClick="{{ period.pick }}" aria-pressed="{{ period.selected }}" style="background:#F6F5F1;border:1px solid #D4D1C9;border-radius:999px;padding:9px 14px;min-height:42px;font-size:13px;font-weight:700">{{ period.label }}</button></sc-for></div>
-            <div style="display:flex;align-items:baseline;gap:10px"><strong style="font-size:28px;color:#2448F0;font-variant-numeric:tabular-nums">{{ analytics.retention }} %</strong><span style="font-size:13px;color:#4A4E55">{{ analytics.returned }} client(s) déjà venus sur {{ analytics.active }} client(s) actifs</span></div>
-            <p style="margin:0;font-size:12px;color:#6B6F76;line-height:1.5">Sur la période choisie (semaine en cours, mois en cours ou année en cours), part des clients ayant fait au moins un passage et possédant un passage antérieur à cette période.</p>
           </section>
         </section>
 
@@ -884,16 +870,15 @@ a:hover{color:#1A36C4}
         </div>
       </sc-if>
 
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" style="min-height:76px;border:0;border-radius:20px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:14px;padding:12px 18px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25);transition:transform .12s ease" style-active="transform:scale(0.98);background:#1A36C4">
+          <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,0.16);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:30px">qr_code_scanner</span></div>
+          <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:19px">Scanner une carte</div><div style="margin-top:2px;font-size:14px;color:#DCE3FF">Passage ou récompense</div></div>
+        </button></sc-if>
+        <sc-if value="{{ canAddClients }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ openAddClient }}" style="min-height:56px;border:1.5px solid #D4D1C9;border-radius:16px;background:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-active="background:#F1F0EC"><span class="material-symbols-rounded" style="font-size:22px;color:#2448F0">person_add</span>Ajouter un client</button></sc-if>
+      </div>
         <section aria-label="Statistiques de fidélisation" style="display:flex;flex-direction:column;gap:16px;min-width:0">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-            <div><h2 style="font-size:20px;font-weight:800;margin:0">Analyse de fidélité</h2><div style="font-size:13px;color:#5E636B;margin-top:4px">Passages validés, hors corrections. Données de votre commerce uniquement.</div></div>
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr));gap:12px">
-            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">calendar_month</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.monthly }}</div><div style="font-size:13px;color:#4A4E55">Passages ce mois-ci</div></div>
-            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">monitoring</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.annual }}</div><div style="font-size:13px;color:#4A4E55">Passages sur l’année sélectionnée</div></div>
-            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">workspace_premium</span><div style="font-size:17px;font-weight:800;margin:8px 0 4px;overflow-wrap:anywhere">{{ analyticsKing }}</div><div style="font-size:13px;color:#4A4E55">Client roi · {{ analyticsKingVisits }} passages cette année</div></div>
-            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px"><span class="material-symbols-rounded" style="color:#2448F0">repeat</span><div style="font-size:28px;font-weight:800;margin:8px 0 4px;font-variant-numeric:tabular-nums">{{ analytics.retention }} %</div><div style="font-size:13px;color:#4A4E55">Clients revenus · {{ analytics.returned }} / {{ analytics.active }} actifs</div></div>
-          </div>
+          {{ dashboardInsights }}
           <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:14px">
             <h3 style="margin:0;font-size:17px;font-weight:750">Fréquentation par client</h3>
             <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
@@ -910,22 +895,8 @@ a:hover{color:#1A36C4}
               </sc-for>
             </div>
           </section>
-          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:12px">
-            <h3 style="margin:0;font-size:17px;font-weight:750">Taux de retour des clients</h3>
-            <div style="display:flex;gap:8px;flex-wrap:wrap"><sc-for list="{{ retentionFilters }}" as="period"><button type="button" onClick="{{ period.pick }}" aria-pressed="{{ period.selected }}" style="background:#F6F5F1;border:1px solid #D4D1C9;border-radius:999px;padding:9px 14px;min-height:42px;font-size:13px;font-weight:700">{{ period.label }}</button></sc-for></div>
-            <div style="display:flex;align-items:baseline;gap:10px"><strong style="font-size:28px;color:#2448F0;font-variant-numeric:tabular-nums">{{ analytics.retention }} %</strong><span style="font-size:13px;color:#4A4E55">{{ analytics.returned }} client(s) déjà venus sur {{ analytics.active }} client(s) actifs</span></div>
-            <p style="margin:0;font-size:12px;color:#6B6F76;line-height:1.5">Sur la période choisie (semaine en cours, mois en cours ou année en cours), part des clients ayant fait au moins un passage et possédant un passage antérieur à cette période.</p>
-          </section>
         </section>
 
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" style="min-height:76px;border:0;border-radius:20px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:14px;padding:12px 18px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25);transition:transform .12s ease" style-active="transform:scale(0.98);background:#1A36C4">
-          <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,0.16);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:30px">qr_code_scanner</span></div>
-          <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:19px">Scanner une carte</div><div style="margin-top:2px;font-size:14px;color:#DCE3FF">Passage ou récompense</div></div>
-          
-        </button></sc-if>
-        <sc-if value="{{ canAddClients }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ openAddClient }}" style="min-height:56px;border:1.5px solid #D4D1C9;border-radius:16px;background:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-active="background:#F1F0EC"><span class="material-symbols-rounded" style="font-size:22px;color:#2448F0">person_add</span>Ajouter un client</button></sc-if>
-      </div>
       <section aria-labelledby="mact-h" style="display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <h2 id="mact-h" style="margin:0;font-weight:700;font-size:18px">Activité récente</h2>
@@ -2323,8 +2294,10 @@ function dpaLoyaltyAnalytics(clients, year, month, retentionPeriod, today) {
   weekStart.setDate(weekStart.getDate()-day);
   const weekKey=weekStart.getFullYear()+'-'+String(weekStart.getMonth()+1).padStart(2,'0')+'-'+String(weekStart.getDate()).padStart(2,'0');
   const retentionStart=retentionPeriod==='week'?weekKey:retentionPeriod==='year'?today.slice(0,4)+'-01-01':currentMonth+'-01';
+  const visitsByDay=new Map();
   const rows=(clients||[]).map(c=>{
     const visits=(c.history||[]).filter(h=>h.type==='visit'&&!h.corrected&&/^\d{4}-\d{2}-\d{2}$/.test(h.date||'')&&h.date<=today).map(h=>h.date);
+    visits.forEach(date=>visitsByDay.set(date,(visitsByDay.get(date)||0)+1));
     const annual=visits.filter(d=>d.startsWith(yy)).length;
     const filtered=monthKey?visits.filter(d=>d.startsWith(monthKey)).length:annual;
     const current=visits.filter(d=>d.startsWith(currentMonth)).length;
@@ -2342,7 +2315,7 @@ function dpaLoyaltyAnalytics(clients, year, month, retentionPeriod, today) {
   const years=new Set([today.slice(0,4)]);
   (clients||[]).forEach(c=>(c.history||[]).forEach(h=>{if(h.type==='visit'&&/^\d{4}-/.test(h.date||''))years.add(h.date.slice(0,4));}));
   return {monthly:rows.reduce((n,c)=>n+c.current,0),annual:rows.reduce((n,c)=>n+c.annual,0),
-    top,retention,returned,active:active.length,rows,years:[...years].sort().reverse()};
+    top,retention,returned,active:active.length,visitsByDay,rows,years:[...years].sort().reverse()};
 }
 
 const LOCKED_SCREENS=['invite','scanner','clients','client','notifs','notifNew','join','joinDone'];
@@ -2820,6 +2793,7 @@ class Component extends DCLogic {
   }
   enterDemo(){
     useCalendar(false); const cl=demoClients(); this.setState({demo:true,live:false,busy:false,merchant:{...M0},sd:{...M0},program:{...P0},draft:{...P0},clients:cl,notifs:demoNotifs(cl),nfilter:'all',nf:null,screen:'home',loadingHome:true,cam:null,err:{},modal:null});
+    if(!this.utils) this.ready().then(()=>{ if(this.state.demo) this.setState({}); });
     setTimeout(()=>this.setState({loadingHome:false}),700); this.scrollTop();
   }
   validate(rules){ const err={}; rules.forEach(([k,ok,msg])=>{ if(!ok) err[k]=msg; }); this.setState({err}); return Object.keys(err).length===0; }
@@ -3531,6 +3505,7 @@ class Component extends DCLogic {
       {label:'Récompenses utilisées ce mois-ci',value:allActs.filter(a=>a.type==='reward'&&a.date.startsWith(TODAY.slice(0,7))).length,icon:'task_alt'}];
 
 
+    const DashboardInsights=(this.api||this.utils)?.DashboardInsights;
     const analytics=dpaLoyaltyAnalytics(clients,s.analyticsYear||Number(TODAY.slice(0,4)),s.analyticsMonth||'all',s.retentionPeriod||'month',TODAY);
     const monthNames=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
     const analyticsMonths=[{value:'all',label:'Toute l’année'},...monthNames.map((label,i)=>({value:String(i+1).padStart(2,'0'),label}))];
@@ -3727,12 +3702,13 @@ class Component extends DCLogic {
       nIconCanEdit:s.live&&s.hasAccess&&this.canEmployee('notifications'),
       nIconBusy:!!s.nIconBusy,nIconError:s.nIconError||'',nIconHasError:!!s.nIconError,
       nIconUpload:this.uploadNotificationLogo,nIconRemove:this.removeNotificationLogo,
-      analytics,analyticsRows,analyticsNoRows:analyticsRows.every(c=>c.visits===0),analyticsYears:analytics.years.map(value=>({value,label:value})),
+      analyticsRows,analyticsNoRows:analyticsRows.every(c=>c.visits===0),analyticsYears:analytics.years.map(value=>({value,label:value})),
       analyticsMonths,analyticsYear:String(s.analyticsYear||TODAY.slice(0,4)),analyticsMonth:s.analyticsMonth||'all',
       setAnalyticsYear:e=>this.setState({analyticsYear:Number(e.target.value)}),
       setAnalyticsMonth:e=>this.setState({analyticsMonth:e.target.value}),
-      retentionFilters,analyticsKing:analytics.top?analytics.top.name:'Aucun pour le moment',
-      analyticsKingVisits:analytics.top?analytics.top.annual:0,
+      dashboardInsights:S.home&&DashboardInsights?React.createElement(DashboardInsights,{
+        key:m.id||'demo',analytics,today:TODAY,year:s.analyticsYear||TODAY.slice(0,4),retentionFilters
+      }):null,
       analyticsPeriodLabel:(s.analyticsMonth==='all'?'Année '+(s.analyticsYear||TODAY.slice(0,4)):(monthNames[Number(s.analyticsMonth)-1]||'Mois')+' '+(s.analyticsYear||TODAY.slice(0,4))),
 
       offerTitle:secondaryBlocked?'Activation du commerce en attente':secondaryNeedsActivation?'Activez votre nouveau commerce':'Choisissez votre offre',
