@@ -574,7 +574,7 @@ export function makeCardDesigner(React, api) {
       h('input', { type: 'checkbox', checked, onChange: e => onChange(e.target.checked), style: { width: 20, height: 20, accentColor: '#2448F0' } }), label);
   }
   function Section({ title, children }) {
-    return h('section', { style: { background: '#FFFFFF', border: '1px solid #E4E1DA', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 } },
+    return h('section', { className: 'dpa-glass-surface', style: { borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 14 } },
       h('h3', { style: { margin: 0, fontWeight: 700, fontSize: 16 } }, title), children);
   }
   function ImagePick({ label, asset, onPick, onRemove, busy, hint, testId, showBusinessName, onToggleBusinessName }) {
@@ -1068,7 +1068,7 @@ export function makeCardDesigner(React, api) {
         btnTop('Ajouter un client', 'add', () => { if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Continuer ?')) return; setAdding(true); setCreated(null); }, true, { 'aria-pressed': adding }),
         btnTop(busy === 'test' ? 'Création…' : 'Créer une carte test', 'science', createTest, false, { 'data-create-test': true })));
     const deleteDialog = askDelete ? h('div', { onClick: () => busy !== 'del' && setAskDelete(null), style: { position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(20,22,28,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 } },
-      h('div', { role: 'dialog', 'aria-modal': true, 'aria-label': 'Supprimer la carte test', onClick: e => e.stopPropagation(), style: { width: '100%', maxWidth: 480, background: '#FFFFFF', borderRadius: 20, padding: 22, display: 'flex', flexDirection: 'column', gap: 14 } },
+      h('div', { role: 'dialog', className: 'dpa-glass-sheet', 'aria-modal': true, 'aria-label': 'Supprimer la carte test', onClick: e => e.stopPropagation(), style: { width: '100%', maxWidth: 480, borderRadius: 20, padding: 22, display: 'flex', flexDirection: 'column', gap: 14 } },
         h('h2', { style: { margin: 0, fontWeight: 800, fontSize: 22 } }, 'Supprimer la carte test ?'),
         h('p', { style: { margin: 0, fontSize: 15, color: '#3E424A', lineHeight: 1.5 } }, `« ${askDelete.name} », ses images et sa carte Google Wallet de démonstration seront supprimées. Aucun commerce, programme ou client n’est concerné.`),
         h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
@@ -1366,7 +1366,7 @@ export function makeCardDesigner(React, api) {
       !isTest && h('button', { type: 'button', onClick: () => setConfirm(true), disabled: !!busy, style: { minHeight: 46, padding: '0 16px', border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('verified', 20), 'Valider le design'));
 
     const modal = (body, onClose, label) => h('div', { onClick: onClose, style: { position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(20,22,28,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 } },
-      h('div', { role: 'dialog', 'aria-modal': true, 'aria-label': label, onClick: e => e.stopPropagation(), style: { width: '100%', maxWidth: 520, maxHeight: '92vh', overflow: 'auto', background: '#FFFFFF', borderRadius: 20, padding: 22, display: 'flex', flexDirection: 'column', gap: 14 } }, body));
+      h('div', { role: 'dialog', className: 'dpa-glass-sheet', 'aria-modal': true, 'aria-label': label, onClick: e => e.stopPropagation(), style: { width: '100%', maxWidth: 520, maxHeight: '92vh', overflow: 'auto', borderRadius: 20, padding: 22, display: 'flex', flexDirection: 'column', gap: 14 } }, body));
     const cropC = crop && CROPS[crop.kind];
 
     return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } },

@@ -1,7 +1,6 @@
 .dpa-di {
   --di-ink: #171d35;
   --di-muted: #525c73;
-  --di-border: #dfe5f1;
   display: grid;
   gap: 14px;
   min-width: 0;
@@ -25,11 +24,8 @@
 .dpa-di-admin .dpa-di-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .dpa-di-grid-main { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
 .dpa-di-metric, .dpa-di-panel {
-  border: 1px solid var(--di-border);
   border-radius: 18px;
   min-width: 0;
-  background: #fff;
-  box-shadow: 0 5px 16px #263b7110;
 }
 .dpa-di-metric {
   padding: 14px;
