@@ -85,10 +85,26 @@ test('migration preserves a legacy commerce; profiles, grants, RLS and serialize
  assert.equal((await db.query('select app_private.merchant_active($1) allowed',[c.merchant.id])).rows[0].allowed,false);
  const third=(await db.query('select to_jsonb(public.profile_quote_begin($1,$2,$3::jsonb)) r',[c.merchant.id,u,JSON.stringify({current_count:2,new_monthly_cents:6000})])).rows[0].r;
  assert.equal(third.ordinal,3);assert.equal(third.activation_cents,2500);
- await db.exec(`reset role;set role authenticated;set request.test_uid='${u}';`);
+ await db.exec('reset role');
+ const contactMigration=readdirSync(new URL('../supabase/migrations/',import.meta.url)).find(n=>n.endsWith('_owner_customer_contacts_and_admin_mfa.sql'));
+ await db.exec(read(contactMigration));
+ await db.query('insert into public.merchant_members(merchant_id,user_id,role) values($1,$2,$3)',[b.merchant.id,other,'staff']);
+ await db.exec(`set role authenticated;set request.test_uid='${other}';`);
  await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify({'x-dpa-web-profiles':'1','x-merchant-id':b.merchant.id})]);
- const enrolled=(await db.query(`select public.enroll_customer(gen_random_uuid(),'Client B','','',true) r`)).rows[0].r;
+ const enrollmentId='30000000-0000-0000-0000-000000000001';
+ const enroll=()=>db.query("select public.enroll_customer($1,'Client B','','client@example.test',true) r",[enrollmentId]);
+ const enrolled=(await enroll()).rows[0].r;
  assert.equal(enrolled.card.merchant_id,b.merchant.id);
+ assert.equal((await enroll()).rows[0].r.card.id,enrolled.card.id,'retry returns the same card');
+ assert.equal(enrolled.customer.first_name,'Client B');
+ assert.equal(Object.hasOwn(enrolled.customer,'email'),false);
+ assert.equal((await db.query('select first_name from public.customers where id=$1',[enrolled.customer.id])).rows[0].first_name,'Client B');
+ await assert.rejects(db.query('select email from public.customers'),/permission denied/);
+ assert.equal((await db.query('select card_id from public.lookup_card($1)',['DPA1:'+enrolled.card.qr_token])).rows[0].card_id,enrolled.card.id);
+ assert.equal((await db.query('select public.add_visit($1,gen_random_uuid())',[enrolled.card.id])).rows.length,1);
+ await db.exec(`set request.test_uid='${u}';`);
+ await assert.rejects(db.query('select email from public.customers'),/permission denied/);
+
  await db.query(`select set_config('request.headers',$1,false)`,[JSON.stringify({'x-dpa-web-profiles':'1','x-merchant-id':a})]);
  assert.equal((await db.query('select * from public.lookup_card($1)',['DPA1:'+enrolled.card.qr_token])).rows.length,0);
  await assert.rejects(db.query(`select public.add_visit($1,gen_random_uuid())`,[enrolled.card.id]),/card_not_found/);

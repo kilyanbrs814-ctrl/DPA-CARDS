@@ -1,4 +1,4 @@
-import { merchantSessionError } from '../_shared/merchant-session.js';
+import { hasVerifiedSecondFactor, merchantSessionError } from '../_shared/merchant-session.js';
 import { decodePng } from '../_shared/png.js';
 import { selectedMembership, walletUserHeaders } from '../_shared/merchant-context.ts';
 import { selfServiceChoice, selfServiceOpacity, selfServiceWithoutStamps, simpleGoogleTemplate, simpleGoogleFields } from '../_shared/self-service-layout.js';
@@ -413,7 +413,7 @@ async function authUser(req: Request, merchantSession = true) {
   if (error || !user) throw new HttpError(401, 'not_authenticated');
   const sessionError = merchantSession ? merchantSessionError(user, token) : null;
   if (sessionError) throw new HttpError(403, sessionError);
-  return { user, userClient };
+  return { user, userClient, token };
 }
 
 // Real format and dimensions, read from the file bytes (never from the client).
@@ -827,6 +827,25 @@ async function ownerOf(req: Request) {
   return { user, member: member as { merchant_id: string; role: string } | null };
 }
 
+async function exportCustomerContacts(req: Request): Promise<Response> {
+  const { member } = await ownerOf(req);
+  if (member?.role !== 'owner') throw new HttpError(403, 'owner_only');
+  const body = await req.json().catch(() => ({}));
+  const after = String(body?.after ?? '');
+  if (after && !UUID_RE.test(after)) throw new HttpError(400, 'invalid_request');
+
+  const pageSize = 500;
+  let query = admin.from('customers').select('id, first_name, last_name, email, consent_at, created_at')
+    .eq('merchant_id', member.merchant_id).order('id').limit(pageSize);
+  if (after) query = query.gt('id', after);
+  const { data, error } = await query;
+  if (error) throw new Error('db_customers_export');
+  const customers = data ?? [];
+  const response = json(req, 200, { customers, next: customers.length === pageSize ? customers.at(-1)?.id : null });
+  response.headers.set('cache-control', 'private, no-store');
+  return response;
+}
+
 async function deleteCustomer(req: Request): Promise<Response> {
   const { member } = await ownerOf(req);
   if (!member) throw new HttpError(403, 'forbidden');
@@ -929,12 +948,13 @@ async function deleteAccount(req: Request): Promise<Response> {
 // Access: a session whose confirmed e-mail is listed in admin_users, checked here on every call.
 
 async function requireAdmin(req: Request) {
-  const { user } = await authUser(req, false);
+  const { user, token } = await authUser(req, false);
   const email = (user.email ?? '').trim().toLowerCase();
   if (!email || !user.email_confirmed_at) throw new HttpError(403, 'not_admin');
   const { data, error } = await admin.from('admin_users').select('email, role').eq('email', email).maybeSingle();
   if (error) throw new Error('db_admin_users');
   if (!data) throw new HttpError(403, 'not_admin');
+  if (!hasVerifiedSecondFactor(token)) throw new HttpError(403, 'mfa_required');
   return Object.assign(user, { dpaEmail: email, dpaRole: data.role as 'admin' | 'director' });
 }
 
@@ -2042,6 +2062,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' && path.endsWith('/public-program')) return await publicProgram(req);
     if (req.method === 'POST' && path.endsWith('/join')) return await publicJoin(req);
     if (req.method === 'POST' && path.endsWith('/notify')) return await notify(req);
+    if (req.method === 'POST' && path.endsWith('/export-customer-contacts')) return await exportCustomerContacts(req);
     if (req.method === 'POST' && path.endsWith('/delete-customer')) return await deleteCustomer(req);
     if (req.method === 'POST' && path.endsWith('/delete-account')) return await deleteAccount(req);
     if (req.method === 'POST' && path.endsWith('/merchant-access')) return await merchantAccess(req);

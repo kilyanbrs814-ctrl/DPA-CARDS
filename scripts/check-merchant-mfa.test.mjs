@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import {readFileSync, readdirSync} from 'node:fs';
+import {stripTypeScriptTypes} from 'node:module';
 import test from 'node:test';
+import {runInNewContext} from 'node:vm';
 import {PGlite} from '@electric-sql/pglite';
 import {merchantMfa} from '../src/merchant-mfa.js';
-import {merchantSessionError} from '../supabase/functions/_shared/merchant-session.js';
+import {hasVerifiedSecondFactor, merchantSessionError} from '../supabase/functions/_shared/merchant-session.js';
 
 test('a password-only session is challenged before a verified factor can be used', async () => {
   const ok = data => ({data, error: null});
@@ -36,6 +38,53 @@ test('privileged merchant routes reject an unconfirmed email or a missing second
   assert.equal(merchantSessionError(enrolled, token('aal1')), 'mfa_required');
   assert.equal(merchantSessionError(enrolled, 'broken'), 'mfa_required');
   assert.equal(merchantSessionError(enrolled, token('aal2')), null);
+});
+
+test('customer contacts are returned only for the verified owner’s selected commerce', async () => {
+  const wallet = readFileSync(new URL('../supabase/functions/wallet/index.ts', import.meta.url), 'utf8');
+  const source = wallet.slice(wallet.indexOf('async function exportCustomerContacts('), wallet.indexOf('async function deleteCustomer('));
+  let role = 'staff';
+  const filters = [];
+  const endpoint = runInNewContext(stripTypeScriptTypes(source) + '\nexportCustomerContacts', {
+    ownerOf: async () => ({member: {role, merchant_id: 'owned-shop'}}),
+    HttpError: Error,
+    admin: {from(table) {
+      assert.equal(table, 'customers');
+      return {
+        select() { return this; },
+        eq(field, value) { filters.push([field, value]); return this; },
+        order() { return this; },
+        limit() { return {data: [{email: 'fixture@example.test'}]}; },
+      };
+    }},
+    json: (_request, status, data) => Response.json(data, {status}),
+  });
+  const request = {json: async () => ({merchant_id: 'another-shop'})};
+  await assert.rejects(endpoint(request));
+  assert.deepEqual(filters, []);
+  role = 'owner';
+  const response = await endpoint(request);
+  assert.equal((await response.json()).customers[0].email, 'fixture@example.test');
+  assert.deepEqual(filters, [['merchant_id', 'owned-shop']]);
+  assert.equal(response.headers.get('cache-control'), 'private, no-store');
+});
+
+test('admin endpoints require AAL2 even for an authorized account with no enrolled factor', async () => {
+  const wallet = readFileSync(new URL('../supabase/functions/wallet/index.ts', import.meta.url), 'utf8');
+  const source = wallet.slice(wallet.indexOf('async function requireAdmin('), wallet.indexOf('// Sales tracking, commission'));
+  let level = 'aal1';
+  const requireAdmin = runInNewContext(stripTypeScriptTypes(source) + '\nrequireAdmin', {
+    authUser: async () => ({
+      user: {email: 'admin@example.test', email_confirmed_at: '2026-11-03', factors: []},
+      token: 'header.' + Buffer.from(JSON.stringify({aal: level})).toString('base64url') + '.signature',
+    }),
+    admin: {from: () => ({select: () => ({eq: () => ({maybeSingle: async () => ({data: {role: 'admin'}})})})})},
+    HttpError: class extends Error {constructor(status, code) {super(code); this.status = status;}},
+    hasVerifiedSecondFactor,
+  });
+  await assert.rejects(requireAdmin({}), {message: 'mfa_required', status: 403});
+  level = 'aal2';
+  assert.equal((await requireAdmin({})).dpaRole, 'admin');
 });
 
 test('database denies password-only read and write after enrollment and keeps commerce isolation', async () => {

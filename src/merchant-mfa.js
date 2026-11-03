@@ -30,7 +30,7 @@ export function merchantMfa(auth, qrDataUrl) {
 
 export function makeMerchantMfaPanel(React) {
   const h = React.createElement;
-  return function MerchantMfaPanel({api, challenge, onVerified, onSignOut}) {
+  return function MerchantMfaPanel({api, challenge, onVerified, onSignOut, admin = false}) {
     const [setup, setSetup] = React.useState(null);
     const [choice, setChoice] = React.useState('');
     const [code, setCode] = React.useState('');
@@ -65,7 +65,9 @@ export function makeMerchantMfaPanel(React) {
       h('h2', null, challenge ? 'Vérifiez votre connexion' : 'Protégez votre compte'),
       h('p', null, challenge
         ? 'Saisissez le code généré par votre application d’authentification.'
-        : 'Ajoutez un code généré par votre téléphone en plus de votre mot de passe.'),
+        : admin
+          ? 'Configurez un code généré par votre téléphone pour accéder à l’administration après la connexion par e-mail.'
+          : 'Ajoutez un code généré par votre téléphone en plus de votre mot de passe.'),
       error && h('p', {role: 'alert'}, error),
       !challenge && !setup && button('Activer la double authentification',
         () => run(async () => setSetup(await api.enroll()), 'Impossible de commencer la configuration. Réessayez.')),
@@ -85,11 +87,11 @@ export function makeMerchantMfaPanel(React) {
         h('button', {type: 'submit', className: 'dpa-mfa-button', disabled: busy || code.length !== 6},
           setup ? 'Confirmer l’activation' : 'Vérifier le code')),
       challenge && !factorId && h('p', {role: 'alert'}, 'Aucune application de codes utilisable. Contactez l’assistance.'),
-      setup && button('Configurer plus tard', () => run(async () => {
+      setup && button(admin ? 'Annuler la configuration' : 'Configurer plus tard', () => run(async () => {
         await api.cancel(setup.id);
         setSetup(null);
         setCode('');
       }, 'Impossible d’annuler la configuration. Réessayez.')),
-      challenge && button('Se déconnecter', onSignOut));
+      onSignOut && button('Se déconnecter', onSignOut));
   };
 }
