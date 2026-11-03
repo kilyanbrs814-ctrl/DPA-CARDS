@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import QRCode from 'qrcode';
+import { merchantMfa, makeMerchantMfaPanel } from './merchant-mfa.js';
 import { makeCardDesigner } from './card-designer.js';
 import { makeSales } from './sales.js';
 import { makeAdminScanner } from './admin-scanner.js';
@@ -88,8 +90,36 @@ function resetCodeEntry() {
 const denied = document.getElementById('admin-denied');
 const signout = document.getElementById('admin-signout');
 const app = document.getElementById('admin-app');
+const mfaContainer = document.getElementById('admin-mfa');
+const adminMfa = merchantMfa(sb.auth, uri => QRCode.toDataURL(uri));
+const AdminMfaPanel = makeMerchantMfaPanel(window.React);
+const mfaRoot = window.ReactDOM.createRoot(mfaContainer);
+
+function hideMfa() {
+  mfaContainer.hidden = true;
+  mfaRoot.render(null);
+}
+
+function showMfa(status, userId) {
+  loading.style.display = 'none';
+  form.style.display = 'none';
+  denied.style.display = 'none';
+  app.style.display = 'none';
+  root.style.display = 'flex';
+  mfaContainer.hidden = false;
+  mfaRoot.render(window.React.createElement(AdminMfaPanel, {
+    key: userId + (status.required ? ':verify' : ':enroll'),
+    api: adminMfa,
+    admin: true,
+    challenge: status.required ? status : null,
+    onVerified: () => refreshAccess(true),
+    onSignOut: logoutAdmin,
+  }));
+}
+
 
 function showLogin(msg = '') {
+  hideMfa();
   loading.style.display = 'none';
   denied.style.display = 'none';
   form.style.display = 'flex';
@@ -99,6 +129,7 @@ function showLogin(msg = '') {
 }
 
 function showDenied() {
+  hideMfa();
   loading.style.display = 'none';
   form.style.display = 'none';
   denied.style.display = 'block';
@@ -109,6 +140,7 @@ function showDenied() {
 // The dashboard loads its data once access is confirmed (and again after a new sign-in).
 const accessListeners = [];
 function showApp() {
+  hideMfa();
   root.style.display = 'none';
   app.style.display = 'block';
   accessListeners.forEach(cb => { try { cb(); } catch (e) {} });
@@ -156,18 +188,28 @@ async function isAuthorized(user) {
 
 // Avoid the initial (empty) session check racing with setSession after an iOS callback.
 let completingNativeLogin = false;
+let accessCheck = 0;
 async function refreshAccess(force = false) {
   if (completingNativeLogin && !force) return;
-  const { data: { session } } = await sb.auth.getSession();
-  if (completingNativeLogin && !force) return;
-  if (!session?.user) {
-    showLogin();
-    return;
+  const check = ++accessCheck;
+  const stale = () => check !== accessCheck || (completingNativeLogin && !force);
+  try {
+    const { data: { session }, error } = await sb.auth.getSession();
+    if (stale()) return;
+    if (error) throw error;
+    if (!session?.user) return showLogin();
+
+    const authorized = await isAuthorized(session.user);
+    if (stale()) return;
+    if (!authorized) return showDenied();
+
+    const status = await adminMfa.status(session.access_token);
+    if (stale()) return;
+    if (status.active) showApp();
+    else showMfa(status, session.user.id);
+  } catch {
+    if (!stale()) showLogin('Impossible de vérifier la sécurité du compte. Réessayez.');
   }
-  const authorized = await isAuthorized(session.user);
-  if (completingNativeLogin && !force) return;
-  if (authorized) showApp();
-  else showDenied();
 }
 
 // On the public website, retain the existing magic-link login.
@@ -283,10 +325,12 @@ function linkErrorMessage(error) {
   return 'Impossible d’envoyer le lien pour le moment.';
 }
 
-signout.addEventListener('click', async () => {
+async function logoutAdmin() {
+  ++accessCheck;
   await sb.auth.signOut({ scope: 'local' });
   showLogin();
-});
+}
+signout.addEventListener('click', logoutAdmin);
 
 sb.auth.onAuthStateChange(() => {
   setTimeout(refreshAccess, 0);

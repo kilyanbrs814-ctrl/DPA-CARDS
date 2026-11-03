@@ -17,6 +17,7 @@ import { completePasswordSetup } from './password-setup.js';
 
 import { createClient } from '@supabase/supabase-js';
 import QRCode from 'qrcode';
+import { merchantMfa, makeMerchantMfaPanel } from './merchant-mfa.js';
 import { makeCropper } from './cropper.js';
 import { makeCardDesigner } from './card-designer.js';
 import { LEGAL } from './legal-config.js';
@@ -108,6 +109,8 @@ function isNetwork(e) {
 }
 
 const DB_ERRORS = {
+  mfa_required: 'Vérifiez votre connexion avec le code de votre téléphone.',
+  email_unconfirmed: 'Confirmez votre adresse e-mail avant d’accéder à votre compte.',
   profile_required: 'Choisissez le commerce à utiliser.',
   prepaid_rule_required: 'La période annuelle doit être vérifiée avant de calculer votre complément.',
   quote_changed: 'Votre facturation a changé. Actualisez le récapitulatif avant de confirmer.',
@@ -422,6 +425,8 @@ async function rpc(fn, args) {
 
 const api = {
   configured,
+  mfa: configured ? merchantMfa(sb.auth, uri => QRCode.toDataURL(uri)) : null,
+  MerchantMfaPanel: makeMerchantMfaPanel(window.React),
   get recoveryPending() { return recoveryPending; },
   clearRecovery() { recoveryPending = false; },
   linkError: linkError ? { message: linkError, code: linkErrorCode } : null,
@@ -682,18 +687,27 @@ const api = {
   async deleteCustomer(cardId) { return invokeFn('wallet/delete-customer', { card_id: cardId }); },
   async deleteAccount(confirm) { return invokeFn('wallet/delete-account', { confirm }); },
   async exportData() {
+    // The owner check lives on the server; selecting the email column directly is denied.
+    const customers = [];
+    let after = null;
+    do {
+      const page = await invokeFn('wallet/export-customer-contacts', { after });
+      customers.push(...page.customers);
+      after = page.next;
+    } while (after);
+
     const pick = (o, keys) => Object.fromEntries(keys.filter(k => k in o).map(k => [k, o[k]]));
     const [{ data: merchant, error: me }, { data: programs, error: pe }] = await Promise.all([
       sb.from('merchants').select('business_name, first_name, last_name, activity, phone, address, slug, created_at').maybeSingle(),
       sb.from('programs').select('name, mode, goal, reward, conditions, bg, accent, pattern, logo, design_status, is_active, created_at'),
     ]);
     if (me) throw me; if (pe) throw pe;
-    const [customers, cards, events, notifications] = await Promise.all([
-      fetchAll('customers', 'id, first_name, last_name, email, consent_at, created_at', 'created_at'),
+    const [cards, events, notifications] = await Promise.all([
       fetchAll('cards', 'id, customer_id, card_number, created_at', 'created_at'),
       fetchAll('card_events', 'card_id, seq, type, delta, balance_after, motif, note, reward_label, created_at', 'created_at'),
       fetchAll('notifications', 'title, body, audience, notify, status, targeted, sent_count, failed_count, quota_count, no_wallet_count, created_at, sent_at', 'created_at'),
     ]);
+    customers.sort((a, b) => b.created_at.localeCompare(a.created_at));
     const evByCard = new Map();
     for (const e of events) { if (!evByCard.has(e.card_id)) evByCard.set(e.card_id, []); evByCard.get(e.card_id).push(e); }
     const cardsByCust = new Map();
