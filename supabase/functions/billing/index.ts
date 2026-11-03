@@ -539,9 +539,11 @@ async function checkout(req: Request, actor?: CheckoutActor): Promise<Response> 
   const body = await req.json().catch(() => ({}));
   const planType = String(body?.plan ?? '') as PlanType;
   if(body.confirmed!==true)throw new HttpError(422,'confirmation_required');
+  if (!Object.hasOwn(PLANS, planType)) throw new HttpError(422, 'invalid_plan');
+  const plan = PLANS[planType];
   const commerce=await billingQuantity(merchantId);
-  if(body.quote?.quantity!==commerce.quantity || body.quote?.setup!==(commerce.activated?0:PRICES[PLANS[planType]?.setup ?? 'setup_no_commitment'].cents))throw new HttpError(409,'quote_changed');
-  if (!(planType in PLANS)) throw new HttpError(422, 'invalid_plan');
+  const setupCents = commerce.activated ? 0 : PRICES[plan.setup].cents;
+  if(body.quote?.quantity!==commerce.quantity || body.quote?.setup!==setupCents)throw new HttpError(409,'quote_changed');
   const billing = String(body?.billing ?? 'monthly');
   if (!['monthly', 'prepaid'].includes(billing) || (billing === 'prepaid' && planType !== PREPAID_PLAN)) throw new HttpError(422, 'invalid_plan');
   const { data: program } = await admin.from('programs').select('id').eq('merchant_id', merchantId).eq('is_active', true).maybeSingle();
@@ -550,7 +552,7 @@ async function checkout(req: Request, actor?: CheckoutActor): Promise<Response> 
   const current=await rowOf(merchantId);
   if(current&&ACCESS.includes(current.status))throw new HttpError(409,'already_subscribed');
   if(current?.stripe_subscription_id&&['past_due','unpaid','paused'].includes(current.status))throw new HttpError(409,'payment_issue');
-  const {data:claim,error:claimError}=await admin.rpc('claim_initial_checkout',{p_merchant:merchantId,p_plan:planType,p_billing:billing,p_quantity:commerce.quantity,p_setup:commerce.activated?0:PRICES[plan.setup].cents});
+  const {data:claim,error:claimError}=await admin.rpc('claim_initial_checkout',{p_merchant:merchantId,p_plan:planType,p_billing:billing,p_quantity:commerce.quantity,p_setup:setupCents});
   if(claimError)throw new HttpError(409,'checkout_in_progress');
   if(!claim.stripe_session_id && current?.stripe_customer_id){
     for await(const candidate of s.checkout.sessions.list({customer:current.stripe_customer_id,limit:100})){
@@ -580,7 +582,6 @@ async function checkout(req: Request, actor?: CheckoutActor): Promise<Response> 
   }
   if (billing === 'prepaid') return await checkoutPrepaid(req, user, merchantId,claim,actor?.adminCheckout===true);
 
-  const plan = PLANS[planType];
   const ids = await priceIds();
   const setupId = ids[plan.setup], monthlyId = ids[plan.monthly];
   // An ended prepaid period is 'expired' before anything else; an open prepaid attempt is closed.
@@ -608,7 +609,7 @@ async function checkout(req: Request, actor?: CheckoutActor): Promise<Response> 
   // Reserve the incomplete row BEFORE Checkout can deliver a webhook. A late
   // response may attach a session but can never overwrite an active subscription.
   const pendingRow={merchant_id:merchantId,stripe_customer_id:customer,plan_type:planType,commitment_months:plan.commitmentMonths,
-    stripe_setup_price_id:setupId,stripe_price_id:monthlyId,setup_amount_cents:commerce.activated?0:PRICES[plan.setup].cents,monthly_amount_cents:monthlyPrice.unit_amount!*commerce.quantity,
+    stripe_setup_price_id:setupId,stripe_price_id:monthlyId,setup_amount_cents:setupCents,monthly_amount_cents:monthlyPrice.unit_amount!*commerce.quantity,
     status:'incomplete',stripe_subscription_id:null,stripe_checkout_session_id:null,stripe_setup_payment_intent_id:null,setup_paid_at:null,
     trial_start:null,trial_end:null,current_period_start:null,current_period_end:null,billing_cycle_anchor:null,commitment_start:null,commitment_end:null,
     cancel_at_period_end:false,cancel_at:null,canceled_at:null,cancel_requested_at:null,latest_invoice_status:null,billing_mode:'monthly',prepaid_purchase_id:null};
@@ -624,12 +625,12 @@ async function checkout(req: Request, actor?: CheckoutActor): Promise<Response> 
     // merchant never gives this information to the DPA Cards admin interface.
     payment_method_types: ['card', 'sepa_debit'],
     // Save a reusable method for the existing off-session subscription flow.
-    ...(!commerce.activated?{line_items:[{price_data:{currency:'eur',unit_amount:PRICES[plan.setup].cents,product:typeof setupPrice.product==='string'?setupPrice.product:setupPrice.product.id},quantity:1}],
+    ...(!commerce.activated?{line_items:[{price_data:{currency:'eur',unit_amount:setupCents,product:typeof setupPrice.product==='string'?setupPrice.product:setupPrice.product.id},quantity:1}],
       payment_intent_data:{setup_future_usage:'off_session' as const,metadata,description:'DPA Cards — frais d’activation'},
       invoice_creation:{enabled:true,invoice_data:{metadata,description:'Activation DPA Cards'}}}:{setup_intent_data:{metadata}}),
     metadata,
     locale: 'fr',
-    custom_text: { submit: { message: `Aujourd’hui : ${eur(commerce.activated?0:PRICES[plan.setup].cents)} d’activation. Votre abonnement à ${eur(monthlyPrice.unit_amount!*commerce.quantity)}/mois pour ${commerce.quantity} commerce(s) commence après un mois d’essai gratuit, au prorata jusqu’au 1er du mois suivant, puis chaque 1er du mois${plan.commitmentMonths ? ', avec un engagement de 12 mois' : ', sans engagement'}.` } },
+    custom_text: { submit: { message: `Aujourd’hui : ${eur(setupCents)} d’activation. Votre abonnement à ${eur(monthlyPrice.unit_amount!*commerce.quantity)}/mois pour ${commerce.quantity} commerce(s) commence après un mois d’essai gratuit, au prorata jusqu’au 1er du mois suivant, puis chaque 1er du mois${plan.commitmentMonths ? ', avec un engagement de 12 mois' : ', sans engagement'}.` } },
     success_url: actor?.adminCheckout ? `${origin}/activation-result.html?status=success` : `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: actor?.adminCheckout ? `${origin}/activation-result.html?status=cancel` : `${origin}/subscription/cancel`,
   },{idempotencyKey:`dpa-initial-checkout-${claim.id}`});
