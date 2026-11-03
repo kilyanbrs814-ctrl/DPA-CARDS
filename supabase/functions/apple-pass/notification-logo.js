@@ -1,3 +1,4 @@
+import { merchantSessionError } from '../_shared/merchant-session.js';
 // A dedicated 600x600 PNG for Apple Wallet notification icons.
 // This is a merchant-scoped setting and does not change the card's header artwork.
 const ORIGINS=new Set(['https://cards.digitalprojectagency.fr','capacitor://localhost']);
@@ -17,6 +18,8 @@ export async function manageNotificationLogo(req,{admin,decodePng}){
   if(!bearer)return respond(req,401,{error:'unauthorized'});
   const {data:{user},error:authError}=await admin.auth.getUser(bearer);
   if(authError||!user)return respond(req,401,{error:'unauthorized'});
+  const sessionError=merchantSessionError(user,bearer);
+  if(sessionError)return respond(req,403,{error:sessionError});
   const {data:members,error:me}=await admin.from('merchant_members').select('merchant_id,role,permissions').eq('user_id',user.id);
   if(me)return respond(req,503,{error:'database_unavailable'});
   const choice=req.headers.get('x-merchant-id');

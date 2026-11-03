@@ -1,6 +1,7 @@
 // DPA Cards — invitations d'employés, indépendantes de la facturation et de Wallet.
 // Un propriétaire authentifié peut inviter un collaborateur uniquement dans son commerce.
 // La clé secrète Supabase et le lien d'activation ne sont jamais renvoyés au navigateur.
+import { merchantSessionError } from '../_shared/merchant-session.js';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { sendEmail } from '../_shared/email.ts';
 import { employeeInvitationMail } from '../_shared/employee-invite-mail.js';
@@ -45,6 +46,8 @@ async function invite(req: Request) {
   if (!bearer) throw new AppError(401, 'not_authenticated');
   const { data: identity, error: authError } = await admin.auth.getUser(bearer[1]);
   if (authError || !identity?.user) throw new AppError(401, 'not_authenticated');
+  const sessionError = merchantSessionError(identity.user, bearer[1]);
+  if (sessionError) throw new AppError(403, sessionError);
   const merchantId = req.headers.get('x-merchant-id') || '';
   if (!uuidRe.test(merchantId)) throw new AppError(400, 'merchant_required');
   const { data: membership, error: membershipError } = await admin.from('merchant_members')
@@ -142,6 +145,8 @@ async function teamList(req: Request) {
   if (!bearer) throw new AppError(401, 'not_authenticated');
   const { data: who, error: ae } = await admin.auth.getUser(bearer[1]);
   if (ae || !who?.user) throw new AppError(401, 'not_authenticated');
+  const sessionError = merchantSessionError(who.user, bearer[1]);
+  if (sessionError) throw new AppError(403, sessionError);
   const merchantId = req.headers.get('x-merchant-id') || '';
   if (!uuidRe.test(merchantId)) throw new AppError(400, 'merchant_required');
   const { data: owner, error: me } = await admin.from('merchant_members')
@@ -214,6 +219,8 @@ async function ownerForPending(req: Request, id: string) {
   if (!jwt) throw new AppError(401, 'not_authenticated');
   const {data: who,error: authError} = await admin.auth.getUser(jwt[1]);
   if (authError || !who?.user) throw new AppError(401,'not_authenticated');
+  const sessionError = merchantSessionError(who.user, jwt[1]);
+  if (sessionError) throw new AppError(403, sessionError);
   const merchantId = req.headers.get('x-merchant-id') || '';
   if (!uuidRe.test(merchantId) || !uuidRe.test(id)) throw new AppError(400,'invalid_request');
   const {data: owner,error: ownerError} = await admin.from('merchant_members')
@@ -336,6 +343,8 @@ async function updatePermissions(req:Request) {
   if(!token) throw new AppError(401,'not_authenticated');
   const {data: identity,error:au}=await admin.auth.getUser(token);
   if(au || !identity?.user) throw new AppError(401,'not_authenticated');
+  const sessionError = merchantSessionError(identity.user, token);
+  if (sessionError) throw new AppError(403, sessionError);
   const mid=req.headers.get('x-merchant-id')||'';
   const body=await req.json().catch(()=>({}));
   const employeeId=String(body.employeeId||'');

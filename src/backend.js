@@ -17,6 +17,7 @@ import { completePasswordSetup } from './password-setup.js';
 
 import { createClient } from '@supabase/supabase-js';
 import QRCode from 'qrcode';
+import { merchantMfa, makeMerchantMfaPanel } from './merchant-mfa.js';
 import { makeCropper } from './cropper.js';
 import { makeCardDesigner } from './card-designer.js';
 import { LEGAL } from './legal-config.js';
@@ -108,6 +109,8 @@ function isNetwork(e) {
 }
 
 const DB_ERRORS = {
+  mfa_required: 'Vérifiez votre connexion avec le code de votre téléphone.',
+  email_unconfirmed: 'Confirmez votre adresse e-mail avant d’accéder à votre compte.',
   profile_required: 'Choisissez le commerce à utiliser.',
   prepaid_rule_required: 'La période annuelle doit être vérifiée avant de calculer votre complément.',
   quote_changed: 'Votre facturation a changé. Actualisez le récapitulatif avant de confirmer.',
@@ -422,6 +425,8 @@ async function rpc(fn, args) {
 
 const api = {
   configured,
+  mfa: configured ? merchantMfa(sb.auth, uri => QRCode.toDataURL(uri)) : null,
+  MerchantMfaPanel: makeMerchantMfaPanel(window.React),
   get recoveryPending() { return recoveryPending; },
   clearRecovery() { recoveryPending = false; },
   linkError: linkError ? { message: linkError, code: linkErrorCode } : null,

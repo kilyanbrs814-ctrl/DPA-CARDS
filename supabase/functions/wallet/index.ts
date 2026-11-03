@@ -1,3 +1,4 @@
+import { merchantSessionError } from '../_shared/merchant-session.js';
 import { decodePng } from '../_shared/png.js';
 import { selectedMembership, walletUserHeaders } from '../_shared/merchant-context.ts';
 import { selfServiceChoice, selfServiceOpacity, selfServiceWithoutStamps, simpleGoogleTemplate, simpleGoogleFields } from '../_shared/self-service-layout.js';
@@ -401,14 +402,17 @@ async function runSync(limit = 20): Promise<{ synced: number; failed: number }> 
 
 // ---------------------------------------------------------------- routes
 
-async function authUser(req: Request) {
+async function authUser(req: Request, merchantSession = true) {
   const auth = req.headers.get('authorization') ?? '';
   if (!/^Bearer\s+\S+/.test(auth)) throw new HttpError(401, 'not_authenticated');
   const userClient: SupabaseClient = createClient(SUPABASE_URL, PUBLISHABLE_KEY, {
     global: { headers: walletUserHeaders(req) }, auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data: { user } } = await userClient.auth.getUser(auth.replace(/^Bearer\s+/, ''));
-  if (!user) throw new HttpError(401, 'not_authenticated');
+  const token = auth.replace(/^Bearer\s+/, '');
+  const { data: { user }, error } = await userClient.auth.getUser(token);
+  if (error || !user) throw new HttpError(401, 'not_authenticated');
+  const sessionError = merchantSession ? merchantSessionError(user, token) : null;
+  if (sessionError) throw new HttpError(403, sessionError);
   return { user, userClient };
 }
 
@@ -925,7 +929,7 @@ async function deleteAccount(req: Request): Promise<Response> {
 // Access: a session whose confirmed e-mail is listed in admin_users, checked here on every call.
 
 async function requireAdmin(req: Request) {
-  const { user } = await authUser(req);
+  const { user } = await authUser(req, false);
   const email = (user.email ?? '').trim().toLowerCase();
   if (!email || !user.email_confirmed_at) throw new HttpError(403, 'not_admin');
   const { data, error } = await admin.from('admin_users').select('email, role').eq('email', email).maybeSingle();

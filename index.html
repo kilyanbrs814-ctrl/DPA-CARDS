@@ -48,7 +48,8 @@ a:hover{color:#1A36C4}
 </helmet>
 <div style="min-height:var(--dpa-page-height,100dvh);background:#F6F5F1;color:#1C1F24">
 {{ profileControl }}
-<sc-if value="{{ s.auth }}" hint-placeholder-val="{{ true }}">
+{{ mfaChallengePanel }}
+<sc-if value="{{ showAuthShell }}" hint-placeholder-val="{{ true }}">
 <div class="dpa-auth-shell" style="min-height:var(--dpa-page-height,100dvh);display:flex">
   <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:clamp(20px,5vw,56px)">
     <div style="display:flex;align-items:center;gap:10px">
@@ -107,7 +108,7 @@ a:hover{color:#1A36C4}
             </div>
             <div>
               <label for="se" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Adresse e-mail</label>
-              <input id="se" type="email" autoComplete="email" placeholder="vous@commerce.fr" value="{{ f.suEmail }}" onChange="{{ F.suEmail }}" aria-invalid="{{ inv.suEmail }}" aria-describedby="se-err" style="width:100%;height:54px;padding:0 16px;border:1.5px solid {{ eb.suEmail }};border-radius:12px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
+              <input id="se" type="email" required autoComplete="email" placeholder="vous@commerce.fr" value="{{ f.suEmail }}" onChange="{{ F.suEmail }}" aria-invalid="{{ inv.suEmail }}" aria-describedby="se-err" style="width:100%;height:54px;padding:0 16px;border:1.5px solid {{ eb.suEmail }};border-radius:12px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
               <sc-if value="{{ err.suEmail }}" hint-placeholder-val="{{ false }}"><div id="se-err" role="alert" style="display:flex;gap:6px;align-items:center;margin-top:8px;color:#B42318;font-size:14px;font-weight:500"><span class="material-symbols-rounded" style="font-size:18px">error</span>{{ err.suEmail }}</div></sc-if>
             </div>
             <div>
@@ -655,6 +656,7 @@ a:hover{color:#1A36C4}
       </div>
     </sc-if>
     <sc-if value="{{ s.home }}" hint-placeholder-val="{{ false }}">
+      {{ mfaEnrollmentPanel }}
 <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
     <div style="max-width:1160px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:24px">
       <div>
@@ -2599,16 +2601,22 @@ class Component extends DCLogic {
   onAuthEvent(ev,session){
     if(this.state.demo||this._settingPassword) return;
     if(ev==='PASSWORD_RECOVERY'||(session&&this.api.recoveryPending)){ this._liveUid=null; this.setState({screen:'reset',busy:false,err:{},f:{...this.state.f,pwdNew:'',pwdConf:''}}); return; }
-    if(ev==='SIGNED_OUT'){ if(this.state.live) this.resetToLogin(); return; }
+    if(ev==='SIGNED_OUT'){ if(this.state.live||this.state.screen==='mfaChallenge') this.resetToLogin(); return; }
     if(session&&this.state.screen!=='workspaceError'&&(ev==='INITIAL_SESSION'||ev==='SIGNED_IN')&&!this._opening&&this._liveUid!==session.user.id) this.openLive(session);
   }
   resetToLogin(extra={}){ this._liveUid=null; this._req={}; useCalendar(false); this.setState({...this.initState(),w:window.innerWidth,remember:this.state.remember,screen:'login',...extra}); this.scrollTop(); }
   async openLive(session){
+    if(this._opening||!session)return;
     const api=this.api, user=session.user; this._lastWorkspaceSession=session; this._opening=true; this._liveUid=user.id; this._req={}; useCalendar(true);
     this.setState({busy:true,err:{}});
     try{
+      const mfa=api.mfa ? await api.mfa.status(session.access_token) : {active:false};
+      if(mfa.required){
+        this.setState({screen:'mfaChallenge',mfaChallenge:mfa,mfaActive:false,live:false,clients:[],busy:false});
+        return;
+      }
       const d=await api.loadAll(user);
-      const base={teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,primaryActivated:!!d.primaryActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',permissions:d.permissions||null,subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nIconBusy:false,nIconError:'',nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
+      const base={mfaActive:mfa.active,mfaChallenge:null,teamList:{active:[],pending:[]},teamLoading:false,teamLoaded:false,teamError:'',teamSelectedId:null,teamSelectedPendingId:null,teamPendingMode:'actions',teamPendingEmail:'',teamActionBusy:false,teamActionError:'',teamActionSuccess:'',teamPermissionDraft:{},teamPermissionBusy:false,teamPermissionError:'',teamPermissionSuccess:false,billedCount:d.billedCount||0,selectedActivated:!!d.selectedActivated,primaryActivated:!!d.primaryActivated,profiles:d.profiles||[],billingMerchantId:d.billingMerchantId,addingProfile:null,busy:false,live:true,demo:false,role:d.role||'owner',permissions:d.permissions||null,subscription:d.subscription||null,hasAccess:d.hasAccess===true,accessSource:d.accessSource||'none',manualExpiresAt:d.manualExpiresAt||null,billMsg:null,err:{},modal:null,toast:null,notifs:d.notifications||[],nIconBusy:false,nIconError:'',nfilter:'all',nf:null,cam:null,selId:null,q:'',filter:'all',
         consent:false,f:{...this.state.f,loginPwd:'',suPwd:'',pwdCur:'',pwdNew:'',pwdConf:'',joinFirst:'',joinEmail:''}};
       if(DPA_NATIVE_IOS&&(!d.merchant||!d.program||d.hasAccess!==true||d.program.designStatus==='draft')){
         const md=user.user_metadata||{}, biz=String(md.business_name||'').slice(0,120);
@@ -3473,9 +3481,9 @@ class Component extends DCLogic {
 
   renderVals(){
     const s=this.state, W=s.w, isDesk=W>=1024, isMob=!isDesk, scr=s.screen;
-    const names=['workspaceError','registration','nativeAccess','login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','joinLoading','joinMissing','notifs','notifNew','billing','subSuccess','subCancel','locked','designPaid','designCancel'];
+    const names=['mfaChallenge','workspaceError','registration','nativeAccess','login','signup','forgot','forgotSent','reset','signupSent','ob','designSent','obDone','home','clients','client','scanner','card','invite','more','settings','join','joinDone','joinLoading','joinMissing','notifs','notifNew','billing','subSuccess','subCancel','locked','designPaid','designCancel'];
     const S={}; names.forEach(k=>S[k]=scr===k);
-    S.auth=S.workspaceError||S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.bill=S.nativeAccess||S.billing||S.subSuccess||S.subCancel||S.designPaid||S.designCancel; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState&&!S.bill;
+    S.auth=S.mfaChallenge||S.workspaceError||S.login||S.signup||S.forgot||S.forgotSent||S.reset||S.signupSent; S.onb=S.ob||S.obDone||S.designSent; S.pub=S.join||S.joinDone; S.pubState=S.joinLoading||S.joinMissing; S.bill=S.nativeAccess||S.billing||S.subSuccess||S.subCancel||S.designPaid||S.designCancel; S.app=!S.auth&&!S.onb&&!S.pub&&!S.pubState&&!S.bill;
     // Belt and braces: a business screen never renders without a valid subscription.
     const locked=!!s.live&&!s.hasAccess;
     let lockKind=s.screen==='locked'?s.lockKind:null;
@@ -3728,6 +3736,14 @@ class Component extends DCLogic {
       offerAccessNote:secondaryBlocked?(!s.primaryActivated?'Le commerce principal n’est pas activé dans la facturation. Même si son accès à DPA Cards est autorisé manuellement, cela ne remplace pas l’activation de l’abonnement. Revenez au commerce principal pour vérifier son offre, ou contactez l’assistance si ces commerces servent aux tests.':'L’offre du commerce principal n’est plus active. Revenez au commerce principal pour vérifier son abonnement avant d’ajouter un établissement, ou contactez l’assistance.'):'',
       offerSwitchToPrimary:secondaryBlocked&&(s.profiles||[]).some(p=>p.id===s.billingMerchantId),
       switchToPrimary:()=>this.api.switchProfile(s.billingMerchantId),
+      showAuthShell:S.auth&&!S.mfaChallenge,
+      mfaChallengePanel:S.mfaChallenge&&this.api?.mfa?React.createElement(this.api.MerchantMfaPanel,{
+        api:this.api.mfa,challenge:s.mfaChallenge,onSignOut:()=>this.logoutLive(),
+        onVerified:async()=>this.openLive(await this.api.session()),
+      }):null,
+      mfaEnrollmentPanel:S.home&&s.live&&s.mfaActive===false&&this.api?.mfa?React.createElement(this.api.MerchantMfaPanel,{
+        key:m.id,api:this.api.mfa,onVerified:()=>this.setState({mfaActive:true}),
+      }):null,
       profileControl:s.live&&this.api&&s.profiles?.length>(DPA_NATIVE_IOS?1:0)?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,onAdd:this.beginAddProfile,hasAccess:s.hasAccess,accessSource:s.accessSource,
         needsActivation:!DPA_NATIVE_IOS&&s.role==='owner'&&!secondaryBlocked&&!!m.id&&m.id!==s.billingMerchantId&&!s.selectedActivated&&!s.hasAccess&&P&&(P.designStatus!=='draft'||designUnpaid(s.designReq)),
         onActivated:async()=>{const session=await this.api.session();await this.openLive(session);},initialChoice:s.initialChoice,onInitialDone:()=>this.setState({initialChoice:null})}):null,

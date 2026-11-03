@@ -23,6 +23,7 @@
 // server then creates that subscription. Prices are fixed server-side by plan; the browser
 // only names the plan. Secrets come from Edge Function secrets and are never logged.
 
+import { merchantSessionError } from '../_shared/merchant-session.js';
 import Stripe from 'npm:stripe@17.7.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { ADMIN_ALERT_EMAIL, sendEmail, simpleMail } from '../_shared/email.ts';
@@ -112,8 +113,11 @@ async function member(req: Request, ownerOnly = true, accountWide = true) {
   const auth = req.headers.get('authorization') ?? '';
   if (!/^Bearer\s+\S+/.test(auth)) throw new HttpError(401, 'not_authenticated');
   const userClient = createClient(SUPABASE_URL, PUBLISHABLE_KEY, { global: { headers: { Authorization: auth } }, auth: { persistSession: false, autoRefreshToken: false } });
-  const { data: { user } } = await userClient.auth.getUser(auth.replace(/^Bearer\s+/, ''));
-  if (!user) throw new HttpError(401, 'not_authenticated');
+  const token = auth.replace(/^Bearer\s+/, '');
+  const { data: { user }, error } = await userClient.auth.getUser(token);
+  if (error || !user) throw new HttpError(401, 'not_authenticated');
+  const sessionError = merchantSessionError(user, token);
+  if (sessionError) throw new HttpError(403, sessionError);
   const m = await selectedMembership(admin,req,user.id);
   if (!m) throw new HttpError(403, 'no_merchant');
   if (ownerOnly && m.role !== 'owner') throw new HttpError(403, 'owner_only');
