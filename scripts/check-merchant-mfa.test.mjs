@@ -5,7 +5,7 @@ import test from 'node:test';
 import {runInNewContext} from 'node:vm';
 import {PGlite} from '@electric-sql/pglite';
 import {merchantMfa} from '../src/merchant-mfa.js';
-import {hasVerifiedSecondFactor, merchantSessionError} from '../supabase/functions/_shared/merchant-session.js';
+import {merchantSessionError} from '../supabase/functions/_shared/merchant-session.js';
 
 test('a password-only session is challenged before a verified factor can be used', async () => {
   const ok = data => ({data, error: null});
@@ -69,19 +69,24 @@ test('customer contacts are returned only for the verified owner’s selected co
   assert.equal(response.headers.get('cache-control'), 'private, no-store');
 });
 
-test('admin endpoints require AAL2 even for an authorized account with no enrolled factor', async () => {
+test('admin endpoints require AAL2 after activation and accept authorized accounts without a verified factor', async () => {
   const wallet = readFileSync(new URL('../supabase/functions/wallet/index.ts', import.meta.url), 'utf8');
   const source = wallet.slice(wallet.indexOf('async function requireAdmin('), wallet.indexOf('// Sales tracking, commission'));
   let level = 'aal1';
+  let factors = [];
   const requireAdmin = runInNewContext(stripTypeScriptTypes(source) + '\nrequireAdmin', {
     authUser: async () => ({
-      user: {email: 'admin@example.test', email_confirmed_at: '2026-11-03', factors: []},
+      user: {email: 'admin@example.test', email_confirmed_at: '2026-11-03', factors},
       token: 'header.' + Buffer.from(JSON.stringify({aal: level})).toString('base64url') + '.signature',
     }),
     admin: {from: () => ({select: () => ({eq: () => ({maybeSingle: async () => ({data: {role: 'admin'}})})})})},
     HttpError: class extends Error {constructor(status, code) {super(code); this.status = status;}},
-    hasVerifiedSecondFactor,
+    merchantSessionError,
   });
+  assert.equal((await requireAdmin({})).dpaRole, 'admin');
+  factors = [{status: 'unverified'}];
+  assert.equal((await requireAdmin({})).dpaRole, 'admin');
+  factors = [{status: 'verified'}];
   await assert.rejects(requireAdmin({}), {message: 'mfa_required', status: 403});
   level = 'aal2';
   assert.equal((await requireAdmin({})).dpaRole, 'admin');

@@ -96,13 +96,37 @@ const mfaContainer = document.getElementById('admin-mfa');
 const adminMfa = merchantMfa(sb.auth, uri => QRCode.toDataURL(uri));
 const AdminMfaPanel = makeMerchantMfaPanel(window.React);
 const mfaRoot = window.ReactDOM.createRoot(mfaContainer);
+const reminderContainer = document.getElementById('admin-mfa-reminder');
+const reminderRoot = window.ReactDOM.createRoot(reminderContainer);
+let dismissedFor = null;
+let dashboardUserId = null;
+
+function hideReminder() {
+  if (reminderContainer.hidden) return;
+  reminderContainer.hidden = true;
+  reminderRoot.render(null);
+}
+
+function showReminder(userId) {
+  if (dismissedFor === userId || !reminderContainer.hidden) return;
+  reminderContainer.hidden = false;
+  reminderRoot.render(window.React.createElement(AdminMfaPanel, {
+    key: userId, api: adminMfa,
+    onVerified: () => refreshAccess(true),
+    onDismiss: () => {
+      dismissedFor = userId;
+      hideReminder();
+    },
+  }));
+}
 
 function hideMfa() {
   mfaContainer.hidden = true;
   mfaRoot.render(null);
 }
 
-function showMfa(status, userId) {
+function showMfaChallenge(status, userId) {
+  hideReminder();
   loading.style.display = 'none';
   form.style.display = 'none';
   denied.style.display = 'none';
@@ -110,10 +134,9 @@ function showMfa(status, userId) {
   root.style.display = 'flex';
   mfaContainer.hidden = false;
   mfaRoot.render(window.React.createElement(AdminMfaPanel, {
-    key: userId + (status.required ? ':verify' : ':enroll'),
+    key: userId,
     api: adminMfa,
-    admin: true,
-    challenge: status.required ? status : null,
+    challenge: status,
     onVerified: () => refreshAccess(true),
     onSignOut: logoutAdmin,
   }));
@@ -122,6 +145,7 @@ function showMfa(status, userId) {
 
 function showLogin(msg = '') {
   hideMfa();
+  hideReminder();
   loading.style.display = 'none';
   denied.style.display = 'none';
   form.style.display = 'flex';
@@ -132,6 +156,7 @@ function showLogin(msg = '') {
 
 function showDenied() {
   hideMfa();
+  hideReminder();
   loading.style.display = 'none';
   form.style.display = 'none';
   denied.style.display = 'block';
@@ -199,7 +224,11 @@ async function refreshAccess(force = false) {
     const { data: { session }, error } = await sb.auth.getSession();
     if (stale()) return;
     if (error) throw error;
-    if (!session?.user) return showLogin();
+    if (!session?.user) {
+      dismissedFor = null;
+      dashboardUserId = null;
+      return showLogin();
+    }
 
     const authorized = await isAuthorized(session.user);
     if (stale()) return;
@@ -207,8 +236,17 @@ async function refreshAccess(force = false) {
 
     const status = await adminMfa.status(session.access_token);
     if (stale()) return;
-    if (status.active) showApp();
-    else showMfa(status, session.user.id);
+    if (status.required) return showMfaChallenge(status, session.user.id);
+    if (dashboardUserId !== session.user.id) {
+      hideReminder();
+      dismissedFor = null;
+      dashboardUserId = session.user.id;
+      showApp();
+    } else if (app.style.display !== 'block') {
+      showApp();
+    }
+    if (status.active) hideReminder();
+    else showReminder(session.user.id);
   } catch {
     if (!stale()) showLogin('Impossible de vérifier la sécurité du compte. Réessayez.');
   }
@@ -329,6 +367,8 @@ function linkErrorMessage(error) {
 
 async function logoutAdmin() {
   ++accessCheck;
+  dismissedFor = null;
+  dashboardUserId = null;
   await sb.auth.signOut({ scope: 'local' });
   showLogin();
 }

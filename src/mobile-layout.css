@@ -31,3 +31,35 @@ html.dpa-native-ios .dpa-mobile-header{background:#F6F5F1!important}
 .dpa-mfa-panel input,.dpa-mfa-panel select{display:block;margin-top:6px;padding:10px;border:1px solid #D4D1C9;border-radius:8px;max-width:100%}
 .dpa-mfa-button{padding:10px 14px;min-height:44px;margin:4px 8px 4px 0;border:0;border-radius:10px;background:#2448F0;color:white;font-weight:700}
 .dpa-mfa-button:disabled{opacity:.55}
+
+.dpa-mfa-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(calc(100% - 32px), 450px);
+  max-height: calc(100dvh - 32px);
+  padding: 28px 22px 22px;
+  text-align: center;
+  font-family: "Hanken Grotesk", system-ui, sans-serif;
+  color: #1c1f24;
+  box-shadow: 0 18px 60px #14161c35;
+}
+.dpa-mfa-dialog::backdrop { background: #171a295e; }
+.dpa-mfa-dialog .dpa-mfa-logo { display: block; width: auto; height: 40px; margin: 0 auto 16px; }
+.dpa-mfa-dialog input, .dpa-mfa-dialog select { margin-inline: auto; text-align: center; }
+.dpa-mfa-dialog .dpa-mfa-button { margin-inline: 4px; }
+.dpa-mfa-warning { background: #f1f3ff; padding: 12px; border-radius: 12px; font-size: 14px; }
+.dpa-mfa-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f4f3f0;
+  color: #1c1f24;
+  font: 26px/1 system-ui, sans-serif;
+  cursor: pointer;
+}
