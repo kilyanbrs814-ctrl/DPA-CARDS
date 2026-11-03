@@ -425,6 +425,7 @@ async function rpc(fn, args) {
   return data;
 }
 
+const dashboard = makeDashboardInsights(window.React);
 const api = {
   configured,
   mfa: configured ? merchantMfa(sb.auth, uri => QRCode.toDataURL(uri)) : null,
@@ -462,7 +463,8 @@ const api = {
     if(error)throw error;return toProgram(data);
   },
   loadAll,
-  DashboardInsights: makeDashboardInsights(window.React).Merchant,
+  DashboardInsights: dashboard.Merchant,
+  DashboardOverview: dashboard.Overview,
   ProfileControls: makeProfileControls(window.React),
   WalletRecoveryPanel: makeWalletRecoveryPanel(window.React),
   switchProfile: id => changeProfile(localStorage,window.location,profileUser.id,id,memberships),
