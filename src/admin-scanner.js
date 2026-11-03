@@ -5,7 +5,7 @@ import { makeCameraView,requestCamera,parseCode,canUseCamera } from './scanner.j
 // remains the only place where real paid balances are credited.
 export function makeAdminScanner(React,api){
   const h=React.createElement,CameraView=makeCameraView(React);
-  const cardBox={background:'#FFFFFF',border:'1px solid #E4E1DA',borderRadius:18,padding:20};
+  const cardBox={borderRadius:18,padding:20};
   const action=(label,fn,dark=false,disabled=false)=>h('button',{type:'button',disabled,onClick:fn,
     style:{borderRadius:12,minHeight:46,border:dark?'none':'1.5px solid #D4D1C9',background:dark?'#2448F0':'#FFFFFF',color:dark?'#FFFFFF':'#1C1F24',fontWeight:700,padding:'0 16px',cursor:disabled?'not-allowed':'pointer'}},label);
   return function AdminScanner(){
@@ -45,7 +45,7 @@ export function makeAdminScanner(React,api){
     return h('section',{style:{display:'flex',flexDirection:'column',gap:18},'data-admin-scanner':true},
       h('div',null,h('h1',{style:{fontSize:34,fontWeight:800,margin:'0 0 6px'}},'Scanner une carte'),
         h('p',{style:{margin:0,color:'#5E636B',fontSize:15}},'Scannez le QR code d’un client ou d’une carte test depuis l’administration DPA Cards.')),
-      h('div',{style:cardBox},
+      h('div',{className:'dpa-glass-surface',style:cardBox},
         h('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
           action(stream?'Redémarrer la caméra':'Ouvrir la caméra',start,true,loading),
           stream&&action('Arrêter la caméra',stop,false,loading)),
@@ -57,7 +57,7 @@ export function makeAdminScanner(React,api){
               style:{height:48,width:'100%',boxSizing:'border-box',border:'1.5px solid #D4D1C9',borderRadius:10,padding:'0 12px',fontSize:15}})),
           action(loading?'Recherche…':'Rechercher',()=>lookup(code),true,loading)),
         status&&h('p',{role:'status',style:{color:'#2448F0',margin:'12px 0 0'}},status)),
-      c&&h('div',{style:cardBox},
+      c&&h('div',{className:'dpa-glass-surface',style:cardBox},
         h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}},
           h('h2',{style:{margin:0,fontSize:22}},result.kind==='test'?'Carte de démonstration':'Carte client · '+c.merchant),
           h('span',{style:{background:'#EEF1FF',color:'#2448F0',padding:'6px 12px',borderRadius:99,fontWeight:700}},result.kind==='test'?'TEST':'CARTE RÉELLE')),

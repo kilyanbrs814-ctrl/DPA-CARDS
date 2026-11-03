@@ -33,7 +33,7 @@ if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block">
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;background:#F6F5F1;color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+html,body{margin:0;background:#FFFFFF;color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip}
 input,textarea,select,button{font:inherit;color:inherit}
 button{cursor:pointer}
 button:disabled{cursor:default}
@@ -46,7 +46,7 @@ a:hover{color:#1A36C4}
 @keyframes dpaUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 </style>
 </helmet>
-<div style="min-height:var(--dpa-page-height,100dvh);background:#F6F5F1;color:#1C1F24">
+<div style="min-height:var(--dpa-page-height,100dvh);background:#FFFFFF;color:#1C1F24">
 {{ profileControl }}
 {{ mfaChallengePanel }}
 <sc-if value="{{ showAuthShell }}" hint-placeholder-val="{{ true }}">
@@ -56,7 +56,7 @@ a:hover{color:#1A36C4}
       <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:44px;width:auto;display:block">
     </div>
     <div class="dpa-auth-center" style="flex:1;display:flex;align-items:center;justify-content:center;padding:40px 0">
-      <div style="width:100%;max-width:420px">
+      <div class="dpa-glass-surface dpa-glass-auth" style="width:100%;max-width:480px">
 
         <sc-if value="{{ s.login }}" hint-placeholder-val="{{ true }}">
           <h1 style="font-weight:800;font-size:clamp(34px,7vw,46px);line-height:1.04;letter-spacing:-0.035em;margin:0 0 12px;text-wrap:balance">Votre fidélité, simplement.</h1>
@@ -187,7 +187,7 @@ a:hover{color:#1A36C4}
 </sc-if>
 <sc-if value="{{ s.onb }}" hint-placeholder-val="{{ false }}">
 <div style="min-height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid #E4E1DA;background:#F6F5F1">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid #E4E1DA;background:#FFFFFF">
     <div style="display:flex;align-items:center;gap:10px">
       <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:38px;width:auto;display:block">
     </div>
@@ -389,7 +389,7 @@ a:hover{color:#1A36C4}
     <div style="width:56px;height:56px;border-radius:16px;background:#E4F3EB;color:#1F7A4F;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:30px">check</span></div>
     <h1 style="font-weight:800;font-size:clamp(28px,5vw,36px);letter-spacing:-0.03em;margin:0;text-wrap:balance">Votre programme est prêt</h1>
     <p style="margin:0;color:#5E636B;font-size:16px;line-height:1.5">Affichez ce QR code en boutique. Vos clients le scannent pour rejoindre {{ P.name }} et ajouter leur carte à leur Wallet.</p>
-    <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:24px;display:flex;flex-direction:column;align-items:center;gap:14px">
+    <div class="dpa-glass-surface" style="border-radius:20px;padding:24px;display:flex;flex-direction:column;align-items:center;gap:14px">
       <div style="line-height:0">{{ qrBizSm }}</div>
       <div style="font-family:'IBM Plex Mono',monospace;font-size:14px;color:#3E424A">{{ link }}</div>
     </div>
@@ -403,14 +403,14 @@ a:hover{color:#1A36C4}
 </div>
 </sc-if>
 <sc-if value="{{ s.bill }}" hint-placeholder-val="{{ false }}">
-<div style="min-height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column;background:#F6F5F1">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid #E4E1DA;background:#F6F5F1">
+<div style="min-height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column;background:#FFFFFF">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid #E4E1DA;background:#FFFFFF">
     <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:38px;width:auto;display:block">
     <div style="display:flex;align-items:center;gap:12px;font-size:14px;color:#5E636B"><span style="overflow-wrap:anywhere">{{ m.business }}</span><button type="button" onClick="{{ logout }}" style="min-height:40px;padding:0 12px;border:1.5px solid #D4D1C9;border-radius:10px;background:#FFFFFF;font-weight:600;font-size:14px;flex:none">Se déconnecter</button></div>
   </div>
   <sc-if value="{{ s.nativeAccess }}" hint-placeholder-val="{{ false }}">
   <div style="flex:1;display:grid;place-items:center;padding:32px 16px">
-    <section role="status" style="width:100%;max-width:480px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">
+    <section role="status" class="dpa-glass-surface" style="width:100%;max-width:480px;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px">
       <span class="material-symbols-rounded" aria-hidden="true" style="font-size:38px;color:#2448F0">lock_clock</span>
       <h1 style="margin:0;font-size:26px;font-weight:800">Espace non actif</h1>
       <p style="margin:0;color:#4A4E55;line-height:1.6">Cette application est réservée aux commerces dont l'accès DPA Cards est déjà actif.</p>
@@ -483,7 +483,7 @@ a:hover{color:#1A36C4}
   </sc-if>
   <sc-if value="{{ s.subSuccess }}" hint-placeholder-val="{{ false }}">
   <div style="flex:1;display:grid;place-items:center;padding:24px 16px">
-    <div role="status" style="width:100%;max-width:480px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center">
+    <div role="status" class="dpa-glass-surface" style="width:100%;max-width:480px;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center">
       <div style="width:60px;height:60px;border-radius:18px;background:{{ sv.bg }};color:{{ sv.fg }};display:grid;place-items:center"><sc-if value="{{ sv.loading }}" hint-placeholder-val="{{ true }}">{{ spin }}</sc-if><sc-if value="{{ sv.notLoading }}" hint-placeholder-val="{{ false }}"><span class="material-symbols-rounded" style="font-size:32px">{{ sv.icon }}</span></sc-if></div>
       <h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em;line-height:1.15">{{ sv.title }}</h1>
       <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">{{ sv.text }}</p>
@@ -495,7 +495,7 @@ a:hover{color:#1A36C4}
   </sc-if>
   <sc-if value="{{ s.designPaid }}" hint-placeholder-val="{{ false }}">
   <div style="flex:1;display:grid;place-items:center;padding:24px 16px">
-    <div role="status" style="width:100%;max-width:480px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center">
+    <div role="status" class="dpa-glass-surface" style="width:100%;max-width:480px;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center">
       <div style="width:60px;height:60px;border-radius:18px;background:{{ dv.bg }};color:{{ dv.fg }};display:grid;place-items:center"><sc-if value="{{ dv.loading }}" hint-placeholder-val="{{ true }}">{{ spin }}</sc-if><sc-if value="{{ dv.notLoading }}" hint-placeholder-val="{{ false }}"><span class="material-symbols-rounded" style="font-size:32px">{{ dv.icon }}</span></sc-if></div>
       <h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em;line-height:1.15">{{ dv.title }}</h1>
       <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">{{ dv.text }}</p>
@@ -506,7 +506,7 @@ a:hover{color:#1A36C4}
   </sc-if>
   <sc-if value="{{ s.designCancel }}" hint-placeholder-val="{{ false }}">
   <div style="flex:1;display:grid;place-items:center;padding:24px 16px">
-    <div style="width:100%;max-width:480px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center">
+    <div class="dpa-glass-surface" style="width:100%;max-width:480px;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center">
       <div style="width:60px;height:60px;border-radius:18px;background:#FFF3DC;color:#8A5A00;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:32px">credit_card_off</span></div>
       <h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em;line-height:1.15">Le paiement n’a pas été finalisé.</h1>
       <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">Aucun montant n’a été débité et votre demande n’a pas été transmise à DPA Cards.</p>
@@ -517,7 +517,7 @@ a:hover{color:#1A36C4}
   </sc-if>
   <sc-if value="{{ s.subCancel }}" hint-placeholder-val="{{ false }}">
   <div style="flex:1;display:grid;place-items:center;padding:24px 16px">
-    <div style="width:100%;max-width:480px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center">
+    <div class="dpa-glass-surface" style="width:100%;max-width:480px;border-radius:24px;padding:32px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center">
       <div style="width:60px;height:60px;border-radius:18px;background:#FFF3DC;color:#8A5A00;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:32px">credit_card_off</span></div>
       <h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em;line-height:1.15">Le paiement n’a pas été finalisé.</h1>
       <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">Aucun montant n’a été débité. Vous pouvez reprendre quand vous le souhaitez.</p>
@@ -593,31 +593,32 @@ a:hover{color:#1A36C4}
 </div>
 </sc-if>
 <sc-if value="{{ s.app }}" hint-placeholder-val="{{ false }}">
-<div style="display:flex;min-height:var(--dpa-page-height,100dvh)">
+<div style="min-height:var(--dpa-page-height,100dvh)">
   <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
-    <aside style="width:264px;flex:none;position:sticky;top:0;height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column;gap:24px;padding:24px 16px;border-right:1px solid #E4E1DA;background:#F1EFEA">
-      <div style="display:flex;align-items:center;gap:10px;padding:0 8px">
-        <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:40px;width:auto;display:block">
+    <header class="dpa-desktop-bar dpa-glass-bar">
+      <div class="dpa-desktop-brand-group">
+        <img class="dpa-desktop-brand" src="/assets/dpa-cards-logo.png" alt="DPA Cards">
+        <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:700;color:#6B4E00">Mode démonstration</span></sc-if>
       </div>
-      <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" style="height:52px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:22px">qr_code_scanner</span>Scanner une carte</button></sc-if>
-      <nav aria-label="Navigation principale" style="display:flex;flex-direction:column;gap:4px">
+      <nav class="dpa-desktop-nav" aria-label="Navigation principale">
         <sc-for list="{{ deskNav }}" as="n" hint-placeholder-count="6">
-          <button type="button" onClick="{{ n.go }}" aria-current="{{ n.current }}" style="height:46px;padding:0 12px;border:1px solid {{ n.border }};border-radius:12px;background:{{ n.bg }};color:{{ n.fg }};font-weight:{{ n.weight }};font-size:15px;display:flex;align-items:center;gap:12px;text-align:left" style-hover="background:#FFFFFF"><span class="material-symbols-rounded" style="font-size:22px;color:{{ n.iconColor }}">{{ n.icon }}</span>{{ n.label }}</button>
+          <button type="button" class="dpa-glass-pill" onClick="{{ n.go }}" aria-current="{{ n.current }}">
+            <span class="material-symbols-rounded" aria-hidden="true">{{ n.icon }}</span>{{ n.label }}
+          </button>
         </sc-for>
       </nav>
-      <div style="margin-top:auto;display:flex;flex-direction:column;gap:12px">
-        <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px dashed #C9B37A;border-radius:12px;background:#FFF6DE;color:#6B4E00;font-size:13px;font-weight:600"><span class="material-symbols-rounded" style="font-size:18px">science</span>Mode démonstration</div></sc-if>
-        <a href="mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards" aria-label="Contacter le support DPA Cards par e-mail" style="align-self:flex-start;margin-left:8px;height:36px;padding:0 12px 0 10px;display:inline-flex;align-items:center;gap:6px;border-radius:14px 14px 14px 4px;background:#E8EDFF;color:#1A36C4;font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap" style-hover="background:#D9E1FF"><span class="material-symbols-rounded" style="font-size:19px">chat</span>Support</a>
-        <button type="button" onClick="{{ openProfile }}" aria-haspopup="{{ profilePopup }}" style="display:flex;align-items:center;gap:10px;padding:8px;border:0;border-radius:12px;background:transparent;text-align:left" style-hover="background:#FFFFFF">
-          <div style="width:38px;height:38px;border-radius:50%;background:#1C1F24;color:#FFFFFF;display:grid;place-items:center;font-weight:700;font-size:14px;flex:none">{{ mInitials }}</div>
-          <div style="min-width:0"><div style="font-weight:700;font-size:14px">{{ m.first }} {{ m.last }}</div><div style="font-size:13px;color:#5E636B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px">{{ m.business }}</div></div>
+      <div class="dpa-desktop-tools">
+        <a class="dpa-glass-pill" href="mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards" aria-label="Contacter le support DPA Cards par e-mail"><span class="material-symbols-rounded" aria-hidden="true">chat</span>Support</a>
+        <button type="button" class="dpa-desktop-profile dpa-glass-pill" onClick="{{ openProfile }}" aria-haspopup="{{ profilePopup }}">
+          <span class="dpa-desktop-avatar" aria-hidden="true">{{ mInitials }}</span>
+          <span style="min-width:0;text-align:left"><span class="dpa-desktop-profile-name" style="display:block;font-weight:750">{{ m.first }} {{ m.last }}</span><span class="dpa-desktop-profile-name" style="display:block;font-size:12px;color:#525C6D">{{ m.business }}</span></span>
         </button>
       </div>
-    </aside>
+    </header>
   </sc-if>
   <main style="flex:1;min-width:0;padding-bottom:{{ mainPadB }}">
     <sc-if value="{{ mShowBar }}" hint-placeholder-val="{{ false }}">
-      <header class="dpa-mobile-header" style="position:sticky;top:0;z-index:20;padding-top:var(--dpa-safe-top,env(safe-area-inset-top));background:rgba(246,245,241,0.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid #E4E1DA">
+      <header class="dpa-mobile-header dpa-glass-bar" style="position:sticky;top:0;z-index:20;padding-top:var(--dpa-safe-top,env(safe-area-inset-top))">
         <div style="max-width:640px;margin:0 auto;height:56px;padding:0 8px;display:flex;align-items:center;gap:4px">
           <sc-if value="{{ mBar.hasBack }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ mBar.back }}" aria-label="Retour" style="width:44px;height:44px;flex:none;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;color:#1C1F24" style-active="background:#ECEAE4"><span style="font-size:13px;font-weight:700">Retour</span></button></sc-if>
           <sc-if value="{{ mBar.logo }}" hint-placeholder-val="{{ false }}"><img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:34px;width:auto;display:block;margin-left:8px"></sc-if>
@@ -644,7 +645,7 @@ a:hover{color:#1A36C4}
       <div style="max-width:1160px;margin:0 auto;padding:clamp(14px,3vw,24px) clamp(16px,4vw,40px) 0">
         <div role="status" style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;padding:16px 18px;border-radius:18px;background:{{ homeDesign.bg }};border:1px solid {{ homeDesign.border }}">
           <div style="width:44px;height:44px;border-radius:12px;background:#FFFFFF;color:{{ homeDesign.fg }};display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:24px">{{ homeDesign.icon }}</span></div>
-          <div style="flex:1 1 240px;min-width:0"><div style="font-weight:700;font-size:16px;color:{{ homeDesign.fg }}">{{ homeDesign.title }}</div><div style="margin-top:2px;font-size:14px;color:#3E424A;line-height:1.45">{{ homeDesign.text }}</div><div style="margin-top:6px;font-size:13px;color:#5E636B">{{ homeDesign.meta }}</div></div><sc-if value="{{ homeDesign.cta }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ homeDesign.act }}" disabled="{{ busy }}" aria-busy="{{ busy }}" style="align-self:center;min-height:46px;padding:0 18px;border:0;border-radius:12px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:15px;flex:none;display:flex;align-items:center;gap:8px" style-hover="background:#1A36C4"><sc-if value="{{ homeDesign.spin }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ homeDesign.cta }}</button></sc-if><sc-if value="{{ homeDesign.alt }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ homeDesign.altAct }}" disabled="{{ busy }}" style="align-self:center;min-height:46px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;color:#1C1F24;font-weight:600;font-size:15px;flex:none" style-hover="border-color:#1C1F24">{{ homeDesign.alt }}</button></sc-if><sc-if value="{{ homeDesign.ask }}" hint-placeholder-val="{{ false }}"><div role="group" aria-label="Annuler la demande de création sur mesure" style="flex:1 1 100%;display:flex;flex-direction:column;gap:12px;padding:14px 16px;border-radius:14px;background:#FFFFFF;border:1px solid #E4E1DA"><p style="margin:0;font-size:15px;color:#1C1F24;line-height:1.5">Votre demande de création sur mesure sera annulée. Vous pourrez personnaliser votre carte vous-même.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" onClick="{{ homeDesign.confirm }}" disabled="{{ busy }}" aria-busy="{{ busy }}" style="min-height:46px;padding:0 18px;border:0;border-radius:12px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>Annuler ma demande</button><button type="button" onClick="{{ homeDesign.keep }}" disabled="{{ busy }}" style="min-height:46px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;color:#1C1F24;font-weight:600;font-size:15px">Garder ma demande</button></div></div></sc-if>
+          <div style="flex:1 1 240px;min-width:0"><div style="font-weight:700;font-size:16px;color:{{ homeDesign.fg }}">{{ homeDesign.title }}</div><div style="margin-top:2px;font-size:14px;color:#3E424A;line-height:1.45">{{ homeDesign.text }}</div><div style="margin-top:6px;font-size:13px;color:#5E636B">{{ homeDesign.meta }}</div></div><sc-if value="{{ homeDesign.cta }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ homeDesign.act }}" disabled="{{ busy }}" aria-busy="{{ busy }}" style="align-self:center;min-height:46px;padding:0 18px;border:0;border-radius:12px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:15px;flex:none;display:flex;align-items:center;gap:8px" style-hover="background:#1A36C4"><sc-if value="{{ homeDesign.spin }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ homeDesign.cta }}</button></sc-if><sc-if value="{{ homeDesign.alt }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ homeDesign.altAct }}" disabled="{{ busy }}" style="align-self:center;min-height:46px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;color:#1C1F24;font-weight:600;font-size:15px;flex:none" style-hover="border-color:#1C1F24">{{ homeDesign.alt }}</button></sc-if><sc-if value="{{ homeDesign.ask }}" hint-placeholder-val="{{ false }}"><div role="group" aria-label="Annuler la demande de création sur mesure" class="dpa-glass-surface" style="flex:1 1 100%;display:flex;flex-direction:column;gap:12px;padding:14px 16px;border-radius:14px;border:1px solid #E4E1DA"><p style="margin:0;font-size:15px;color:#1C1F24;line-height:1.5">Votre demande de création sur mesure sera annulée. Vous pourrez personnaliser votre carte vous-même.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button type="button" onClick="{{ homeDesign.confirm }}" disabled="{{ busy }}" aria-busy="{{ busy }}" style="min-height:46px;padding:0 18px;border:0;border-radius:12px;background:#1C1F24;color:#FFFFFF;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>Annuler ma demande</button><button type="button" onClick="{{ homeDesign.keep }}" disabled="{{ busy }}" style="min-height:46px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;color:#1C1F24;font-weight:600;font-size:15px">Garder ma demande</button></div></div></sc-if>
         </div>
       </div>
     </sc-if>
@@ -675,7 +676,7 @@ a:hover{color:#1A36C4}
 
         <section aria-label="Statistiques de fidélisation" style="display:flex;flex-direction:column;gap:16px;min-width:0">
           {{ dashboardInsights }}
-          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:14px">
+          <section class="dpa-glass-surface" style="border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:14px">
             <h3 style="margin:0;font-size:17px;font-weight:750">Fréquentation par client</h3>
             <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
               <label style="font-size:13px;color:#4A4E55;font-weight:600">Année <select value="{{ analyticsYear }}" onChange="{{ setAnalyticsYear }}" aria-label="Choisir une année" style="margin-left:6px;border:1px solid #D4D1C9;border-radius:9px;background:#FFFFFF;padding:8px;min-height:40px"><sc-for list="{{ analyticsYears }}" as="y"><option value="{{ y.value }}">{{ y.label }}</option></sc-for></select></label>
@@ -695,7 +696,7 @@ a:hover{color:#1A36C4}
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:20px;align-items:start">
         <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
-        <section aria-labelledby="act-h" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px">
+        <section aria-labelledby="act-h" class="dpa-glass-surface" style="border-radius:20px;padding:20px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
             <h2 id="act-h" style="margin:0;font-weight:700;font-size:18px">Dernières activités</h2>
             <button type="button" onClick="{{ toClients }}" style="border:0;background:none;padding:8px;color:#2448F0;font-weight:600;font-size:14px">Voir les clients</button>
@@ -716,7 +717,7 @@ a:hover{color:#1A36C4}
           </ul>
         </section>
         <sc-if value="{{ canEnrollHome }}">
-          <section aria-label="Ajouter un client depuis l’accueil" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
+          <section aria-label="Ajouter un client depuis l’accueil" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
             <h2 style="margin:0;font-size:20px;font-weight:800">Ajouter un client</h2>
             <p style="margin:0;color:#5E636B;font-size:14px;line-height:1.5">Le client peut scanner ce QR code avec son téléphone, ou remplir le formulaire ci-dessous avec son accord.</p>
             <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
@@ -746,7 +747,7 @@ a:hover{color:#1A36C4}
         </sc-if>
         </div>
         <div style="display:flex;flex-direction:column;gap:20px">
-          <section aria-label="Ma carte" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
+          <section aria-label="Ma carte" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
             <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-weight:700;font-size:18px">Ma carte</h2></div>
             <div style="max-width:320px;width:100%;align-self:center"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ homeCard }}" hint-size="100%,260px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdHome }}</sc-if></div>
             <div style="font-size:14px;color:#4A4E55;text-align:center">{{ ruleText }} · aperçu indicatif</div>
@@ -754,7 +755,7 @@ a:hover{color:#1A36C4}
         <a href="{{ cardChangeUrl }}" style="min-height:48px;padding:12px 14px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;color:#2448F0;font-weight:700;font-size:14px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;line-height:1.4"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:21px;flex:none">edit_note</span>Demander la modification de ma carte</a>
           </section>
           <sc-if value="{{ canInviteEmployee }}" hint-placeholder-val="{{ false }}">
-        <section aria-label="Employés" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:15px;min-width:0">
+        <section aria-label="Employés" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:15px;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
             <h2 style="margin:0;font-weight:800;font-size:19px">Employés</h2>
             <button type="button" onClick="{{ refreshTeam }}" disabled="{{ teamLoading }}" style="min-height:42px;padding:0 12px;border:1px solid #D4D1C9;border-radius:11px;background:#FFFFFF;color:#2448F0;font-weight:600;font-size:13px">Actualiser</button>
@@ -803,7 +804,7 @@ a:hover{color:#1A36C4}
         <div style="font-size:14px;color:#5E636B;font-weight:500">{{ todayLabel }} · Bonjour {{ m.first }}</div>
         <h1 style="margin:4px 0 0;font-weight:800;font-size:28px;letter-spacing:-0.03em;line-height:1.1;text-wrap:balance;overflow-wrap:anywhere">{{ m.business }}</h1>
       </div>
-      <section aria-labelledby="mcard-h" style="width:100%;min-width:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:14px">
+      <section aria-labelledby="mcard-h" class="dpa-glass-surface" style="width:100%;min-width:0;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:14px">
         <h2 id="mcard-h" style="margin:0;font-weight:700;font-size:18px">Ma carte</h2>
         <div style="max-width:320px;width:100%;align-self:center"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ homeCard }}" hint-size="100%,260px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdHome }}</sc-if></div>
         <div style="width:100%;font-size:14px;color:#4A4E55;text-align:center;overflow-wrap:anywhere">{{ ruleText }} · aperçu indicatif</div>
@@ -811,7 +812,7 @@ a:hover{color:#1A36C4}
         <a href="{{ cardChangeUrl }}" style="min-height:48px;padding:12px 14px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;color:#2448F0;font-weight:700;font-size:14px;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:8px;text-align:center;line-height:1.4"><span class="material-symbols-rounded" aria-hidden="true" style="font-size:21px;flex:none">edit_note</span>Demander la modification de ma carte</a>
       </section>
       <sc-if value="{{ canInviteEmployee }}" hint-placeholder-val="{{ false }}">
-        <section aria-label="Employés" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:15px;min-width:0">
+        <section aria-label="Employés" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:15px;min-width:0">
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
             <h2 style="margin:0;font-weight:800;font-size:19px">Employés</h2>
             <button type="button" onClick="{{ refreshTeam }}" disabled="{{ teamLoading }}" style="min-height:42px;padding:0 12px;border:1px solid #D4D1C9;border-radius:11px;background:#FFFFFF;color:#2448F0;font-weight:600;font-size:13px">Actualiser</button>
@@ -856,7 +857,7 @@ a:hover{color:#1A36C4}
       </div>
         <section aria-label="Statistiques de fidélisation" style="display:flex;flex-direction:column;gap:16px;min-width:0">
           {{ dashboardInsights }}
-          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:14px">
+          <section class="dpa-glass-surface" style="border-radius:18px;padding:clamp(14px,3vw,20px);display:flex;flex-direction:column;gap:14px">
             <h3 style="margin:0;font-size:17px;font-weight:750">Fréquentation par client</h3>
             <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
               <label style="font-size:13px;color:#4A4E55;font-weight:600">Année <select value="{{ analyticsYear }}" onChange="{{ setAnalyticsYear }}" aria-label="Choisir une année" style="margin-left:6px;border:1px solid #D4D1C9;border-radius:9px;background:#FFFFFF;padding:8px;min-height:40px"><sc-for list="{{ analyticsYears }}" as="y"><option value="{{ y.value }}">{{ y.label }}</option></sc-for></select></label>
@@ -880,10 +881,10 @@ a:hover{color:#1A36C4}
           <button type="button" onClick="{{ toClients }}" style="min-height:44px;padding:0 4px;border:0;background:none;color:#2448F0;font-weight:600;font-size:15px">Tous les clients</button>
         </div>
         <sc-if value="{{ noActivities }}" hint-placeholder-val="{{ false }}">
-          <div style="padding:28px 16px;text-align:center;color:#5E636B;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px"><span class="material-symbols-rounded" style="font-size:32px;color:#9A9EA6">history</span><div style="margin-top:8px;font-weight:600;color:#1C1F24">Aucune activité pour l’instant</div><div style="margin-top:4px;font-size:14px">Les passages et récompenses apparaîtront ici.</div></div>
+          <div class="dpa-glass-surface" style="padding:28px 16px;text-align:center;color:#5E636B;border-radius:18px"><span class="material-symbols-rounded" style="font-size:32px;color:#9A9EA6">history</span><div style="margin-top:8px;font-weight:600;color:#1C1F24">Aucune activité pour l’instant</div><div style="margin-top:4px;font-size:14px">Les passages et récompenses apparaîtront ici.</div></div>
         </sc-if>
         <sc-if value="{{ hasActivities }}" hint-placeholder-val="{{ true }}">
-          <ul style="list-style:none;margin:0;padding:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;overflow:hidden">
+          <ul class="dpa-glass-surface" style="list-style:none;margin:0;padding:0;border-radius:18px;overflow:hidden">
             <sc-for list="{{ mActivities }}" as="a" hint-placeholder-count="5">
               <li style="border-top:{{ a.bt }}">
                 <button type="button" onClick="{{ a.open }}" style="width:100%;min-height:64px;display:flex;align-items:center;gap:12px;padding:10px 14px;border:0;background:transparent;text-align:left" style-active="background:#F4F3EF">
@@ -965,7 +966,7 @@ a:hover{color:#1A36C4}
       <sc-if value="{{ scanV.notFound }}" hint-placeholder-val="{{ true }}">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px;align-items:start">
         <sc-if value="{{ scanPos }}" hint-placeholder-val="{{ false }}">
-<section aria-label="Scanner une carte au comptoir" onClick="{{ pos.wake }}" style="width:100%;background:#FFFFFF;color:#1C1F24;border:1px solid #E4E1DA;border-radius:24px;padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:22px;text-align:left">
+<section aria-label="Scanner une carte au comptoir" onClick="{{ pos.wake }}" class="dpa-glass-surface" style="width:100%;color:#1C1F24;border-radius:24px;padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:22px;text-align:left">
           <div style="display:flex;flex-direction:column;gap:14px">
             <div style="display:flex;gap:16px;align-items:flex-start">
               <div style="width:56px;height:56px;border-radius:16px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:30px">barcode_reader</span></div>
@@ -998,7 +999,7 @@ a:hover{color:#1A36C4}
         <sc-if value="{{ scanCam }}" hint-placeholder-val="{{ true }}">
         <div style="display:flex;flex-direction:column;gap:14px">
           <sc-if value="{{ scanV.perm }}" hint-placeholder-val="{{ true }}">
-            <div style="aspect-ratio:1;max-height:440px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:28px">
+            <div class="dpa-glass-surface" style="aspect-ratio:1;max-height:440px;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:28px">
               <div style="width:64px;height:64px;border-radius:18px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:32px">photo_camera</span></div>
               <h2 style="margin:0;font-weight:700;font-size:21px">Autoriser l’accès à la caméra</h2>
               <p style="margin:0;max-width:300px;color:#4A4E55;font-size:15px;line-height:1.5">La caméra sert uniquement à lire le QR code de la carte client.</p>
@@ -1009,7 +1010,7 @@ a:hover{color:#1A36C4}
             </div>
           </sc-if>
           <sc-if value="{{ scanV.denied }}" hint-placeholder-val="{{ false }}">
-            <div role="alert" style="aspect-ratio:1;max-height:440px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:28px">
+            <div role="alert" class="dpa-glass-surface" style="aspect-ratio:1;max-height:440px;border-radius:24px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:28px">
               <div style="width:64px;height:64px;border-radius:18px;background:#FCEBEA;color:#B42318;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:32px">no_photography</span></div>
               <h2 style="margin:0;font-weight:700;font-size:21px">{{ scanV.camTitle }}</h2>
               <p style="margin:0;max-width:320px;color:#4A4E55;font-size:15px;line-height:1.5">{{ scanV.camText }}</p>
@@ -1085,7 +1086,7 @@ a:hover{color:#1A36C4}
 </sc-if>
         <sc-if value="{{ scanV.notTestFound }}" hint-placeholder-val="{{ true }}">
         <sc-if value="{{ scanPos }}" hint-placeholder-val="{{ false }}">
-<section aria-label="Scanner une carte au comptoir" onClick="{{ pos.wake }}" style="width:100%;background:#FFFFFF;color:#1C1F24;border:1px solid #E4E1DA;border-radius:24px;padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:22px;text-align:left">
+<section aria-label="Scanner une carte au comptoir" onClick="{{ pos.wake }}" class="dpa-glass-surface" style="width:100%;color:#1C1F24;border-radius:24px;padding:clamp(20px,3vw,32px);display:flex;flex-direction:column;gap:22px;text-align:left">
           <div style="display:flex;flex-direction:column;gap:14px">
             <div style="display:flex;gap:16px;align-items:flex-start">
               <div style="width:56px;height:56px;border-radius:16px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:30px">barcode_reader</span></div>
@@ -1189,7 +1190,7 @@ a:hover{color:#1A36C4}
           <div style="width:56px;height:56px;border-radius:50%;background:{{ P.bg }};color:#1E1418;display:grid;place-items:center;font-weight:800;font-size:18px;flex:none">{{ sc.initials }}</div>
           <div style="min-width:0"><h2 style="margin:0;font-weight:800;font-size:30px;letter-spacing:-0.02em;line-height:1.05;overflow-wrap:anywhere">{{ sc.first }}</h2><div style="margin-top:4px;font-size:14px;color:#4A4E55">{{ P.name }} · <span style="font-family:'IBM Plex Mono',monospace;font-size:13px">{{ sc.card }}</span></div></div>
         </div>
-        <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px">
+        <div class="dpa-glass-surface" style="border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px">
           <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
             <div aria-live="polite" style="font-weight:800;font-size:46px;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums">{{ sc.value }} <span style="font-size:17px;font-weight:600;color:#4A4E55;letter-spacing:0">{{ P.mode }}</span></div>
             <div style="font-size:14px;color:#5E636B">Solde</div>
@@ -1234,7 +1235,7 @@ a:hover{color:#1A36C4}
         </sc-for>
       </div>
       <sc-if value="{{ emptyList }}" hint-placeholder-val="{{ false }}">
-        <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:40px 20px;text-align:center">
+        <div class="dpa-glass-surface" style="border-radius:20px;padding:40px 20px;text-align:center">
           <span class="material-symbols-rounded" style="font-size:36px;color:#9A9EA6">person_search</span>
           <div style="margin-top:10px;font-weight:700;font-size:17px">{{ emptyTitle }}</div>
           <div style="margin:6px auto 0;max-width:340px;color:#5E636B;font-size:15px;line-height:1.5">{{ emptyText }}</div>
@@ -1280,7 +1281,7 @@ a:hover{color:#1A36C4}
       </div>
       <div style="font-size:14px;color:#5E636B">{{ mListCount }}<sc-if value="{{ isDemo }}" hint-placeholder-val="{{ true }}"> · données fictives</sc-if></div>
       <sc-if value="{{ emptyList }}" hint-placeholder-val="{{ false }}">
-        <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:36px 20px;text-align:center">
+        <div class="dpa-glass-surface" style="border-radius:18px;padding:36px 20px;text-align:center">
           <span class="material-symbols-rounded" style="font-size:36px;color:#9A9EA6">person_search</span>
           <div style="margin-top:10px;font-weight:700;font-size:17px">{{ emptyTitle }}</div>
           <div style="margin:6px auto 0;max-width:300px;color:#5E636B;font-size:15px;line-height:1.5">{{ emptyText }}</div>
@@ -1288,7 +1289,7 @@ a:hover{color:#1A36C4}
         </div>
       </sc-if>
       <sc-if value="{{ hasList }}" hint-placeholder-val="{{ true }}">
-        <ul style="list-style:none;margin:0;padding:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;overflow:hidden">
+        <ul class="dpa-glass-surface" style="list-style:none;margin:0;padding:0;border-radius:18px;overflow:hidden">
           <sc-for list="{{ mList }}" as="c" hint-placeholder-count="6">
             <li style="border-top:{{ c.bt }}">
               <button type="button" onClick="{{ c.open }}" style="width:100%;min-height:70px;display:flex;align-items:center;gap:12px;padding:12px 12px 12px 14px;border:0;background:transparent;text-align:left" style-active="background:#F4F3EF">
@@ -1323,7 +1324,7 @@ a:hover{color:#1A36C4}
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px;align-items:start">
         <div style="display:flex;flex-direction:column;gap:16px">
-          <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <div class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px">
             <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-weight:800;font-size:38px;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums">{{ sel.value }} <span style="font-size:16px;color:#4A4E55;font-weight:600;letter-spacing:0">{{ P.mode }}</span></div><div style="font-size:14px;color:#5E636B">Solde</div></div>
             <sc-if value="{{ sel.showDots }}" hint-placeholder-val="{{ true }}"><div aria-hidden="true" style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px"><sc-for list="{{ sel.dots }}" as="dt" hint-placeholder-count="10"><div style="aspect-ratio:1;border-radius:50%;background:{{ dt.bg }};border:1.5px solid {{ dt.border }}"></div></sc-for></div></sc-if>
             <div style="display:flex;align-items:center;gap:8px;font-size:15px"><span class="material-symbols-rounded" style="font-size:20px;color:#2448F0">redeem</span>{{ sel.remaining }}</div>
@@ -1341,7 +1342,7 @@ a:hover{color:#1A36C4}
           </dl>
           <div style="max-width:300px;width:100%;align-self:center"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ selCard }}" hint-size="100%,420px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdSel }}</sc-if><div style="margin-top:10px;text-align:center;font-size:13px;color:#5E636B">Carte du client · aperçu indicatif</div>{{ cardRecoveryPanel }}<sc-if value="{{ canDelClient }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ askDelClient }}" style="margin:2px auto 0;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 10px;border:0;border-radius:10px;background:none;color:#B42318;font-weight:600;font-size:14px" style-hover="text-decoration:underline"><span class="material-symbols-rounded" style="font-size:18px">delete</span>Supprimer le client</button></sc-if></div>
         </div>
-        <section aria-labelledby="hist-h" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px">
+        <section aria-labelledby="hist-h" class="dpa-glass-surface" style="border-radius:20px;padding:20px">
           <h2 id="hist-h" style="margin:0 0 8px;font-weight:700;font-size:18px">Historique</h2>
           <ul style="list-style:none;margin:0;padding:0">
             <sc-for list="{{ sel.history }}" as="h" hint-placeholder-count="6">
@@ -1365,7 +1366,7 @@ a:hover{color:#1A36C4}
 <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
     <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
     <div style="max-width:640px;margin:0 auto;padding:12px 16px 16px;display:flex;flex-direction:column;gap:14px">
-      <section aria-label="Fidélité" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px">
+      <section aria-label="Fidélité" class="dpa-glass-surface" style="border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px">
         <div style="display:flex;align-items:center;gap:12px">
           <div style="width:52px;height:52px;border-radius:50%;background:{{ P.bg }};color:#1E1418;display:grid;place-items:center;font-weight:800;font-size:18px;flex:none">{{ sel.initials }}</div>
           <div style="min-width:0"><div style="font-weight:800;font-size:22px;letter-spacing:-0.02em;line-height:1.15;overflow-wrap:anywhere">{{ sel.full }}</div><div style="margin-top:2px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#4A4E55">{{ sel.card }}</div></div>
@@ -1376,7 +1377,7 @@ a:hover{color:#1A36C4}
         <div style="display:flex;align-items:center;gap:8px;font-size:15px"><span class="material-symbols-rounded" style="font-size:20px;color:#2448F0">redeem</span>{{ sel.remaining }}</div>
         <sc-if value="{{ sel.hasReward }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;border:1.5px solid #1F7A4F;background:#F2FAF5;color:#17583A;font-size:15px"><span class="material-symbols-rounded" style="font-size:22px">celebration</span><div><strong>À remettre :</strong> {{ P.reward }}</div></div></sc-if>
       </section>
-      <section aria-labelledby="mhist-h" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:6px 16px 8px">
+      <section aria-labelledby="mhist-h" class="dpa-glass-surface" style="border-radius:20px;padding:6px 16px 8px">
         <h2 id="mhist-h" style="margin:0;padding:12px 0 6px;font-weight:700;font-size:17px">Historique</h2>
         <ul style="list-style:none;margin:0;padding:0">
           <sc-for list="{{ sel.history }}" as="h" hint-placeholder-count="6">
@@ -1423,7 +1424,7 @@ a:hover{color:#1A36C4}
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:24px;align-items:start">
         <div style="display:flex;flex-direction:column;gap:18px">
-          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:18px">
+          <section class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:18px">
             <h2 style="margin:0;font-weight:700;font-size:17px">Programme</h2>
             <div><label for="dn" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Nom du programme</label><input id="dn" value="{{ d.name }}" onChange="{{ D.name }}" style="width:100%;height:52px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF"></div>
             <div><div style="font-weight:600;font-size:15px;margin-bottom:8px">Type de fidélité</div>
@@ -1439,7 +1440,7 @@ a:hover{color:#1A36C4}
             <div><label for="dr" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Libellé de la récompense</label><input id="dr" value="{{ d.reward }}" onChange="{{ D.reward }}" style="width:100%;height:52px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF"></div>
             <div><label for="dc" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Conditions d’utilisation</label><textarea id="dc" rows="3" value="{{ d.conditions }}" onChange="{{ D.conditions }}" style="width:100%;padding:12px 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-size:15px;line-height:1.5;outline:none;resize:vertical" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF"></textarea></div>
           </section>
-          <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:18px">
+          <section class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:18px">
             <h2 style="margin:0;font-weight:700;font-size:17px">Apparence</h2>
             <div><div style="font-weight:600;font-size:15px;margin-bottom:10px">Logo</div>
               <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -1497,7 +1498,7 @@ a:hover{color:#1A36C4}
       <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}"><div><h1 style="margin:0;font-weight:800;font-size:clamp(28px,5vw,36px);letter-spacing:-0.03em">Inviter mes clients</h1><div style="margin-top:4px;color:#5E636B;font-size:15px">Affichez ce QR code au comptoir ou partagez le lien.</div></div></sc-if>
       <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}"><p style="margin:0;color:#4A4E55;font-size:15px;line-height:1.5">Affichez ce QR code au comptoir ou partagez le lien.</p></sc-if>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px;align-items:start">
-        <section style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:24px;padding:24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center">
+        <section class="dpa-glass-surface" style="border-radius:24px;padding:24px;display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center">
           <span style="padding:5px 12px;border-radius:999px;background:#E8EDFF;color:#1A36C4;font-size:13px;font-weight:700">QR code du commerce · pour rejoindre le programme</span>
           <div style="padding:14px;border:1px solid #E4E1DA;border-radius:18px;line-height:0">{{ qrBiz }}</div>
           <div><div style="font-weight:700;font-size:17px">{{ P.name }}</div><div style="margin-top:4px;font-size:14px;color:#5E636B">{{ ruleText }}</div></div>
@@ -1513,11 +1514,11 @@ a:hover{color:#1A36C4}
         </section>
         <section aria-labelledby="qr-diff" style="display:flex;flex-direction:column;gap:12px">
           <h2 id="qr-diff" style="margin:0 0 4px;font-weight:700;font-size:18px">Deux QR codes, deux usages</h2>
-          <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:18px;display:flex;gap:14px">
+          <div class="dpa-glass-surface" style="border-radius:20px;padding:18px;display:flex;gap:14px">
             <div style="width:44px;height:44px;border-radius:12px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded">storefront</span></div>
             <div><div style="font-weight:700;font-size:16px">QR code du commerce</div><div style="margin-top:4px;font-size:15px;color:#4A4E55;line-height:1.5">Un seul pour toute la boutique. Affiché au comptoir, il permet à un nouveau client de rejoindre le programme et de créer sa carte.</div></div>
           </div>
-          <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:18px;display:flex;gap:14px">
+          <div class="dpa-glass-surface" style="border-radius:20px;padding:18px;display:flex;gap:14px">
             <div style="width:44px;height:44px;border-radius:12px;background:#EFEDE8;color:#1C1F24;display:grid;place-items:center;flex:none"><span class="material-symbols-rounded">badge</span></div>
             <div><div style="font-weight:700;font-size:16px">QR code personnel du client</div><div style="margin-top:4px;font-size:15px;color:#4A4E55;line-height:1.5">Unique à chaque client, il figure sur sa carte dans son Wallet. Vous le scannez en caisse pour identifier la carte et créditer un passage.</div></div>
           </div>
@@ -1529,7 +1530,7 @@ a:hover{color:#1A36C4}
 
     <sc-if value="{{ s.notifs }}" hint-placeholder-val="{{ false }}">
 
-    <section aria-labelledby="notif-logo-title" style="max-width:1000px;margin:18px auto 0;padding:18px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;display:flex;flex-direction:column;gap:12px;min-width:0">
+    <section aria-labelledby="notif-logo-title" class="dpa-glass-surface" style="max-width:1000px;margin:18px auto 0;padding:18px;border-radius:18px;display:flex;flex-direction:column;gap:12px;min-width:0">
       <h2 id="notif-logo-title" style="margin:0;font-size:18px;font-weight:800">Logo des notifications Apple Wallet</h2>
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
         <div style="width:76px;height:76px;border-radius:17px;background:#F6F5F1;border:1px solid #E4E1DA;display:grid;place-items:center;overflow:hidden;flex:none">
@@ -1558,7 +1559,7 @@ a:hover{color:#1A36C4}
       </div>
       <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ true }}"><div role="note" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px dashed #C9B37A;border-radius:14px;background:#FFFBF0;color:#5C4200;font-size:14px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:20px">science</span><div><strong>Données de démonstration.</strong> Historique fictif : aucune notification réelle n’est envoyée depuis ce prototype.</div></div></sc-if>
       <sc-if value="{{ nNoneAtAll }}" hint-placeholder-val="{{ false }}">
-        <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:44px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px">
+        <div class="dpa-glass-surface" style="border-radius:20px;padding:44px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px">
           <div style="width:56px;height:56px;border-radius:16px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:30px">notifications</span></div>
           <div style="font-weight:700;font-size:18px">Aucune notification pour le moment</div>
           <div style="max-width:380px;color:#5E636B;font-size:15px;line-height:1.5">Prévenez vos clients quand leur récompense est disponible ou qu’il y a du nouveau sur leur carte.</div>
@@ -1572,7 +1573,7 @@ a:hover{color:#1A36C4}
           </sc-for>
         </div>
         <sc-if value="{{ nFilterEmpty }}" hint-placeholder-val="{{ false }}">
-          <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:32px 20px;text-align:center;color:#5E636B;font-size:15px">Aucune notification dans cette catégorie.</div>
+          <div class="dpa-glass-surface" style="border-radius:20px;padding:32px 20px;text-align:center;color:#5E636B;font-size:15px">Aucune notification dans cette catégorie.</div>
         </sc-if>
         <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
           <sc-for list="{{ nRows }}" as="r" hint-placeholder-count="5">
@@ -1599,7 +1600,7 @@ a:hover{color:#1A36C4}
 <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
     <div style="max-width:640px;margin:0 auto;padding:14px 16px 16px;display:flex;flex-direction:column;gap:14px">
       <sc-if value="{{ nNoneAtAll }}" hint-placeholder-val="{{ false }}">
-        <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:36px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px">
+        <div class="dpa-glass-surface" style="border-radius:18px;padding:36px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px">
           <div style="width:56px;height:56px;border-radius:16px;background:#E8EDFF;color:#2448F0;display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:30px">notifications</span></div>
           <div style="font-weight:700;font-size:18px">Aucune notification pour le moment</div>
           <div style="max-width:320px;color:#5E636B;font-size:15px;line-height:1.5">Prévenez vos clients quand leur récompense est disponible ou qu’il y a du nouveau sur leur carte.</div>
@@ -1612,9 +1613,9 @@ a:hover{color:#1A36C4}
             <button type="button" onClick="{{ fl.pick }}" aria-pressed="{{ fl.pressed }}" style="min-height:44px;padding:0 13px;border-radius:999px;border:1.5px solid {{ fl.border }};background:{{ fl.bg }};color:{{ fl.fg }};font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px">{{ fl.label }}<span style="opacity:0.75;font-variant-numeric:tabular-nums">{{ fl.count }}</span></button>
           </sc-for>
         </div>
-        <sc-if value="{{ nFilterEmpty }}" hint-placeholder-val="{{ false }}"><div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:28px 20px;text-align:center;color:#5E636B;font-size:15px">Aucune notification dans cette catégorie.</div></sc-if>
+        <sc-if value="{{ nFilterEmpty }}" hint-placeholder-val="{{ false }}"><div class="dpa-glass-surface" style="border-radius:18px;padding:28px 20px;text-align:center;color:#5E636B;font-size:15px">Aucune notification dans cette catégorie.</div></sc-if>
         <sc-if value="{{ nHasRows }}" hint-placeholder-val="{{ true }}">
-          <ul style="list-style:none;margin:0;padding:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;overflow:hidden">
+          <ul class="dpa-glass-surface" style="list-style:none;margin:0;padding:0;border-radius:18px;overflow:hidden">
             <sc-for list="{{ mNRows }}" as="r" hint-placeholder-count="5">
               <li style="border-top:{{ r.bt }}">
                 <button type="button" onClick="{{ r.open }}" style="width:100%;min-height:76px;display:flex;align-items:center;gap:10px;padding:14px 12px 14px 16px;border:0;background:transparent;text-align:left" style-active="background:#F4F3EF">
@@ -1644,7 +1645,7 @@ a:hover{color:#1A36C4}
       <div style="display:grid;grid-template-columns:{{ nGridCols }};gap:24px;align-items:start">
         <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
 
-          <section aria-labelledby="ns1" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
+          <section aria-labelledby="ns1" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
             <h2 id="ns1" style="margin:0;font-weight:700;font-size:18px">1. Destinataires</h2>
             <div role="group" aria-label="Destinataires" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px">
               <sc-for list="{{ nAud }}" as="a" hint-placeholder-count="3">
@@ -1685,7 +1686,7 @@ a:hover{color:#1A36C4}
             <sc-if value="{{ nQuota.show }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:#FFF3DC;color:#5C4200;font-size:14px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:20px">warning</span>{{ nQuota.text }}</div></sc-if>
           </section>
 
-          <section aria-labelledby="ns2" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
+          <section aria-labelledby="ns2" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
             <h2 id="ns2" style="margin:0;font-weight:700;font-size:18px">2. Contenu</h2>
             <div>
               <div style="font-weight:600;font-size:15px;margin-bottom:8px">Modèles</div>
@@ -1710,7 +1711,7 @@ a:hover{color:#1A36C4}
             </div>
           </section>
 
-          <section aria-labelledby="ns3" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <section aria-labelledby="ns3" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px">
             <h2 id="ns3" style="margin:0;font-weight:700;font-size:18px">Réglages par Wallet</h2>
             <sc-if value="{{ nShowApple }}" hint-placeholder-val="{{ true }}">
               <div style="border:1px solid #E4E1DA;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px">
@@ -1733,7 +1734,7 @@ a:hover{color:#1A36C4}
             </sc-if>
           </section>
 
-          <section aria-labelledby="ns4" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px">
+          <section aria-labelledby="ns4" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px">
             <h2 id="ns4" style="margin:0;font-weight:700;font-size:18px">3. Envoi</h2>
             <div role="group" aria-label="Moment de l’envoi" style="display:flex;gap:8px;flex-wrap:wrap">
               <sc-for list="{{ nTiming }}" as="tm" hint-placeholder-count="2"><button type="button" onClick="{{ tm.pick }}" aria-pressed="{{ tm.pressed }}" style="min-height:44px;padding:0 16px;border-radius:999px;border:1.5px solid {{ tm.border }};background:{{ tm.bg }};color:{{ tm.fg }};font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px"><span class="material-symbols-rounded" style="font-size:18px">{{ tm.icon }}</span>{{ tm.label }}</button></sc-for>
@@ -1815,7 +1816,7 @@ a:hover{color:#1A36C4}
         <div style="width:56px;height:56px;border-radius:50%;background:#1C1F24;color:#FFFFFF;display:grid;place-items:center;font-weight:700;font-size:18px">{{ moreInitials }}</div>
         <div><h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em">{{ moreHeading }}</h1><div style="color:#5E636B;font-size:15px">{{ m.business }}</div></div>
       </div>
-      <ul style="list-style:none;margin:0;padding:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;overflow:hidden">
+      <ul class="dpa-glass-surface" style="list-style:none;margin:0;padding:0;border-radius:20px;overflow:hidden">
         <sc-for list="{{ moreItems }}" as="it" hint-placeholder-count="7">
           <li style="border-bottom:1px solid #EFEDE8">
             <button type="button" onClick="{{ it.run }}" style="width:100%;display:flex;align-items:center;gap:14px;padding:14px 18px;min-height:64px;border:0;background:transparent;text-align:left" style-hover="background:#F8F7F4">
@@ -1838,7 +1839,7 @@ a:hover{color:#1A36C4}
       <h1 style="margin:0;font-weight:800;font-size:clamp(26px,5vw,32px);letter-spacing:-0.03em">{{ secTitle }}</h1>
       </sc-if>
         <sc-if value="{{ sec.businessReadOnly }}" hint-placeholder-val="{{ false }}">
-          <section style="display:flex;flex-direction:column;gap:14px;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px">
+          <section class="dpa-glass-surface" style="display:flex;flex-direction:column;gap:14px;border-radius:20px;padding:20px">
             <div style="display:flex;gap:10px;align-items:flex-start;color:#4A4E55;font-size:14px;line-height:1.5">
               <span class="material-symbols-rounded" style="font-size:20px;color:#2448F0">lock</span>
               <span>Ces informations sont en lecture seule. Seul le responsable du commerce peut les modifier.</span>
@@ -1849,7 +1850,7 @@ a:hover{color:#1A36C4}
           </section>
         </sc-if>
       <sc-if value="{{ sec.form }}" hint-placeholder-val="{{ true }}">
-      <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:18px">
+      <div class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:18px">
         <sc-if value="{{ sec.profile }}" hint-placeholder-val="{{ true }}">
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px">
             <div><label for="p1" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Prénom</label><input id="p1" value="{{ sd.first }}" onChange="{{ SD.first }}" aria-invalid="{{ inv.sdfirst }}" style="width:100%;height:52px;padding:0 16px;border:1.5px solid {{ eb.sdfirst }};border-radius:12px;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF"><sc-if value="{{ err.sdfirst }}" hint-placeholder-val="{{ false }}"><div role="alert" style="margin-top:8px;color:#B42318;font-size:14px">{{ err.sdfirst }}</div></sc-if></div>
@@ -1873,7 +1874,7 @@ a:hover{color:#1A36C4}
       </div>
       </sc-if>
       <sc-if value="{{ secData }}" hint-placeholder-val="{{ false }}">
-      <section aria-labelledby="dz-data" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px">
+      <section aria-labelledby="dz-data" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px">
         <h2 id="dz-data" style="margin:0;font-weight:700;font-size:18px">Mes données</h2>
         <p style="margin:0;color:#4A4E55;font-size:15px;line-height:1.5">Téléchargez un fichier JSON contenant votre commerce, votre programme, vos clients, leurs cartes, leurs soldes et l’historique des opérations.</p>
         <button type="button" onClick="{{ exportData }}" disabled="{{ busy }}" style="align-self:flex-start;min-height:48px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">download</span>{{ exportLabel }}</button>
@@ -1885,7 +1886,7 @@ a:hover{color:#1A36C4}
       </section>
       </sc-if>
       <sc-if value="{{ sec.billing }}" hint-placeholder-val="{{ false }}">
-        <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px">
+        <div class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px">
           <sc-if value="{{ bs.loading }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;align-items:center;gap:10px;color:#5E636B;font-size:15px">{{ spin }}Chargement depuis Stripe…</div></sc-if>
           <dl style="margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:16px;font-size:15px">
             <sc-for list="{{ bs.rows }}" as="r" hint-placeholder-count="6"><dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">{{ r.k }}</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8;overflow-wrap:anywhere">{{ r.v }}</dd></sc-for>
@@ -1897,7 +1898,7 @@ a:hover{color:#1A36C4}
           </div>
           <div style="font-size:13px;color:#5E636B;line-height:1.45">{{ bs.portalHint }}</div>
         </div>
-        <section aria-labelledby="inv-h" style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:6px">
+        <section aria-labelledby="inv-h" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:6px">
           <h2 id="inv-h" style="margin:0 0 6px;font-weight:700;font-size:18px">Factures</h2>
           <sc-if value="{{ bs.noInvoices }}" hint-placeholder-val="{{ false }}"><div style="color:#5E636B;font-size:15px">Aucune facture pour le moment.</div></sc-if>
           <sc-for list="{{ bs.invoices }}" as="iv" hint-placeholder-count="0">
@@ -1909,7 +1910,7 @@ a:hover{color:#1A36C4}
         </section>
       </sc-if>
       <sc-if value="{{ sec.help }}" hint-placeholder-val="{{ false }}">
-        <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:20px;padding:6px 20px">
+        <div class="dpa-glass-surface" style="border-radius:20px;padding:6px 20px">
           <details style="border-bottom:1px solid #EFEDE8;padding:14px 0"><summary style="font-weight:600;font-size:16px;cursor:pointer;min-height:28px">Comment créditer un passage ?</summary><p style="margin:10px 0 0;color:#4A4E55;font-size:15px;line-height:1.5">Touchez « Scanner une carte », scannez le QR code personnel du client, puis validez avec « Ajouter un passage ». Le scan seul ne crédite rien.</p></details>
           <details style="border-bottom:1px solid #EFEDE8;padding:14px 0"><summary style="font-weight:600;font-size:16px;cursor:pointer;min-height:28px">Un passage a été ajouté par erreur</summary><p style="margin:10px 0 0;color:#4A4E55;font-size:15px;line-height:1.5">Ouvrez la fiche du client, choisissez « Corriger » sur l’opération concernée et indiquez un motif. La correction reste visible dans l’historique.</p></details>
           <details style="padding:14px 0"><summary style="font-weight:600;font-size:16px;cursor:pointer;min-height:28px">Mes clients doivent-ils installer une application ?</summary><p style="margin:10px 0 0;color:#4A4E55;font-size:15px;line-height:1.5">Non. La carte s’ajoute à Apple Wallet ou Google Wallet depuis la page d’inscription. Dans ce prototype, cette étape est simulée.</p></details>
@@ -1921,7 +1922,7 @@ a:hover{color:#1A36C4}
   </main>
 </div>
 <sc-if value="{{ mShowNav }}" hint-placeholder-val="{{ false }}">
-  <nav aria-label="Navigation principale" style="position:fixed;left:0;right:0;bottom:0;z-index:30;background:#FFFFFF;border-top:1px solid #E4E1DA;padding:6px 6px calc(6px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)));display:grid;grid-template-columns:repeat(5,minmax(0,1fr))">
+  <nav class="dpa-mobile-dock dpa-glass-bar" aria-label="Navigation principale">
     <sc-for list="{{ mobNav }}" as="n" hint-placeholder-count="5">
       <button type="button" onClick="{{ n.go }}" aria-current="{{ n.current }}" style="min-height:60px;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:4px 0">
         <span style="width:{{ n.iconW }};height:{{ n.iconH }};margin-top:{{ n.iconMt }};border-radius:999px;background:{{ n.iconBg }};color:{{ n.iconColor }};box-shadow:{{ n.iconShadow }};display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:24px;font-variation-settings:{{ n.iconFill }}">{{ n.icon }}</span></span>
@@ -1933,7 +1934,7 @@ a:hover{color:#1A36C4}
 </sc-if>
 <sc-if value="{{ mod.any }}" hint-placeholder-val="{{ false }}">
 <div onClick="{{ closeModal }}" style="position:fixed;inset:0;z-index:50;background:rgba(20,22,28,0.5);display:flex;align-items:{{ modalAlign }};justify-content:center;padding:0">
-  <div role="dialog" aria-modal="true" aria-labelledby="dlg-t" onClick="{{ stop }}" style="width:100%;max-width:460px;background:#FFFFFF;border-radius:{{ modalRadius }};padding:24px 22px calc(24px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)));display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 50px rgba(20,22,28,0.25);animation:dpaUp .2s ease-out;max-height:92vh;overflow:auto">
+  <div class="dpa-glass-sheet" role="dialog" aria-modal="true" aria-labelledby="dlg-t" onClick="{{ stop }}" style="width:100%;max-width:460px;border-radius:{{ modalRadius }};padding:24px 22px calc(24px + var(--dpa-safe-bottom,env(safe-area-inset-bottom)));display:flex;flex-direction:column;gap:16px;box-shadow:0 20px 50px rgba(20,22,28,0.25);animation:dpaUp .2s ease-out;max-height:92vh;overflow:auto">
     <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}"><div aria-hidden="true" style="width:40px;height:5px;border-radius:3px;background:#D4D1C9;align-self:center;margin:-10px 0 -4px;flex:none"></div></sc-if>
     <sc-if value="{{ mod.employee }}" hint-placeholder-val="{{ false }}">
       <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Ajouter un employé</h2>
@@ -2013,7 +2014,7 @@ a:hover{color:#1A36C4}
     <sc-if value="{{ mod.addClient }}" hint-placeholder-val="{{ false }}">
       <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Ajouter un client</h2>
       <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">Le client scanne ce QR code avec son téléphone pour créer sa carte, puis l’ajoute à son Wallet.</p>
-      <div style="align-self:center;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div class="dpa-glass-surface" style="align-self:center;border-radius:18px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px">
         <div style="line-height:0">{{ qrBizSm }}</div>
         <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;color:#3E424A">{{ link }}</div>
       </div>
@@ -2127,7 +2128,7 @@ a:hover{color:#1A36C4}
       <sc-if value="{{ gw.hasError }}" hint-placeholder-val="{{ false }}"><div role="alert" style="display:flex;gap:8px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:#FCEBEA;color:#A11D14;font-size:15px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:20px">error</span>{{ gw.error }}</div></sc-if>
       <sc-if value="{{ gw.ready }}" hint-placeholder-val="{{ false }}">
         <p style="margin:0;color:#3E424A;font-size:16px;line-height:1.5">{{ gw.intro }}</p>
-        <div style="align-self:center;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:12px;line-height:0">{{ gw.qr }}</div>
+        <div class="dpa-glass-surface" style="align-self:center;border-radius:18px;padding:12px;line-height:0">{{ gw.qr }}</div>
         <div style="display:flex;flex-direction:column;gap:10px">
           <a href="{{ gw.url }}" target="_blank" rel="noopener noreferrer" aria-label="Ajouter à Google Wallet" style="display:block;width:100%;max-width:290px;margin:0 auto;border-radius:12px;overflow:hidden;background:#000000;line-height:0"><img src="/assets/wallet-badge-google.png" width="580" height="180" alt="Ajouter à l’app Google Wallet" style="display:block;width:100%;height:auto"></a>
           <button type="button" onClick="{{ gw.copy }}" style="min-height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">content_copy</span>Copier le lien</button>
@@ -3602,7 +3603,8 @@ class Component extends DCLogic {
       return {...n,current:a?'page':undefined,labelColor:a?'#2448F0':'#5E636B',iconColor:c?'#FFFFFF':(a?'#2448F0':'#5E636B'),iconBg:c?'#2448F0':(a?'#E8EDFF':'transparent'),iconW:c?'56px':'52px',iconH:c?'56px':'32px',iconMt:c?'-26px':'0px',iconShadow:c?'0 6px 16px rgba(36,72,240,0.35)':'none',iconFill:a?"'FILL' 1":"'FILL' 0",go:go(n.k)}; });
     const deskDef=[{k:'home',label:'Accueil',icon:'home'},{k:'clients',label:'Clients',icon:'group'},{k:'scanner',label:'Scanner',icon:'qr_code_scanner'},{k:'notifs',label:'Notifications',icon:'notifications'},{k:'invite',label:'Inviter mes clients',icon:'qr_code_2'},{k:'more',label:'Paramètres',icon:'settings'}];
     const deskActive=scr==='client'?'clients':(scr==='settings'?'more':(scr==='notifNew'?'notifs':scr));
-    const deskNav=deskDef.filter(n=>(n.k!=='scanner'||canScan)&&(n.k!=='notifs'||canNotify)).map(n=>{ const a=deskActive===n.k; return {...n,current:a?'page':undefined,bg:a?'#FFFFFF':'transparent',fg:a?'#1C1F24':'#4A4E55',iconColor:a?'#2448F0':'#6B6F76',border:a?'#E4E1DA':'transparent',weight:a?'700':'500',go:go(n.k)}; });
+    const deskNav=deskDef.filter(n=>(n.k!=='scanner'||canScan)&&(n.k!=='notifs'||canNotify))
+      .map(n=>({...n,current:deskActive===n.k?'page':undefined,go:go(n.k)}));
 
     const openSec=k=>()=>this.go('settings',{section:k});
     const canManageProfiles=!!(s.live&&this.api&&s.profiles?.length>(DPA_NATIVE_IOS?1:0));

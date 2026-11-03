@@ -46,7 +46,7 @@ export function makeSales(React, api) {
   const { useState, useEffect, useMemo, useRef } = React;
   const h = React.createElement;
   const icon = (name, size, extra) => h('span', { className: 'material-symbols-rounded', 'aria-hidden': true, style: { fontSize: size || 20, lineHeight: 1, ...extra } }, name);
-  const card = (extra, ...kids) => h('section', { style: { background: '#FFFFFF', border: `1px solid ${C.line}`, borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 12, ...extra } }, ...kids);
+  const card = (extra, ...kids) => h('section', { className: 'dpa-glass-surface', style: { borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 12, ...extra } }, ...kids);
   const badge = ([label, bg, fg]) => h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, background: bg, color: fg, fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' } },
     h('span', { style: { width: 7, height: 7, borderRadius: '50%', background: fg } }), label);
   const btn = (label, onClick, { kind = 'secondary', disabled, ico, small } = {}) => h('button', { type: 'button', onClick, disabled,
@@ -70,7 +70,7 @@ export function makeSales(React, api) {
   function Modal({ title, onClose, children, width = 520 }) {
     useEffect(() => { const k = e => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, []);
     return h('div', { onClick: onClose, style: { position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(20,22,28,0.45)', display: 'grid', placeItems: 'center', padding: 16 } },
-      h('div', { role: 'dialog', 'aria-modal': true, 'aria-label': title, onClick: e => e.stopPropagation(), style: { width: '100%', maxWidth: width, maxHeight: '90vh', overflow: 'auto', background: '#FFFFFF', borderRadius: 20, padding: 22, display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 24px 60px rgba(20,22,28,0.3)' } },
+      h('div', { role: 'dialog', className: 'dpa-glass-sheet', 'aria-modal': true, 'aria-label': title, onClick: e => e.stopPropagation(), style: { width: '100%', maxWidth: width, maxHeight: '90vh', overflow: 'auto', borderRadius: 20, padding: 22, display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 24px 60px rgba(20,22,28,0.3)' } },
         h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 } },
           h('h2', { style: { margin: 0, fontSize: 21, fontWeight: 800, letterSpacing: '-0.02em' } }, title),
           h('button', { type: 'button', onClick: onClose, 'aria-label': 'Fermer', style: { width: 40, height: 40, border: 0, borderRadius: 12, background: C.chip, display: 'grid', placeItems: 'center' } }, icon('close'))),
