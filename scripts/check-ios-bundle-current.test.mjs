@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const source=(path)=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
-test('TestFlight embeds current main source, not the obsolete isolated iOS branch',()=>{
+test('TestFlight embeds the exact commit selected for the manual run',()=>{
  const y=source('.github/workflows/ios-testflight.yml');
- assert.match(y,/ref: main\s+# Always bundle the same current card generator as the website/);
+ assert.match(y,/ref:\s*\$\{\{ github\.sha \}\}/);
+ assert.match(y,/^on:\s+workflow_dispatch:/m);
  assert.doesNotMatch(y,/ref:\s*feat\/ios-app-store-preparation/);
  assert.match(y,/npm run build/);
  assert.match(y,/npx cap sync ios/);

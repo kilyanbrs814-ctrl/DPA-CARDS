@@ -1,3 +1,4 @@
+import { merchantSessionError } from '../_shared/merchant-session.js';
 // Merchant campaign dispatch for confirmed Apple Wallet installations.
 // HTTP POST /apple-pass/notify is authenticated with the merchant's Supabase JWT.
 // Queueing an APNs update is not proof it appeared on the customer's device.
@@ -27,6 +28,8 @@ export async function notifyApple(req,{admin}){
   if(!bearer)return send(req,401,{error:'unauthorized'});
   const {data:{user},error:authError}=await admin.auth.getUser(bearer);
   if(authError||!user)return send(req,401,{error:'unauthorized'});
+  const sessionError=merchantSessionError(user,bearer);
+  if(sessionError)return send(req,403,{error:sessionError});
   const {data:members,error:membersError}=await admin.from('merchant_members').select('merchant_id,role').eq('user_id',user.id);
   if(membersError)return send(req,503,{error:'database_unavailable'});
   const choice=req.headers.get('x-merchant-id');

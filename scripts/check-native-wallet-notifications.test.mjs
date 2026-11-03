@@ -30,6 +30,5 @@ test('Backend sends authorized Apple and Google notifications independently',()=
 test('Native companion still blocks sign-up, subscription and checkout',()=>{
   assert.match(ui,/if\(DPA_NATIVE_IOS\)return/);
   assert.match(ui,/nativeAccess/);
-  assert.match(ui,/profileControl:!DPA_NATIVE_IOS&&/);
   assert.match(ui,/choosePlan=async\(plan,billing\)=>\{ if\(DPA_NATIVE_IOS\)return/);
 });

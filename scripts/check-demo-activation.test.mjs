@@ -1,6 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {stripTypeScriptTypes} from 'node:module';
+import {runInNewContext} from 'node:vm';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const wallet=read('supabase/functions/wallet/index.ts');
 const billing=read('supabase/functions/billing/index.ts');
@@ -40,11 +42,47 @@ test('onsite receipt is first-activation only, one use per receipt and director 
  assert.match(designer,/Je certifie avoir encaissé 50 €/);
 });
 
-test('both payment methods are collected securely through Stripe Checkout',()=>{
- assert.match(billing,/payment_method_types: \['card', 'sepa_debit'\]/);
- assert.match(billing,/mode: commerce\.setup\?'payment':'setup'/);
- assert.match(billing,/setup_intent_data:\{metadata\}/);
- assert.match(billing,/payment_intent_data:\{setup_future_usage:'off_session'/);
+test('Stripe collects activation only once and accepts card and SEPA in both modes',async()=>{
+ const checkoutSource=stripTypeScriptTypes(billing.slice(
+  billing.indexOf('async function checkout(req:'),billing.indexOf('async function verify(req:')
+ ));
+ for(const activated of [false,true]){
+  const setupCents=activated?0:5000;
+  const query={
+   select(){return this;},eq(){return this;},is(){return this;},update(){return this;},upsert(){return {};},
+   maybeSingle(){return {data:{id:'program'}};},single(){return {data:{business_name:'Commerce'}};},
+  };
+  let claimed,session;
+  const checkout=runInNewContext(checkoutSource+'\ncheckout',{
+   PLANS:{no_commitment:{setup:'setup',monthly:'monthly',commitmentMonths:0}},
+   PRICES:{setup:{cents:5000}},ACCESS:[],
+   billingQuantity:async()=>({quantity:1,activated}),rowOf:async()=>null,
+   priceIds:async()=>({setup:'price_setup',monthly:'price_monthly'}),
+   expireOpenMonthly:async()=>{},settleOpenPrepaid:async()=>{},
+   siteOrigin:()=> 'https://example.test',json:(_req,status,body)=>({status,body}),
+   admin:{from:()=>query,rpc:async(name,args)=>{
+    if(name==='claim_initial_checkout')claimed=args;
+    return {data:{id:'claim',created_at:new Date().toISOString()}};
+   }},
+   requireStripe:()=>({
+    customers:{create:async()=>({id:'cus_test'})},
+    prices:{retrieve:async()=>({unit_amount:2000,product:'prod_test'})},
+    checkout:{sessions:{create:async params=>{
+     session=params;
+     return {id:'cs_test',url:'https://stripe.example.test/checkout'};
+    }}},
+   }),
+  });
+  const request={json:async()=>({plan:'no_commitment',confirmed:true,quote:{quantity:1,setup:setupCents}})};
+  const result=await checkout(request,{user:{id:'user'},merchantId:'merchant'});
+  assert.equal(result.status,200);
+  assert.equal(claimed.p_setup,setupCents);
+  assert.deepEqual([...session.payment_method_types],['card','sepa_debit']);
+  assert.equal(session.mode,activated?'setup':'payment');
+  assert.equal(session.line_items?.[0].price_data.unit_amount,activated?undefined:setupCents);
+  assert.equal(Boolean(session.setup_intent_data),activated);
+  assert.equal(session.payment_intent_data?.setup_future_usage,activated?undefined:'off_session');
+ }
  assert.match(billing,/session\.payment_status !== 'paid' && !\(session\.mode==='setup'&&session\.status==='complete'\)/);
  assert.match(profiles,/payment_method_types:\['card','sepa_debit'\]/);
  assert.match(designer,/Les coordonnées bancaires ne sont pas saisies dans cette administration/);

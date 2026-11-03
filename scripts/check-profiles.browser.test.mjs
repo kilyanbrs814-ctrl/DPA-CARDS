@@ -72,7 +72,7 @@ test('web profiles: a secondary merchant cannot start a quote before the primary
 });
 
 
-test('native iPhone stays single-commerce: no signup, profile selector or Stripe CTAs',async()=>{
+test('native iPhone switches existing commerces without signup or payment',async()=>{
  const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=server.resolvedUrls.local[0];
  const browser=await chromium.launch({headless:true});
  try{
@@ -98,11 +98,15 @@ test('native iPhone stays single-commerce: no signup, profile selector or Stripe
     merchant:{...a.state.merchant,id:'primary',business:'Premier commerce'},
     profiles:[{id:'primary',name:'Premier commerce',role:'owner'},{id:'second',name:'Deuxième commerce',role:'owner'}]});
   });
-  // Multi-commerce controls are deliberately web-only, even with two memberships.
-  assert.equal(await page.getByRole('button',{name:'Changer de commerce',exact:true}).count(),0);
+  const switchCommerce=page.getByRole('button',{name:'Changer de commerce',exact:true});
+  await switchCommerce.click();
+  const dialog=page.getByRole('dialog');
+  assert.equal(await dialog.getByRole('button',{name:'Premier commerce Sélectionné'}).getAttribute('aria-current'),'true');
   assert.equal(await page.getByRole('button',{name:'Ajouter un commerce',exact:true}).count(),0);
   assert.equal(await page.getByRole('button',{name:'Activer ce commerce',exact:true}).count(),0);
-  assert.equal(await page.evaluate(()=>window.__nativeSelected),undefined);
+  await dialog.getByRole('button',{name:'Deuxième commerce',exact:true}).click();
+  assert.equal(await page.evaluate(()=>window.__nativeSelected),'second');
+  await dialog.getByRole('button',{name:'Fermer',exact:true}).click();
   await page.evaluate(()=>{
    const a=window.__testApp; a.beginAddProfile();a.go('billing');a.choosePlan('no_commitment');
   });
@@ -116,6 +120,8 @@ test('native iPhone stays single-commerce: no signup, profile selector or Stripe
   });
   await page.getByRole('heading',{name:'Espace non actif'}).waitFor();
   await page.getByRole('button',{name:'Vérifier mon accès'}).waitFor();
+  await switchCommerce.click();
+  await dialog.getByRole('button',{name:'Deuxième commerce',exact:true}).waitFor();
   assert.equal(await page.getByText('Choisir cette offre').count(),0);
   assert.equal(await page.getByRole('button',{name:'Activer ce commerce',exact:true}).count(),0);
   assert.equal(await page.evaluate(()=>!!window.__stripeQuoteCalled||!!window.__stripePaymentCalled||!!window.__designChargeCalled),false);
