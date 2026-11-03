@@ -2443,7 +2443,7 @@ class Component extends DCLogic {
   state = this.initState();
   _h = {};
   initState(){
-    return { screen:'login', w: typeof window!=='undefined'?window.innerWidth:1200,
+    return {mfaPromptSeen:false, screen:'login', w: typeof window!=='undefined'?window.innerWidth:1200,
       f:{readerNo:'',loginEmail:'',loginPwd:'',suBiz:'',suFirst:'',suLast:'',suEmail:'',suPwd:'',fpEmail:'',manualNo:'',joinFirst:'Nora',joinEmail:'',pwdCur:'',pwdNew:'',pwdConf:'',corrNote:'',delConfirm:''},
       err:{}, showPwd:false, remember:true, busy:false,
       merchant:{...M0}, sd:{...M0}, program:{...P0}, draft:{...P0}, clients:demoClients(),
@@ -2583,7 +2583,12 @@ class Component extends DCLogic {
     const el=document.getElementById('pos-reader'), a=document.activeElement;
     if(!el||a===el) return; if(a&&a!==document.body&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.tagName==='SELECT')) return;
     try{ el.focus({preventScroll:true}); }catch(e){} }
-  componentDidUpdate(){ clearTimeout(this._fr); this._fr=setTimeout(()=>this.focusReader(),0); this.syncCamera(); }
+  componentDidUpdate(){
+    clearTimeout(this._fr); this._fr=setTimeout(()=>this.focusReader(),0); this.syncCamera();
+    const s=this.state, wasShown=this._mfaPromptOnHome;
+    this._mfaPromptOnHome=s.screen==='home'&&s.live&&s.mfaActive===false&&!s.mfaPromptSeen;
+    if(wasShown&&s.live&&s.screen!=='home'&&!s.mfaPromptSeen) this.setState({mfaPromptSeen:true});
+  }
   // After a passage or a reward, get back to "ready" on its own when nothing is left to do.
   scheduleReady(id){ if(this.scanMode()==='demo'||this.state.demo) return; clearTimeout(this._autoReady);
     this._autoReady=setTimeout(()=>{ const s=this.state; if(s.screen!=='scanner'||s.busy||s.modal||s.scan.st!=='found'||s.scan.id!==id) return;
@@ -3741,7 +3746,7 @@ class Component extends DCLogic {
         api:this.api.mfa,challenge:s.mfaChallenge,onSignOut:()=>this.logoutLive(),
         onVerified:async()=>this.openLive(await this.api.session()),
       }):null,
-      mfaEnrollmentPanel:S.home&&s.live&&s.mfaActive===false&&this.api?.mfa?React.createElement(this.api.MerchantMfaPanel,{
+      mfaEnrollmentPanel:S.home&&s.live&&s.mfaActive===false&&!s.mfaPromptSeen&&this.api?.mfa?React.createElement(this.api.MerchantMfaPanel,{
         key:m.id,api:this.api.mfa,onVerified:()=>this.setState({mfaActive:true}),
       }):null,
       profileControl:s.live&&this.api&&s.profiles?.length>(DPA_NATIVE_IOS?1:0)?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,onAdd:this.beginAddProfile,hasAccess:s.hasAccess,accessSource:s.accessSource,
