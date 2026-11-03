@@ -4,6 +4,8 @@ name: Upload signed iOS build to TestFlight
 # Only runs after Apple signing materials are configured in GitHub Actions secrets.
 on:
   workflow_dispatch:
+  push:
+    branches: [build/ios-1-1-security-20261103]
 
 permissions:
   contents: read
