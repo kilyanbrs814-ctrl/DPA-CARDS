@@ -20,7 +20,7 @@
   margin: 0;
 }
 .dpa-di-overview .dpa-di-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.dpa-di-overview .dpa-di-metric { min-height: 105px; background: #fff; }
+.dpa-di-overview .dpa-di-metric { min-height: 105px; }
 .dpa-di-overview .dpa-di-placeholder { background: #edf0f8; }
 .dpa-di-admin .dpa-di-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .dpa-di-grid-main { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
@@ -33,7 +33,6 @@
 }
 .dpa-di-metric {
   padding: 14px;
-  background: radial-gradient(ellipse at 100% 0%, #edf0ff, transparent 75%), #fff;
 }
 .dpa-di-metric dt { display: flex; gap: 9px; align-items: center; font-size: 13px; font-weight: 700; }
 .dpa-di-icon {
