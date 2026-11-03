@@ -14,11 +14,17 @@ test('web profiles: profile entry, commerce selector, onboarding and explicit pa
     switchProfile:id=>window.__switched=id,billing:{profileQuote:async()=>({operation:{id:'op2',quote:{current_count:1,new_count:2,activation_cents:3000,current_monthly_cents:2490,new_monthly_cents:4000,monthly_difference_cents:1510,
      effective_at:'2026-10-18T12:00:00Z',proration_cents:850,proration_collection:'next_invoice',immediate_cents:3000}}}),profileAccept:async()=>{window.__accepted=(window.__accepted||0)+1;return {operation:{status:'complete'}}}}};
    a.enterDemo();a.setState({live:true,demo:false,role:'owner',hasAccess:true,billingMerchantId:'a',billedCount:1,primaryActivated:true,subscription:{status:'active',billing_mode:'monthly'},
-    merchant:{...a.state.merchant,id:'a',business:'Commerce A'},profiles:[{id:'a',name:'Commerce A',role:'owner'},{id:'b',name:'Commerce B',role:'owner'}]});
+    merchant:{...a.state.merchant,id:'a',business:'Commerce A'},profiles:[{id:'a',name:'Commerce A',role:'owner',logo:'/assets/dpa-cards-logo.png'},{id:'b',name:'Commerce B',role:'owner'}]});
   });
   assert.equal(await page.getByText('Accès DPA Cards : actif',{exact:true}).count(),0);
   await page.setViewportSize({width:1440,height:960});
   const profile=page.locator('.dpa-desktop-sidebar').getByRole('button',{name:/Commerce A/});
+  const avatar=profile.locator('.dpa-desktop-avatar');
+  await avatar.locator('img').waitFor();
+  assert.equal(await avatar.locator('img').getAttribute('src'),'/assets/dpa-cards-logo.png');
+  await page.evaluate(()=>window.__testApp.setState(s=>({profiles:s.profiles.map(({logo,...profile})=>profile)})));
+  await avatar.locator('img').waitFor({state:'detached'});
+  assert.match(await avatar.textContent(),/\S/);
   await profile.click();
   await page.getByRole('dialog',{name:'Vos commerces'}).getByRole('button',{name:'Fermer',exact:true}).click();
   assert.equal(await profile.evaluate(el=>el===document.activeElement),true);
