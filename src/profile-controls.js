@@ -12,9 +12,7 @@ export function makeProfileControls(React) {
   const [initial,setInitial]=React.useState(null);
   const run=async fn=>{if(working)return;setWorking(true);setError('');try{await fn();}catch(e){setError(api.errorMessage(e));}finally{setWorking(false);}};
   React.useEffect(()=>{
-   if(native)return;
-   if(initialChoice){setOpen(true);setInitial(initialChoice);setOperation(null);setConfirmed(false);
-    if(native){setError('Cette application est réservée aux commerces déjà actifs.');return;}
+   if(!native&&initialChoice){setOpen(true);setInitial(initialChoice);setOperation(null);setConfirmed(false);
     run(async()=>{const r=await api.billing.initialQuote(initialChoice.plan,initialChoice.billing);setQuote(r.quote);});}
   },[initialChoice]);
   React.useEffect(()=>{if(open){dialog.current?.focus();const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous;trigger.current?.focus();};}},[open]);
@@ -67,13 +65,13 @@ export function makeProfileControls(React) {
    open&&h('div',{className:'dpa-profile-overlay',onClick:e=>{if(e.target===e.currentTarget)close();}},
     h('section',{ref:dialog,role:'dialog','aria-modal':true,'aria-labelledby':'profile-dialog-title',tabIndex:-1,onKeyDown:trap,className:'dpa-profile-dialog'},
      h('h2',{id:'profile-dialog-title',style:{margin:0,fontSize:24}},quote?'Confirmer les montants':'Vos commerces'),
-     !quote&&!initial&&h('p',{style:{margin:'8px 0 0',fontSize:13,color:'#5E636B',lineHeight:1.5}},'« Sélectionné » indique seulement l’espace affiché, pas son activation ni sa facturation.'),
+     !quote&&!initial&&h('p',{style:{margin:'8px 0 0',fontSize:13,color:'#5E636B',lineHeight:1.5}},native?'L’accès est vérifié à chaque changement de commerce.':'« Sélectionné » indique seulement l’espace affiché, pas son activation ni sa facturation.'),
      error&&h('p',{role:'alert',style:{color:'#B42318'}},error),
      working&&h('p',{role:'status'},'Vérification en cours…'),
      !quote&&!initial&&h(React.Fragment,null,
       ...profiles.map(p=>h('button',{key:p.id,type:'button',disabled:working||busy,'aria-current':p.id===merchant.id?'true':undefined,
        style:{...button,display:'flex',alignItems:'center',gap:12,textAlign:'left',borderColor:p.id===merchant.id?'#2448F0':'#D4D1C9'},
-       onClick:()=>p.id!==merchant.id&&api.switchProfile(p.id)},p.logo&&h('img',{src:p.logo,alt:'',width:36,height:36,style:{objectFit:'contain',borderRadius:8}}),
+       onClick:()=>{if(p.id!==merchant.id)run(()=>api.switchProfile(p.id));}},p.logo&&h('img',{src:p.logo,alt:'',width:36,height:36,style:{objectFit:'contain',borderRadius:8}}),
        h('span',{style:{flex:1}},p.name),p.id===merchant.id&&h('span',{style:{color:'#2448F0'}},'Sélectionné'))),
       !native&&merchant.id&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')&&h('button',{type:'button',style:primary,disabled:working||busy,onClick:()=>{close();onAdd();}},'Ajouter un commerce')),
      quote&&h(React.Fragment,null,
