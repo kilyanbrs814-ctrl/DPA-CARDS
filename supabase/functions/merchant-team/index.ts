@@ -22,7 +22,7 @@ const allowedOrigins = [site, 'capacitor://localhost', 'http://localhost:5173', 
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function cors(req: Request) {
+function cors(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || '';
   return allowedOrigins.includes(origin)
     ? { 'access-control-allow-origin': origin,
