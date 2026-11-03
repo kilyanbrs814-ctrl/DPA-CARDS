@@ -593,13 +593,15 @@ a:hover{color:#1A36C4}
 </div>
 </sc-if>
 <sc-if value="{{ s.app }}" hint-placeholder-val="{{ false }}">
-<div style="min-height:var(--dpa-page-height,100dvh)">
+<div class="dpa-workspace">
   <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
-    <header class="dpa-desktop-bar dpa-glass-bar">
+    <aside class="dpa-desktop-sidebar dpa-glass-bar">
       <div class="dpa-desktop-brand-group">
         <img class="dpa-desktop-brand" src="/assets/dpa-cards-logo.png" alt="DPA Cards">
-        <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:700;color:#6B4E00">Mode démonstration</span></sc-if>
       </div>
+      <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}">
+        <button type="button" class="dpa-sidebar-scan" onClick="{{ toScanner }}"><span class="material-symbols-rounded" aria-hidden="true">qr_code_scanner</span>Scanner une carte</button>
+      </sc-if>
       <nav class="dpa-desktop-nav" aria-label="Navigation principale">
         <sc-for list="{{ deskNav }}" as="n" hint-placeholder-count="6">
           <button type="button" class="dpa-glass-pill" onClick="{{ n.go }}" aria-current="{{ n.current }}">
@@ -608,13 +610,14 @@ a:hover{color:#1A36C4}
         </sc-for>
       </nav>
       <div class="dpa-desktop-tools">
+        <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:700;color:#6B4E00">Mode démonstration</span></sc-if>
         <a class="dpa-glass-pill" href="mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards" aria-label="Contacter le support DPA Cards par e-mail"><span class="material-symbols-rounded" aria-hidden="true">chat</span>Support</a>
         <button type="button" class="dpa-desktop-profile dpa-glass-pill" onClick="{{ openProfile }}" aria-haspopup="{{ profilePopup }}">
           <span class="dpa-desktop-avatar" aria-hidden="true">{{ mInitials }}</span>
           <span style="min-width:0;text-align:left"><span class="dpa-desktop-profile-name" style="display:block;font-weight:750">{{ m.first }} {{ m.last }}</span><span class="dpa-desktop-profile-name" style="display:block;font-size:12px;color:#525C6D">{{ m.business }}</span></span>
         </button>
       </div>
-    </header>
+    </aside>
   </sc-if>
   <main style="flex:1;min-width:0;padding-bottom:{{ mainPadB }}">
     <sc-if value="{{ mShowBar }}" hint-placeholder-val="{{ false }}">

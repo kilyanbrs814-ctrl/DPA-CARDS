@@ -18,7 +18,7 @@ test('web profiles: profile entry, commerce selector, onboarding and explicit pa
   });
   assert.equal(await page.getByText('Accès DPA Cards : actif',{exact:true}).count(),0);
   await page.setViewportSize({width:1440,height:960});
-  const profile=page.locator('.dpa-desktop-bar').getByRole('button',{name:/Commerce A/});
+  const profile=page.locator('.dpa-desktop-sidebar').getByRole('button',{name:/Commerce A/});
   await profile.click();
   await page.getByRole('dialog',{name:'Vos commerces'}).getByRole('button',{name:'Fermer',exact:true}).click();
   assert.equal(await profile.evaluate(el=>el===document.activeElement),true);
