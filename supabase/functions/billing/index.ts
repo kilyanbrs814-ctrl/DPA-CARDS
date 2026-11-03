@@ -23,7 +23,7 @@
 // server then creates that subscription. Prices are fixed server-side by plan; the browser
 // only names the plan. Secrets come from Edge Function secrets and are never logged.
 
-import { hasVerifiedSecondFactor, merchantSessionError } from '../_shared/merchant-session.js';
+import { merchantSessionError } from '../_shared/merchant-session.js';
 import Stripe from 'npm:stripe@17.7.0';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { ADMIN_ALERT_EMAIL, sendEmail, simpleMail } from '../_shared/email.ts';
@@ -156,7 +156,8 @@ async function adminCheckoutActor(req: Request): Promise<CheckoutActor> {
  if(error||!user?.email_confirmed_at||!user.email)throw new HttpError(403,'not_admin');
  const {data:director}=await admin.from('admin_users').select('role').eq('email',user.email.trim().toLowerCase()).maybeSingle();
  if(director?.role!=='director')throw new HttpError(403,'not_director');
- if(!hasVerifiedSecondFactor(token))throw new HttpError(403,'mfa_required');
+ const sessionError=merchantSessionError(user,token);
+ if(sessionError)throw new HttpError(403,sessionError);
  const body=await req.clone().json().catch(()=>({}));
  const merchantId=String(body?.merchant_id??'');
  if(!UUID.test(merchantId))throw new HttpError(400,'invalid_merchant');

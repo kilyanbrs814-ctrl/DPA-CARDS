@@ -30,7 +30,16 @@ export function merchantMfa(auth, qrDataUrl) {
 
 export function makeMerchantMfaPanel(React) {
   const h = React.createElement;
-  return function MerchantMfaPanel({api, challenge, onVerified, onSignOut, admin = false}) {
+  return function MerchantMfaPanel({api, challenge, onVerified, onSignOut, onDismiss}) {
+    const dialog = React.useRef(null);
+    const titleId = React.useId();
+    const isReminder = Boolean(onDismiss);
+    React.useLayoutEffect(() => {
+      const element = dialog.current;
+      if (!element) return;
+      element.showModal();
+      return () => element.close();
+    }, [isReminder]);
     const [setup, setSetup] = React.useState(null);
     const [choice, setChoice] = React.useState('');
     const [code, setCode] = React.useState('');
@@ -61,13 +70,30 @@ export function makeMerchantMfaPanel(React) {
         await onVerified();
       }, 'Le code est incorrect, expiré ou la connexion a échoué. Réessayez avec un nouveau code.');
     };
-    return h('section', {className: 'dpa-mfa-panel', 'aria-label': 'Double authentification'},
-      h('h2', null, challenge ? 'Vérifiez votre connexion' : 'Protégez votre compte'),
+    const cancelSetup = async () => {
+      await api.cancel(setup.id);
+      setSetup(null);
+      setCode('');
+    };
+    const dismiss = () => {
+      if (running.current) return;
+      if (setup) void api.cancel(setup.id).catch(() => {});
+      onDismiss();
+    };
+    const container = isReminder ? {
+      ref: dialog, className: 'dpa-mfa-panel dpa-mfa-dialog', 'aria-labelledby': titleId,
+      onCancel: event => { event.preventDefault(); dismiss(); },
+    } : {className: 'dpa-mfa-panel', 'aria-labelledby': titleId};
+    return h(isReminder ? 'dialog' : 'section', container,
+      isReminder && h('button', {type: 'button', className: 'dpa-mfa-close',
+        'aria-label': 'Fermer le rappel de sécurité', disabled: busy, onClick: dismiss}, '×'),
+      isReminder && h('img', {src: '/assets/dpa-cards-logo.png', className: 'dpa-mfa-logo', alt: 'DPA Cards'}),
+      h('h2', {id: titleId}, challenge ? 'Vérifiez votre connexion' : 'Protégez votre compte'),
       h('p', null, challenge
         ? 'Saisissez le code généré par votre application d’authentification.'
-        : admin
-          ? 'Configurez un code généré par votre téléphone pour accéder à l’administration après la connexion par e-mail.'
-          : 'Ajoutez un code généré par votre téléphone en plus de votre mot de passe.'),
+        : 'Nous vous recommandons fortement la double authentification pour protéger votre compte et les données de vos clients. Elle ajoute un code généré par une application sur votre téléphone lors de la connexion.'),
+      isReminder && !setup && h('p', {className: 'dpa-mfa-warning'},
+        'Sans cette protection, une personne qui accède à vos identifiants ou à votre lien de connexion peut accéder à votre compte. Vous pouvez fermer ce rappel et activer la protection plus tard.'),
       error && h('p', {role: 'alert'}, error),
       !challenge && !setup && button('Activer la double authentification',
         () => run(async () => setSetup(await api.enroll()), 'Impossible de commencer la configuration. Réessayez.')),
@@ -87,11 +113,7 @@ export function makeMerchantMfaPanel(React) {
         h('button', {type: 'submit', className: 'dpa-mfa-button', disabled: busy || code.length !== 6},
           setup ? 'Confirmer l’activation' : 'Vérifier le code')),
       challenge && !factorId && h('p', {role: 'alert'}, 'Aucune application de codes utilisable. Contactez l’assistance.'),
-      setup && button(admin ? 'Annuler la configuration' : 'Configurer plus tard', () => run(async () => {
-        await api.cancel(setup.id);
-        setSetup(null);
-        setCode('');
-      }, 'Impossible d’annuler la configuration. Réessayez.')),
-      onSignOut && button('Se déconnecter', onSignOut));
+      setup && button('Annuler la configuration', () => run(cancelSetup, 'Impossible d’annuler la configuration. Réessayez.')),
+      challenge && onSignOut && button('Se déconnecter', onSignOut));
   };
 }

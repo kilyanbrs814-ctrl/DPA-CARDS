@@ -1,4 +1,4 @@
-import { hasVerifiedSecondFactor, merchantSessionError } from '../_shared/merchant-session.js';
+import { merchantSessionError } from '../_shared/merchant-session.js';
 import { decodePng } from '../_shared/png.js';
 import { selectedMembership, walletUserHeaders } from '../_shared/merchant-context.ts';
 import { selfServiceChoice, selfServiceOpacity, selfServiceWithoutStamps, simpleGoogleTemplate, simpleGoogleFields } from '../_shared/self-service-layout.js';
@@ -954,7 +954,8 @@ async function requireAdmin(req: Request) {
   const { data, error } = await admin.from('admin_users').select('email, role').eq('email', email).maybeSingle();
   if (error) throw new Error('db_admin_users');
   if (!data) throw new HttpError(403, 'not_admin');
-  if (!hasVerifiedSecondFactor(token)) throw new HttpError(403, 'mfa_required');
+  const sessionError = merchantSessionError(user, token);
+  if (sessionError) throw new HttpError(403, sessionError);
   return Object.assign(user, { dpaEmail: email, dpaRole: data.role as 'admin' | 'director' });
 }
 
