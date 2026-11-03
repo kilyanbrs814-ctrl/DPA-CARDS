@@ -12,10 +12,11 @@
 <script>window.dpaAdminReady=new Promise(function(r){window.__dpaAdminResolve=r;});</script>
 <script type="module" src="/src/admin-backend.js"></script>
 <link rel="stylesheet" href="/src/mobile-layout.css">
+<script>if(new URLSearchParams(location.search).get('fond-test')==='1')document.documentElement.dataset.dpaGlassTest='';</script>
 <script>if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa-native-ios');</script>
 </head>
 <body>
-<div id="admin-auth-root" style="min-height:var(--dpa-page-height,100dvh);background:#FFFFFF;color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px">
+<div id="admin-auth-root" style="min-height:var(--dpa-page-height,100dvh);background:var(--dpa-app-background,#FFFFFF);color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px">
   <div class="dpa-glass-surface dpa-glass-auth" style="width:100%;max-width:440px">
     <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:42px;width:auto;display:block;margin-bottom:26px">
     <div id="admin-auth-loading">
@@ -86,7 +87,7 @@ a:hover{color:#1A36C4}
 }
 </style>
 </helmet>
-<div style="min-height:var(--dpa-page-height,100dvh);background:#FFFFFF;color:#1C1F24">
+<div style="min-height:var(--dpa-page-height,100dvh);background:var(--dpa-app-background,#FFFFFF);color:#1C1F24">
   <header class="dpa-admin-header dpa-glass-bar" style="position:sticky;top:8px;z-index:20;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:10px clamp(16px,4vw,40px);border-radius:22px;margin:10px clamp(10px,3vw,28px) 0;color:#1C1F24">
     <div class="dpa-admin-brand" style="display:flex;align-items:center;gap:14px;min-width:0">
       <div style="background:#FFFFFF;border-radius:10px;padding:5px 8px;line-height:0"><img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:30px;width:auto;display:block"></div>

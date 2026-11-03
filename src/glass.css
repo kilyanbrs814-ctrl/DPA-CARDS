@@ -141,3 +141,21 @@
 .dpa-glass-auth { padding: clamp(20px, 4vw, 34px); border-radius: 26px; }
 .dpa-glass-sheet { color: #1c1f24; }
 .dpa-mfa-dialog::backdrop { -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
+
+/* Optional backdrop for inspecting the glass treatment on a contrasting image. */
+html[data-dpa-glass-test] {
+  --dpa-app-background: transparent;
+}
+
+html[data-dpa-glass-test] body {
+  background: transparent;
+}
+
+html[data-dpa-glass-test]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: #e7f2ff url('/assets/glass-test-background.svg') center / cover no-repeat;
+  pointer-events: none;
+}
