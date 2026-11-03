@@ -64,7 +64,16 @@
 .dpa-desktop-nav, .dpa-desktop-tools { display: flex; flex-direction: column; gap: 4px; }
 .dpa-desktop-tools { margin-top: auto; }
 .dpa-desktop-tools > span { margin: 0 10px 4px; }
-.dpa-desktop-sidebar .dpa-glass-pill { justify-content: flex-start; gap: 10px; padding-inline: 12px; }
+.dpa-desktop-sidebar .dpa-desktop-avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 2px;
+  background: #fff;
+  object-fit: contain;
+}
+.dpa-glass-pill { justify-content: flex-start; gap: 10px; padding-inline: 12px; }
 .dpa-sidebar-scan {
   display: flex;
   align-items: center;
@@ -81,7 +90,7 @@
 .dpa-sidebar-scan .material-symbols-rounded { width: 1em; overflow: hidden; font-size: 20px; white-space: nowrap; }
 .dpa-desktop-profile { display: flex; align-items: center; gap: 8px; text-align: left; min-width: 0; }
 .dpa-desktop-profile-name { max-width: 150px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.dpa-desktop-avatar { flex: none; width: 34px; height: 34px; border-radius: 50%; background: #20242e; color: white; display: grid; place-items: center; font-weight: 750; }
+.dpa-desktop-avatar { position: relative; overflow: hidden; flex: none; width: 34px; height: 34px; border-radius: 50%; background: #20242e; color: white; display: grid; place-items: center; font-weight: 750; }
 .dpa-glass-pill {
   display: inline-flex;
   align-items: center;
