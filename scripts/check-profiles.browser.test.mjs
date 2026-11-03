@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createServer} from 'vite';
 import {chromium} from '@playwright/test';
 import {mkdirSync} from 'node:fs';
-test('web profiles: header, selector, always-visible addition, new onboarding and explicit payment consent on mobile',async()=>{
+test('web profiles: profile entry, commerce selector, onboarding and explicit payment consent',async()=>{
  const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=server.resolvedUrls.local[0];
  const browser=await chromium.launch({headless:true});
  try{
@@ -16,10 +16,18 @@ test('web profiles: header, selector, always-visible addition, new onboarding an
    a.enterDemo();a.setState({live:true,demo:false,role:'owner',hasAccess:true,billingMerchantId:'a',billedCount:1,primaryActivated:true,subscription:{status:'active',billing_mode:'monthly'},
     merchant:{...a.state.merchant,id:'a',business:'Commerce A'},profiles:[{id:'a',name:'Commerce A',role:'owner'},{id:'b',name:'Commerce B',role:'owner'}]});
   });
-  await page.getByRole('button',{name:'Changer de commerce',exact:true}).click();
+  assert.equal(await page.getByText('Accès DPA Cards : actif',{exact:true}).count(),0);
+  await page.setViewportSize({width:1440,height:960});
+  const profile=page.locator('aside').getByRole('button',{name:/Commerce A/});
+  await profile.click();
+  await page.getByRole('dialog',{name:'Vos commerces'}).getByRole('button',{name:'Fermer',exact:true}).click();
+  assert.equal(await profile.evaluate(el=>el===document.activeElement),true);
+  await page.setViewportSize({width:393,height:852});
+  await page.getByRole('button',{name:/Réglages/}).click();
+  await page.getByRole('button',{name:/Gérer mes commerces/}).click();
   const dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'Vos commerces'}).waitFor();
   assert.equal(await dialog.getByRole('button',{name:'Commerce A Sélectionné'}).getAttribute('aria-current'),'true');
-  assert.equal(await page.getByText('Commerce sélectionné',{exact:true}).count(),1);
+  assert.equal(await page.getByText('Commerce sélectionné',{exact:true}).count(),0);
   assert.equal(await page.getByText('Accès DPA Cards : actif',{exact:true}).count(),1);
   await dialog.getByRole('button',{name:'Commerce B',exact:true}).click();assert.equal(await page.evaluate(()=>window.__switched),'b');
   await dialog.getByRole('button',{name:'Ajouter un commerce',exact:true}).click();
@@ -27,7 +35,9 @@ test('web profiles: header, selector, always-visible addition, new onboarding an
   assert.equal(await page.evaluate(()=>window.__testApp.state.clients.length),0);
   assert.equal(await page.evaluate(()=>window.__testApp.state.merchant.id),null);
   await page.evaluate(()=>{const a=window.__testApp;a.setState({screen:'home',merchant:{...a.state.merchant,id:'b',business:'Commerce B'},program:{...a.state.program,designStatus:'validated'},hasAccess:false,addingProfile:null});});
-  await page.getByRole('button',{name:'Activer ce commerce',exact:true}).click();await dialog.getByRole('heading',{name:'Confirmer les montants'}).waitFor();
+  await page.getByRole('button',{name:/Réglages/}).click();
+  await page.getByRole('button',{name:/Gérer mes commerces/}).click();
+  await dialog.getByRole('button',{name:'Activer ce commerce',exact:true}).click();await dialog.getByRole('heading',{name:'Confirmer les montants'}).waitFor();
   await dialog.getByText('24,90 €',{exact:true}).waitFor();
   const pay=dialog.getByRole('button',{name:'Confirmer et continuer vers le paiement',exact:true});assert.equal(await pay.isDisabled(),true);
   await dialog.getByRole('checkbox').check();assert.equal(await pay.isEnabled(),true);
@@ -60,8 +70,8 @@ test('web profiles: a secondary merchant cannot start a quote before the primary
   await page.getByRole('heading',{name:'Activation du commerce en attente'}).waitFor();
   await page.getByText('Le commerce principal n’est pas activé dans la facturation.',{exact:false}).waitFor();
   assert.equal(await page.getByRole('button',{name:'Activer ce commerce',exact:true}).count(),0);
-  assert.equal(await page.getByText('Accès DPA Cards : non activé',{exact:true}).count(),1);
-  await page.getByRole('button',{name:'Changer de commerce',exact:true}).click();
+  assert.equal(await page.getByText('Accès DPA Cards : non activé',{exact:true}).count(),0);
+  await page.getByRole('button',{name:'Gérer mes commerces',exact:true}).click();
   assert.equal(await page.getByRole('dialog').getByRole('button',{name:'Commerce B Sélectionné'}).getAttribute('aria-current'),'true');
   await page.getByRole('dialog').getByRole('button',{name:'Fermer',exact:true}).click();
   await page.getByRole('button',{name:'Revenir au commerce principal'}).click();
@@ -98,8 +108,8 @@ test('native iPhone switches existing commerces without signup or payment',async
     merchant:{...a.state.merchant,id:'primary',business:'Premier commerce'},
     profiles:[{id:'primary',name:'Premier commerce',role:'owner'},{id:'second',name:'Deuxième commerce',role:'owner'}]});
   });
-  const switchCommerce=page.getByRole('button',{name:'Changer de commerce',exact:true});
-  await switchCommerce.click();
+  await page.getByRole('button',{name:/Réglages/}).click();
+  await page.getByRole('button',{name:/Gérer mes commerces/}).click();
   const dialog=page.getByRole('dialog');
   assert.equal(await dialog.getByRole('button',{name:'Premier commerce Sélectionné'}).getAttribute('aria-current'),'true');
   assert.equal(await page.getByRole('button',{name:'Ajouter un commerce',exact:true}).count(),0);
@@ -108,7 +118,7 @@ test('native iPhone switches existing commerces without signup or payment',async
   assert.equal(await page.evaluate(()=>window.__nativeSelected),'second');
   await dialog.getByRole('button',{name:'Fermer',exact:true}).click();
   await page.evaluate(()=>{
-   const a=window.__testApp; a.beginAddProfile();a.go('billing');a.choosePlan('no_commitment');
+   const a=window.__testApp; a.go('home');a.beginAddProfile();a.go('billing');a.choosePlan('no_commitment');
   });
   assert.equal(await page.evaluate(()=>window.__testApp.state.screen),'home');
   assert.equal(await page.getByRole('button',{name:'Mon abonnement',exact:true}).count(),0);
@@ -120,7 +130,7 @@ test('native iPhone switches existing commerces without signup or payment',async
   });
   await page.getByRole('heading',{name:'Espace non actif'}).waitFor();
   await page.getByRole('button',{name:'Vérifier mon accès'}).waitFor();
-  await switchCommerce.click();
+  await page.getByRole('button',{name:'Gérer mes commerces',exact:true}).click();
   await dialog.getByRole('button',{name:'Deuxième commerce',exact:true}).waitFor();
   assert.equal(await page.getByText('Choisir cette offre').count(),0);
   assert.equal(await page.getByRole('button',{name:'Activer ce commerce',exact:true}).count(),0);
