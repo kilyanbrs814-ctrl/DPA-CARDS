@@ -22,6 +22,7 @@ if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa
 <!-- Supabase client (bundled by Vite), hands its API to the logic script via window.dpaReady. -->
 <script type="module" src="/src/backend.js"></script>
 <link rel="stylesheet" href="/src/mobile-layout.css">
+<script>if(new URLSearchParams(location.search).get('fond-test')==='1')document.documentElement.dataset.dpaGlassTest='';</script>
 <script>if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa-native-ios');</script>
 </head>
 <body>
@@ -46,7 +47,7 @@ a:hover{color:#1A36C4}
 @keyframes dpaUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 </style>
 </helmet>
-<div style="min-height:var(--dpa-page-height,100dvh);background:#FFFFFF;color:#1C1F24">
+<div style="min-height:var(--dpa-page-height,100dvh);background:var(--dpa-app-background,#FFFFFF);color:#1C1F24">
 {{ profileControl }}
 {{ mfaChallengePanel }}
 <sc-if value="{{ showAuthShell }}" hint-placeholder-val="{{ true }}">
