@@ -5,28 +5,29 @@ export function makeProfileControls(React) {
  const h=React.createElement;
  const button={minHeight:46,padding:'10px 16px',border:'1px solid #D4D1C9',borderRadius:12,background:'#FFF',fontWeight:700};
  const primary={...button,background:'#2448F0',color:'#FFF',borderColor:'#2448F0'};
- return function ProfileControls({api,profiles,merchant,busy,onAdd,needsActivation,hasAccess=false,accessSource='none',onActivated,initialChoice,onInitialDone,native=false}) {
-  const [open,setOpen]=React.useState(false),[operation,setOperation]=React.useState(null),[quote,setQuote]=React.useState(null);
+ return function ProfileControls({api,profiles,merchant,busy,onAdd,needsActivation,hasAccess=false,accessSource='none',onActivated,initialChoice,onInitialDone,native=false,menuOpen,onMenuClose}) {
+  const [paymentOpen,setPaymentOpen]=React.useState(false),[operation,setOperation]=React.useState(null),[quote,setQuote]=React.useState(null);
   const [working,setWorking]=React.useState(false),[error,setError]=React.useState(''),[confirmed,setConfirmed]=React.useState(false);
-  const dialog=React.useRef(null),trigger=React.useRef(null);
+  const dialog=React.useRef(null);
+  const open=menuOpen||paymentOpen;
   const [initial,setInitial]=React.useState(null);
   const run=async fn=>{if(working)return;setWorking(true);setError('');try{await fn();}catch(e){setError(api.errorMessage(e));}finally{setWorking(false);}};
   React.useEffect(()=>{
-   if(!native&&initialChoice){setOpen(true);setInitial(initialChoice);setOperation(null);setConfirmed(false);
+   if(!native&&initialChoice){setPaymentOpen(true);setInitial(initialChoice);setOperation(null);setConfirmed(false);
     run(async()=>{const r=await api.billing.initialQuote(initialChoice.plan,initialChoice.billing);setQuote(r.quote);});}
   },[initialChoice]);
-  React.useEffect(()=>{if(open){dialog.current?.focus();const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous;trigger.current?.focus();};}},[open]);
+  React.useLayoutEffect(()=>{if(open){const trigger=document.activeElement;dialog.current?.focus();const previous=document.body.style.overflow;document.body.style.overflow='hidden';return()=>{document.body.style.overflow=previous;trigger?.focus({preventScroll:true});};}},[open]);
   // A return URL never grants access: resume asks the server to retrieve Stripe.
   React.useEffect(()=>{
    if(!native&&needsActivation && new URLSearchParams(location.search).has('profile_payment')){
-    setOpen(true);run(async()=>{const r=await api.billing.profileResume();
+    setPaymentOpen(true);run(async()=>{const r=await api.billing.profileResume();
      if(r.operation?.status==='complete'){history.replaceState(null,'','/');onActivated();return;}
      if(r.operation?.status==='cancelled'){setError(r.operation.stripe_refund_id?'Le paiement a été remboursé car votre facturation a changé. Actualisez le récapitulatif pour reprendre.':'Ce parcours de paiement a expiré. Vous pouvez reprendre l’activation.');return;}
      if(r.operation){setOperation(r.operation);setQuote(r.operation.quote);} });
    }
   },[merchant.id]);
-  const close=()=>{if(working)return;setOpen(false);setQuote(null);setOperation(null);setInitial(null);setConfirmed(false);onInitialDone?.();};
-  const getQuote=()=>{setOpen(true);setConfirmed(false);setInitial(null);if(native){setError('Achats intégrés Apple non configurés : ce parcours ne lance pas Stripe sur iPhone.');return;}run(async()=>{
+  const close=()=>{if(working)return;setPaymentOpen(false);onMenuClose();setError('');setQuote(null);setOperation(null);setInitial(null);setConfirmed(false);onInitialDone?.();};
+  const getQuote=()=>{setPaymentOpen(true);setConfirmed(false);setInitial(null);if(native){setError('Achats intégrés Apple non configurés : ce parcours ne lance pas Stripe sur iPhone.');return;}run(async()=>{
    const r=await api.billing.profileQuote();setOperation(r.operation);setQuote(r.operation.quote);
   });};
   const pay=()=>{if(native){setError('Paiement Apple indisponible : aucun paiement Stripe n’est lancé dans l’app.');return;}return run(async()=>{
@@ -56,19 +57,16 @@ export function makeProfileControls(React) {
    ...(quote.access_end?[['Période prépayée conservée',`Jusqu’au ${date(quote.access_end)}`],['Renouvellement','Aucun renouvellement automatique']]:[]),
    ['À payer immédiatement',money(quote.immediate_cents)]
   ]:[];
-  return h('div',{className:'dpa-profile-controls'},
-   h('div',{style:{minWidth:0}},h('div',{style:{fontSize:12,color:'#5E636B'}},'Commerce sélectionné'),h('strong',{style:{overflowWrap:'anywhere'}},merchant.business),
-    h('div',{style:{fontSize:12,marginTop:4,color:hasAccess?'#1F7A4F':'#B42318'}},
-      hasAccess?(accessSource==='manual'?'Accès DPA Cards : autorisé manuellement':'Accès DPA Cards : actif'):'Accès DPA Cards : non activé')),
-   (profiles.length>1 || (!native&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')))&&h('button',{ref:trigger,type:'button',style:button,disabled:busy||working,onClick:()=>{if(!native&&profiles.length===1&&merchant.id&&profiles[0].role==='owner'){onAdd();return;}setOpen(true);setError('');}},profiles.length>1?'Changer de commerce':'Ajouter un commerce'),
-   !native&&needsActivation&&h('button',{type:'button',style:primary,disabled:busy||working,onClick:getQuote},'Activer ce commerce'),
-   open&&h('div',{className:'dpa-profile-overlay',onClick:e=>{if(e.target===e.currentTarget)close();}},
+  return open?h('div',{className:'dpa-profile-overlay',onClick:e=>{if(e.target===e.currentTarget)close();}},
     h('section',{ref:dialog,role:'dialog','aria-modal':true,'aria-labelledby':'profile-dialog-title',tabIndex:-1,onKeyDown:trap,className:'dpa-profile-dialog'},
      h('h2',{id:'profile-dialog-title',style:{margin:0,fontSize:24}},quote?'Confirmer les montants':'Vos commerces'),
      !quote&&!initial&&h('p',{style:{margin:'8px 0 0',fontSize:13,color:'#5E636B',lineHeight:1.5}},native?'L’accès est vérifié à chaque changement de commerce.':'« Sélectionné » indique seulement l’espace affiché, pas son activation ni sa facturation.'),
      error&&h('p',{role:'alert',style:{color:'#B42318'}},error),
      working&&h('p',{role:'status'},'Vérification en cours…'),
      !quote&&!initial&&h(React.Fragment,null,
+      h('div',{style:{fontSize:13,color:hasAccess?'#1F7A4F':'#B42318'}},
+       hasAccess?(accessSource==='manual'?'Accès DPA Cards : autorisé manuellement':'Accès DPA Cards : actif'):'Accès DPA Cards : non activé'),
+      !native&&needsActivation&&h('button',{type:'button',style:primary,disabled:busy||working,onClick:getQuote},'Activer ce commerce'),
       ...profiles.map(p=>h('button',{key:p.id,type:'button',disabled:working||busy,'aria-current':p.id===merchant.id?'true':undefined,
        style:{...button,display:'flex',alignItems:'center',gap:12,textAlign:'left',borderColor:p.id===merchant.id?'#2448F0':'#D4D1C9'},
        onClick:()=>{if(p.id!==merchant.id)run(()=>api.switchProfile(p.id));}},p.logo&&h('img',{src:p.logo,alt:'',width:36,height:36,style:{objectFit:'contain',borderRadius:8}}),
@@ -80,6 +78,6 @@ export function makeProfileControls(React) {
       h('label',{style:{display:'flex',gap:12,alignItems:'flex-start',lineHeight:1.5}},h('input',{type:'checkbox',checked:confirmed,disabled:working,onChange:e=>setConfirmed(e.target.checked),style:{width:22,height:22,flexShrink:0}}),'Je confirme les montants ci-dessus et la modification de ma facturation.'),
       h('button',{type:'button',style:primary,disabled:native||!confirmed||working,onClick:pay},native?'Paiement Apple non disponible':'Confirmer et continuer vers le paiement'),
       !initial&&h('button',{type:'button',style:button,disabled:working,onClick:()=>run(async()=>{const r=await api.billing.profileCancel();if(r.operation?.status==='complete')onActivated();else{setOperation(null);setQuote(null);setConfirmed(false);}})},'Annuler ce parcours de paiement')),
-     h('button',{type:'button',style:button,disabled:working,onClick:close},'Fermer'))));
+     h('button',{type:'button',style:button,disabled:working,onClick:close},'Fermer'))):null;
  };
 }
