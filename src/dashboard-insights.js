@@ -10,6 +10,8 @@ const metricIcons = {
   workspace_premium: 'M7 4h10v6a5 5 0 0 1-10 0zM7 6H3v3a4 4 0 0 0 4 4m10-7h4v3a4 4 0 0 1-4 4m-5 2v5m-4 0h8',
   storefront: 'M4 10v10h16V10M3 10l2-6h14l2 6M3 10c0 4 6 4 6 0 0 4 6 4 6 0 0 4 6 4 6 0M10 20v-5h4v5',
   group: 'M15 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2m18 0v-2a4 4 0 0 0-3-4M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m8 0a4 4 0 0 0 0-8',
+  redeem: 'M4 10h16v11H4zM3 7h18v3H3zM12 7v14m0-14H8a2 2 0 1 1 2-2zm0 0h4a2 2 0 1 0-2-2z',
+  task_alt: 'M20 11v1a8 8 0 1 1-4-7m5 1-9 10-3-3',
   style: 'M5 4h15v13H5zM3 8v12h13',
   loyalty: 'M4 4h8l8 8-8 8-8-8zM8 8h.01',
   notifications: 'M5 17h14l-2-3V9a5 5 0 0 0-10 0v5zm5 3a2 2 0 0 0 4 0',
@@ -71,6 +73,14 @@ export function makeDashboardInsights(React) {
         h('dd', null,
           h('strong', { className: item.text ? 'dpa-di-value dpa-di-text-value' : 'dpa-di-value' }, item.value),
           item.note && h('span', { className: 'dpa-di-note' }, item.note)))));
+  }
+
+  function Overview({ items, loading }) {
+    return h('section', { className: 'dpa-di dpa-di-overview', 'aria-label': 'Chiffres clés du commerce', 'aria-busy': loading },
+      loading
+        ? h('div', { className: 'dpa-di-metrics', 'aria-hidden': true }, items.map(({ label }) =>
+          h('div', { className: 'dpa-di-metric dpa-di-placeholder', key: label })))
+        : h(Metrics, { items }));
   }
 
   function Panel({ title, description, controls, children }) {
@@ -202,5 +212,5 @@ export function makeDashboardInsights(React) {
             h(Bars, { items: professions, empty: 'Aucun commerce inscrit.' })))));
   }
 
-  return { Merchant, Admin };
+  return { Merchant, Admin, Overview };
 }

@@ -669,22 +669,7 @@ a:hover{color:#1A36C4}
         <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:22px;letter-spacing:-0.01em">Scanner une carte</div><div style="margin-top:4px;font-size:15px;color:#DCE3FF">Créditer un passage ou valider une récompense</div></div>
         
       </button></sc-if>
-      <sc-if value="{{ loadingHome }}" hint-placeholder-val="{{ false }}">
-        <div aria-busy="true" aria-label="Chargement" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
-          <div style="height:112px;border-radius:18px;background:#ECEAE4"></div><div style="height:112px;border-radius:18px;background:#ECEAE4"></div><div style="height:112px;border-radius:18px;background:#ECEAE4"></div><div style="height:112px;border-radius:18px;background:#ECEAE4"></div>
-        </div>
-      </sc-if>
-      <sc-if value="{{ notLoadingHome }}" hint-placeholder-val="{{ true }}">
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">
-          <sc-for list="{{ stats }}" as="k" hint-placeholder-count="4">
-            <div style="background:#FFFFFF;border:1px solid #E4E1DA;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px;min-height:112px">
-              <span class="material-symbols-rounded" style="font-size:22px;color:#2448F0">{{ k.icon }}</span>
-              <div style="font-weight:800;font-size:30px;letter-spacing:-0.02em;line-height:1;font-variant-numeric:tabular-nums">{{ k.value }}</div>
-              <div style="font-size:14px;color:#4A4E55;line-height:1.3">{{ k.label }}</div>
-            </div>
-          </sc-for>
-        </div>
-      </sc-if>
+      {{ dashboardOverview }}
 
         <section aria-label="Statistiques de fidélisation" style="display:flex;flex-direction:column;gap:16px;min-width:0">
           {{ dashboardInsights }}
@@ -858,17 +843,7 @@ a:hover{color:#1A36C4}
           </sc-if>
         </section>
       </sc-if>
-      <sc-if value="{{ loadingHome }}" hint-placeholder-val="{{ false }}"><div aria-busy="true" aria-label="Chargement" style="height:88px;border-radius:18px;background:#ECEAE4"></div></sc-if>
-      <sc-if value="{{ notLoadingHome }}" hint-placeholder-val="{{ true }}">
-        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:#E4E1DA;border:1px solid #E4E1DA;border-radius:18px;overflow:hidden">
-          <sc-for list="{{ mStats }}" as="k" hint-placeholder-count="3">
-            <div style="background:#FFFFFF;padding:14px 12px;display:flex;flex-direction:column;gap:6px;min-width:0">
-              <div style="font-weight:800;font-size:26px;letter-spacing:-0.02em;line-height:1;font-variant-numeric:tabular-nums">{{ k.value }}</div>
-              <div style="font-size:13px;color:#4A4E55;line-height:1.25">{{ k.label }}</div>
-            </div>
-          </sc-for>
-        </div>
-      </sc-if>
+      {{ dashboardOverview }}
 
       <div style="display:flex;flex-direction:column;gap:10px">
         <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" style="min-height:76px;border:0;border-radius:20px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:14px;padding:12px 18px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25);transition:transform .12s ease" style-active="transform:scale(0.98);background:#1A36C4">
@@ -3497,12 +3472,12 @@ class Component extends DCLogic {
       iconBg:{visit:'#E8EDFF',reward:'#E4F3EB',join:'#EFEEE9',correction:'#FCEBEA'}[a.type],open:()=>this.go('client',{selId:a.cid})}));
     const stats=[
       {label:'Clients inscrits',value:clients.length,icon:'group'},
-      {label:"Passages aujourd'hui",value:allActs.filter(a=>a.type==='visit'&&a.date===TODAY&&!a.corrected).length,icon:'confirmation_number'},
+      {label:"Passages aujourd'hui",value:allActs.filter(a=>a.type==='visit'&&a.date===TODAY&&!a.corrected).length,icon:'monitoring'},
       {label:'Récompenses disponibles',value:clients.filter(c=>c.balance>=goal).length,icon:'redeem'},
       {label:'Récompenses utilisées ce mois-ci',value:allActs.filter(a=>a.type==='reward'&&a.date.startsWith(TODAY.slice(0,7))).length,icon:'task_alt'}];
 
 
-    const DashboardInsights=(this.api||this.utils)?.DashboardInsights;
+    const {DashboardInsights,DashboardOverview}=this.api||this.utils||{};
     const analytics=dpaLoyaltyAnalytics(clients,s.analyticsYear||Number(TODAY.slice(0,4)),s.analyticsMonth||'all',s.retentionPeriod||'month',TODAY);
     const monthNames=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
     const analyticsMonths=[{value:'all',label:'Toute l’année'},...monthNames.map((label,i)=>({value:String(i+1).padStart(2,'0'),label}))];
@@ -3671,7 +3646,6 @@ class Component extends DCLogic {
     const mBarMap={home:{logo:true,demo:!!s.demo,support:true},clients:{title:'Clients',addClient:canAddClients},client:{title:sel?sel.full:'Client',back:go('clients')},notifs:{title:'Notifications',create:true},notifNew:{title:nv.nHeading,back:go('notifs')},more:{title:'Réglages'},settings:{title:secTitle,back:go('more')},invite:{title:'Inviter mes clients',back:go('more')},registration:{title:'Page d’inscription',back:go('home')},card:{title:'Ma carte',back:go('home')}};
     mBarMap.locked={title:'Fonction verrouillée',back:go('home')};
     const mb={logo:false,support:false,back:null,title:'',demo:false,addClient:false,create:false,...(mBarMap[scr]||{})}; mb.hasBack=!!mb.back; mb.hasTitle=!!mb.title;
-    const mStats=[{label:'Passages aujourd’hui',value:stats[1].value},{label:'Récompenses disponibles',value:stats[2].value},{label:'Clients inscrits',value:stats[0].value}];
     const shortF={all:'Tous',reward:'Récompense',new:'Nouveaux'};
     const mSelActs=[];
     if(sel){ const fl=s.flash&&s.flash.id===sel.id, two=sel.hasReward;
@@ -3703,6 +3677,7 @@ class Component extends DCLogic {
       analyticsMonths,analyticsYear:String(s.analyticsYear||TODAY.slice(0,4)),analyticsMonth:s.analyticsMonth||'all',
       setAnalyticsYear:e=>this.setState({analyticsYear:Number(e.target.value)}),
       setAnalyticsMonth:e=>this.setState({analyticsMonth:e.target.value}),
+      dashboardOverview:S.home&&DashboardOverview?React.createElement(DashboardOverview,{items:stats,loading:s.loadingHome}):null,
       dashboardInsights:S.home&&DashboardInsights?React.createElement(DashboardInsights,{
         key:m.id||'demo',analytics,today:TODAY,year:s.analyticsYear||TODAY.slice(0,4),retentionFilters
       }):null,
@@ -3809,7 +3784,7 @@ class Component extends DCLogic {
        moreHeading:s.live&&s.role==='staff'?'Espace employé':(m.first+' '+m.last).trim(),
        businessView:{name:m.business||'Non renseigné',activity:m.activity||'Non renseignée',address:m.address||'Non renseignée'},
        todayLabel:s.live?todayLong():'Mercredi 30 septembre',
-      loadingHome:s.loadingHome, notLoadingHome:!s.loadingHome, stats, activities, hasActivities:activities.length>0, noActivities:activities.length===0,
+      activities, hasActivities:activities.length>0, noActivities:activities.length===0,
       homeCard, ruleText:`${goal} ${unit} = ${P.reward}`,
       q:s.q, setQ:e=>this.setState({q:e.target.value}), clearQ:()=>this.setState({q:''}), hasQ:!!s.q, filters, list, hasList:list.length>0, emptyList:list.length===0,
       noClientsAtAll:clients.length===0, emptyTitle:clients.length===0?'Aucun client pour le moment':'Aucun résultat', emptyText:clients.length===0?'Partagez votre QR code d’inscription pour accueillir vos premiers clients.':'Essayez un autre nom, un numéro de carte ou un autre filtre.',
@@ -3846,7 +3821,7 @@ class Component extends DCLogic {
       mod, closeModal, stop:e=>e.stopPropagation(), rwC, confirmReward:this.confirmReward, rewardBtn:s.busy?'Validation…':'Confirmer', corrE:corrE?{...corrE,when:`${fmtDate(corrE.date)}, ${corrE.time}`}:null, corrName:corrC?corrC.first+' '+corrC.last:'', motifs, confirmCorr:this.confirmCorr, corrBtn:s.busy?'Correction…':'Confirmer la correction', walletName,
       modalAlign:isDesk?'center':'flex-end', modalRadius:isDesk?'20px':'22px 22px 0 0', toast:s.toast, toastBottom:isDesk?'28px':toastM, toastIcon:s.toast&&s.toast.kind==='info'?'info':(s.toast&&s.toast.kind==='error'?'error':'check_circle'), toastIconColor:s.toast&&s.toast.kind==='info'?'#9DB0FF':(s.toast&&s.toast.kind==='error'?'#FF9B8F':'#7FE0AE'),
       prevOrder:isDesk?'2':'0', mainPadB:isDesk?'48px':(mShowNav?(scr==='client'?'var(--dpa-client-bottom,calc(170px + var(--dpa-safe-bottom)))':'var(--dpa-main-bottom,calc(96px + var(--dpa-safe-bottom)))'):'0px'), toNotifs:go('notifs'), ...nv,
-      mShowBar, mShowNav, mBar:mb, mStats, mActivities:activities.map((a,i)=>({...a,bt:bt(i)})), mFilters:filters.map(f=>({...f,label:shortF[f.k]})), mList:list.map((v,i)=>({...v,bt:bt(i)})),
+      mShowBar, mShowNav, mBar:mb, mActivities:activities.map((a,i)=>({...a,bt:bt(i)})), mFilters:filters.map(f=>({...f,label:shortF[f.k]})), mList:list.map((v,i)=>({...v,bt:bt(i)})),
       mListCount:list.length+' client'+(list.length>1?'s':''), mSelActs, mResults, mNoResults:mResults.length===0, mq:s.mq, setMq:e=>this.setState({mq:e.target.value}),
       noDemoHints:true,
       closeScanner:()=>{ if(s.busy) return; const p=s.prevScreen; this.go(p&&p!=='scanner'?p:'home'); }, openSearch:()=>this.setState({modal:'mSearch',mq:''}),

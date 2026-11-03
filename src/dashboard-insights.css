@@ -19,6 +19,9 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 178px), 1fr));
   margin: 0;
 }
+.dpa-di-overview .dpa-di-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.dpa-di-overview .dpa-di-metric { min-height: 105px; }
+.dpa-di-overview .dpa-di-placeholder { background: #edf0f8; }
 .dpa-di-admin .dpa-di-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .dpa-di-grid-main { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
 .dpa-di-metric, .dpa-di-panel {
@@ -135,6 +138,9 @@
 .dpa-di-scroll { max-height: 270px; overflow: auto; }
 .dpa-di-empty { margin: 0; padding: 14px; background: #f5f6fb; border-radius: 10px; color: var(--di-muted); font-size: 13px; }
 .dpa-di :focus-visible { outline: 2px solid #3956db; outline-offset: 2px; }
+@media (max-width: 1023px) {
+  .dpa-di-overview .dpa-di-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 900px) {
   .dpa-di-grid-main { grid-template-columns: minmax(0, 1fr); }
 }
