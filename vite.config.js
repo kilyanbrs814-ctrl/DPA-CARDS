@@ -21,7 +21,7 @@ export default defineConfig({
   appType: 'mpa',
   publicDir: 'public',
   plugins: [joinRoute],
-  server: { port: 5173, strictPort: false, open: false },
+  server: { port: 5173, strictPort: false, open: false, allowedHosts: ['terminal.local'] },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
