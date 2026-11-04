@@ -64,9 +64,8 @@
 .dpa-desktop-nav, .dpa-desktop-tools { display: flex; flex-direction: column; }
 .dpa-desktop-nav {
   flex: 1 0 auto;
-  justify-content: center;
-  gap: clamp(8px, 1.6vh, 16px);
-  padding-block: 12px;
+  justify-content: space-between;
+  gap: 12px;
 }
 .dpa-desktop-nav .dpa-glass-pill { min-height: 48px; }
 .dpa-desktop-tools { gap: 8px; }
