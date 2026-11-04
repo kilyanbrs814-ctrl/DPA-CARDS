@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
+<script src="/theme.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
@@ -16,40 +17,40 @@
 <script>if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa-native-ios');</script>
 </head>
 <body>
-<div id="admin-auth-root" style="min-height:var(--dpa-page-height,100dvh);background:var(--dpa-app-background,#FFFFFF);color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px">
+<div id="admin-auth-root" style="min-height:var(--dpa-page-height,100dvh);background:var(--dpa-app-background,#FFFFFF);color:var(--dpa-text,#1C1F24);font-family:'Hanken Grotesk',system-ui,sans-serif;display:flex;align-items:center;justify-content:center;padding:24px">
   <div class="dpa-glass-surface dpa-glass-auth" style="width:100%;max-width:440px">
-    <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:42px;width:auto;display:block;margin-bottom:26px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:26px"><img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:42px;width:auto;display:block"><dpa-theme-switch compact></dpa-theme-switch></div>
     <div id="admin-auth-loading">
       <h1 style="margin:0 0 8px;font-size:28px;line-height:1.1">Administration</h1>
-      <p style="margin:0;color:#5E636B">Vérification de votre accès…</p>
+      <p style="margin:0;color:var(--dpa-muted,#5E636B)">Vérification de votre accès…</p>
     </div>
     <form id="admin-auth-form" style="display:none;flex-direction:column;gap:16px">
       <div>
         <h1 style="margin:0 0 8px;font-size:28px;line-height:1.1">Accès administrateur</h1>
-        <p id="admin-auth-help" style="margin:0;color:#5E636B;line-height:1.5">Recevez un lien sécurisé sur votre adresse administrateur.</p>
+        <p id="admin-auth-help" style="margin:0;color:var(--dpa-muted,#5E636B);line-height:1.5">Recevez un lien sécurisé sur votre adresse administrateur.</p>
       </div>
       <div>
         <label for="admin-email" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Adresse e-mail</label>
-        <input id="admin-email" type="email" autocomplete="email" placeholder="vous@exemple.fr" required style="width:100%;height:54px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-size:16px;outline:none">
+        <input id="admin-email" type="email" autocomplete="email" placeholder="vous@exemple.fr" required style="width:100%;height:54px;padding:0 16px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:12px;background:var(--dpa-surface,#FFFFFF);font-size:16px;outline:none">
       </div>
       <div id="admin-otp-row" style="display:none">
         <label for="admin-otp-code" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Code reçu par e-mail</label>
-        <input id="admin-otp-code" type="text" inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="6" pattern="[0-9]{6}" placeholder="000000" style="width:100%;height:58px;padding:0 16px;text-align:center;letter-spacing:0.28em;font-size:24px;font-weight:700;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;color:#1C1F24;outline:none">
+        <input id="admin-otp-code" type="text" inputmode="numeric" autocomplete="one-time-code" autocorrect="off" autocapitalize="off" spellcheck="false" maxlength="6" pattern="[0-9]{6}" placeholder="000000" style="width:100%;height:58px;padding:0 16px;text-align:center;letter-spacing:0.28em;font-size:24px;font-weight:700;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:12px;background:var(--dpa-surface,#FFFFFF);color:var(--dpa-text,#1C1F24);outline:none">
       </div>
                   <button id="admin-submit" type="submit" style="height:54px;border:0;border-radius:12px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px">Recevoir le lien de connexion</button>
       <div id="admin-otp-actions" style="display:none;align-items:center;justify-content:space-between;gap:12px;font-size:14px">
-        <button id="admin-otp-resend" type="button" style="border:0;padding:8px 0;background:transparent;color:#2448F0;font-weight:700">Renvoyer un code</button>
-        <button id="admin-otp-change" type="button" style="border:0;padding:8px 0;background:transparent;color:#5E636B;font-weight:600">Changer d’adresse</button>
+        <button id="admin-otp-resend" type="button" style="border:0;padding:8px 0;background:transparent;color:var(--dpa-link,#2448F0);font-weight:700">Renvoyer un code</button>
+        <button id="admin-otp-change" type="button" style="border:0;padding:8px 0;background:transparent;color:var(--dpa-muted,#5E636B);font-weight:600">Changer d’adresse</button>
       </div>
 
-      <div id="admin-auth-message" role="status" style="min-height:20px;font-size:14px;color:#5E636B"></div>
-      <a href="/" style="color:#2448F0;text-decoration:none;font-weight:600;font-size:14px">Retour à l’espace commerçant</a>
+      <div id="admin-auth-message" role="status" style="min-height:20px;font-size:14px;color:var(--dpa-muted,#5E636B)"></div>
+      <a href="/" style="color:var(--dpa-link,#2448F0);text-decoration:none;font-weight:600;font-size:14px">Retour à l’espace commerçant</a>
     </form>
     <div id="admin-mfa" hidden></div>
     <div id="admin-denied" style="display:none">
       <h1 style="margin:0 0 8px;font-size:28px;line-height:1.1">Accès refusé</h1>
-      <p style="margin:0 0 18px;color:#5E636B;line-height:1.5">Ce compte n’est pas autorisé à accéder à l’administration DPA Cards.</p>
-      <button id="admin-signout" type="button" style="height:50px;width:100%;border:0;border-radius:12px;background:#1C1F24;color:#FFFFFF;font-weight:700">Se déconnecter</button>
+      <p style="margin:0 0 18px;color:var(--dpa-muted,#5E636B);line-height:1.5">Ce compte n’est pas autorisé à accéder à l’administration DPA Cards.</p>
+      <button id="admin-signout" type="button" style="height:50px;width:100%;border:0;border-radius:12px;background:var(--dpa-solid,#1C1F24);color:#FFFFFF;font-weight:700">Se déconnecter</button>
     </div>
   </div>
 </div>
@@ -63,12 +64,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block">
 <style>
 *{box-sizing:border-box}
-html,body{margin:0;background:#FFFFFF;color:#1C1F24;font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip}
+html,body{margin:0;background:var(--dpa-surface,#FFFFFF);color:var(--dpa-text,#1C1F24);font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:clip}
 input,select,button{font:inherit;color:inherit}
 button{cursor:pointer}
-:focus-visible{outline:3px solid #2448F0;outline-offset:2px}
-a{color:#2448F0}
-a:hover{color:#1A36C4}
+:focus-visible{outline:3px solid var(--dpa-link,#2448F0);outline-offset:2px}
+a{color:var(--dpa-link,#2448F0)}
+a:hover{color:var(--dpa-link-strong,#1A36C4)}
 .material-symbols-rounded{font-variation-settings:'wght' 400,'opsz' 24;user-select:none}
 @keyframes dpaIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
 @keyframes dpaUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
@@ -87,11 +88,12 @@ a:hover{color:#1A36C4}
 }
 </style>
 </helmet>
-<div style="min-height:var(--dpa-page-height,100dvh);background:var(--dpa-app-background,#FFFFFF);color:#1C1F24">
-  <header class="dpa-admin-header dpa-glass-bar" style="position:sticky;top:8px;z-index:20;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:10px clamp(16px,4vw,40px);border-radius:22px;margin:10px clamp(10px,3vw,28px) 0;color:#1C1F24">
-    <div class="dpa-admin-brand" style="display:flex;align-items:center;gap:14px;min-width:0">
-      <div style="background:#FFFFFF;border-radius:10px;padding:5px 8px;line-height:0"><img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:30px;width:auto;display:block"></div>
+<div style="min-height:var(--dpa-page-height,100dvh);background:var(--dpa-app-background,#FFFFFF);color:var(--dpa-text,#1C1F24)">
+  <header class="dpa-admin-header dpa-glass-bar" style="position:sticky;top:8px;z-index:20;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:10px clamp(16px,4vw,40px);border-radius:22px;margin:10px clamp(10px,3vw,28px) 0;color:var(--dpa-text,#1C1F24)">
+    <div class="dpa-admin-brand" style="flex:1;display:flex;align-items:center;gap:14px;min-width:0">
+      <div style="background:var(--dpa-surface,#FFFFFF);border-radius:10px;padding:5px 8px;line-height:0"><img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:30px;width:auto;display:block"></div>
       <div class="dpa-admin-title" style="font-weight:700;font-size:16px;letter-spacing:0.02em">Administration</div>
+      <dpa-theme-switch compact style="margin-left:auto"></dpa-theme-switch>
     </div>
     <div class="dpa-admin-actions" style="align-items:center;gap:10px">
       <button type="button" onClick="{{ reload }}" disabled="{{ loading }}" class="dpa-glass-pill"><span class="material-symbols-rounded" style="font-size:18px">refresh</span>Actualiser</button>
@@ -110,13 +112,13 @@ a:hover{color:#1A36C4}
     <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div>
         <h1 style="margin:0;font-weight:800;font-size:clamp(28px,5vw,38px);letter-spacing:-0.03em;line-height:1.05">Commerçants</h1>
-        <div style="margin-top:6px;color:#5E636B;font-size:15px">Les commerces inscrits, leurs clients et leurs cartes de fidélité.</div>
+        <div style="margin-top:6px;color:var(--dpa-muted,#5E636B);font-size:15px">Les commerces inscrits, leurs clients et leurs cartes de fidélité.</div>
       </div>
-      <button type="button" onClick="{{ exportCsv }}" style="min-height:46px;padding:0 16px;border:1.5px solid #D4D1C9;border-radius:12px;background:#FFFFFF;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px" style-hover="background:#F8F7F4"><span class="material-symbols-rounded" style="font-size:20px">download</span>Exporter</button>
+      <button type="button" onClick="{{ exportCsv }}" style="min-height:46px;padding:0 16px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:12px;background:var(--dpa-surface,#FFFFFF);font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px" style-hover="background:var(--dpa-subtle,#F8F7F4)"><span class="material-symbols-rounded" style="font-size:20px">download</span>Exporter</button>
     </div>
 
     <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
-      <div role="alert" style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:14px;background:#FCEBEA;color:#7A1A13;font-size:15px;font-weight:600"><span class="material-symbols-rounded" style="font-size:22px">error</span>{{ error }}</div>
+      <div role="alert" style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:14px;background:var(--dpa-danger-bg,#FCEBEA);color:var(--dpa-danger,#7A1A13);font-size:15px;font-weight:600"><span class="material-symbols-rounded" style="font-size:22px">error</span>{{ error }}</div>
     </sc-if>
 
     {{ dashboardInsights }}
@@ -125,17 +127,17 @@ a:hover{color:#1A36C4}
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <div role="search" style="position:relative;flex:1;min-width:240px">
           <label for="aq" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Rechercher un commerçant</label>
-          <span class="material-symbols-rounded" style="position:absolute;left:16px;top:15px;font-size:22px;color:#5E636B">search</span>
-          <input id="aq" type="search" placeholder="Commerce, responsable ou e-mail" value="{{ q }}" onChange="{{ setQ }}" style="width:100%;height:54px;padding:0 16px 0 50px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-size:16px;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
+          <span class="material-symbols-rounded" style="position:absolute;left:16px;top:15px;font-size:22px;color:var(--dpa-muted,#5E636B)">search</span>
+          <input id="aq" type="search" placeholder="Commerce, responsable ou e-mail" value="{{ q }}" onChange="{{ setQ }}" style="width:100%;height:54px;padding:0 16px 0 50px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:14px;background:var(--dpa-surface,#FFFFFF);font-size:16px;outline:none" style-focus="border-color:var(--dpa-link,#2448F0);box-shadow:0 0 0 4px #DCE3FF">
         </div>
         <div style="position:relative">
           <label for="as" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Trier</label>
-          <select id="as" value="{{ sort }}" onChange="{{ setSort }}" style="height:54px;padding:0 40px 0 16px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;font-size:15px;font-weight:600;appearance:none;outline:none" style-focus="border-color:#2448F0;box-shadow:0 0 0 4px #DCE3FF">
+          <select id="as" value="{{ sort }}" onChange="{{ setSort }}" style="height:54px;padding:0 40px 0 16px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:14px;background:var(--dpa-surface,#FFFFFF);font-size:15px;font-weight:600;appearance:none;outline:none" style-focus="border-color:var(--dpa-link,#2448F0);box-shadow:0 0 0 4px #DCE3FF">
             <option value="recent">Inscription récente</option>
             <option value="cards">Plus de cartes</option>
             <option value="name">Nom (A → Z)</option>
           </select>
-          <span class="material-symbols-rounded" style="position:absolute;right:12px;top:16px;font-size:22px;color:#5E636B;pointer-events:none">expand_more</span>
+          <span class="material-symbols-rounded" style="position:absolute;right:12px;top:16px;font-size:22px;color:var(--dpa-muted,#5E636B);pointer-events:none">expand_more</span>
         </div>
       </div>
       <div role="group" aria-label="Statut" style="display:flex;gap:8px;flex-wrap:wrap">
@@ -147,51 +149,51 @@ a:hover{color:#1A36C4}
 
     <section aria-label="Liste des commerçants" class="dpa-glass-surface" style="border-radius:20px;overflow:hidden">
       <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
-        <div aria-hidden="true" style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.4fr) minmax(0,1.1fr) minmax(0,0.8fr) 70px 70px 80px 145px 100px 24px;gap:12px;padding:12px 20px;background:#F8F7F4;border-bottom:1px solid #E4E1DA;font-size:12px;font-weight:700;letter-spacing:0.06em;color:#5E636B;text-transform:uppercase">
+        <div aria-hidden="true" style="display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.4fr) minmax(0,1.1fr) minmax(0,0.8fr) 70px 70px 80px 145px 100px 24px;gap:12px;padding:12px 20px;background:var(--dpa-subtle,#F8F7F4);border-bottom:1px solid var(--dpa-border-soft,#E4E1DA);font-size:12px;font-weight:700;letter-spacing:0.06em;color:var(--dpa-muted,#5E636B);text-transform:uppercase">
           <div>Commerce</div><div>Propriétaire</div><div>Programme</div><div>Commercial</div><div style="text-align:right">Clients</div><div style="text-align:right">Cartes</div><div style="text-align:right">Passages</div><div>Abonnement</div><div>Créé le</div><div></div>
         </div>
       </sc-if>
       <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
-        <div role="status" style="padding:40px 20px;text-align:center;color:#5E636B;font-size:15px">Chargement des données…</div>
+        <div role="status" style="padding:40px 20px;text-align:center;color:var(--dpa-muted,#5E636B);font-size:15px">Chargement des données…</div>
       </sc-if>
       <sc-if value="{{ emptyAll }}" hint-placeholder-val="{{ false }}">
-        <div style="padding:40px 20px;text-align:center"><span class="material-symbols-rounded" style="font-size:36px;color:#9A9EA6">storefront</span><div style="margin-top:10px;font-weight:700;font-size:17px">Aucun commerce inscrit pour le moment</div><div style="margin-top:6px;color:#5E636B;font-size:15px">Les commerces apparaîtront ici dès leur inscription.</div></div>
+        <div style="padding:40px 20px;text-align:center"><span class="material-symbols-rounded" style="font-size:36px;color:var(--dpa-placeholder,#9A9EA6)">storefront</span><div style="margin-top:10px;font-weight:700;font-size:17px">Aucun commerce inscrit pour le moment</div><div style="margin-top:6px;color:var(--dpa-muted,#5E636B);font-size:15px">Les commerces apparaîtront ici dès leur inscription.</div></div>
       </sc-if>
       <sc-if value="{{ emptyFiltered }}" hint-placeholder-val="{{ false }}">
-        <div style="padding:40px 20px;text-align:center"><span class="material-symbols-rounded" style="font-size:36px;color:#9A9EA6">search_off</span><div style="margin-top:10px;font-weight:700;font-size:17px">Aucun commerçant trouvé</div><div style="margin-top:6px;color:#5E636B;font-size:15px">Modifiez la recherche ou les filtres.</div></div>
+        <div style="padding:40px 20px;text-align:center"><span class="material-symbols-rounded" style="font-size:36px;color:var(--dpa-placeholder,#9A9EA6)">search_off</span><div style="margin-top:10px;font-weight:700;font-size:17px">Aucun commerçant trouvé</div><div style="margin-top:6px;color:var(--dpa-muted,#5E636B);font-size:15px">Modifiez la recherche ou les filtres.</div></div>
       </sc-if>
       <ul style="list-style:none;margin:0;padding:0">
         <sc-for list="{{ rows }}" as="r" hint-placeholder-count="0">
-          <li style="border-bottom:1px solid #EFEDE8">
+          <li style="border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">
             <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
-              <button type="button" onClick="{{ r.open }}" style="width:100%;display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.6fr) minmax(0,1.3fr) 80px 80px 90px 140px 110px 24px;gap:12px;align-items:center;padding:14px 20px;border:0;background:transparent;text-align:left" style-hover="background:#F8F7F4">
+              <button type="button" onClick="{{ r.open }}" style="width:100%;display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.6fr) minmax(0,1.3fr) 80px 80px 90px 140px 110px 24px;gap:12px;align-items:center;padding:14px 20px;border:0;background:transparent;text-align:left" style-hover="background:var(--dpa-subtle,#F8F7F4)">
                 <div style="display:flex;align-items:center;gap:12px;min-width:0">
                   <div style="width:40px;height:40px;border-radius:10px;background:{{ r.bg }};color:{{ r.logoFg }};display:grid;place-items:center;font-weight:800;font-size:10px;flex:none;border:1px solid rgba(0,0,0,0.06)">{{ r.logo }}</div>
-                  <div style="min-width:0"><div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div><div style="font-size:13px;color:#5E636B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.activity }}</div></div>
+                  <div style="min-width:0"><div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.name }}</div><div style="font-size:13px;color:var(--dpa-muted,#5E636B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.activity }}</div></div>
                 </div>
-                <div style="min-width:0"><div style="font-size:14px;color:#1C1F24;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.owner }}</div><div style="font-size:13px;color:#5E636B;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.email }}</div></div>
-                <div style="font-size:14px;color:#3E424A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.program }}</div>
-                <div style="font-size:14px;font-weight:700;color:#2448F0;overflow:hidden;text-overflow:ellipsis">{{ r.rep }}</div>
+                <div style="min-width:0"><div style="font-size:14px;color:var(--dpa-text,#1C1F24);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.owner }}</div><div style="font-size:13px;color:var(--dpa-muted,#5E636B);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.email }}</div></div>
+                <div style="font-size:14px;color:var(--dpa-secondary,#3E424A);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.program }}</div>
+                <div style="font-size:14px;font-weight:700;color:var(--dpa-link,#2448F0);overflow:hidden;text-overflow:ellipsis">{{ r.rep }}</div>
                 <div style="text-align:right;font-weight:700;font-variant-numeric:tabular-nums">{{ r.clients }}</div>
                 <div style="text-align:right;font-variant-numeric:tabular-nums">{{ r.cards }}</div>
                 <div style="text-align:right;font-variant-numeric:tabular-nums">{{ r.visits }}</div>
                 <div><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:{{ r.stBg }};color:{{ r.stFg }};font-size:13px;font-weight:700;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:{{ r.stFg }}"></span>{{ r.status }}</span></div>
-                <div style="font-size:14px;color:#4A4E55">{{ r.joined }}</div>
+                <div style="font-size:14px;color:var(--dpa-secondary,#4A4E55)">{{ r.joined }}</div>
                 
               </button>
             </sc-if>
             <sc-if value="{{ isMob }}" hint-placeholder-val="{{ false }}">
-              <button type="button" onClick="{{ r.open }}" style="width:100%;display:flex;flex-direction:column;gap:12px;padding:16px;border:0;background:transparent;text-align:left" style-hover="background:#F8F7F4">
+              <button type="button" onClick="{{ r.open }}" style="width:100%;display:flex;flex-direction:column;gap:12px;padding:16px;border:0;background:transparent;text-align:left" style-hover="background:var(--dpa-subtle,#F8F7F4)">
                 <div style="display:flex;align-items:center;gap:12px;width:100%">
                   <div style="width:44px;height:44px;border-radius:12px;background:{{ r.bg }};color:{{ r.logoFg }};display:grid;place-items:center;font-weight:800;font-size:10px;flex:none;border:1px solid rgba(0,0,0,0.06)">{{ r.logo }}</div>
-                  <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px">{{ r.name }}</div><div style="font-size:14px;color:#5E636B;overflow-wrap:anywhere">{{ r.owner }} · {{ r.email }}</div></div>
+                  <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px">{{ r.name }}</div><div style="font-size:14px;color:var(--dpa-muted,#5E636B);overflow-wrap:anywhere">{{ r.owner }} · {{ r.email }}</div></div>
                   <span style="padding:4px 10px;border-radius:999px;background:{{ r.stBg }};color:{{ r.stFg }};font-size:12px;font-weight:700;white-space:nowrap">{{ r.status }}</span>
                 </div>
-                <div style="font-size:13px;color:#2448F0;font-weight:700">Commercial : {{ r.rep }}</div>
+                <div style="font-size:13px;color:var(--dpa-link,#2448F0);font-weight:700">Commercial : {{ r.rep }}</div>
                 <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%">
-                  <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Clients</div><div style="font-weight:700;font-size:16px">{{ r.clients }}</div></div>
-                  <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Cartes</div><div style="font-weight:700;font-size:16px">{{ r.cards }}</div></div>
-                  <div style="background:#F6F5F1;border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:#5E636B">Passages</div><div style="font-weight:700;font-size:16px">{{ r.visits }}</div></div>
+                  <div style="background:var(--dpa-subtle,#F6F5F1);border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:var(--dpa-muted,#5E636B)">Clients</div><div style="font-weight:700;font-size:16px">{{ r.clients }}</div></div>
+                  <div style="background:var(--dpa-subtle,#F6F5F1);border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:var(--dpa-muted,#5E636B)">Cartes</div><div style="font-weight:700;font-size:16px">{{ r.cards }}</div></div>
+                  <div style="background:var(--dpa-subtle,#F6F5F1);border-radius:10px;padding:8px 10px"><div style="font-size:12px;color:var(--dpa-muted,#5E636B)">Passages</div><div style="font-weight:700;font-size:16px">{{ r.visits }}</div></div>
                 </div>
               </button>
             </sc-if>
@@ -203,26 +205,26 @@ a:hover{color:#1A36C4}
     <section aria-labelledby="dz-h" style="display:flex;flex-direction:column;gap:12px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <h2 id="dz-h" style="margin:0;font-weight:800;font-size:clamp(22px,4vw,28px);letter-spacing:-0.02em">Demandes de design</h2>
-        <span style="padding:5px 12px;border-radius:999px;background:#EEF1FF;color:#1A36C4;font-size:14px;font-weight:700">{{ designCountLabel }}</span>
+        <span style="padding:5px 12px;border-radius:999px;background:var(--dpa-info-bg,#EEF1FF);color:var(--dpa-link-strong,#1A36C4);font-size:14px;font-weight:700">{{ designCountLabel }}</span>
       </div>
-      <sc-if value="{{ noDesigns }}" hint-placeholder-val="{{ false }}"><div class="dpa-glass-surface" style="border-radius:18px;padding:28px 20px;text-align:center;color:#5E636B;font-size:15px">Aucune demande de design payée pour le moment.</div></sc-if>
+      <sc-if value="{{ noDesigns }}" hint-placeholder-val="{{ false }}"><div class="dpa-glass-surface" style="border-radius:18px;padding:28px 20px;text-align:center;color:var(--dpa-muted,#5E636B);font-size:15px">Aucune demande de design payée pour le moment.</div></sc-if>
       <sc-for list="{{ designs }}" as="dq" hint-placeholder-count="0">
         <article class="dpa-glass-surface" style="border-radius:18px;padding:18px 20px;display:flex;flex-direction:column;gap:12px">
           <div style="display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap">
-            <div style="flex:1 1 240px;min-width:0"><div style="font-weight:800;font-size:18px;overflow-wrap:anywhere">{{ dq.business }}</div><div style="font-size:14px;color:#5E636B">Payée le {{ dq.date }} · {{ dq.amount }} · {{ dq.program }}</div></div>
+            <div style="flex:1 1 240px;min-width:0"><div style="font-weight:800;font-size:18px;overflow-wrap:anywhere">{{ dq.business }}</div><div style="font-size:14px;color:var(--dpa-muted,#5E636B)">Payée le {{ dq.date }} · {{ dq.amount }} · {{ dq.program }}</div></div>
             <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:{{ dq.stBg }};color:{{ dq.stFg }};font-size:13px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:{{ dq.stFg }}"></span>{{ dq.status }}</span>
           </div>
           <dl style="margin:0;display:grid;grid-template-columns:minmax(110px,max-content) minmax(0,1fr);gap:6px 16px;font-size:15px">
-            <sc-for list="{{ dq.rows }}" as="r" hint-placeholder-count="6"><dt style="color:#5E636B">{{ r.k }}</dt><dd style="margin:0;font-weight:600;overflow-wrap:anywhere;white-space:pre-wrap">{{ r.v }}</dd></sc-for>
+            <sc-for list="{{ dq.rows }}" as="r" hint-placeholder-count="6"><dt style="color:var(--dpa-muted,#5E636B)">{{ r.k }}</dt><dd style="margin:0;font-weight:600;overflow-wrap:anywhere;white-space:pre-wrap">{{ r.v }}</dd></sc-for>
           </dl>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <sc-for list="{{ dq.files }}" as="fl" hint-placeholder-count="0"><a href="{{ fl.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:1.5px solid #D4D1C9;border-radius:10px;color:#1C1F24;text-decoration:none;font-weight:600;font-size:14px"><span class="material-symbols-rounded" style="font-size:18px">{{ fl.icon }}</span>{{ fl.label }}</a></sc-for>
-            <sc-if value="{{ dq.noFiles }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px;color:#5E636B">Aucun fichier joint.</span></sc-if>
+            <sc-for list="{{ dq.files }}" as="fl" hint-placeholder-count="0"><a href="{{ fl.url }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:10px;color:var(--dpa-text,#1C1F24);text-decoration:none;font-weight:600;font-size:14px"><span class="material-symbols-rounded" style="font-size:18px">{{ fl.icon }}</span>{{ fl.label }}</a></sc-for>
+            <sc-if value="{{ dq.noFiles }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px;color:var(--dpa-muted,#5E636B)">Aucun fichier joint.</span></sc-if>
           </div>
           <div style="font-size:13px;color:{{ dq.mailColor }}">{{ dq.mail }}</div>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <sc-if value="{{ dq.canStart }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dq.start }}" disabled="{{ dq.busy }}" style="min-height:46px;padding:0 16px;border:0;border-radius:12px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:15px">Passer en cours</button></sc-if>
-            <button type="button" onClick="{{ dq.design }}" style="min-height:46px;padding:0 16px;border:1.5px solid #1C1F24;border-radius:12px;background:#FFFFFF;color:#1C1F24;font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">style</span>{{ dq.designLabel }}</button>
+            <button type="button" onClick="{{ dq.design }}" style="min-height:46px;padding:0 16px;border:1.5px solid var(--dpa-text,#1C1F24);border-radius:12px;background:var(--dpa-surface,#FFFFFF);color:var(--dpa-text,#1C1F24);font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">style</span>{{ dq.designLabel }}</button>
             <sc-if value="{{ dq.canDeliver }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ dq.deliver }}" disabled="{{ dq.busy }}" style="min-height:46px;padding:0 16px;border:0;border-radius:12px;background:#1F7A4F;color:#FFFFFF;font-weight:700;font-size:15px">Marquer comme livré</button></sc-if>
           </div>
         </article>
@@ -234,106 +236,106 @@ a:hover{color:#1A36C4}
   <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
     <div onClick="{{ close }}" style="position:fixed;inset:0;z-index:40;background:rgba(20,22,28,0.45);display:flex;justify-content:flex-end">
       <aside class="dpa-glass-sheet" role="dialog" aria-modal="true" aria-labelledby="mt" onClick="{{ stop }}" style="width:100%;max-width:520px;height:100%;overflow:auto;box-shadow:-12px 0 40px rgba(20,22,28,0.2);animation:dpaIn .2s ease-out;display:flex;flex-direction:column">
-        <div style="position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:#F6F5F1;border-bottom:1px solid #E4E1DA">
-          <div style="font-weight:700;font-size:15px;color:#5E636B">Fiche commerçant</div>
-          <button type="button" onClick="{{ close }}" aria-label="Fermer" style="width:44px;height:44px;border:0;border-radius:12px;background:#ECEAE4;display:grid;place-items:center"><span class="material-symbols-rounded">close</span></button>
+        <div style="position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:var(--dpa-subtle,#F6F5F1);border-bottom:1px solid var(--dpa-border-soft,#E4E1DA)">
+          <div style="font-weight:700;font-size:15px;color:var(--dpa-muted,#5E636B)">Fiche commerçant</div>
+          <button type="button" onClick="{{ close }}" aria-label="Fermer" style="width:44px;height:44px;border:0;border-radius:12px;background:var(--dpa-hover,#ECEAE4);display:grid;place-items:center"><span class="material-symbols-rounded">close</span></button>
         </div>
         <div style="padding:20px;display:flex;flex-direction:column;gap:18px">
           <div style="display:flex;align-items:center;gap:14px">
             <div style="width:60px;height:60px;border-radius:16px;background:{{ sel.bg }};color:{{ sel.logoFg }};display:grid;place-items:center;font-weight:800;font-size:13px;flex:none;border:1px solid rgba(0,0,0,0.06)">{{ sel.logo }}</div>
-            <div style="min-width:0"><h2 id="mt" style="margin:0;font-weight:800;font-size:24px;letter-spacing:-0.02em;line-height:1.1;overflow-wrap:anywhere">{{ sel.name }}</h2><div style="margin-top:4px;font-size:15px;color:#4A4E55">{{ sel.activity }}</div></div>
+            <div style="min-width:0"><h2 id="mt" style="margin:0;font-weight:800;font-size:24px;letter-spacing:-0.02em;line-height:1.1;overflow-wrap:anywhere">{{ sel.name }}</h2><div style="margin-top:4px;font-size:15px;color:var(--dpa-secondary,#4A4E55)">{{ sel.activity }}</div></div>
           </div>
           <span style="align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:{{ sel.stBg }};color:{{ sel.stFg }};font-size:13px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:{{ sel.stFg }}"></span>{{ sel.status }}</span>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">
-            <div class="dpa-glass-surface" style="border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Clients</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.clients }}</div></div>
-            <div class="dpa-glass-surface" style="border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Cartes</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.cards }}</div></div>
-            <div class="dpa-glass-surface" style="border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Google Wallet</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.passes }}</div></div>
-            <div class="dpa-glass-surface" style="border-radius:14px;padding:14px"><div style="font-size:13px;color:#5E636B">Apple Wallet · passes générés</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.applePasses }}</div></div>
+            <div class="dpa-glass-surface" style="border-radius:14px;padding:14px"><div style="font-size:13px;color:var(--dpa-muted,#5E636B)">Clients</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.clients }}</div></div>
+            <div class="dpa-glass-surface" style="border-radius:14px;padding:14px"><div style="font-size:13px;color:var(--dpa-muted,#5E636B)">Cartes</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.cards }}</div></div>
+            <div class="dpa-glass-surface" style="border-radius:14px;padding:14px"><div style="font-size:13px;color:var(--dpa-muted,#5E636B)">Google Wallet</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.passes }}</div></div>
+            <div class="dpa-glass-surface" style="border-radius:14px;padding:14px"><div style="font-size:13px;color:var(--dpa-muted,#5E636B)">Apple Wallet · passes générés</div><div style="font-weight:800;font-size:24px;margin-top:4px">{{ sel.applePasses }}</div></div>
           </div>
 
           <section class="dpa-glass-surface" style="border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px">
             <h3 style="margin:0;font-weight:700;font-size:16px">Programme</h3>
             <sc-if value="{{ sel.hasProgram }}" hint-placeholder-val="{{ true }}">
               <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:{{ sel.bg }};color:{{ sel.logoFg }}">
-                <div style="width:36px;height:36px;border-radius:9px;background:{{ sel.accent }};display:grid;place-items:center;font-weight:800;font-size:9px;color:#1E1418;flex:none">{{ sel.logo }}</div>
+                <div style="width:36px;height:36px;border-radius:9px;background:{{ sel.accent }};display:grid;place-items:center;font-weight:800;font-size:9px;color:var(--dpa-text,#1E1418);flex:none">{{ sel.logo }}</div>
                 <div style="min-width:0"><div style="font-weight:800;font-size:16px">{{ sel.program }}</div><div style="font-size:14px">{{ sel.rule }}</div></div>
               </div>
-              <div style="font-size:13px;color:#5E636B">Design : {{ sel.design }}</div>
+              <div style="font-size:13px;color:var(--dpa-muted,#5E636B)">Design : {{ sel.design }}</div>
             </sc-if>
-            <sc-if value="{{ sel.noProgram }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;color:#5E636B">Aucun programme actif.</div></sc-if>
+            <sc-if value="{{ sel.noProgram }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;color:var(--dpa-muted,#5E636B)">Aucun programme actif.</div></sc-if>
           </section>
 
           <section class="dpa-glass-surface" style="border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px">
             <h3 style="margin:0 0 4px;font-weight:700;font-size:16px">Abonnement</h3>
             <dl style="margin:0;display:grid;grid-template-columns:auto 1fr;column-gap:16px;font-size:15px">
-              <sc-for list="{{ sel.subRows }}" as="r" hint-placeholder-count="5"><dt style="padding:9px 0;color:#5E636B;border-top:1px solid #EFEDE8">{{ r.k }}</dt><dd style="margin:0;padding:9px 0;font-weight:600;text-align:right;border-top:1px solid #EFEDE8">{{ r.v }}</dd></sc-for>
+              <sc-for list="{{ sel.subRows }}" as="r" hint-placeholder-count="5"><dt style="padding:9px 0;color:var(--dpa-muted,#5E636B);border-top:1px solid var(--dpa-border-soft,#EFEDE8)">{{ r.k }}</dt><dd style="margin:0;padding:9px 0;font-weight:600;text-align:right;border-top:1px solid var(--dpa-border-soft,#EFEDE8)">{{ r.v }}</dd></sc-for>
             </dl>
           </section>
 
           <sc-if value="{{ isDirector }}" hint-placeholder-val="{{ false }}">
             <section data-director-access="1" class="dpa-glass-surface" style="border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:12px">
               <h3 style="margin:0;font-weight:800;font-size:16px">Gestion de l’accès DPA Cards · Direction</h3>
-              <p style="margin:0;color:#5E636B;font-size:13px;line-height:1.5">L’accès manuel est indépendant d’un abonnement Stripe. Il ne crée aucune facture, ne modifie aucun prélèvement et ne résilie pas un abonnement payant existant.</p>
+              <p style="margin:0;color:var(--dpa-muted,#5E636B);font-size:13px;line-height:1.5">L’accès manuel est indépendant d’un abonnement Stripe. Il ne crée aucune facture, ne modifie aucun prélèvement et ne résilie pas un abonnement payant existant.</p>
               <label style="display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px">Durée d’accès
-                <select value="{{ accessDays }}" onChange="{{ changeAccessDays }}" style="min-height:44px;border:1px solid #D4D1C9;border-radius:10px;background:#FFFFFF;padding:0 12px">
+                <select value="{{ accessDays }}" onChange="{{ changeAccessDays }}" style="min-height:44px;border:1px solid var(--dpa-border,#D4D1C9);border-radius:10px;background:var(--dpa-surface,#FFFFFF);padding:0 12px">
                   <option value="7">7 jours</option><option value="30">30 jours</option><option value="90">90 jours</option><option value="365">365 jours</option>
                 </select>
               </label>
               <label style="display:flex;flex-direction:column;gap:6px;font-weight:600;font-size:14px">Motif obligatoire
-                <input type="text" maxlength="300" value="{{ accessReason }}" onChange="{{ changeAccessReason }}" placeholder="Ex. : accès offert pour essai" style="width:100%;min-height:44px;box-sizing:border-box;border:1px solid #D4D1C9;border-radius:10px;padding:0 12px;font-size:14px">
+                <input type="text" maxlength="300" value="{{ accessReason }}" onChange="{{ changeAccessReason }}" placeholder="Ex. : accès offert pour essai" style="width:100%;min-height:44px;box-sizing:border-box;border:1px solid var(--dpa-border,#D4D1C9);border-radius:10px;padding:0 12px;font-size:14px">
               </label>
               <div style="display:flex;flex-wrap:wrap;gap:8px">
                 <button type="button" onClick="{{ grantAccess }}" disabled="{{ accessBusy }}" style="min-height:46px;flex:1;border:0;border-radius:11px;background:#1F7A4F;color:#FFFFFF;font-weight:700;padding:0 14px">Accorder l’accès</button>
-                <button type="button" onClick="{{ revokeAccess }}" disabled="{{ accessBusy }}" style="min-height:46px;flex:1;border:1px solid #C53838;border-radius:11px;background:#FFFFFF;color:#A11D14;font-weight:700;padding:0 14px">Suspendre l’accès</button>
+                <button type="button" onClick="{{ revokeAccess }}" disabled="{{ accessBusy }}" style="min-height:46px;flex:1;border:1px solid var(--dpa-danger,#C53838);border-radius:11px;background:var(--dpa-surface,#FFFFFF);color:var(--dpa-danger,#A11D14);font-weight:700;padding:0 14px">Suspendre l’accès</button>
               </div>
             </section>
           </sc-if>
-          <dl style="margin:0;background:#FFFFFF;border:1px solid #E4E1DA;border-radius:16px;padding:4px 16px;display:grid;grid-template-columns:auto 1fr;column-gap:16px;font-size:15px">
-            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Propriétaire</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.owner }}</dd>
-            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">E-mail</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8;overflow-wrap:anywhere">{{ sel.email }}</dd>
-            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Commercial</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.rep }}</dd>
-            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Créé le</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.joined }}</dd>
-            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Passages enregistrés</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.visits }}</dd>
-            <dt style="padding:11px 0;color:#5E636B;border-bottom:1px solid #EFEDE8">Récompenses utilisées</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid #EFEDE8">{{ sel.rewards }}</dd>
-            <dt style="padding:11px 0;color:#5E636B">Dernière activité</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right">{{ sel.last }}</dd>
+          <dl style="margin:0;background:var(--dpa-surface,#FFFFFF);border:1px solid var(--dpa-border-soft,#E4E1DA);border-radius:16px;padding:4px 16px;display:grid;grid-template-columns:auto 1fr;column-gap:16px;font-size:15px">
+            <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Propriétaire</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.owner }}</dd>
+            <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">E-mail</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8);overflow-wrap:anywhere">{{ sel.email }}</dd>
+            <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Commercial</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.rep }}</dd>
+            <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Créé le</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.joined }}</dd>
+            <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Passages enregistrés</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.visits }}</dd>
+            <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Récompenses utilisées</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.rewards }}</dd>
+            <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B)">Dernière activité</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right">{{ sel.last }}</dd>
           </dl>
 
           <sc-if value="{{ hasSalesEl }}" hint-placeholder-val="{{ false }}">{{ selSalesEl }}</sc-if>
-          <sc-if value="{{ detailLoading }}" hint-placeholder-val="{{ false }}"><div role="status" style="color:#5E636B;font-size:15px">Chargement du détail…</div></sc-if>
+          <sc-if value="{{ detailLoading }}" hint-placeholder-val="{{ false }}"><div role="status" style="color:var(--dpa-muted,#5E636B);font-size:15px">Chargement du détail…</div></sc-if>
           <sc-if value="{{ detailReady }}" hint-placeholder-val="{{ true }}">
             <section class="dpa-glass-surface" style="border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px">
               <h3 style="margin:0 0 4px;font-weight:700;font-size:16px">Clients et cartes</h3>
-              <sc-if value="{{ noClients }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;color:#5E636B">Aucun client pour le moment.</div></sc-if>
+              <sc-if value="{{ noClients }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;color:var(--dpa-muted,#5E636B)">Aucun client pour le moment.</div></sc-if>
               <sc-for list="{{ selClients }}" as="c" hint-placeholder-count="0">
-                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #EFEDE8">
-                  <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px;overflow-wrap:anywhere">{{ c.name }}</div><div style="font-size:13px;color:#5E636B;font-family:'IBM Plex Mono',monospace">{{ c.card }} · {{ c.joined }}</div></div>
-                  <sc-if value="{{ c.wallet }}" hint-placeholder-val="{{ false }}"><span class="material-symbols-rounded" title="Google Wallet" style="font-size:18px;color:#2448F0">account_balance_wallet</span></sc-if>
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--dpa-border-soft,#EFEDE8)">
+                  <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px;overflow-wrap:anywhere">{{ c.name }}</div><div style="font-size:13px;color:var(--dpa-muted,#5E636B);font-family:'IBM Plex Mono',monospace">{{ c.card }} · {{ c.joined }}</div></div>
+                  <sc-if value="{{ c.wallet }}" hint-placeholder-val="{{ false }}"><span class="material-symbols-rounded" title="Google Wallet" style="font-size:18px;color:var(--dpa-link,#2448F0)">account_balance_wallet</span></sc-if>
                   <div style="font-weight:700;font-variant-numeric:tabular-nums">{{ c.balance }}</div>
                 </div>
               </sc-for>
             </section>
             <section class="dpa-glass-surface" style="border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px">
               <h3 style="margin:0 0 4px;font-weight:700;font-size:16px">Activité récente</h3>
-              <sc-if value="{{ noActivity }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;color:#5E636B">Aucune activité pour le moment.</div></sc-if>
+              <sc-if value="{{ noActivity }}" hint-placeholder-val="{{ false }}"><div style="font-size:15px;color:var(--dpa-muted,#5E636B)">Aucune activité pour le moment.</div></sc-if>
               <sc-for list="{{ selActivity }}" as="a" hint-placeholder-count="0">
-                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid #EFEDE8">
+                <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--dpa-border-soft,#EFEDE8)">
                   <span class="material-symbols-rounded" style="font-size:20px;color:{{ a.color }}">{{ a.icon }}</span>
-                  <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">{{ a.label }} · {{ a.name }}</div><div style="font-size:13px;color:#5E636B">{{ a.when }}</div></div>
+                  <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:15px">{{ a.label }} · {{ a.name }}</div><div style="font-size:13px;color:var(--dpa-muted,#5E636B)">{{ a.when }}</div></div>
                   <div style="font-weight:700;font-variant-numeric:tabular-nums;color:{{ a.color }}">{{ a.delta }}</div>
                 </div>
               </sc-for>
             </section>
           </sc-if>
 
-          <sc-if value="{{ sel.hasEmail }}" hint-placeholder-val="{{ true }}"><a href="{{ sel.mailto }}" style="min-height:52px;border:1.5px solid #D4D1C9;border-radius:14px;background:#FFFFFF;color:#1C1F24;text-decoration:none;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">mail</span>Contacter le commerçant</a></sc-if>
+          <sc-if value="{{ sel.hasEmail }}" hint-placeholder-val="{{ true }}"><a href="{{ sel.mailto }}" style="min-height:52px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:14px;background:var(--dpa-surface,#FFFFFF);color:var(--dpa-text,#1C1F24);text-decoration:none;font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">mail</span>Contacter le commerçant</a></sc-if>
         </div>
       </aside>
     </div>
   </sc-if>
 
   <sc-if value="{{ toast }}" hint-placeholder-val="{{ false }}">
-    <div role="status" aria-live="polite" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:10px;padding:14px 18px;border-radius:14px;background:#1C1F24;color:#FFFFFF;font-weight:600;font-size:15px;box-shadow:0 12px 30px rgba(20,22,28,0.3);animation:dpaUp .2s ease-out"><span class="material-symbols-rounded" style="font-size:22px;color:#9DB0FF">info</span>{{ toast }}</div>
+    <div role="status" aria-live="polite" style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:60;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:10px;padding:14px 18px;border-radius:14px;background:var(--dpa-solid,#1C1F24);color:#FFFFFF;font-weight:600;font-size:15px;box-shadow:0 12px 30px rgba(20,22,28,0.3);animation:dpaUp .2s ease-out"><span class="material-symbols-rounded" style="font-size:22px;color:#9DB0FF">info</span>{{ toast }}</div>
   </sc-if>
 </div>
 </x-dc>
@@ -345,9 +347,9 @@ const fmt=iso=>{ if(!iso) return '—'; const d=new Date(iso), t=new Date(); con
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
 const fmtTime=iso=>{ if(!iso) return ''; const d=new Date(iso); return fmt(iso)+', '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
 // Subscription status (Stripe, mirrored in public.subscriptions).
-const SUBST={trialing:['Essai gratuit','#E8EDFF','#1A36C4'],active:['Actif','#E4F3EB','#1F6B45'],past_due:['Paiement en retard','#FFF3DC','#6B4E00'],
-  unpaid:['Impayé','#FCEBEA','#A11D14'],canceled:['Résilié','#FCEBEA','#A11D14'],incomplete:['Paiement non finalisé','#FFF3DC','#6B4E00'],
-  incomplete_expired:['Expiré','#EFEDE8','#3E424A'],paused:['Suspendu','#FCEBEA','#A11D14'],expired:['Offre terminée','#EFEDE8','#3E424A'],none:['Sans abonnement','#EFEDE8','#3E424A']};
+const SUBST={trialing:['Essai gratuit','var(--dpa-info-bg,#E8EDFF)','var(--dpa-link-strong,#1A36C4)'],active:['Actif','var(--dpa-success-bg,#E4F3EB)','var(--dpa-success,#1F6B45)'],past_due:['Paiement en retard','var(--dpa-warning-bg,#FFF3DC)','var(--dpa-warning,#6B4E00)'],
+  unpaid:['Impayé','var(--dpa-danger-bg,#FCEBEA)','var(--dpa-danger,#A11D14)'],canceled:['Résilié','var(--dpa-danger-bg,#FCEBEA)','var(--dpa-danger,#A11D14)'],incomplete:['Paiement non finalisé','var(--dpa-warning-bg,#FFF3DC)','var(--dpa-warning,#6B4E00)'],
+  incomplete_expired:['Expiré','var(--dpa-subtle,#EFEDE8)','var(--dpa-secondary,#3E424A)'],paused:['Suspendu','var(--dpa-danger-bg,#FCEBEA)','var(--dpa-danger,#A11D14)'],expired:['Offre terminée','var(--dpa-subtle,#EFEDE8)','var(--dpa-secondary,#3E424A)'],none:['Sans abonnement','var(--dpa-subtle,#EFEDE8)','var(--dpa-secondary,#3E424A)']};
 const PPST={paid:'Payé',partially_refunded:'Remboursé en partie',refunded:'Remboursé'};
 const subKey=m=>{
   const a=m.manual_access;
@@ -412,7 +414,7 @@ class Component extends DCLogic {
       this.toast(status==='delivered'?(r.email&&r.email.sent?'Design livré — le commerçant a été prévenu par e-mail.':'Design livré — le commerçant le voit dans son tableau de bord.'):'Demande passée en cours.');
       this.setState({designBusy:null}); this._busy=false; await this.load(); }
     catch(e){ this.setState({designBusy:null}); this.toast(e&&e.code==='invalid_transition'?'Ce changement de statut n’est pas possible.':this.errText(e)); } }
-  view(m){ const sk=SUBST[subKey(m)]||SUBST.none, st={label:sk[0],bg:sk[1],fg:sk[2]}, p=m.program, bg=p?p.bg:'#ECEAE4';
+  view(m){ const sk=SUBST[subKey(m)]||SUBST.none, st={label:sk[0],bg:sk[1],fg:sk[2]}, p=m.program, bg=p?p.bg:'var(--dpa-hover,#ECEAE4)';
     return {id:m.id,name:m.business_name,activity:m.activity||'Activité non renseignée',owner:m.owner_name||'—',email:m.owner_email||'—',
       program:p?p.name:'Aucun programme',clients:nf(m.customers),cards:nf(m.cards),visits:nf(m.visits),joined:fmt(m.created_at),
       status:st.label,stBg:st.bg,stFg:st.fg,rep:m.sales_rep?.name||'Non attribué',bg,accent:p?p.accent:'#FFFFFF',logo:(p&&p.logo)||(m.business_name||'?').slice(0,3).toUpperCase(),logoFg:lum(bg)<0.4?'#FFFFFF':'#1E1418',
@@ -445,7 +447,7 @@ class Component extends DCLogic {
     let list=D.filter(m=>(s.status==='all'||statusOf(m)===s.status)&&(!q||[m.business_name,m.activity,m.owner_name,m.owner_email,m.sales_rep?.name||'Non attribué'].join(' ').toLowerCase().includes(q)));
     list=[...list].sort((a,b)=>s.sort==='name'?a.business_name.localeCompare(b.business_name,'fr'):s.sort==='cards'?b.cards-a.cards:String(b.created_at).localeCompare(String(a.created_at)));
     const cnt=k=>k==='all'?D.length:D.filter(m=>statusOf(m)===k).length;
-    const chip=(on)=>({bg:on?'#1C1F24':'#FFFFFF',fg:on?'#FFFFFF':'#1C1F24',border:on?'#1C1F24':'#D4D1C9',pressed:on});
+    const chip=(on)=>({bg:on?'var(--dpa-solid,#1C1F24)':'var(--dpa-surface,#FFFFFF)',fg:on?'#FFFFFF':'var(--dpa-text,#1C1F24)',border:on?'var(--dpa-text,#1C1F24)':'var(--dpa-border,#D4D1C9)',pressed:on});
     const statusFilters=[['all','Tous'],['active','Abonnement actif'],['setup','Sans abonnement actif']].map(([k,label])=>({label,count:cnt(k),...chip(s.status===k),pick:()=>this.setState({status:k})}));
     const selM=D.find(m=>m.id===s.sel), det=s.detail;
     let sel=null;

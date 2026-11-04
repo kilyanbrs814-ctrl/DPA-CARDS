@@ -1,4 +1,5 @@
 @import './glass.css';
+@import './theme.css';
 
 /* Shared viewport frame: reserve iPhone system areas once, including admin. */
 :root{--dpa-page-height:100dvh;--dpa-safe-top:env(safe-area-inset-top,0px);--dpa-safe-bottom:env(safe-area-inset-bottom,0px)}
@@ -17,18 +18,18 @@ html.dpa-native-ios main{--dpa-main-bottom:96px;--dpa-client-bottom:170px}
 }
 
 /* Opaque system-area cover: scrolled content must never show behind the clock. */
-html.dpa-native-ios::before{content:"";position:fixed;top:0;left:0;right:0;height:var(--dpa-safe-top);background:#fff;z-index:35;pointer-events:none}
+html.dpa-native-ios::before{content:"";position:fixed;top:0;left:0;right:0;height:var(--dpa-safe-top);background:var(--dpa-surface,#fff);z-index:35;pointer-events:none}
 
 .dpa-profile-overlay{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:#1C1F2480;padding:24px}
 .dpa-profile-dialog{display:flex;flex-direction:column;gap:16px;width:100%;max-width:600px;max-height:calc(100dvh - 48px);overflow:auto;padding:24px;border-radius:22px;box-shadow:0 16px 50px #14161c40}
 @media(max-width:640px){.dpa-profile-overlay{align-items:flex-end;padding:env(safe-area-inset-top,16px) 0 0}.dpa-profile-dialog{max-height:calc(100dvh - env(safe-area-inset-top,16px));padding:24px 16px calc(24px + env(safe-area-inset-bottom,0px));border-radius:22px 22px 0 0}}
 
-.dpa-mfa-panel{margin:20px auto;padding:20px;width:calc(100% - 32px);max-width:620px;background:white;border:1px solid #E4E1DA;border-radius:18px;overflow-wrap:anywhere}
+.dpa-mfa-panel{margin:20px auto;padding:20px;width:calc(100% - 32px);max-width:620px;background:var(--dpa-surface,#FFFFFF);border:1px solid var(--dpa-border-soft,#E4E1DA);border-radius:18px;overflow-wrap:anywhere}
 .dpa-mfa-panel h2{margin:0 0 8px;font-size:21px}
 .dpa-mfa-panel p{margin:8px 0 12px;line-height:1.5}
-.dpa-mfa-panel [role=alert]{color:#B42318}
+.dpa-mfa-panel [role=alert]{color:var(--dpa-danger,#B42318)}
 .dpa-mfa-panel label,.dpa-mfa-panel details{display:block;margin:10px 0}
-.dpa-mfa-panel input,.dpa-mfa-panel select{display:block;margin-top:6px;padding:10px;border:1px solid #D4D1C9;border-radius:8px;max-width:100%}
+.dpa-mfa-panel input,.dpa-mfa-panel select{display:block;margin-top:6px;padding:10px;border:1px solid var(--dpa-border,#D4D1C9);border-radius:8px;max-width:100%}
 .dpa-mfa-button{padding:10px 14px;min-height:44px;margin:4px 8px 4px 0;border:0;border-radius:10px;background:#2448F0;color:white;font-weight:700}
 .dpa-mfa-button:disabled{opacity:.55}
 
@@ -41,13 +42,13 @@ html.dpa-native-ios::before{content:"";position:fixed;top:0;left:0;right:0;heigh
   padding: 28px 22px 22px;
   text-align: center;
   font-family: "Hanken Grotesk", system-ui, sans-serif;
-  color: #1c1f24;
+  color:var(--dpa-text,#1c1f24);
 }
-.dpa-mfa-dialog::backdrop { background: #171a295e; }
+.dpa-mfa-dialog::backdrop { background:#171a295e; }
 .dpa-mfa-dialog .dpa-mfa-logo { display: block; width: auto; height: 40px; margin: 0 auto 16px; }
 .dpa-mfa-dialog input, .dpa-mfa-dialog select { margin-inline: auto; text-align: center; }
 .dpa-mfa-dialog .dpa-mfa-button { margin-inline: 4px; }
-.dpa-mfa-warning { background: #f1f3ff; padding: 12px; border-radius: 12px; font-size: 14px; }
+.dpa-mfa-warning { background:var(--dpa-info-bg,#f1f3ff); padding: 12px; border-radius: 12px; font-size: 14px; }
 .dpa-mfa-close {
   position: absolute;
   top: 8px;
@@ -55,10 +56,10 @@ html.dpa-native-ios::before{content:"";position:fixed;top:0;left:0;right:0;heigh
   width: 44px;
   height: 44px;
   padding: 0;
-  border: 0;
+  border:0;
   border-radius: 50%;
-  background: #f4f3f0;
-  color: #1c1f24;
+  background:var(--dpa-subtle,#f4f3f0);
+  color:var(--dpa-text,#1c1f24);
   font: 26px/1 system-ui, sans-serif;
   cursor: pointer;
 }

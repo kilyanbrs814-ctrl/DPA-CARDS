@@ -3,8 +3,8 @@
 // displays it. "Marquer comme payé" records a transfer already made: it never moves money.
 // Built on the page's React (window.React, the instance dc-runtime renders with).
 
-const C = { ink: '#1C1F24', muted: '#5E636B', line: '#E4E1DA', soft: '#F6F5F1', chip: '#ECEAE4', blue: '#2448F0', blueBg: '#E8EDFF', blueInk: '#1A36C4',
-  green: '#1F6B45', greenBg: '#E4F3EB', amber: '#6B4E00', amberBg: '#FFF3DC', red: '#A11D14', redBg: '#FCEBEA', grey: '#3E424A', greyBg: '#EFEDE8' };
+const C = { ink: 'var(--dpa-text,#1C1F24)', muted: 'var(--dpa-muted,#5E636B)', line: 'var(--dpa-border-soft,#E4E1DA)', soft: 'var(--dpa-subtle,#F6F5F1)', chip: 'var(--dpa-hover,#ECEAE4)', blue: '#2448F0', blueBg: 'var(--dpa-info-bg,#E8EDFF)', blueInk: 'var(--dpa-link-strong,#1A36C4)',
+  green: 'var(--dpa-success,#1F6B45)', greenBg: 'var(--dpa-success-bg,#E4F3EB)', amber: 'var(--dpa-warning,#6B4E00)', amberBg: 'var(--dpa-warning-bg,#FFF3DC)', red: 'var(--dpa-danger,#A11D14)', redBg: 'var(--dpa-danger-bg,#FCEBEA)', grey: 'var(--dpa-secondary,#3E424A)', greyBg: 'var(--dpa-subtle,#EFEDE8)' };
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const eur = c => ((+c || 0) / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' });
 const nf = n => (+n || 0).toLocaleString('fr-FR');
@@ -51,19 +51,19 @@ export function makeSales(React, api) {
     h('span', { style: { width: 7, height: 7, borderRadius: '50%', background: fg } }), label);
   const btn = (label, onClick, { kind = 'secondary', disabled, ico, small } = {}) => h('button', { type: 'button', onClick, disabled,
     style: { minHeight: small ? 38 : 46, padding: small ? '0 12px' : '0 16px', borderRadius: 12, fontWeight: 700, fontSize: small ? 14 : 15, display: 'inline-flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap', opacity: disabled ? 0.5 : 1,
-      border: kind === 'secondary' ? '1.5px solid #D4D1C9' : 0, background: kind === 'primary' ? C.blue : kind === 'success' ? '#1F7A4F' : kind === 'danger' ? '#FFFFFF' : '#FFFFFF',
+      border: kind === 'secondary' ? '1.5px solid var(--dpa-border,#D4D1C9)' : 0, background: kind === 'primary' ? C.blue : kind === 'success' ? '#1F7A4F' : kind === 'danger' ? 'var(--dpa-surface,#FFFFFF)' : 'var(--dpa-surface,#FFFFFF)',
       color: kind === 'primary' || kind === 'success' ? '#FFFFFF' : kind === 'danger' ? C.red : C.ink, ...(kind === 'danger' ? { border: `1.5px solid ${C.red}` } : {}) } },
     ico ? icon(ico, 18) : null, label);
   const field = (label, control, hint) => h('label', { style: { display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, fontWeight: 600, minWidth: 0 } }, label, control,
     hint ? h('span', { style: { fontWeight: 400, color: C.muted, fontSize: 13 } }, hint) : null);
-  const inputStyle = { height: 46, padding: '0 12px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' };
+  const inputStyle = { height: 46, padding: '0 12px', border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' };
   const select = (value, onChange, options, label) => h('select', { value, onChange: e => onChange(e.target.value), 'aria-label': label, style: { ...inputStyle, fontWeight: 600 } },
     options.map(([v, l]) => h('option', { key: v, value: v }, l)));
-  const th = { textAlign: 'left', padding: '10px 12px', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, background: '#F8F7F4', borderBottom: `1px solid ${C.line}`, whiteSpace: 'nowrap' };
-  const td = { padding: '11px 12px', borderBottom: '1px solid #EFEDE8', fontSize: 14, verticalAlign: 'middle' };
+  const th = { textAlign: 'left', padding: '10px 12px', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted, background: 'var(--dpa-subtle,#F8F7F4)', borderBottom: `1px solid ${C.line}`, whiteSpace: 'nowrap' };
+  const td = { padding: '11px 12px', borderBottom: '1px solid var(--dpa-border-soft,#EFEDE8)', fontSize: 14, verticalAlign: 'middle' };
   const num = { textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' };
   const table = (head, rows, empty) => h('div', { style: { overflowX: 'auto', border: `1px solid ${C.line}`, borderRadius: 14 } },
-    h('table', { style: { width: '100%', borderCollapse: 'collapse', background: '#FFFFFF' } },
+    h('table', { style: { width: '100%', borderCollapse: 'collapse', background: 'var(--dpa-surface,#FFFFFF)' } },
       h('thead', null, h('tr', null, head.map((x, i) => h('th', { key: i, style: { ...th, ...(x.num ? { textAlign: 'right' } : {}) } }, x.label || x)))),
       h('tbody', null, rows.length ? rows : h('tr', null, h('td', { colSpan: head.length, style: { ...td, textAlign: 'center', color: C.muted, padding: 24 } }, empty)))));
 
@@ -131,7 +131,7 @@ export function makeSales(React, api) {
       ['payments', 'Paiements', 'credit_card'], ['rules', 'Règles de commission', 'tune'], ['history', 'Historique', 'history']];
     const tabs = h('nav', { role: 'tablist', 'aria-label': 'Suivi des ventes', style: { display: 'flex', gap: 6, padding: 4, borderRadius: 14, background: C.chip, alignSelf: 'flex-start', maxWidth: '100%', overflowX: 'auto' } },
       VIEWS.map(([k, label, ic]) => h('button', { key: k, type: 'button', role: 'tab', 'aria-selected': view === k, onClick: () => setView(k),
-        style: { minHeight: 40, padding: '0 14px', border: 0, borderRadius: 11, background: view === k ? '#FFFFFF' : 'transparent', fontWeight: view === k ? 700 : 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', boxShadow: view === k ? '0 1px 4px rgba(20,22,28,0.12)' : 'none' } },
+        style: { minHeight: 40, padding: '0 14px', border: 0, borderRadius: 11, background: view === k ? 'var(--dpa-surface,#FFFFFF)' : 'transparent', fontWeight: view === k ? 700 : 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', boxShadow: view === k ? '0 1px 4px rgba(20,22,28,0.12)' : 'none' } },
         icon(ic, 18), label)));
 
     const notConfigured = data && (!inForce.initial || !inForce.recurring)
@@ -143,7 +143,7 @@ export function makeSales(React, api) {
       : null;
 
     let body;
-    if (error) body = h('div', { role: 'alert', style: { display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 14, background: C.redBg, color: '#7A1A13', fontSize: 15, fontWeight: 600 } }, icon('error', 22), error);
+    if (error) body = h('div', { role: 'alert', style: { display: 'flex', alignItems: 'center', gap: 10, padding: '14px 16px', borderRadius: 14, background: C.redBg, color: 'var(--dpa-danger,#7A1A13)', fontSize: 15, fontWeight: 600 } }, icon('error', 22), error);
     else if (!data) body = h('div', { role: 'status', style: { padding: 40, textAlign: 'center', color: C.muted } }, 'Chargement du suivi des ventes…');
     else body = { overview: Overview, statement: Statement, merchants: Merchants, payments: Payments, rules: Rules, history: History }[view]();
 
@@ -154,7 +154,7 @@ export function makeSales(React, api) {
         h('div', { style: { fontWeight: 800, fontSize: strong ? 20 : 18, marginTop: 3, fontVariantNumeric: 'tabular-nums', color: strong || C.ink } }, value));
       const repCard = r => card({ gap: 14 },
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 12 } },
-          h('div', { style: { width: 44, height: 44, borderRadius: 12, background: C.ink, color: '#FFFFFF', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 17 } }, r.name.slice(0, 1)),
+          h('div', { style: { width: 44, height: 44, borderRadius: 12, background: 'var(--dpa-solid,#1C1F24)', color: '#FFFFFF', display: 'grid', placeItems: 'center', fontWeight: 800, fontSize: 17 } }, r.name.slice(0, 1)),
           h('div', { style: { flex: 1, minWidth: 0 } }, h('div', { style: { fontWeight: 800, fontSize: 19 } }, r.name), h('div', { style: { fontSize: 13, color: C.muted, overflowWrap: 'anywhere' } }, r.email)),
           h('div', { style: { textAlign: 'right' } }, h('div', { style: { fontSize: 12, color: C.muted } }, 'Reste à payer'), h('div', { style: { fontWeight: 800, fontSize: 22, color: (r.comm_to_validate_cents + r.comm_to_pay_cents) ? C.blueInk : C.ink, fontVariantNumeric: 'tabular-nums' } }, eur(r.comm_to_validate_cents + r.comm_to_pay_cents)))),
         h('div', { style: { fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.muted } }, 'Activité commerciale'),
@@ -178,7 +178,7 @@ export function makeSales(React, api) {
       const cols = [{ label: 'Commercial' }, { label: 'Comptes', num: 1 }, { label: 'Cartes', num: 1 }, { label: 'Ventes payées', num: 1 }, { label: 'Actifs', num: 1 }, { label: 'Essai', num: 1 }, { label: 'Résiliés', num: 1 },
         { label: 'CA initial', num: 1 }, { label: 'CA mensuel', num: 1 }, { label: 'CA payé en une fois', num: 1 }, { label: 'Comm. dues', num: 1 }, { label: 'Versées', num: 1 }, { label: 'Reste', num: 1 }];
       const totals = k => shownReps.reduce((s, r) => s + (+r[k] || 0), 0);
-      const rowOf = (r, bold) => h('tr', { key: r.id || 'total', style: bold ? { fontWeight: 800, background: '#F8F7F4' } : null },
+      const rowOf = (r, bold) => h('tr', { key: r.id || 'total', style: bold ? { fontWeight: 800, background: 'var(--dpa-subtle,#F8F7F4)' } : null },
         h('td', { style: { ...td, fontWeight: 700 } }, r.name), ...['merchants', 'cards', 'sales_paid', 'active', 'trialing', 'canceled'].map(k => h('td', { key: k, style: { ...td, ...num } }, nf(r[k]))),
         ...['revenue_initial_cents', 'revenue_monthly_cents', 'revenue_prepaid_cents'].map(k => h('td', { key: k, style: { ...td, ...num } }, eur(r[k]))),
         h('td', { style: { ...td, ...num } }, eur(r.comm_initial_cents + r.comm_recurring_cents)), h('td', { style: { ...td, ...num, color: C.green } }, eur(r.comm_paid_cents)),
@@ -275,7 +275,7 @@ export function makeSales(React, api) {
             h('td', { style: td }, badge(SUB[subKey(m)] || SUB.none)), h('td', { style: { ...td, fontSize: 13 } }, m.card_validated_at ? 'Créée le ' + day(m.card_validated_at) : '—'),
             h('td', { style: { ...td, ...num } }, eur(m.revenue_cents)), h('td', { style: { ...td, ...num } }, eur(m.commission_cents)),
             h('td', { style: td }, btn(m.sales_rep_id ? 'Modifier' : 'Attribuer', () => edit(m), { small: true, ico: 'person_add' })))), 'Aucun commerce pour ces filtres.')
-          : h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } }, list.length ? list.map(m => h('div', { key: m.id, style: { background: '#FFFFFF', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 } },
+          : h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8 } }, list.length ? list.map(m => h('div', { key: m.id, style: { background: 'var(--dpa-surface,#FFFFFF)', border: `1px solid ${C.line}`, borderRadius: 14, padding: 14, display: 'flex', flexDirection: 'column', gap: 8 } },
             h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: 8 } }, h('button', { type: 'button', onClick: () => onOpenMerchant(m.id), style: { border: 0, background: 'transparent', padding: 0, fontWeight: 800, fontSize: 16, textAlign: 'left' } }, m.business_name), badge(SUB[subKey(m)] || SUB.none)),
             h('div', { style: { fontSize: 14 } }, 'Commercial : ', h('strong', null, m.sales_rep || 'non attribué')),
             h('div', { style: { fontSize: 13, color: C.muted } }, 'Encaissé ' + eur(m.revenue_cents) + ' · commissions ' + eur(m.commission_cents)),
@@ -382,7 +382,7 @@ export function makeSales(React, api) {
     const value = Number(String(f.value).replace(',', '.'));
     const valid = Number.isFinite(value) && value > 0 && (f.calc !== 'percent' || value <= 100) && (f.kind !== 'recurring' || f.duration_months === '' || (+f.duration_months >= 1 && +f.duration_months <= 120)) && !!f.valid_from;
     const active = rules.filter(r => !r.disabled_at), old = rules.filter(r => r.disabled_at);
-    const ruleRow = r => h('div', { key: r.id, style: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: '1px solid #EFEDE8', flexWrap: 'wrap' } },
+    const ruleRow = r => h('div', { key: r.id, style: { display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: '1px solid var(--dpa-border-soft,#EFEDE8)', flexWrap: 'wrap' } },
       h('div', { style: { flex: '1 1 260px', minWidth: 0 } }, h('div', { style: { fontWeight: 700, fontSize: 15, lineHeight: 1.4 } }, ruleText(r, repName)),
         h('div', { style: { fontSize: 13, color: C.muted } }, `Paiements encaissés à partir du ${day(r.valid_from)}` + (r.disabled_at ? ` · désactivée le ${day(r.disabled_at)}` : '') + ` · créée par ${r.created_by}`)),
       r.disabled_at ? badge(['Désactivée', C.greyBg, C.grey]) : h(React.Fragment, null, badge(['En vigueur', C.greenBg, C.green]), btn('Désactiver', () => onDisable(r), { small: true, kind: 'danger', disabled: busy })));
@@ -416,14 +416,14 @@ export function makeSales(React, api) {
       try { await api.attribute(merchantId, repId || null, reason); toast('Attribution enregistrée.'); setModal(null); onChanged(); }
       catch (e) { toast(errText(e)); } finally { setBusy(false); } };
     const sub = { fontWeight: 700, fontSize: 16, margin: 0 };
-    const line = (k, left, right, extra) => h('div', { key: k, style: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid #EFEDE8' } },
+    const line = (k, left, right, extra) => h('div', { key: k, style: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderTop: '1px solid var(--dpa-border-soft,#EFEDE8)' } },
       h('div', { style: { flex: 1, minWidth: 0, fontSize: 14 } }, left), extra, h('div', { style: { fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' } }, right));
     const histText = l => { const d = l.details || {};
       if (l.action === 'attribution_auto') return 'Attribué automatiquement à ' + repName(d.sales_rep_id) + ' (création du commerce)';
       if (l.action === 'attribution_manual') return `Attribution : ${d.from ? repName(d.from) : 'aucun'} → ${d.to ? repName(d.to) : 'aucun'}${d.reason ? ' · « ' + d.reason + ' »' : ''}`;
       if (l.action === 'commission_cancelled') return 'Commission annulée · ' + eur(d.amount_cents) + (d.reason ? ' · « ' + d.reason + ' »' : '');
       return AUDIT[l.action] || l.action; };
-    return h('section', { style: { background: '#FFFFFF', border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 } },
+    return h('section', { style: { background: 'var(--dpa-surface,#FFFFFF)', border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 10 } },
       h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 } }, h('h3', { style: sub }, 'Suivi commercial'),
         btn(salesRep ? 'Modifier' : 'Attribuer', () => setModal(true), { small: true, ico: 'person_add' })),
       h('div', { style: { fontSize: 15 } }, 'Commercial : ', h('strong', null, salesRep ? salesRep.name : 'non attribué'),

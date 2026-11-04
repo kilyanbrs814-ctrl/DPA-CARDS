@@ -9,11 +9,16 @@ const dist = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const required = [
   'index.html', 'admin.html', '_redirects',
   'mentions-legales.html', 'confidentialite.html', 'cgv.html',
-  'support.js', 'LoyaltyCard.dc.html',
+  'support.js', 'theme.js', 'LoyaltyCard.dc.html',
   'assets/wallet-badge-apple.png', 'assets/wallet-badge-google.png',
 ];
 for (const f of required) {
   assert.ok(existsSync(join(dist, f)), 'Required output missing: ' + f);
+}
+for (const name of ['index', 'admin', 'mentions-legales', 'confidentialite', 'cgv']) {
+  const page = readFileSync(join(dist, name + '.html'), 'utf8');
+  const theme = page.indexOf('<script src="/theme.js"></script>');
+  assert.ok(theme > -1 && theme < page.indexOf('</head>'), 'Early theme initialization missing: ' + name);
 }
 const redirects = readFileSync(join(dist, '_redirects'), 'utf8');
 const expected = new Map([

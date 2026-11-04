@@ -146,7 +146,7 @@
 .dpa-sidebar-profile-text strong { font-size: 12px; }
 .dpa-sidebar-profile-arrow .dpa-sidebar-icon { width: 14px; height: 14px; }
 
-/* Theme preference belongs to this navigation, preserving merchant card artwork. */
+/* Navigation follows the shared site theme. */
 .dpa-desktop-sidebar[data-theme="dark"] {
   --sidebar-text: #f0f4ff;
   --sidebar-muted: #c2cbdf;

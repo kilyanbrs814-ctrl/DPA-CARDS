@@ -535,23 +535,23 @@ export function makeCardDesigner(React, api) {
       return () => ro.disconnect();
     }, []);
     const k = box.w ? Math.min(1, box.w / 340) : 1;
-    return h('div', { ref: outer, 'data-card-design': platform, style: { width: '100%', height: box.h ? Math.ceil(box.h * k) : 'auto', position: 'relative' } },
+    return h('div', { ref: outer, 'data-card-design': platform, 'data-dpa-artwork': '', style: { width: '100%', height: box.h ? Math.ceil(box.h * k) : 'auto', position: 'relative' } },
       h('div', { ref: inner, style: { width: 340, position: box.w ? 'absolute' : 'static', left: box.w ? Math.max(0, (box.w - 340 * k) / 2) : 0, top: 0, transform: `scale(${k})`, transformOrigin: 'top left' } },
         h(CardPreview, { design, data, platform })));
   }
 
   // ------------------------------------------------------------ editor controls
-  const inputStyle = { width: '100%', height: 46, padding: '0 12px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontSize: 15, outline: 'none', boxSizing: 'border-box' };
+  const inputStyle = { width: '100%', height: 46, padding: '0 12px', border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', fontSize: 15, outline: 'none', boxSizing: 'border-box' };
   const labelStyle = { display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 6 };
   let uid = 0; const useId = p => { const r = useRef(null); if (!r.current) r.current = `${p}-${++uid}`; return r.current; };
-  function Field({ label, children, hint }) { return h('div', null, h('div', { style: labelStyle }, label), children, hint ? h('div', { style: { fontSize: 13, color: '#5E636B', marginTop: 5 } }, hint) : null); }
+  function Field({ label, children, hint }) { return h('div', null, h('div', { style: labelStyle }, label), children, hint ? h('div', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)', marginTop: 5 } }, hint) : null); }
   function Text({ label, value, onChange, max, placeholder }) {
     const id = useId('t');
     return h('div', null, h('label', { htmlFor: id, style: labelStyle }, label), h('input', { id, type: 'text', value, maxLength: max, placeholder, onChange: e => onChange(e.target.value), style: inputStyle }));
   }
   function Num({ label, value, onChange, min, max }) {
     const id = useId('n'); const set = v => onChange(Math.min(max, Math.max(min, Math.round(+v || 0))));
-    const b = (txt, d, aria) => h('button', { type: 'button', 'aria-label': aria, onClick: () => set(value + d), disabled: value + d < min || value + d > max, style: { width: 46, height: 46, border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontSize: 20, fontWeight: 700, flex: 'none' } }, txt);
+    const b = (txt, d, aria) => h('button', { type: 'button', 'aria-label': aria, onClick: () => set(value + d), disabled: value + d < min || value + d > max, style: { width: 46, height: 46, border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', fontSize: 20, fontWeight: 700, flex: 'none' } }, txt);
     return h('div', null, h('label', { htmlFor: id, style: labelStyle }, label),
       h('div', { style: { display: 'flex', gap: 8 } }, b('−', -1, 'Diminuer : ' + label),
         h('input', { id, type: 'number', min, max, value, onChange: e => set(e.target.value), style: { ...inputStyle, textAlign: 'center', fontVariantNumeric: 'tabular-nums' } }), b('+', 1, 'Augmenter : ' + label)));
@@ -561,8 +561,8 @@ export function makeCardDesigner(React, api) {
     useEffect(() => setTxt(value), [value]);
     return h('div', null, h('label', { htmlFor: id, style: labelStyle }, label),
       h('div', { style: { display: 'flex', gap: 8 } },
-        h('input', { type: 'color', 'aria-label': label + ' (sélecteur)', value: (value || '#000000').toLowerCase(), onChange: e => onChange(e.target.value.toUpperCase()), style: { width: 52, height: 46, padding: 3, border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', flex: 'none' } }),
-        h('input', { id, type: 'text', value: txt, maxLength: 7, spellCheck: false, onChange: e => { const v = e.target.value.toUpperCase(); setTxt(v); if (HEX.test(v)) onChange(v); }, style: { ...inputStyle, fontFamily: "'IBM Plex Mono', monospace", borderColor: HEX.test(txt) ? '#D4D1C9' : '#B42318' } })));
+        h('input', { type: 'color', 'aria-label': label + ' (sélecteur)', value: (value || '#000000').toLowerCase(), onChange: e => onChange(e.target.value.toUpperCase()), style: { width: 52, height: 46, padding: 3, border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', flex: 'none' } }),
+        h('input', { id, type: 'text', value: txt, maxLength: 7, spellCheck: false, onChange: e => { const v = e.target.value.toUpperCase(); setTxt(v); if (HEX.test(v)) onChange(v); }, style: { ...inputStyle, fontFamily: "'IBM Plex Mono', monospace", borderColor: HEX.test(txt) ? 'var(--dpa-border,#D4D1C9)' : 'var(--dpa-danger,#B42318)' } })));
   }
   function Select({ label, value, onChange, options }) {
     const id = useId('s');
@@ -582,17 +582,17 @@ export function makeCardDesigner(React, api) {
     const dimensions = RECOMMENDED_IMAGE_SIZES[testId];
     return h(Field, { label, hint },
       dimensions ? h('div', { 'data-recommended-size': testId, role: 'note',
-        style: { marginBottom: 10, padding: '9px 11px', borderRadius: 10, background: '#EEF1FF', color: '#1A36C4', fontSize: 13, lineHeight: 1.45 } },
+        style: { marginBottom: 10, padding: '9px 11px', borderRadius: 10, background: 'var(--dpa-info-bg,#EEF1FF)', color: 'var(--dpa-link-strong,#1A36C4)', fontSize: 13, lineHeight: 1.45 } },
         h('div', { style: { fontWeight: 750 } }, 'Taille recommandée : ' + dimensions.width + ' × ' + dimensions.height + ' px'),
         h('div', { style: { fontWeight: 500, marginTop: 2 } }, dimensions.format + ' · ' + dimensions.note)) : null,
       h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
-        asset && asset.url ? h('img', { src: asset.url, alt: '', style: { width: 56, height: 56, objectFit: 'contain', borderRadius: 10, border: '1px solid #E4E1DA', background: 'repeating-conic-gradient(#ECEAE4 0% 25%, #FFFFFF 0% 50%) 0 0/12px 12px' } }) : null,
+        asset && asset.url ? h('img', { src: asset.url, alt: '', style: { width: 56, height: 56, objectFit: 'contain', borderRadius: 10, border: '1px solid var(--dpa-border-soft,#E4E1DA)', background: 'repeating-conic-gradient(var(--dpa-hover,#ECEAE4) 0% 25%, var(--dpa-surface,#FFFFFF) 0% 50%) 0 0/12px 12px' } }) : null,
         h('input', { ref, type: 'file', accept: ['logo','stamp','businessNameImage','googleLogo','googleBusinessNameImage'].includes(testId)?'image/png':'image/png,image/jpeg,image/webp', 'data-upload': testId, style: { display: 'none' }, onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) onPick(f); } }),
-        h('button', { type: 'button', disabled: busy, onClick: () => ref.current && ref.current.click(), style: { minHeight: 44, padding: '0 14px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
+        h('button', { type: 'button', disabled: busy, onClick: () => ref.current && ref.current.click(), style: { minHeight: 44, padding: '0 14px', border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
           icon('upload', 18), busy ? 'Envoi…' : asset ? 'Remplacer' : 'Importer'),
-        asset ? h('button', { type: 'button', onClick: onRemove, style: { minHeight: 44, padding: '0 12px', border: 0, background: 'none', color: '#B42318', fontWeight: 600, fontSize: 14 } }, 'Retirer') : null,
+        asset ? h('button', { type: 'button', onClick: onRemove, style: { minHeight: 44, padding: '0 12px', border: 0, background: 'none', color: 'var(--dpa-danger,#B42318)', fontWeight: 600, fontSize: 14 } }, 'Retirer') : null,
         testId==='logo' && h('button', { type:'button', 'data-show-apple-business-name':true, 'aria-pressed':!!showBusinessName,
-          onClick:onToggleBusinessName, style:{minHeight:44,padding:'0 12px',border:showBusinessName?'1.5px solid #2448F0':'1.5px solid #D4D1C9',background:showBusinessName?'#EEF1FF':'#FFFFFF',borderRadius:12,color:showBusinessName?'#2448F0':'#1C1F24',fontSize:14,fontWeight:700,display:'flex',alignItems:'center',gap:6} },
+          onClick:onToggleBusinessName, style:{minHeight:44,padding:'0 12px',border:showBusinessName?'1.5px solid var(--dpa-link,#2448F0)':'1.5px solid var(--dpa-border,#D4D1C9)',background:showBusinessName?'var(--dpa-info-bg,#EEF1FF)':'var(--dpa-surface,#FFFFFF)',borderRadius:12,color:showBusinessName?'var(--dpa-link,#2448F0)':'var(--dpa-text,#1C1F24)',fontSize:14,fontWeight:700,display:'flex',alignItems:'center',gap:6} },
           showBusinessName?icon('check_circle',18):icon('text_fields',18),'Afficher le nom du commerce')));
   }
 
@@ -631,12 +631,12 @@ export function makeCardDesigner(React, api) {
   const slugify = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+/, '').slice(0, 24).replace(/-+$/, '');
   const ACCESS_ERR = { over_email_send_rate_limit: 'Limite d’envoi d’e-mails atteinte : réessayez dans quelques minutes.', email_address_not_authorized: 'Le service e-mail du projet n’autorise pas encore cette adresse (serveur SMTP à configurer dans Supabase).' };
   function Input({ id, label, value, onChange, error, type, max, placeholder, hint, required, multi }) {
-    const base = { ...inputStyle, borderColor: error ? '#B42318' : '#D4D1C9', ...(multi ? { height: 88, padding: '10px 12px', resize: 'vertical', fontFamily: 'inherit' } : {}) };
-    return h('div', null, h('label', { htmlFor: id, style: labelStyle }, label, required ? h('span', { 'aria-hidden': true, style: { color: '#B42318' } }, ' *') : null),
+    const base = { ...inputStyle, borderColor: error ? 'var(--dpa-danger,#B42318)' : 'var(--dpa-border,#D4D1C9)', ...(multi ? { height: 88, padding: '10px 12px', resize: 'vertical', fontFamily: 'inherit' } : {}) };
+    return h('div', null, h('label', { htmlFor: id, style: labelStyle }, label, required ? h('span', { 'aria-hidden': true, style: { color: 'var(--dpa-danger,#B42318)' } }, ' *') : null),
       h(multi ? 'textarea' : 'input', { id, name: id, type: multi ? undefined : (type || 'text'), value, maxLength: max, placeholder, 'aria-invalid': !!error, list: id === 'nc-activity' ? 'nc-activities' : undefined,
         onChange: e => onChange(e.target.value), style: base }),
       id === 'nc-activity' ? h('datalist', { id: 'nc-activities' }, ACTIVITIES.map(a => h('option', { key: a, value: a }))) : null,
-      error ? h('div', { role: 'alert', style: { marginTop: 6, color: '#B42318', fontSize: 14, fontWeight: 500 } }, error) : hint ? h('div', { style: { fontSize: 13, color: '#5E636B', marginTop: 5 } }, hint) : null);
+      error ? h('div', { role: 'alert', style: { marginTop: 6, color: 'var(--dpa-danger,#B42318)', fontSize: 14, fontWeight: 500 } }, error) : hint ? h('div', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)', marginTop: 5 } }, hint) : null);
   }
   function NewClientForm({ onCancel, onCreated }) {
     const [f, setF] = useState({ first: '', last: '', email: '', phone: '', business: '', activity: '', address: '', slug: '', slugEdited: false, program: '', programEdited: false, mode: 'passages', goal: 10, reward: '', conditions: '' });
@@ -670,8 +670,8 @@ export function makeCardDesigner(React, api) {
     };
     const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 };
     return h('form', { 'data-new-client': true, noValidate: true, onSubmit: e => { e.preventDefault(); submit(); }, style: { display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 860 } },
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } }, icon('person_add', 26, { color: '#2448F0' }), h('h2', { style: { margin: 0, fontWeight: 800, fontSize: 24 } }, 'Ajouter un client')),
-      h('p', { style: { margin: 0, color: '#4A4E55', fontSize: 15, lineHeight: 1.5 } }, 'Créez le compte complet du commerçant : il s’ouvre ensuite dans le générateur pour préparer sa carte. Aucun abonnement n’est créé et aucun e-mail n’est envoyé tant que vous ne cliquez pas sur « Envoyer l’accès au commerçant ».'),
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } }, icon('person_add', 26, { color: 'var(--dpa-link,#2448F0)' }), h('h2', { style: { margin: 0, fontWeight: 800, fontSize: 24 } }, 'Ajouter un client')),
+      h('p', { style: { margin: 0, color: 'var(--dpa-secondary,#4A4E55)', fontSize: 15, lineHeight: 1.5 } }, 'Créez le compte complet du commerçant : il s’ouvre ensuite dans le générateur pour préparer sa carte. Aucun abonnement n’est créé et aucun e-mail n’est envoyé tant que vous ne cliquez pas sur « Envoyer l’accès au commerçant ».'),
       h(Section, { title: 'Responsable' }, h('div', { style: grid },
         h(Input, { id: 'nc-first', label: 'Prénom', required: true, value: f.first, max: 80, onChange: up('first'), error: err.first }),
         h(Input, { id: 'nc-last', label: 'Nom', value: f.last, max: 80, onChange: up('last') }),
@@ -685,21 +685,21 @@ export function makeCardDesigner(React, api) {
       h(Section, { title: 'Programme de fidélité' }, h('div', { style: grid },
         h(Input, { id: 'nc-program', label: 'Nom du programme', value: f.program, max: 80, onChange: up('program'), placeholder: 'Club ' + (f.business || '…') }),
         h(Select, { label: 'Mode', value: f.mode, options: [['passages', 'Passages'], ['points', 'Points']], onChange: up('mode') }),
-        h('div', null, h(Num, { label: 'Objectif', value: f.goal, min: f.mode === 'points' ? 50 : 3, max: f.mode === 'points' ? 1000 : 20, onChange: up('goal') }), err.goal ? h('div', { role: 'alert', style: { marginTop: 6, color: '#B42318', fontSize: 14 } }, err.goal) : null),
+        h('div', null, h(Num, { label: 'Objectif', value: f.goal, min: f.mode === 'points' ? 50 : 3, max: f.mode === 'points' ? 1000 : 20, onChange: up('goal') }), err.goal ? h('div', { role: 'alert', style: { marginTop: 6, color: 'var(--dpa-danger,#B42318)', fontSize: 14 } }, err.goal) : null),
         h(Input, { id: 'nc-reward', label: 'Récompense', required: true, value: f.reward, max: 120, onChange: up('reward'), error: err.reward, placeholder: '1 dessert offert' })),
         h(Input, { id: 'nc-conditions', label: 'Conditions (facultatif)', value: f.conditions, max: 600, onChange: up('conditions'), multi: true })),
       h(Section, { title: 'Compte' },
         h('div', { style: { fontSize: 15 } }, 'E-mail de connexion : ', h('strong', null, f.email.trim() || '—')),
-        h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45 } }, 'Aucun mot de passe à saisir : le commerçant choisira le sien grâce au lien « Envoyer l’accès au commerçant », quand vous le déciderez.'),
-        h('div', { style: { fontSize: 13, color: '#2448F0', lineHeight: 1.5 } },
+        h('div', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)', lineHeight: 1.45 } }, 'Aucun mot de passe à saisir : le commerçant choisira le sien grâce au lien « Envoyer l’accès au commerçant », quand vous le déciderez.'),
+        h('div', { style: { fontSize: 13, color: 'var(--dpa-link,#2448F0)', lineHeight: 1.5 } },
           'Paiement : après création, les frais d’activation sont réglés en ligne ou enregistrés après encaissement sans-contact réel. Le commerçant autorise ensuite ses mensualités par carte ou SEPA directement sur Stripe.')),
-      ask ? h('div', { role: 'alertdialog', 'aria-label': 'Confirmation', style: { display: 'flex', flexDirection: 'column', gap: 10, padding: 14, borderRadius: 14, background: '#FFF3DC', color: '#5C4200', fontSize: 15 } }, ask.text,
+      ask ? h('div', { role: 'alertdialog', 'aria-label': 'Confirmation', style: { display: 'flex', flexDirection: 'column', gap: 10, padding: 14, borderRadius: 14, background: 'var(--dpa-warning-bg,#FFF3DC)', color: 'var(--dpa-warning,#5C4200)', fontSize: 15 } }, ask.text,
         h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
-          h('button', { type: 'button', onClick: () => submit(ask.opts), disabled: busy, style: { minHeight: 44, padding: '0 14px', border: 0, borderRadius: 12, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700 } }, ask.label),
-          h('button', { type: 'button', onClick: () => setAsk(null), style: { minHeight: 44, padding: '0 14px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600 } }, 'Modifier'))) : null,
-      fail ? h('div', { role: 'alert', style: { padding: '12px 14px', borderRadius: 12, background: '#FCEBEA', color: '#7A1A13', fontWeight: 600 } }, fail) : null,
+          h('button', { type: 'button', onClick: () => submit(ask.opts), disabled: busy, style: { minHeight: 44, padding: '0 14px', border: 0, borderRadius: 12, background: 'var(--dpa-solid,#1C1F24)', color: '#FFFFFF', fontWeight: 700 } }, ask.label),
+          h('button', { type: 'button', onClick: () => setAsk(null), style: { minHeight: 44, padding: '0 14px', border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 600 } }, 'Modifier'))) : null,
+      fail ? h('div', { role: 'alert', style: { padding: '12px 14px', borderRadius: 12, background: 'var(--dpa-danger-bg,#FCEBEA)', color: 'var(--dpa-danger,#7A1A13)', fontWeight: 600 } }, fail) : null,
       h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
-        h('button', { type: 'button', onClick: onCancel, disabled: busy, style: { minHeight: 50, padding: '0 18px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 15 } }, 'Annuler'),
+        h('button', { type: 'button', onClick: onCancel, disabled: busy, style: { minHeight: 50, padding: '0 18px', border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 600, fontSize: 15 } }, 'Annuler'),
         h('button', { type: 'submit', disabled: busy, style: { minHeight: 50, padding: '0 20px', border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('person_add', 20), busy ? 'Création…' : 'Créer le client')));
   }
 
@@ -1048,21 +1048,21 @@ export function makeCardDesigner(React, api) {
     const pickSel = v => { if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Changer de carte ?')) return; setAdding(false); setCreated(null);
       onTarget(!v ? null : v.startsWith('t:') ? { testId: v.slice(2) } : { merchantId: v, requestId: null }); };
     const btnTop = (label, ic, onClick, dark, extra) => h('button', { type: 'button', onClick, disabled: !!busy, ...extra,
-      style: { minHeight: 46, padding: '0 16px', border: dark ? 0 : '1.5px solid #1C1F24', borderRadius: 12, background: dark ? '#1C1F24' : '#FFFFFF', color: dark ? '#FFFFFF' : '#1C1F24', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' } }, icon(ic, 20), label);
-    const testsPanel = h('section', { 'aria-labelledby': 'tests-h', 'data-tests': (tests || []).length, style: { background: '#FFFFFF', border: '1px solid #E4E1DA', borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 } },
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } }, icon('science', 22, { color: '#1A36C4' }), h('h2', { id: 'tests-h', style: { margin: 0, fontWeight: 800, fontSize: 18, flex: 1 } }, 'Cartes test'),
-        h('span', { style: { fontSize: 13, color: '#5E636B' } }, 'Démos liées à aucun commerce')),
-      tests === null ? h('div', { role: 'status', style: { color: '#5E636B', fontSize: 14 } }, 'Chargement…')
-        : !tests.length ? h('div', { style: { color: '#5E636B', fontSize: 14 } }, 'Aucune carte test. « + Créer une carte test » en crée une, avec le même générateur que les vraies cartes.')
-        : tests.map(t => h('div', { key: t.id, 'data-test-row': t.id, style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid #EFEDE8' } },
-          h('div', { style: { flex: '1 1 200px', minWidth: 0 } }, h('div', { style: { fontWeight: 700, fontSize: 15, overflowWrap: 'anywhere' } }, testCardLabel(t)), h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Modifiée le ' + fmtDate(t.updated_at))),
+      style: { minHeight: 46, padding: '0 16px', border: dark ? 0 : '1.5px solid var(--dpa-text,#1C1F24)', borderRadius: 12, background: dark ? 'var(--dpa-solid,#1C1F24)' : 'var(--dpa-surface,#FFFFFF)', color: dark ? '#FFFFFF' : 'var(--dpa-text,#1C1F24)', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' } }, icon(ic, 20), label);
+    const testsPanel = h('section', { 'aria-labelledby': 'tests-h', 'data-tests': (tests || []).length, style: { background: 'var(--dpa-surface,#FFFFFF)', border: '1px solid var(--dpa-border-soft,#E4E1DA)', borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 10 } },
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } }, icon('science', 22, { color: 'var(--dpa-link-strong,#1A36C4)' }), h('h2', { id: 'tests-h', style: { margin: 0, fontWeight: 800, fontSize: 18, flex: 1 } }, 'Cartes test'),
+        h('span', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)' } }, 'Démos liées à aucun commerce')),
+      tests === null ? h('div', { role: 'status', style: { color: 'var(--dpa-muted,#5E636B)', fontSize: 14 } }, 'Chargement…')
+        : !tests.length ? h('div', { style: { color: 'var(--dpa-muted,#5E636B)', fontSize: 14 } }, 'Aucune carte test. « + Créer une carte test » en crée une, avec le même générateur que les vraies cartes.')
+        : tests.map(t => h('div', { key: t.id, 'data-test-row': t.id, style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid var(--dpa-border-soft,#EFEDE8)' } },
+          h('div', { style: { flex: '1 1 200px', minWidth: 0 } }, h('div', { style: { fontWeight: 700, fontSize: 15, overflowWrap: 'anywhere' } }, testCardLabel(t)), h('div', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)' } }, 'Modifiée le ' + fmtDate(t.updated_at))),
           h('button', { type: 'button', onClick: () => pickSel('t:' + t.id), style: { minHeight: 40, padding: '0 12px', border: 0, borderRadius: 10, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 14 } }, 'Ouvrir'),
-          h('button', { type: 'button', onClick: () => duplicateTest(t.id), disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: '1.5px solid #D4D1C9', borderRadius: 10, background: '#FFFFFF', fontWeight: 600, fontSize: 14 } }, 'Dupliquer'),
-          h('button', { type: 'button', onClick: () => setAskDelete(t), disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: 0, borderRadius: 10, background: 'none', color: '#B42318', fontWeight: 600, fontSize: 14 } }, 'Supprimer'))));
+          h('button', { type: 'button', onClick: () => duplicateTest(t.id), disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 10, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 600, fontSize: 14 } }, 'Dupliquer'),
+          h('button', { type: 'button', onClick: () => setAskDelete(t), disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: 0, borderRadius: 10, background: 'none', color: 'var(--dpa-danger,#B42318)', fontWeight: 600, fontSize: 14 } }, 'Supprimer'))));
     const top = h('div', { style: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' } },
       h('div', null,
         h('h1', { style: { margin: 0, fontWeight: 800, fontSize: 'clamp(28px,5vw,38px)', letterSpacing: '-0.03em', lineHeight: 1.05 } }, 'Générateur de cartes'),
-        h('div', { style: { marginTop: 6, color: '#5E636B', fontSize: 15 } }, 'Un seul projet de design par programme, décliné en Apple Wallet et Google Wallet.')),
+        h('div', { style: { marginTop: 6, color: 'var(--dpa-muted,#5E636B)', fontSize: 15 } }, 'Un seul projet de design par programme, décliné en Apple Wallet et Google Wallet.')),
       h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', flex: desk ? 'none' : '1 1 260px' } },
         h('div', { style: { minWidth: 260, flex: '1 1 260px' } }, h(Select, { label: 'Commerce', value: selValue, options: merchantOptions, onChange: pickSel })),
         btnTop('Ajouter un client', 'add', () => { if (dirty && !window.confirm('Des modifications ne sont pas enregistrées. Continuer ?')) return; setAdding(true); setCreated(null); }, true, { 'aria-pressed': adding }),
@@ -1070,19 +1070,19 @@ export function makeCardDesigner(React, api) {
     const deleteDialog = askDelete ? h('div', { onClick: () => busy !== 'del' && setAskDelete(null), style: { position: 'fixed', inset: 0, zIndex: 70, background: 'rgba(20,22,28,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 } },
       h('div', { role: 'dialog', className: 'dpa-glass-sheet', 'aria-modal': true, 'aria-label': 'Supprimer la carte test', onClick: e => e.stopPropagation(), style: { width: '100%', maxWidth: 480, borderRadius: 20, padding: 22, display: 'flex', flexDirection: 'column', gap: 14 } },
         h('h2', { style: { margin: 0, fontWeight: 800, fontSize: 22 } }, 'Supprimer la carte test ?'),
-        h('p', { style: { margin: 0, fontSize: 15, color: '#3E424A', lineHeight: 1.5 } }, `« ${askDelete.name} », ses images et sa carte Google Wallet de démonstration seront supprimées. Aucun commerce, programme ou client n’est concerné.`),
+        h('p', { style: { margin: 0, fontSize: 15, color: 'var(--dpa-secondary,#3E424A)', lineHeight: 1.5 } }, `« ${askDelete.name} », ses images et sa carte Google Wallet de démonstration seront supprimées. Aucun commerce, programme ou client n’est concerné.`),
         h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
-          h('button', { type: 'button', onClick: () => setAskDelete(null), disabled: busy === 'del', style: { flex: 1, minWidth: 120, minHeight: 50, border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 15 } }, 'Annuler'),
+          h('button', { type: 'button', onClick: () => setAskDelete(null), disabled: busy === 'del', style: { flex: 1, minWidth: 120, minHeight: 50, border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 600, fontSize: 15 } }, 'Annuler'),
           h('button', { type: 'button', onClick: () => deleteTest(askDelete.id), disabled: busy === 'del', style: { flex: 2, minWidth: 160, minHeight: 50, border: 0, borderRadius: 12, background: '#B42318', color: '#FFFFFF', fontWeight: 700, fontSize: 15 } }, busy === 'del' ? 'Suppression…' : 'Supprimer la carte test')))) : null;
 
     if (adding) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h(NewClientForm, { onCancel: () => setAdding(false), onCreated }));
     if (!key) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top,
-      h('div', { style: { background: '#FFFFFF', border: '1px solid #E4E1DA', borderRadius: 18, padding: '32px 20px', textAlign: 'center', color: '#5E636B' } }, icon('style', 36, { color: '#9A9EA6' }),
-        h('div', { style: { marginTop: 10, fontWeight: 700, fontSize: 17, color: '#1C1F24' } }, 'Choisissez un commerce'), h('div', { style: { marginTop: 6, fontSize: 15 } }, 'Ou ouvrez une demande de design payée avec « Créer la carte », ajoutez un client, ou créez une carte test.')),
+      h('div', { style: { background: 'var(--dpa-surface,#FFFFFF)', border: '1px solid var(--dpa-border-soft,#E4E1DA)', borderRadius: 18, padding: '32px 20px', textAlign: 'center', color: 'var(--dpa-muted,#5E636B)' } }, icon('style', 36, { color: 'var(--dpa-placeholder,#9A9EA6)' }),
+        h('div', { style: { marginTop: 10, fontWeight: 700, fontSize: 17, color: 'var(--dpa-text,#1C1F24)' } }, 'Choisissez un commerce'), h('div', { style: { marginTop: 6, fontSize: 15 } }, 'Ou ouvrez une demande de design payée avec « Créer la carte », ajoutez un client, ou créez une carte test.')),
       testsPanel, deleteDialog);
-    if (loading || (!design && !error && !(project && !project.program))) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h('div', { role: 'status', style: { padding: 30, textAlign: 'center', color: '#5E636B' } }, 'Chargement du projet…'));
-    if (error) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h('div', { role: 'alert', style: { padding: '14px 16px', borderRadius: 14, background: '#FCEBEA', color: '#7A1A13', fontWeight: 600 } }, error));
-    if (!project.program) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h('div', { style: { padding: '14px 16px', borderRadius: 14, background: '#FFF3DC', color: '#5C4200', fontWeight: 600 } }, 'Ce commerce n’a pas encore de programme de fidélité : terminez d’abord son inscription.'));
+    if (loading || (!design && !error && !(project && !project.program))) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h('div', { role: 'status', style: { padding: 30, textAlign: 'center', color: 'var(--dpa-muted,#5E636B)' } }, 'Chargement du projet…'));
+    if (error) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h('div', { role: 'alert', style: { padding: '14px 16px', borderRadius: 14, background: 'var(--dpa-danger-bg,#FCEBEA)', color: 'var(--dpa-danger,#7A1A13)', fontWeight: 600 } }, error));
+    if (!project.program) return h('div', { style: { display: 'flex', flexDirection: 'column', gap: 18 } }, top, h('div', { style: { padding: '14px 16px', borderRadius: 14, background: 'var(--dpa-warning-bg,#FFF3DC)', color: 'var(--dpa-warning,#5C4200)', fontWeight: 600 } }, 'Ce commerce n’a pas encore de programme de fidélité : terminez d’abord son inscription.'));
 
     const pg = project.program, req = (project.requests || []).find(r => r.id === requestId) || null, pv = design.preview;
     const demoHeaderRaw = isTest ? 'TEST ' + project.test.id.slice(0,4) + ' ' + String(project.test.qr_token || project.test.qr_value || '').replace(/^DPA_TEST:/,'').slice(0,4) : '';
@@ -1090,53 +1090,53 @@ export function makeCardDesigner(React, api) {
     const data = { ...DEMO, isTest, appleHeaderNumber: isTest ? (demoHeaderDigits ? demoHeaderDigits.slice(-4) : demoHeaderRaw) : null, programName: pg.name, client: pv.client || DEMO.client, progress: pv.progress, goal: pv.goal, mode: pv.mode, reward: pv.reward || DEMO.reward, available: pv.available,
       ...(isTest ? { qr: project.test.qr_value, cardNumber: project.test.card_number } : {}) };
     const po = design[platform], pName = platform === 'apple' ? 'Apple Wallet' : 'Google Wallet';
-    const status = isTest ? (busy==='save' ? ['Enregistrement automatique…','#EEF1FF','#1A36C4'] : autoSaveError ? ['Échec de sauvegarde automatique','#FCEBEA','#B42318'] : dirty ? ['Sauvegarde automatique prévue…', '#FFF3DC', '#8A5A00'] : ['CARTE TEST · enregistrée le ' + fmtDate(project.test.updated_at), '#EEF1FF', '#1A36C4'])
-      : project.draft && project.draft.status === 'validated' && !dirty ? ['Design validé le ' + fmtDate(project.draft.validated_at), '#E4F3EB', '#1F6B45']
-      : dirty ? ['Modifications non enregistrées', '#FFF3DC', '#8A5A00']
-      : project.draft ? ['Brouillon enregistré le ' + fmtDate(project.draft.updated_at), '#E8EDFF', '#1A36C4'] : ['Nouveau projet', '#EFEDE8', '#3E424A'];
+    const status = isTest ? (busy==='save' ? ['Enregistrement automatique…','var(--dpa-info-bg,#EEF1FF)','var(--dpa-link-strong,#1A36C4)'] : autoSaveError ? ['Échec de sauvegarde automatique','var(--dpa-danger-bg,#FCEBEA)','var(--dpa-danger,#B42318)'] : dirty ? ['Sauvegarde automatique prévue…', 'var(--dpa-warning-bg,#FFF3DC)', 'var(--dpa-warning,#8A5A00)'] : ['CARTE TEST · enregistrée le ' + fmtDate(project.test.updated_at), 'var(--dpa-info-bg,#EEF1FF)', 'var(--dpa-link-strong,#1A36C4)'])
+      : project.draft && project.draft.status === 'validated' && !dirty ? ['Design validé le ' + fmtDate(project.draft.validated_at), 'var(--dpa-success-bg,#E4F3EB)', 'var(--dpa-success,#1F6B45)']
+      : dirty ? ['Modifications non enregistrées', 'var(--dpa-warning-bg,#FFF3DC)', 'var(--dpa-warning,#8A5A00)']
+      : project.draft ? ['Brouillon enregistré le ' + fmtDate(project.draft.updated_at), 'var(--dpa-info-bg,#E8EDFF)', 'var(--dpa-link-strong,#1A36C4)'] : ['Nouveau projet', 'var(--dpa-subtle,#EFEDE8)', 'var(--dpa-secondary,#3E424A)'];
     const applied = pg.card_design_validated_at ? 'Design appliqué au programme le ' + fmtDate(pg.card_design_validated_at) : 'Aucun design appliqué à ce programme pour l’instant.';
 
     // Shop prepared by the admin: its owner gets the access link only when the admin sends it.
     const acc = project.account || {}, ac = acc.admin_created;
     const accessBtn = (primary) => h('button', { type: 'button', onClick: () => setAskAccess(true), disabled: !!busy, 'data-send-access': true,
-      style: { minHeight: 44, padding: '0 14px', border: primary ? 0 : '1.5px solid #1C1F24', borderRadius: 12, background: primary ? '#1C1F24' : '#FFFFFF', color: primary ? '#FFFFFF' : '#1C1F24', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
+      style: { minHeight: 44, padding: '0 14px', border: primary ? 0 : '1.5px solid var(--dpa-text,#1C1F24)', borderRadius: 12, background: primary ? 'var(--dpa-solid,#1C1F24)' : 'var(--dpa-surface,#FFFFFF)', color: primary ? '#FFFFFF' : 'var(--dpa-text,#1C1F24)', fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 } },
       icon('forward_to_inbox', 18), ac && ac.access_sent_at ? 'Renvoyer l’accès au commerçant' : 'Envoyer l’accès au commerçant');
-    const accessBlock = ac ? h('div', { 'data-access': ac.access_sent_at ? 'sent' : 'not_sent', style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 12, background: '#F6F5F1', fontSize: 14 } },
-      icon('badge', 20, { color: '#5E636B' }),
+    const accessBlock = ac ? h('div', { 'data-access': ac.access_sent_at ? 'sent' : 'not_sent', style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 12, background: 'var(--dpa-subtle,#F6F5F1)', fontSize: 14 } },
+      icon('badge', 20, { color: 'var(--dpa-muted,#5E636B)' }),
       h('span', { style: { flex: '1 1 220px', minWidth: 0 } }, 'Compte préparé par DPA Cards · ', acc.owner_email || '—', ' · ',
         ac.access_sent_at ? 'accès envoyé le ' + fmtDate(ac.access_sent_at) + (ac.access_sent_count > 1 ? ` (${ac.access_sent_count} envois)` : '') : 'accès pas encore envoyé',
         ac.access_last_error ? ' · dernier envoi en erreur' : ''),
       accessBtn(false)) : null;
     const SUBL = { trialing: 'Essai gratuit', active: 'Actif', past_due: 'Paiement en retard', canceled: 'Résilié', incomplete: 'Non finalisé', unpaid: 'Impayé', paused: 'Suspendu', expired: 'Offre terminée' };
-    const summary = created && created.merchant.id === project.merchant.id ? h('section', { 'data-created': created.merchant.id, 'aria-label': 'Client créé', style: { background: '#E4F3EB', border: '1px solid #B9E0CB', borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 } },
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } }, icon('task_alt', 26, { color: '#1F6B45' }), h('h2', { style: { margin: 0, fontWeight: 800, fontSize: 20, color: '#1F6B45' } }, 'Client créé avec succès')),
+    const summary = created && created.merchant.id === project.merchant.id ? h('section', { 'data-created': created.merchant.id, 'aria-label': 'Client créé', style: { background: 'var(--dpa-success-bg,#E4F3EB)', border: '1px solid var(--dpa-success,#B9E0CB)', borderRadius: 18, padding: 18, display: 'flex', flexDirection: 'column', gap: 12 } },
+      h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } }, icon('task_alt', 26, { color: 'var(--dpa-success,#1F6B45)' }), h('h2', { style: { margin: 0, fontWeight: 800, fontSize: 20, color: 'var(--dpa-success,#1F6B45)' } }, 'Client créé avec succès')),
       h('dl', { style: { margin: 0, display: 'grid', gridTemplateColumns: 'minmax(120px,max-content) minmax(0,1fr)', gap: '6px 16px', fontSize: 15 } },
         [['Commerce', created.merchant.business_name], ['Responsable', [created.merchant.first_name, created.merchant.last_name].filter(Boolean).join(' ')], ['E-mail', created.owner.email + (created.owner.attached ? ' (compte existant rattaché)' : '')],
           ['Lien public', created.public_url], ['Abonnement', acc.subscription_status ? (SUBL[acc.subscription_status] || acc.subscription_status) : 'Non activé'],
           ['Programme', `${created.program.name} · ${created.program.goal} ${created.program.mode === 'points' ? 'points' : 'passages'} = ${created.program.reward}`]]
-          .map(([k, v]) => [h('dt', { key: k + 't', style: { color: '#3E424A' } }, k), h('dd', { key: k + 'd', style: { margin: 0, fontWeight: 600, overflowWrap: 'anywhere' } }, v)])),
+          .map(([k, v]) => [h('dt', { key: k + 't', style: { color: 'var(--dpa-secondary,#3E424A)' } }, k), h('dd', { key: k + 'd', style: { margin: 0, fontWeight: 600, overflowWrap: 'anywhere' } }, v)])),
       h('div', { style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
         h('button', { type: 'button', onClick: () => setCreated(null), style: { minHeight: 46, padding: '0 18px', border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('style', 20), 'Créer sa carte'),
         accessBtn(false))) : null;
 
     // Test card: its name, its unique test QR, duplicate / delete. No merchant, no request, no validation.
-    const smallBtn = (label, onClick, extra) => h('button', { type: 'button', onClick, disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: '1.5px solid #D4D1C9', borderRadius: 10, background: '#FFFFFF', fontWeight: 600, fontSize: 14, ...((extra && extra.style) || {}) } }, label);
+    const smallBtn = (label, onClick, extra) => h('button', { type: 'button', onClick, disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 10, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 600, fontSize: 14, ...((extra && extra.style) || {}) } }, label);
     const testSection = isTest ? h(Section, { title: 'Carte test' },
       h('span', { 'data-test-badge': true, style: { alignSelf: 'flex-start', padding: '4px 10px', borderRadius: 999, background: '#1A36C4', color: '#FFFFFF', fontSize: 12, fontWeight: 800, letterSpacing: '0.08em' } }, 'CARTE TEST'),
       h(Text, { label: 'Nom de la carte test', value: testName, max: 80, placeholder: 'Démo Restaurant', onChange: setTestName }),
       h('div', { style: { fontSize: 14 } }, 'QR de test unique : ', h('code', { 'data-test-qr': project.test.qr_value, style: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, overflowWrap: 'anywhere' } }, project.test.qr_value)),
-      h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45 } }, 'Mode test : la carte commence à 0 passage. Scannez son QR depuis un scanner DPA Cards connecté, puis validez « Ajouter 1 passage test ». Les vrais clients ne sont jamais modifiés.'),
+      h('div', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)', lineHeight: 1.45 } }, 'Mode test : la carte commence à 0 passage. Scannez son QR depuis un scanner DPA Cards connecté, puis validez « Ajouter 1 passage test ». Les vrais clients ne sont jamais modifiés.'),
       h('div', { style: { fontWeight: 800, fontSize: 16 } }, `Progression : ${project.test.progress || 0} / ${pv.goal} passages`),
       h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, smallBtn('Actualiser les passages', refreshTest), smallBtn(busy === 'qr' ? 'Génération…' : 'Générer un nouveau QR', newQr), smallBtn('Dupliquer', () => duplicateTest(project.test.id)),
-        smallBtn('Supprimer', () => setAskDelete(project.test), { style: { border: 0, background: 'none', color: '#B42318' } })),
+        smallBtn('Supprimer', () => setAskDelete(project.test), { style: { border: 0, background: 'none', color: 'var(--dpa-danger,#B42318)' } })),
       h('button', { type: 'button', disabled: !!busy, onClick: () => { setAssignTest(project.test.id); setAssignTarget(''); },
         'data-assign-test-card': project.test.id, style: { minHeight: 48, padding: '0 18px', border: 0, borderRadius: 12,
           background: '#2448F0', color: '#FFFFFF', fontWeight: 750, fontSize: 15 } }, 'Attribuer cette carte à un commerce'),
-      project.test.google_synced_at ? h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Carte Google Wallet de démonstration mise à jour le ' + fmtDate(project.test.google_synced_at)) : null) : null;
+      project.test.google_synced_at ? h('div', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)' } }, 'Carte Google Wallet de démonstration mise à jour le ' + fmtDate(project.test.google_synced_at)) : null) : null;
     const params = h('div', { style: { display: 'flex', flexDirection: 'column', gap: 14 } },
       testSection, !isTest && h(Section, { title: 'Projet' },
         h('div', { style: { fontSize: 15 } }, h('strong', null, project.merchant.business_name), ' · ', pg.name, ' · ', `${pg.goal} ${pg.mode === 'points' ? 'points' : 'passages'} = ${pg.reward}`),
-        h('div', { style: { fontSize: 13, color: '#5E636B' } }, applied),
+        h('div', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)' } }, applied),
         accessBlock,
         ac && h(Section, { title: 'Activation et prélèvements' },
           acc.activation ? h('p', { style: { margin: 0, fontSize: 14, lineHeight: 1.5 } },
@@ -1144,20 +1144,20 @@ export function makeCardDesigner(React, api) {
               'Activation déjà comptabilisée : ' + acc.activation.source) :
             h('p', { style: { margin: 0, fontSize: 14, lineHeight: 1.5 } },
               '50 € d’activation à régler en ligne sur DPA Cards, ou par sans-contact sur votre terminal.'),
-          h('p', { style: { margin: 0, fontSize: 13, color: '#5E636B', lineHeight: 1.5 } },
+          h('p', { style: { margin: 0, fontSize: 13, color: 'var(--dpa-muted,#5E636B)', lineHeight: 1.5 } },
             'Abonnement : le commerçant choisit carte bancaire ou mandat SEPA/IBAN sur Stripe. Les coordonnées bancaires ne sont pas saisies dans cette administration.'),
           acc.can_record_onsite && h('button', { type: 'button', 'data-onsite-activation': true,
             disabled: !!busy, onClick: () => { setOnsiteRef(''); setOnsiteChecked(false); setOnsiteOpen(true); },
-            style: { minHeight: 46, border: '1.5px solid #2448F0', borderRadius: 12, background: '#FFFFFF', color: '#2448F0', fontWeight: 750 } },
+            style: { minHeight: 46, border: '1.5px solid var(--dpa-link,#2448F0)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', color: 'var(--dpa-link,#2448F0)', fontWeight: 750 } },
             'J’ai encaissé 50 € en sans-contact'),
           h('button', { type: 'button', disabled: !!busy, onClick: refreshSaleStatus,
-            style: { minHeight: 42, border: '1px solid #D4D1C9', borderRadius: 10, background: '#FFFFFF', fontWeight: 700 } },
+            style: { minHeight: 42, border: '1px solid var(--dpa-border,#D4D1C9)', borderRadius: 10, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 700 } },
             busy==='sale-status'?'Actualisation…':'Actualiser le statut de paiement'),
           !['active','trialing'].includes(acc.subscription_status) && h('div', {
             'data-admin-stripe-checkout': true, style: { display: 'flex', flexDirection: 'column', gap: 12,
-              borderTop: '1px solid #E4E1DA', paddingTop: 14 } },
+              borderTop: '1px solid var(--dpa-border-soft,#E4E1DA)', paddingTop: 14 } },
             h('h3', { style: { margin: 0, fontWeight: 800, fontSize: 16 } }, 'Configurer le paiement avec le commerçant'),
-            h('p', { style: { margin: 0, fontSize: 13, color: '#5E636B', lineHeight: 1.5 } },
+            h('p', { style: { margin: 0, fontSize: 13, color: 'var(--dpa-muted,#5E636B)', lineHeight: 1.5 } },
               'Générez un lien Stripe à utiliser en face à face ou à transmettre au commerçant. Stripe demande son consentement et recueille sa carte ou son mandat SEPA.'),
             h(Select, { label: 'Offre', value: salePlan,
               options: [['no_commitment','20 €/mois sans engagement'],['commitment','20 €/mois avec engagement de 12 mois']],
@@ -1173,40 +1173,40 @@ export function makeCardDesigner(React, api) {
                 background: '#2448F0', color: '#FFFFFF', fontWeight: 750 } },
               busy==='stripe-sale'?'Création du paiement sécurisé…':'Créer le lien de paiement sécurisé'),
             saleLink && h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10,
-              padding: 12, border: '1px solid #D4D1C9', borderRadius: 12 } },
+              padding: 12, border: '1px solid var(--dpa-border,#D4D1C9)', borderRadius: 12 } },
               h('a', { href: saleLink, target: '_blank', rel: 'noopener noreferrer',
                 style: { minHeight: 46, padding: '12px 14px', display: 'inline-flex',
-                  justifyContent: 'center', alignItems: 'center', background: '#1C1F24',
+                  justifyContent: 'center', alignItems: 'center', background: 'var(--dpa-solid,#1C1F24)',
                   color: '#FFFFFF', borderRadius: 10, textDecoration: 'none', fontWeight: 700 } },
                 'Ouvrir Stripe avec le commerçant'),
               h('button', { type: 'button', onClick: copySaleLink,
-                style: { minHeight: 44, border: '1.5px solid #D4D1C9', borderRadius: 10,
-                  background: '#FFFFFF', fontWeight: 700 } }, 'Copier le lien à envoyer au commerçant'),
-              h('p', { style: { margin: 0, color: '#5E636B', fontSize: 12, lineHeight: 1.5 } },
+                style: { minHeight: 44, border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 10,
+                  background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 700 } }, 'Copier le lien à envoyer au commerçant'),
+              h('p', { style: { margin: 0, color: 'var(--dpa-muted,#5E636B)', fontSize: 12, lineHeight: 1.5 } },
                 'Une validation Stripe peut être immédiate ou différée (SEPA). Le statut du commerçant est mis à jour par les événements Stripe.'))
           )),
         pg.card_design_validated_at && project.draft && project.draft.google_sync_status ? (() => {
-          const g = project.draft, G = { synced: ['Google Wallet à jour' + (g.google_synced_at ? ' (' + fmtDate(g.google_synced_at) + ')' : ''), '#E4F3EB', '#1F6B45'],
-            no_class: ['Google Wallet : aucune carte ajoutée pour l’instant, le design sera utilisé à la première', '#EFEDE8', '#3E424A'],
-            pending: ['Google Wallet : synchronisation en attente', '#FFF3DC', '#8A5A00'], error: ['Google Wallet : synchronisation en erreur', '#FCEBEA', '#A11D14'] }[g.google_sync_status];
+          const g = project.draft, G = { synced: ['Google Wallet à jour' + (g.google_synced_at ? ' (' + fmtDate(g.google_synced_at) + ')' : ''), 'var(--dpa-success-bg,#E4F3EB)', 'var(--dpa-success,#1F6B45)'],
+            no_class: ['Google Wallet : aucune carte ajoutée pour l’instant, le design sera utilisé à la première', 'var(--dpa-subtle,#EFEDE8)', 'var(--dpa-secondary,#3E424A)'],
+            pending: ['Google Wallet : synchronisation en attente', 'var(--dpa-warning-bg,#FFF3DC)', 'var(--dpa-warning,#8A5A00)'], error: ['Google Wallet : synchronisation en erreur', 'var(--dpa-danger-bg,#FCEBEA)', 'var(--dpa-danger,#A11D14)'] }[g.google_sync_status];
           return h('div', { 'data-google-sync': g.google_sync_status, style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 12px', borderRadius: 12, background: G[1], color: G[2], fontSize: 14, fontWeight: 600 } },
             icon(g.google_sync_status === 'error' ? 'sync_problem' : g.google_sync_status === 'synced' ? 'cloud_done' : 'cloud_sync', 20), h('span', { style: { flex: 1, minWidth: 0 } }, G[0]),
-            g.google_sync_status === 'error' || g.google_sync_status === 'pending' ? h('button', { type: 'button', onClick: retryGoogle, disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: 0, borderRadius: 10, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700, fontSize: 14 } }, busy === 'google' ? 'Synchronisation…' : 'Réessayer') : null);
+            g.google_sync_status === 'error' || g.google_sync_status === 'pending' ? h('button', { type: 'button', onClick: retryGoogle, disabled: !!busy, style: { minHeight: 40, padding: '0 12px', border: 0, borderRadius: 10, background: 'var(--dpa-solid,#1C1F24)', color: '#FFFFFF', fontWeight: 700, fontSize: 14 } }, busy === 'google' ? 'Synchronisation…' : 'Réessayer') : null);
         })() : null,
         (project.requests || []).length ? h(Select, { label: 'Demande de design liée', value: requestId || '', onChange: v => setRequestId(v || null),
           options: [['', 'Aucune'], ...project.requests.map(r => [r.id, 'Payée le ' + fmtDate(r.paid_at) + ' — ' + (DST[r.status] || r.status)])] }) : null,
-        req ? h('div', { 'data-request': req.id, style: { display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: 12, background: '#F6F5F1', fontSize: 14 } },
+        req ? h('div', { 'data-request': req.id, style: { display: 'flex', flexDirection: 'column', gap: 8, padding: 12, borderRadius: 12, background: 'var(--dpa-subtle,#F6F5F1)', fontSize: 14 } },
           h('div', null, h('strong', null, 'Brief : '), req.description || '—'),
           h('div', null, h('strong', null, 'Couleurs souhaitées : '), req.colors || '—'),
           h('div', null, h('strong', null, 'Contact : '), [req.contact_name, req.contact_email, req.contact_phone].filter(Boolean).join(' · ') || '—'),
           h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } },
-            req.logo_url ? h('a', { href: req.logo_url, target: '_blank', rel: 'noopener', style: { display: 'block' } }, h('img', { src: req.logo_url, alt: 'Logo fourni', style: { width: 56, height: 56, objectFit: 'contain', borderRadius: 8, background: '#FFFFFF', border: '1px solid #E4E1DA' } })) : null,
-            (req.reference_urls || []).map((u, i) => h('a', { key: i, href: u, target: '_blank', rel: 'noopener', style: { display: 'inline-flex', alignItems: 'center', gap: 4, minHeight: 36, padding: '0 10px', border: '1.5px solid #D4D1C9', borderRadius: 10, color: '#1C1F24', textDecoration: 'none', fontWeight: 600, fontSize: 13, background: '#FFFFFF' } }, icon('collections', 16), 'Référence ' + (i + 1)))),
-          h('div', { style: { fontSize: 12, color: '#5E636B' } }, 'Le logo fourni n’est pas importé automatiquement : téléchargez-le puis importez-le dans « Identité » pour le recadrer.')) : null),
+            req.logo_url ? h('a', { href: req.logo_url, target: '_blank', rel: 'noopener', style: { display: 'block' } }, h('img', { src: req.logo_url, alt: 'Logo fourni', style: { width: 56, height: 56, objectFit: 'contain', borderRadius: 8, background: 'var(--dpa-surface,#FFFFFF)', border: '1px solid var(--dpa-border-soft,#E4E1DA)' } })) : null,
+            (req.reference_urls || []).map((u, i) => h('a', { key: i, href: u, target: '_blank', rel: 'noopener', style: { display: 'inline-flex', alignItems: 'center', gap: 4, minHeight: 36, padding: '0 10px', border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 10, color: 'var(--dpa-text,#1C1F24)', textDecoration: 'none', fontWeight: 600, fontSize: 13, background: 'var(--dpa-surface,#FFFFFF)' } }, icon('collections', 16), 'Référence ' + (i + 1)))),
+          h('div', { style: { fontSize: 12, color: 'var(--dpa-muted,#5E636B)' } }, 'Le logo fourni n’est pas importé automatiquement : téléchargez-le puis importez-le dans « Identité » pour le recadrer.')) : null),
       h(Section, { title: 'Identité' },
         h(Text, { label: 'Nom du commerce', value: design.identity.name, max: 40, onChange: v => set('identity.name', v) }),
         h(Text, { label: 'Activité / sous-titre (facultatif)', value: design.identity.subtitle, max: 40, onChange: v => set('identity.subtitle', v) }),
-        h('p',{style:{fontSize:13,color:'#5E636B',margin:0}},'Les logos sont désormais configurés séparément dans les sections Apple Wallet et Google Wallet ci-dessous.')),
+        h('p',{style:{fontSize:13,color:'var(--dpa-muted,#5E636B)',margin:0}},'Les logos sont désormais configurés séparément dans les sections Apple Wallet et Google Wallet ci-dessous.')),
       h(Section, { title: 'Logos Apple Wallet' },
         h(ImagePick, { label: 'Logo symbole Apple Wallet', testId: 'logo', asset: design.assets.logo,
           busy: busy === 'up-logo', onPick: pickFile('logo'), onRemove: () => set('assets.logo', null),
@@ -1218,7 +1218,7 @@ export function makeCardDesigner(React, api) {
           onPick: pickFile('businessNameImage'), onRemove: () => set('assets.businessNameImage', null),
           hint: 'PNG transparent. Le logo texte apparaît juste après le symbole dans le mode personnalisé Apple.' })),
       h(Section, { title: 'Logos Google Wallet' },
-        h('p',{style:{fontSize:13,color:'#5E636B',margin:0}},
+        h('p',{style:{fontSize:13,color:'var(--dpa-muted,#5E636B)',margin:0}},
           'Importe ici un logo réservé à Google Wallet. Sans image spécifique, le logo Apple correspondant est repris automatiquement. Pour colorer ton symbole dans le cercle Google, intègre cette couleur dans le PNG : le fond du cercle est géré par Google.'),
         h(ImagePick, { label: 'Logo symbole Google Wallet', testId: 'googleLogo',
           asset: design.assets.googleLogo, busy: busy === 'up-googleLogo',
@@ -1232,12 +1232,12 @@ export function makeCardDesigner(React, api) {
         h(Select,{label:'Style de l’en-tête',value:design.apple.headerMode==='custom'?'custom':'classic',
           options:[['classic','Classique — texte natif Apple (actuel)'],['custom','Personnalisé — symbole + logo texte']],
           onChange:v=>set('apple.headerMode',v)}),
-        h('div',{style:{fontSize:13,color:'#5E636B',lineHeight:1.55}},
+        h('div',{style:{fontSize:13,color:'var(--dpa-muted,#5E636B)',lineHeight:1.55}},
           design.apple.headerMode==='custom'
             ? 'Symbole à gauche et logo texte importé juste après, dans une image Retina. Sans logo texte, le nom du commerce et son activité sont écrits comme avant. Le numéro de carte reste à droite dans son champ natif.'
             : 'Design actuel : logo PNG à gauche, nom affiché en texte natif Apple Wallet. Vous pouvez essayer le mode personnalisé et revenir ici à tout moment.'),
         design.apple.headerMode==='custom' && design.apple.showBusinessName!==true &&
-          h('div',{style:{fontSize:12,color:'#A15A12'}},'Activez « Afficher le nom du commerce » pour voir également l’activité.')),
+          h('div',{style:{fontSize:12,color:'var(--dpa-warning,#A15A12)'}},'Activez « Afficher le nom du commerce » pour voir également l’activité.')),
       h(Section, { title: 'Couleurs' },
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           h(Color, { label: 'Couleur principale (fond)', value: design.colors.primary, onChange: v => set('colors.primary', v) }),
@@ -1251,25 +1251,25 @@ export function makeCardDesigner(React, api) {
         h(Select, { label: 'Type de fidélité', value: pv.mode, options: [['passages', 'Passages (tampons)'], ['points', 'Points']], onChange: v => set('preview.mode', v) }),
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           h(Num, { label: 'Objectif', value: pv.goal, min: 1, max: 1000, onChange: v => { set('preview.goal', v); if (pv.progress > v && pv.mode === 'passages') set('preview.progress', v); } }),
-          isTest ? h('div', { style: {padding:12,borderRadius:12,background:'#EEF1FF',fontSize:14,color:'#1A36C4'} }, `Progression réelle de la carte test : ${pv.progress} / ${pv.goal}. Utilisez le scanner pour ajouter un passage.`)
+          isTest ? h('div', { style: {padding:12,borderRadius:12,background:'var(--dpa-info-bg,#EEF1FF)',fontSize:14,color:'var(--dpa-link-strong,#1A36C4)'} }, `Progression réelle de la carte test : ${pv.progress} / ${pv.goal}. Utilisez le scanner pour ajouter un passage.`)
             : h(Num, { label: 'Progression de démonstration', value: pv.progress, min: 0, max: pv.mode === 'points' ? 100000 : pv.goal, onChange: v => set('preview.progress', v) }),
           h(Num, { label: 'Récompenses disponibles', value: pv.available, min: 0, max: 99, onChange: v => set('preview.available', v) })),
         h(Text, { label: 'Récompense', value: pv.reward, max: 80, onChange: v => set('preview.reward', v) }),
         h(Text, { label: 'Libellé du type de fidélité', value: design.label, max: 16, placeholder: pv.mode === 'points' ? 'POINTS' : 'TAMPONS', onChange: v => set('label', v) }),
-        h('div', { style: { fontSize: 13, color: '#5E636B' } }, isTest ? 'Les passages test sont enregistrés séparément des vrais clients. Actualisez la carte pour voir les passages ajoutés depuis le scanner.' : 'Ces valeurs servent uniquement à l’aperçu : la règle du programme n’est pas modifiée et chaque carte affiche les données de son client.')),
+        h('div', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)' } }, isTest ? 'Les passages test sont enregistrés séparément des vrais clients. Actualisez la carte pour voir les passages ajoutés depuis le scanner.' : 'Ces valeurs servent uniquement à l’aperçu : la règle du programme n’est pas modifiée et chaque carte affiche les données de son client.')),
       h(Section, { title: 'Client de démonstration' },
         h(Text, { label: 'Prénom et nom', value: pv.client, max: 60, onChange: v => set('preview.client', v) })),
       h(Section, { title: 'Tampons' },
         h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 12 } },
           h('div', { style: {gridColumn:'1 / -1'} }, h(StampLibraryPicker, { value: design.stamps.icon === 'library' ? design.stamps.libraryId : '',
             onChange: v => { set('stamps.icon', 'library'); set('stamps.libraryId', v); set('stamps.emoji', ''); set('assets.stamp', null); } }))),
-        h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, background: '#1C1F24' } },
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, background: 'var(--dpa-solid,#1C1F24)' } },
           h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }), h(Stamp, { on: true, st: design.stamps, size: 34, stampUrl: design.assets.stamp && design.assets.stamp.url }),
           h(Stamp, { on: false, st: design.stamps, size: 34, stampUrl:design.assets.stamp?.url }), h('span', { style: { color: '#FFFFFF', fontSize: 13, opacity: 0.8 } }, 'Rempli · Rempli · Vide')),
         h(ImagePick, { label: 'Ou importer un tampon PNG personnalisé', testId: 'stamp', asset: design.assets.stamp, busy: busy === 'up-stamp', onPick: pickFile('stamp'), onRemove: () => { set('assets.stamp', null); if (design.stamps.icon === 'custom') { set('stamps.icon', 'library'); set('stamps.libraryId', 'cafe'); } }, hint: 'Un seul PNG transparent : passages effectués en couleur, restants grisés à 22 %. 2 Mo maximum.' }),
-        h('div',{'data-wallet-stamp-layout':platform,style:{padding:'12px 14px',background:'#EEF1FF',borderRadius:12,display:'flex',flexDirection:'column',gap:10}},
-          h('div',{style:{fontWeight:800,fontSize:15,color:'#1A36C4'}},'Disposition des tampons · '+pName),
-          h('p',{style:{fontSize:13,color:'#3E424A',lineHeight:1.45,margin:0}},'Ces deux réglages ne modifient que '+pName+'. Les autres cartes Wallet gardent leurs propres dimensions.'),
+        h('div',{'data-wallet-stamp-layout':platform,style:{padding:'12px 14px',background:'var(--dpa-info-bg,#EEF1FF)',borderRadius:12,display:'flex',flexDirection:'column',gap:10}},
+          h('div',{style:{fontWeight:800,fontSize:15,color:'var(--dpa-link-strong,#1A36C4)'}},'Disposition des tampons · '+pName),
+          h('p',{style:{fontSize:13,color:'var(--dpa-secondary,#3E424A)',lineHeight:1.45,margin:0}},'Ces deux réglages ne modifient que '+pName+'. Les autres cartes Wallet gardent leurs propres dimensions.'),
           h(Field,{label:'Taille des tampons '+pName+' : '+stampSizePercent(po.stampSize)+' %'},
             h('input',{type:'range',min:50,max:120,step:5,value:stampSizePercent(po.stampSize),
               'data-stamp-size-control':platform,'aria-label':'Taille des tampons '+pName,
@@ -1280,22 +1280,22 @@ export function makeCardDesigner(React, api) {
               'data-stamp-spacing-control':platform,'aria-label':'Espacement des tampons '+pName,
               onChange:e=>set(platform+'.stampSpacing',+e.target.value),
               style:{width:'100%',accentColor:'#2448F0'}})),
-          h('div',{style:{fontSize:12,color:'#4A4E55',lineHeight:1.4}},'100 % = rendu habituel · 50 % = plus resserré ou plus petit · 120 % = plus espacé ou plus grand. Sans effet sur les cartes à points.')),
+          h('div',{style:{fontSize:12,color:'var(--dpa-secondary,#4A4E55)',lineHeight:1.4}},'100 % = rendu habituel · 50 % = plus resserré ou plus petit · 120 % = plus espacé ou plus grand. Sans effet sur les cartes à points.')),
         h(Field,{label:'Opacité des tampons non validés : '+inactiveStampOpacity(design.stamps.inactiveOpacity)+' %'},
           h('input',{type:'range',min:0,max:100,step:1,value:inactiveStampOpacity(design.stamps.inactiveOpacity),
             'data-stamp-opacity-control':true,'aria-label':'Opacité des tampons non validés',
             onChange:e=>set('stamps.inactiveOpacity',+e.target.value),
             style:{width:'100%',accentColor:'#2448F0'}}),
-          h('div',{style:{marginTop:5,fontSize:13,color:'#5E636B',lineHeight:1.4}},
+          h('div',{style:{marginTop:5,fontSize:13,color:'var(--dpa-muted,#5E636B)',lineHeight:1.4}},
             '0 % = invisibles · 22 % = gris actuel · 100 % = gris bien visible. Les tampons validés restent en couleur.'))),
       h(Section,{title:'Tampon récompense — dernier tampon'},
         h('div',{style:{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}},
           h('img',{src:stampImageUrl(design.stamps.rewardId)||'/assets/stamps/reward-star.png',
-            alt:'Tampon récompense sélectionné',width:56,height:56,style:{objectFit:'contain',background:'#F6F5F1',borderRadius:12,padding:4}}),
-          h('div',{style:{flex:'1 1 160px',fontSize:14,color:'#4A4E55'}},'Sélectionnez une autre image pour le dernier tampon. Les anciens modèles gardent leur étoile.'),
+            alt:'Tampon récompense sélectionné',width:56,height:56,style:{objectFit:'contain',background:'var(--dpa-subtle,#F6F5F1)',borderRadius:12,padding:4}}),
+          h('div',{style:{flex:'1 1 160px',fontSize:14,color:'var(--dpa-secondary,#4A4E55)'}},'Sélectionnez une autre image pour le dernier tampon. Les anciens modèles gardent leur étoile.'),
           h('button',{type:'button','data-reward-stamp-picker':true,'aria-expanded':rewardPickerOpen,
             onClick:()=>setRewardPickerOpen(v=>!v),
-            style:{minHeight:44,padding:'0 14px',borderRadius:12,border:'1.5px solid #2448F0',background:'#EEF1FF',color:'#1A36C4',fontWeight:700,cursor:'pointer'}},
+            style:{minHeight:44,padding:'0 14px',borderRadius:12,border:'1.5px solid var(--dpa-link,#2448F0)',background:'var(--dpa-info-bg,#EEF1FF)',color:'var(--dpa-link-strong,#1A36C4)',fontWeight:700,cursor:'pointer'}},
             rewardPickerOpen?'Fermer le choix':'Choisir le tampon récompense')),
         rewardPickerOpen && h(StampLibraryPicker,{includeRewardStar:true,value:design.stamps.rewardId||'reward-star',
           onChange:v=>{set('stamps.rewardId',v);setRewardPickerOpen(false);}})),
@@ -1315,7 +1315,7 @@ export function makeCardDesigner(React, api) {
       h(Section, { title: 'Typographie' },
         h(Select, { label: 'Police de la carte', value: design.font, options: Object.entries(FONTS).map(([k, f]) => [k, f.label]), onChange: v => set('font', v) })),
       h(Section, { title: 'Ajustements ' + pName },
-        h('div', { style: { fontSize: 13, color: '#5E636B' } }, 'Ces réglages ne s’appliquent qu’à la version ' + pName + '. Le reste du design est commun aux deux plateformes.'),
+        h('div', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)' } }, 'Ces réglages ne s’appliquent qu’à la version ' + pName + '. Le reste du design est commun aux deux plateformes.'),
         h(Check, { label: 'Afficher l’image principale', checked: po.showHero, onChange: v => set(platform + '.showHero', v) }),
         h(Check, { label: 'Afficher le sous-titre', checked: po.showSubtitle, onChange: v => set(platform + '.showSubtitle', v) }),
         platform==='apple' && h(Check, { label: 'Afficher le rectangle des tampons',
@@ -1325,7 +1325,7 @@ export function makeCardDesigner(React, api) {
           h('input', { type: 'range', min: 0, max: 100, value: po.heroFocus, 'aria-label': 'Cadrage vertical', onChange: e => set(platform + '.heroFocus', +e.target.value), style: { width: '100%', accentColor: '#2448F0' } })),
         h(Text, { label: 'Libellé spécifique (facultatif)', value: po.label, max: 16, placeholder: design.label || (pv.mode === 'points' ? 'POINTS' : 'TAMPONS'), onChange: v => set(platform + '.label', v) }),
         platform==='apple' && h('div',{'data-apple-reward-settings':true,style:{
-          padding:'13px 14px',background:'#F6F5F1',borderRadius:12,
+          padding:'13px 14px',background:'var(--dpa-subtle,#F6F5F1)',borderRadius:12,
           display:'flex',flexDirection:'column',gap:10
         }},
           h(Check,{label:'Afficher la récompense dans le bloc des tampons',checked:po.showReward===true,onChange:v=>set('apple.showReward',v)}),
@@ -1335,9 +1335,9 @@ export function makeCardDesigner(React, api) {
             h(Color,{label:'Couleur du texte de récompense',value:po.rewardTextColor||rewardLabelColor(design),
               onChange:v=>set('apple.rewardTextColor',v)}),
             po.rewardTextColor && h('button',{type:'button',onClick:()=>set('apple.rewardTextColor',''),
-              style:{marginTop:8,padding:'8px 10px',border:'1px solid #D4D1C9',borderRadius:8,background:'#FFFFFF',cursor:'pointer'}},
+              style:{marginTop:8,padding:'8px 10px',border:'1px solid var(--dpa-border,#D4D1C9)',borderRadius:8,background:'var(--dpa-surface,#FFFFFF)',cursor:'pointer'}},
               'Revenir à la couleur automatique')),
-          h('div',{style:{fontSize:13,color:'#5E636B',lineHeight:1.4}},
+          h('div',{style:{fontSize:13,color:'var(--dpa-muted,#5E636B)',lineHeight:1.4}},
             po.showStampPanel===false ? 'Seul le fond du rectangle est masqué. L’image du bandeau, les tampons activés et la récompense restent visibles, sans déplacer les compteurs ni le QR code.' : 'Récompense désactivée : design actuel inchangé. Activée : phrase centrée dans le rectangle des tampons.')
         ),
         h(Check, { label: 'Couleurs spécifiques à ' + pName, checked: Object.keys(po.colors || {}).length > 0, onChange: v => set(platform + '.colors', v ? { ...design.colors } : {}) }),
@@ -1345,22 +1345,22 @@ export function makeCardDesigner(React, api) {
           [['primary', 'Fond'], ['secondary', 'Secondaire'], ['text', 'Texte'], ['accent', 'Accent']].map(([k, l]) => h(Color, { key: k, label: l + ' (' + pName + ')', value: po.colors[k] || design.colors[k], onChange: v => set(platform + '.colors.' + k, v) }))) : null),
       h(Section, { title: 'QR code' },
         h(Check, { label: 'QR de démonstration dans l’éditeur', checked: true, onChange: () => toast('L’éditeur utilise toujours un QR de démonstration : le vrai QR est généré pour chaque carte.') }),
-        h('div', { style: { fontSize: 13, color: '#5E636B' } }, isTest ? 'Carte test : QR unique au format DPA_TEST, reconnu par le scanner comme carte de démonstration. Il reste sur fond blanc et ne fait jamais partie d’une image.' : 'Le QR code est généré par DPA Cards pour chaque carte (format DPA1). Il reste toujours sur fond blanc et ne fait jamais partie d’une image.')));
+        h('div', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)' } }, isTest ? 'Carte test : QR unique au format DPA_TEST, reconnu par le scanner comme carte de démonstration. Il reste sur fond blanc et ne fait jamais partie d’une image.' : 'Le QR code est généré par DPA Cards pour chaque carte (format DPA1). Il reste toujours sur fond blanc et ne fait jamais partie d’une image.')));
 
-    const tabs = h('div', { role: 'tablist', 'aria-label': 'Plateforme', style: { display: 'flex', gap: 6, padding: 4, borderRadius: 14, background: '#ECEAE4', alignSelf: 'center' } },
+    const tabs = h('div', { role: 'tablist', 'aria-label': 'Plateforme', style: { display: 'flex', gap: 6, padding: 4, borderRadius: 14, background: 'var(--dpa-hover,#ECEAE4)', alignSelf: 'center' } },
       [['apple', 'Apple Wallet', 'phone_iphone'], ['google', 'Google Wallet', 'android']].map(([k, l, ic]) => h('button', { key: k, type: 'button', role: 'tab', 'aria-selected': platform === k, onClick: () => setPlatform(k),
-        style: { minHeight: 42, padding: '0 16px', border: 0, borderRadius: 11, background: platform === k ? '#FFFFFF' : 'transparent', color: '#1C1F24', fontWeight: platform === k ? 700 : 600, fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, boxShadow: platform === k ? '0 1px 4px rgba(20,22,28,0.12)' : 'none' } }, icon(ic, 18), l)));
+        style: { minHeight: 42, padding: '0 16px', border: 0, borderRadius: 11, background: platform === k ? 'var(--dpa-surface,#FFFFFF)' : 'transparent', color: 'var(--dpa-text,#1C1F24)', fontWeight: platform === k ? 700 : 600, fontSize: 15, display: 'flex', alignItems: 'center', gap: 6, boxShadow: platform === k ? '0 1px 4px rgba(20,22,28,0.12)' : 'none' } }, icon(ic, 18), l)));
     const scale = Math.min(1, ((two ? Math.min(width * 0.5, 560) : width) - 48) / 340);
     const preview = h('div', { style: { display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'stretch', ...(two ? { position: 'sticky', top: 84 } : {}) } },
       tabs,
-      h('div', { 'data-preview': platform, style: { display: 'flex', justifyContent: 'center', padding: '22px 12px', borderRadius: 20, background: 'repeating-linear-gradient(45deg,#EFEDE8 0 12px,#F4F2EE 12px 24px)' } },
+      h('div', { 'data-preview': platform, style: { display: 'flex', justifyContent: 'center', padding: '22px 12px', borderRadius: 20, background: 'repeating-linear-gradient(45deg,var(--dpa-subtle,#EFEDE8) 0 12px,var(--dpa-subtle,#F4F2EE) 12px 24px)' } },
         h('div', { style: { width: 340 * scale, display: 'flex', justifyContent: 'center' } }, h('div', { style: { transform: `scale(${scale})`, transformOrigin: 'top center', height: 'fit-content' } }, h(CardPreview, { design, data, platform })))),
-      h('div', { style: { fontSize: 13, color: '#5E636B', lineHeight: 1.45, textAlign: 'center' } }, isTest ? 'Carte test : données et QR de démonstration (DPA_TEST), propres à cette carte.' : 'Aperçu avec des données de démonstration. Sur une vraie carte, le nom du client, la progression, les récompenses et le QR code sont générés pour chaque client.'));
+      h('div', { style: { fontSize: 13, color: 'var(--dpa-muted,#5E636B)', lineHeight: 1.45, textAlign: 'center' } }, isTest ? 'Carte test : données et QR de démonstration (DPA_TEST), propres à cette carte.' : 'Aperçu avec des données de démonstration. Sur une vraie carte, le nom du client, la progression, les récompenses et le QR code sont générés pour chaque client.'));
 
     const actions = h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
       h('span', { role: 'status', style: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, background: status[1], color: status[2], fontSize: 13, fontWeight: 700 } }, status[0]),
       h('div', { style: { flex: 1 } }),
-      h('button', { type: 'button', onClick: save, disabled: !!busy, style: { minHeight: 46, padding: '0 16px', border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('save', 20), busy === 'save' ? 'Enregistrement…' : isTest ? 'Enregistrer la carte test' : 'Enregistrer le brouillon'),
+      h('button', { type: 'button', onClick: save, disabled: !!busy, style: { minHeight: 46, padding: '0 16px', border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('save', 20), busy === 'save' ? 'Enregistrement…' : isTest ? 'Enregistrer la carte test' : 'Enregistrer le brouillon'),
       isTest ? h('button', { type: 'button', onClick: testWallet, disabled: !!busy, 'data-test-wallet': true, 'aria-label':busy==='wallet'?'Préparation de la carte Google Wallet':'Ajouter à Google Wallet', style: { width: 260, maxWidth:'100%', padding:0, border:0, borderRadius:12, overflow:'hidden', background:'#000000', cursor:busy?'progress':'pointer', lineHeight:0 } }, h('img',{src:'/assets/wallet-badge-google.png',alt:'Ajouter à l’app Google Wallet',width:580,height:180,style:{width:'100%',height:'auto',display:'block',opacity:busy==='wallet'?.6:1}})) : null,
       isTest ? h('button', { type: 'button', onClick: testApple, disabled: !!busy, 'data-test-apple': true, 'aria-label':busy==='apple'?'Préparation de la carte Apple Wallet':'Ajouter à Apple Wallet', style: { width: 260, maxWidth:'100%', padding:0, border:0, borderRadius:12, overflow:'hidden', background:'#000000', cursor:busy?'progress':'pointer', lineHeight:0 } }, h('img',{src:'/assets/wallet-badge-apple.png',alt:'Ajouter à l’app Apple Cartes',width:580,height:180,style:{width:'100%',height:'auto',display:'block',opacity:busy==='apple'?.6:1}})) : null,
       !isTest && h('button', { type: 'button', onClick: () => setConfirm(true), disabled: !!busy, style: { minHeight: 46, padding: '0 16px', border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8 } }, icon('verified', 20), 'Valider le design'));
@@ -1373,17 +1373,17 @@ export function makeCardDesigner(React, api) {
       top, summary,
       isTest ? h('div', { role: 'note', 'data-test-mode': true, style: { display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderRadius: 14, background: '#1A36C4', color: '#FFFFFF' } }, icon('science', 24),
         h('div', null, h('div', { style: { fontWeight: 800, fontSize: 16, letterSpacing: '0.06em' } }, 'MODE TEST'), h('div', { style: { fontSize: 14, opacity: 0.9 } }, 'Carte de démonstration : aucun commerce, aucun compte, aucun client, aucun abonnement.'))) : null,
-      actions, isTest ? h('div',{role:'status','data-autosave-status':true,style:{fontSize:13,color:autoSaveError?'#B42318':'#5E636B',lineHeight:1.4}},
+      actions, isTest ? h('div',{role:'status','data-autosave-status':true,style:{fontSize:13,color:autoSaveError?'var(--dpa-danger,#B42318)':'var(--dpa-muted,#5E636B)',lineHeight:1.4}},
         autoSaveError?'Sauvegarde automatique échouée : '+autoSaveError+' · Utilise « Enregistrer la carte test » pour réessayer.':'Les changements de cette carte test sont enregistrés automatiquement après une courte pause.') : null, deleteDialog,
       onsiteOpen && !isTest ? modal([
         h('h2', { key: 'title', style: { margin: 0, fontSize: 22, fontWeight: 800 } }, 'Enregistrer les 50 € encaissés sur place'),
-        h('p', { key: 'body', style: { fontSize: 14, lineHeight: 1.55, color: '#3E424A' } },
+        h('p', { key: 'body', style: { fontSize: 14, lineHeight: 1.55, color: 'var(--dpa-secondary,#3E424A)' } },
           'Ce bouton n’encaisse pas de paiement. Utilisez-le uniquement après un paiement sans-contact réel sur votre terminal. Vérifiez le reçu. Aucun second paiement des 50 € ne sera demandé.'),
         h('label', { key: 'ref', style: { display: 'flex', flexDirection: 'column', gap: 8, fontWeight: 700 } },
           'Référence de transaction du terminal',
           h('input', { type: 'text', required: true, maxLength: 100, minLength: 6, value: onsiteRef,
             placeholder: 'Référence imprimée sur le reçu', onChange: e => setOnsiteRef(e.target.value),
-            style: { padding: '12px 14px', minHeight: 48, border: '1px solid #D4D1C9', borderRadius: 12, fontSize: 15 } })),
+            style: { padding: '12px 14px', minHeight: 48, border: '1px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, fontSize: 15 } })),
         h('label', { key: 'confirm', style: { display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 14, lineHeight: 1.5 } },
           h('input', { type: 'checkbox', checked: onsiteChecked, onChange: e => setOnsiteChecked(e.target.checked),
             style: { width: 22, height: 22, flexShrink: 0 } }),
@@ -1393,25 +1393,25 @@ export function makeCardDesigner(React, api) {
             background: '#2448F0', color: '#FFFFFF', fontWeight: 750 } },
           busy === 'onsite' ? 'Vérification…' : 'Enregistrer le paiement sur place'),
         h('button', { key: 'cancel', type: 'button', disabled: !!busy, onClick: () => setOnsiteOpen(false),
-          style: { minHeight: 44, border: 0, background: '#FFFFFF', fontWeight: 650 } }, 'Annuler')
+          style: { minHeight: 44, border: 0, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 650 } }, 'Annuler')
       ], () => !busy && setOnsiteOpen(false), 'Paiement sans-contact déjà effectué') : null,
       assignTest && isTest && assignTest===project.test.id ? modal([
         h('h2', { key: 'title', style: { margin: 0, fontSize: 22, fontWeight: 800 } }, 'Attribuer cette carte test'),
-        h('p', { key: 'note', style: { margin: 0, color: '#3E424A', fontSize: 14, lineHeight: 1.5 } },
+        h('p', { key: 'note', style: { margin: 0, color: 'var(--dpa-secondary,#3E424A)', fontSize: 14, lineHeight: 1.5 } },
           'Le design et ses images sont copiés sur une vraie carte de commerce. Le QR DPA_TEST, les passages fictifs et les cartes Wallet de démonstration restent séparés. Aucun abonnement ni paiement n’est créé automatiquement.'),
-        dirty ? h('p', { key: 'dirty', role: 'alert', style: { color: '#B42318', fontSize: 14 } },
+        dirty ? h('p', { key: 'dirty', role: 'alert', style: { color: 'var(--dpa-danger,#B42318)', fontSize: 14 } },
           'Enregistrez d’abord vos modifications, puis recommencez.') : null,
         h(Select, { key: 'merchant', label: 'Commerce déjà existant', value: assignTarget,
           options: [['', 'Sélectionner un commerce…'], ...list.filter(m => m.program).map(m => [m.id, m.name])], onChange: setAssignTarget }),
         h('button', { key: 'existing', type: 'button', disabled: !!busy || dirty || !assignTarget, onClick: assignExisting,
           style: { minHeight: 48, border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 750 } },
           busy==='assign'?'Attribution…':'Attribuer au commerce sélectionné'),
-        h('div', { key: 'separator', style: { textAlign: 'center', color: '#5E636B' } }, 'ou'),
+        h('div', { key: 'separator', style: { textAlign: 'center', color: 'var(--dpa-muted,#5E636B)' } }, 'ou'),
         h('button', { key: 'create', type: 'button', disabled: !!busy || dirty, onClick: () => { setAdding(true); setAssignTarget(''); },
-          style: { minHeight: 48, border: '1.5px solid #1C1F24', borderRadius: 12, background: '#FFFFFF', fontWeight: 750 } },
+          style: { minHeight: 48, border: '1.5px solid var(--dpa-text,#1C1F24)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 750 } },
           'Créer un nouveau compte commerçant'),
         h('button', { key: 'cancel', type: 'button', disabled: !!busy, onClick: () => { setAssignTest(null); setAssignTarget(''); },
-          style: { minHeight: 44, border: 0, background: 'none', color: '#3E424A' } }, 'Annuler')
+          style: { minHeight: 44, border: 0, background: 'none', color: 'var(--dpa-secondary,#3E424A)' } }, 'Annuler')
       ], () => { if(!busy){ setAssignTest(null); setAssignTarget(''); } }, 'Attribuer une carte test') : null,
       h('div', { style: two ? { display: 'grid', gridTemplateColumns: 'minmax(340px, 1fr) minmax(380px, 1fr)', gap: 24, alignItems: 'start' } : { display: 'flex', flexDirection: 'column', gap: 18 } },
         two ? params : preview, two ? preview : params),
@@ -1419,17 +1419,17 @@ export function makeCardDesigner(React, api) {
       crop ? modal(h(Cropper, { key: crop.src, src: crop.src, aspect: cropC.aspect, outW: cropC.outW, outH: cropC.outH, mime: cropC.mime, round: false, title: cropC.title, hint: cropC.hint, onDone: uploadCropped, onCancel: () => { URL.revokeObjectURL(crop.src); setCrop(null); } }), () => {}, cropC.title) : null,
       askAccess ? modal([
         h('h2', { key: 't', style: { margin: 0, fontWeight: 800, fontSize: 22 } }, 'Envoyer l’accès au commerçant ?'),
-        h('p', { key: 'p', style: { margin: 0, fontSize: 15, color: '#3E424A', lineHeight: 1.5 } }, `Un e-mail sera envoyé à ${acc.owner_email || 'l’adresse du commerçant'} avec un lien pour choisir son mot de passe et se connecter à son espace DPA Cards. Son abonnement restera à choisir de son côté.`),
+        h('p', { key: 'p', style: { margin: 0, fontSize: 15, color: 'var(--dpa-secondary,#3E424A)', lineHeight: 1.5 } }, `Un e-mail sera envoyé à ${acc.owner_email || 'l’adresse du commerçant'} avec un lien pour choisir son mot de passe et se connecter à son espace DPA Cards. Son abonnement restera à choisir de son côté.`),
         h('div', { key: 'b', style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
-          h('button', { type: 'button', onClick: () => setAskAccess(false), disabled: busy === 'access', style: { flex: 1, minWidth: 120, minHeight: 50, border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 15 } }, 'Annuler'),
-          h('button', { type: 'button', onClick: sendAccess, disabled: busy === 'access', style: { flex: 2, minWidth: 160, minHeight: 50, border: 0, borderRadius: 12, background: '#1C1F24', color: '#FFFFFF', fontWeight: 700, fontSize: 15 } }, busy === 'access' ? 'Envoi…' : 'Envoyer l’accès'))],
+          h('button', { type: 'button', onClick: () => setAskAccess(false), disabled: busy === 'access', style: { flex: 1, minWidth: 120, minHeight: 50, border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 600, fontSize: 15 } }, 'Annuler'),
+          h('button', { type: 'button', onClick: sendAccess, disabled: busy === 'access', style: { flex: 2, minWidth: 160, minHeight: 50, border: 0, borderRadius: 12, background: 'var(--dpa-solid,#1C1F24)', color: '#FFFFFF', fontWeight: 700, fontSize: 15 } }, busy === 'access' ? 'Envoi…' : 'Envoyer l’accès'))],
         () => busy !== 'access' && setAskAccess(false), 'Envoyer l’accès au commerçant') : null,
       confirm ? modal([
         h('h2', { key: 't', style: { margin: 0, fontWeight: 800, fontSize: 22 } }, 'Valider le design ?'),
-        h('p', { key: 'p', style: { margin: 0, fontSize: 15, color: '#3E424A', lineHeight: 1.5 } }, `Le design sera appliqué au programme « ${pg.name} » de ${project.merchant.business_name} : couleurs, logo, image principale et style des tampons, pour Apple Wallet et Google Wallet. Les données de chaque client restent générées par DPA Cards.`),
-        req ? h('p', { key: 'r', style: { margin: 0, fontSize: 14, color: '#5E636B', lineHeight: 1.5 } }, 'La demande de design garde son statut actuel (' + (DST[req.status] || req.status) + ') : utilisez « Marquer comme livré » dans les demandes de design quand la carte est prête.') : null,
+        h('p', { key: 'p', style: { margin: 0, fontSize: 15, color: 'var(--dpa-secondary,#3E424A)', lineHeight: 1.5 } }, `Le design sera appliqué au programme « ${pg.name} » de ${project.merchant.business_name} : couleurs, logo, image principale et style des tampons, pour Apple Wallet et Google Wallet. Les données de chaque client restent générées par DPA Cards.`),
+        req ? h('p', { key: 'r', style: { margin: 0, fontSize: 14, color: 'var(--dpa-muted,#5E636B)', lineHeight: 1.5 } }, 'La demande de design garde son statut actuel (' + (DST[req.status] || req.status) + ') : utilisez « Marquer comme livré » dans les demandes de design quand la carte est prête.') : null,
         h('div', { key: 'b', style: { display: 'flex', gap: 10, flexWrap: 'wrap' } },
-          h('button', { type: 'button', onClick: () => setConfirm(false), disabled: busy === 'validate', style: { flex: 1, minWidth: 120, minHeight: 50, border: '1.5px solid #D4D1C9', borderRadius: 12, background: '#FFFFFF', fontWeight: 600, fontSize: 15 } }, 'Annuler'),
+          h('button', { type: 'button', onClick: () => setConfirm(false), disabled: busy === 'validate', style: { flex: 1, minWidth: 120, minHeight: 50, border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', fontWeight: 600, fontSize: 15 } }, 'Annuler'),
           h('button', { type: 'button', onClick: validate, disabled: busy === 'validate', style: { flex: 2, minWidth: 160, minHeight: 50, border: 0, borderRadius: 12, background: '#2448F0', color: '#FFFFFF', fontWeight: 700, fontSize: 15 } }, busy === 'validate' ? 'Validation…' : 'Valider et appliquer'))],
         () => busy !== 'validate' && setConfirm(false), 'Valider le design') : null);
   }
