@@ -12,7 +12,7 @@
 <script>window.dpaAdminReady=new Promise(function(r){window.__dpaAdminResolve=r;});</script>
 <script type="module" src="/src/admin-backend.js"></script>
 <link rel="stylesheet" href="/src/mobile-layout.css">
-<script>if(new URLSearchParams(location.search).get('fond-test')==='1')document.documentElement.dataset.dpaGlassTest='';</script>
+<script>if(new URLSearchParams(location.search).get('fond-test')!=='0')document.documentElement.dataset.dpaGlassTest='';</script>
 <script>if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa-native-ios');</script>
 </head>
 <body>

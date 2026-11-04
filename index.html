@@ -22,7 +22,7 @@ if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa
 <!-- Supabase client (bundled by Vite), hands its API to the logic script via window.dpaReady. -->
 <script type="module" src="/src/backend.js"></script>
 <link rel="stylesheet" href="/src/mobile-layout.css">
-<script>if(new URLSearchParams(location.search).get('fond-test')==='1')document.documentElement.dataset.dpaGlassTest='';</script>
+<script>if(new URLSearchParams(location.search).get('fond-test')!=='0')document.documentElement.dataset.dpaGlassTest='';</script>
 <script>if(location.protocol==='capacitor:') document.documentElement.classList.add('dpa-native-ios');</script>
 </head>
 <body>
