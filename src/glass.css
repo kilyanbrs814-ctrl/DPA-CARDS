@@ -61,10 +61,17 @@
 }
 .dpa-desktop-brand-group { padding: 0 10px 4px; }
 .dpa-desktop-brand { display: block; width: auto; height: 38px; }
-.dpa-desktop-nav, .dpa-desktop-tools { display: flex; flex-direction: column; gap: 4px; }
-.dpa-desktop-tools { margin-top: auto; }
+.dpa-desktop-nav, .dpa-desktop-tools { display: flex; flex-direction: column; }
+.dpa-desktop-nav {
+  flex: 1 0 auto;
+  justify-content: center;
+  gap: clamp(8px, 1.6vh, 16px);
+  padding-block: 12px;
+}
+.dpa-desktop-nav .dpa-glass-pill { min-height: 48px; }
+.dpa-desktop-tools { gap: 8px; }
 .dpa-desktop-tools > span { margin: 0 10px 4px; }
-.dpa-desktop-sidebar .dpa-desktop-avatar img {
+.dpa-desktop-avatar img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -73,7 +80,7 @@
   background: #fff;
   object-fit: contain;
 }
-.dpa-glass-pill { justify-content: flex-start; gap: 10px; padding-inline: 12px; }
+.dpa-desktop-sidebar .dpa-glass-pill { justify-content: flex-start; gap: 12px; padding-inline: 14px; }
 .dpa-sidebar-scan {
   display: flex;
   align-items: center;
@@ -151,7 +158,7 @@
 .dpa-glass-sheet { color: #1c1f24; }
 .dpa-mfa-dialog::backdrop { -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
 
-/* Optional backdrop for inspecting the glass treatment on a contrasting image. */
+/* Shared image backdrop. fond-test=0 restores the plain surface. */
 html[data-dpa-glass-test] {
   --dpa-app-background: transparent;
 }
