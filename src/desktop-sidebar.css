@@ -1,0 +1,170 @@
+.dpa-workspace { display: flex; min-height: var(--dpa-page-height, 100dvh); }
+@media (min-width: 1024px) {
+  .dpa-workspace { padding-left: 104px; transition: padding-left 320ms cubic-bezier(.22, .8, .25, 1); }
+  .dpa-workspace:has(> .dpa-desktop-sidebar[data-pinned="true"]) { padding-left: 300px; }
+}
+
+.dpa-desktop-sidebar {
+  --sidebar-text: #253047;
+  --sidebar-muted: #57647a;
+  --sidebar-line: #ffffff80;
+  --sidebar-hover: linear-gradient(180deg, #ffffffa6, #ffffff24 55%, #ffffff45);
+  --sidebar-inset: inset 0 1px 1px #ffffffd9, inset 0 -1px 1px #25365016;
+  position: fixed;
+  top: 50%;
+  left: 14px;
+  z-index: 25;
+  width: 76px;
+  height: min(620px, calc(var(--dpa-page-height, 100dvh) - 28px));
+  max-height: calc(var(--dpa-page-height, 100dvh) - 28px);
+  transform: translateY(-50%);
+  color: var(--sidebar-text);
+  background: rgba(245, 248, 255, .40);
+  border: 1px solid #ffffffb3;
+  border-radius: 28px;
+  box-shadow: var(--sidebar-inset), 0 12px 36px #25365018;
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+  backdrop-filter: blur(18px) saturate(125%);
+  transition: width 320ms cubic-bezier(.22, .8, .25, 1), background 220ms, box-shadow 220ms;
+}
+.dpa-desktop-sidebar[data-expanded="true"] { width: 272px; box-shadow: var(--sidebar-inset), 0 18px 48px #25365026; }
+.dpa-sidebar-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  max-height: calc(var(--dpa-page-height, 100dvh) - 30px);
+  padding: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #64748b55 transparent;
+  border-radius: inherit;
+}
+.dpa-sidebar-content > * { flex-shrink: 0; }
+.dpa-sidebar-content > nav { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #64748b55 transparent; }
+.dpa-desktop-sidebar .dpa-sidebar-icon { display: block; width: 20px; height: 20px; flex: 0 0 20px; }
+.dpa-sidebar-label { opacity: 0; visibility: hidden; transform: translateX(-6px); transition: opacity 150ms, transform 250ms, visibility 150ms; white-space: nowrap; }
+[data-expanded="true"] .dpa-sidebar-label { opacity: 1; visibility: visible; transform: translateX(0); }
+.dpa-sidebar-brand { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 5px; }
+.dpa-sidebar-brand-mark { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: 50%; background: #ffffffc9; box-shadow: inset 0 1px 1px #fff, 0 3px 10px #2831490d; }
+.dpa-sidebar-brand-mark img { display: block; object-fit: contain; }
+.dpa-sidebar-brand-text, .dpa-sidebar-profile-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
+.dpa-sidebar-brand-text strong { font-size: 15px; font-weight: 750; }
+.dpa-sidebar-brand-text small, .dpa-sidebar-profile-text small { font-size: 11px; color: var(--sidebar-muted); }
+.dpa-sidebar-toggle {
+  position: absolute;
+  top: 24px;
+  right: -12px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 4px;
+  border: 1px solid #ffffffc9;
+  border-radius: 50%;
+  background: #fffffff0;
+  color: #3c485a;
+  box-shadow: 0 2px 9px #26324a20;
+  cursor: pointer;
+}
+.dpa-sidebar-toggle .dpa-sidebar-icon { width: 15px; height: 15px; transition: transform 250ms; }
+[data-expanded="true"] .dpa-sidebar-toggle .dpa-sidebar-icon { transform: rotate(180deg); }
+.dpa-sidebar-search { display: flex; align-items: center; position: relative; min-height: 38px; border-radius: 15px; }
+[data-expanded="true"] .dpa-sidebar-search { background: #ffffff36; box-shadow: inset 0 1px 2px #2831490c; }
+.dpa-sidebar-search-button { display: grid; place-items: center; flex: 0 0 54px; height: 38px; padding: 0; border: 0; border-radius: inherit; color: var(--sidebar-muted); background: transparent; cursor: pointer; }
+.dpa-sidebar-search input { min-width: 0; width: 0; opacity: 0; padding: 0; border: 0; background: transparent; font: inherit; font-size: 12px; color: var(--sidebar-text); outline-offset: 3px; }
+[data-expanded="true"] .dpa-sidebar-search-button { flex-basis: 38px; }
+[data-expanded="true"] .dpa-sidebar-search input { flex: 1; width: 100%; opacity: 1; }
+.dpa-sidebar-search input::placeholder { color: var(--sidebar-muted); }
+.dpa-sidebar-search kbd { display: none; margin: 0 8px; color: var(--sidebar-muted); font-family: inherit; font-size: 9px; white-space: nowrap; }
+[data-expanded="true"] .dpa-sidebar-search kbd { display: block; }
+.dpa-sidebar-section + .dpa-sidebar-section { margin-top: 8px; }
+.dpa-sidebar-section-title { display: flex; align-items: center; height: 18px; padding: 0 12px; font-size: 9px; letter-spacing: .11em; text-transform: uppercase; color: var(--sidebar-muted); font-weight: 650; }
+.dpa-sidebar-section-title::before { content: ''; display: block; position: absolute; width: 15px; height: 1px; background: var(--sidebar-line); }
+[data-expanded="true"] .dpa-sidebar-section-title::before { display: none; }
+.dpa-sidebar-entry + .dpa-sidebar-entry { margin-top: 4px; }
+.dpa-sidebar-row { position: relative; display: flex; }
+.dpa-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 22px;
+  background: transparent;
+  color: var(--sidebar-text);
+  text-decoration: none;
+  text-align: left;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background 180ms, box-shadow 180ms, border-color 180ms, color 180ms;
+}
+.dpa-sidebar-item:hover, .dpa-sidebar-item[aria-current="page"], .dpa-sidebar-item:focus-visible {
+  background: var(--sidebar-hover);
+  border-color: var(--sidebar-line);
+  box-shadow: var(--sidebar-inset), 0 4px 12px #2831490d;
+  color: var(--sidebar-text);
+}
+.dpa-sidebar-item[aria-current="page"] { font-weight: 750; color: #193cc2; }
+.dpa-desktop-sidebar button:focus-visible, .dpa-desktop-sidebar a:focus-visible { outline: 2px solid #2448f0; outline-offset: 2px; }
+.dpa-sidebar-row:has(.dpa-sidebar-disclosure) .dpa-sidebar-label { padding-right: 25px; }
+.dpa-sidebar-disclosure { display: none; position: absolute; right: 5px; top: 6px; width: 32px; height: 32px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--sidebar-muted); cursor: pointer; }
+[data-expanded="true"] .dpa-sidebar-disclosure { display: grid; }
+.dpa-sidebar-disclosure:hover { background: #ffffff40; }
+.dpa-sidebar-disclosure .dpa-sidebar-icon { width: 14px; height: 14px; transform: rotate(90deg); transition: transform 200ms; }
+.dpa-sidebar-disclosure[aria-expanded="true"] .dpa-sidebar-icon { transform: rotate(-90deg); }
+.dpa-sidebar-submenu { margin: 5px 8px 8px 26px; padding: 2px 0 2px 13px; border-left: 1px solid var(--sidebar-line); }
+.dpa-sidebar-submenu[hidden] { display: none; }
+.dpa-sidebar-child { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; border: 0; padding: 7px 8px; border-radius: 12px; background: transparent; color: var(--sidebar-text); text-align: left; font: inherit; font-size: 11px; line-height: 1.4; cursor: pointer; }
+.dpa-sidebar-child:hover { background: #ffffff42; }
+.dpa-sidebar-dot { flex: 0 0 5px; width: 5px; height: 5px; border-radius: 50%; background: #28a99a; box-shadow: 0 0 7px #28a99a42; }
+.dpa-sidebar-dot[data-color="1"] { background: #e68a69; }
+.dpa-sidebar-dot[data-color="2"] { background: #9772dc; }
+.dpa-sidebar-empty { padding: 0 12px; color: var(--sidebar-muted); font-size: 12px; }
+.dpa-sidebar-footer { display: flex; flex-direction: column; gap: 5px; padding-top: 10px; border-top: 1px solid var(--sidebar-line); }
+.dpa-sidebar-demo { height: 14px; padding-left: 12px; font-size: 10px; color: var(--sidebar-muted); }
+.dpa-sidebar-theme .dpa-sidebar-label { flex: 1; }
+.dpa-sidebar-switch { display: none; flex: 0 0 30px; width: 30px; height: 18px; padding: 3px; border-radius: 20px; background: #47556932; box-shadow: inset 0 1px 2px #27314212; }
+[data-expanded="true"] .dpa-sidebar-switch { display: block; }
+.dpa-sidebar-switch::before { content: ''; display: block; width: 12px; height: 12px; border-radius: 50%; background: white; box-shadow: 0 1px 3px #0002; transition: transform 200ms; }
+[aria-checked="true"] .dpa-sidebar-switch { background: #8097e3; }
+[aria-checked="true"] .dpa-sidebar-switch::before { transform: translateX(12px); }
+.dpa-desktop-profile.dpa-sidebar-item { min-height: 50px; gap: 10px; padding: 7px 9px; }
+.dpa-desktop-avatar { position: relative; display: grid; place-items: center; flex: 0 0 34px; overflow: hidden; width: 34px; height: 34px; border-radius: 50%; background: #283142; color: #fff; font-size: 11px; font-weight: 750; }
+.dpa-desktop-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; padding: 2px; object-fit: contain; background: #fff; }
+.dpa-sidebar-profile-text { flex: 1; }
+.dpa-sidebar-profile-text strong, .dpa-sidebar-profile-text small { display: block; overflow: hidden; max-width: 155px; text-overflow: ellipsis; }
+.dpa-sidebar-profile-text strong { font-size: 12px; }
+.dpa-sidebar-profile-arrow .dpa-sidebar-icon { width: 14px; height: 14px; }
+
+/* Theme preference belongs to this navigation, preserving merchant card artwork. */
+.dpa-desktop-sidebar[data-theme="dark"] {
+  --sidebar-text: #f0f4ff;
+  --sidebar-muted: #c2cbdf;
+  --sidebar-line: #ffffff32;
+  --sidebar-hover: linear-gradient(180deg, #ffffff32, #ffffff0a 55%, #ffffff15);
+  --sidebar-inset: inset 0 1px 1px #ffffff55, inset 0 -1px 1px #0003;
+  background: rgba(25, 32, 49, .70);
+  border-color: #ffffff45;
+}
+[data-theme="dark"] .dpa-sidebar-item[aria-current="page"] { color: #fff; }
+[data-theme="dark"] .dpa-sidebar-toggle { background: #374159; color: #f0f4ff; border-color: #ffffff42; }
+[data-theme="dark"] .dpa-sidebar-switch { background: #ffffff32; }
+[data-theme="dark"] [aria-checked="true"] .dpa-sidebar-switch { background: #8097e3; }
+[data-theme="dark"] .dpa-sidebar-item:focus-visible, [data-theme="dark"] button:focus-visible, [data-theme="dark"] a:focus-visible { outline-color: #b4c4ff; }
+@supports not ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
+  .dpa-desktop-sidebar { background: #f2f5fc; }
+  .dpa-desktop-sidebar[data-theme="dark"] { background: #202a3d; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dpa-workspace, .dpa-desktop-sidebar, .dpa-desktop-sidebar * { transition: none !important; }
+}

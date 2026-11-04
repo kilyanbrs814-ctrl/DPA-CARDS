@@ -595,31 +595,7 @@ a:hover{color:#1A36C4}
 </sc-if>
 <sc-if value="{{ s.app }}" hint-placeholder-val="{{ false }}">
 <div class="dpa-workspace">
-  <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
-    <aside class="dpa-desktop-sidebar dpa-glass-bar">
-      <div class="dpa-desktop-brand-group">
-        <img class="dpa-desktop-brand" src="/assets/dpa-cards-logo.png" alt="DPA Cards">
-      </div>
-      <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}">
-        <button type="button" class="dpa-sidebar-scan" onClick="{{ toScanner }}"><span class="material-symbols-rounded" aria-hidden="true">qr_code_scanner</span>Scanner une carte</button>
-      </sc-if>
-      <nav class="dpa-desktop-nav" aria-label="Navigation principale">
-        <sc-for list="{{ deskNav }}" as="n" hint-placeholder-count="6">
-          <button type="button" class="dpa-glass-pill" onClick="{{ n.go }}" aria-current="{{ n.current }}">
-            <span class="material-symbols-rounded" aria-hidden="true">{{ n.icon }}</span>{{ n.label }}
-          </button>
-        </sc-for>
-      </nav>
-      <div class="dpa-desktop-tools">
-        <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;font-weight:700;color:#6B4E00">Mode démonstration</span></sc-if>
-        <a class="dpa-glass-pill" href="mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards" aria-label="Contacter le support DPA Cards par e-mail"><span class="material-symbols-rounded" aria-hidden="true">chat</span>Support</a>
-        <button type="button" class="dpa-desktop-profile dpa-glass-pill" onClick="{{ openProfile }}" aria-haspopup="{{ profilePopup }}">
-          <span class="dpa-desktop-avatar" aria-hidden="true">{{ mInitials }}{{ profileLogo }}</span>
-          <span style="min-width:0;text-align:left"><span class="dpa-desktop-profile-name" style="display:block;font-weight:750">{{ m.first }} {{ m.last }}</span><span class="dpa-desktop-profile-name" style="display:block;font-size:12px;color:#525C6D">{{ m.business }}</span></span>
-        </button>
-      </div>
-    </aside>
-  </sc-if>
+  {{ desktopSidebar }}
   <main style="flex:1;min-width:0;padding-bottom:{{ mainPadB }}">
     <sc-if value="{{ mShowBar }}" hint-placeholder-val="{{ false }}">
       <header class="dpa-mobile-header dpa-glass-bar" style="position:sticky;top:0;z-index:20;padding-top:var(--dpa-safe-top,env(safe-area-inset-top))">
@@ -3484,7 +3460,7 @@ class Component extends DCLogic {
       {label:'Récompenses utilisées ce mois-ci',value:allActs.filter(a=>a.type==='reward'&&a.date.startsWith(TODAY.slice(0,7))).length,icon:'task_alt'}];
 
 
-    const {DashboardInsights,DashboardOverview}=this.api||this.utils||{};
+    const {DashboardInsights,DashboardOverview,DesktopSidebar}=this.api||this.utils||{};
     const analytics=dpaLoyaltyAnalytics(clients,s.analyticsYear||Number(TODAY.slice(0,4)),s.analyticsMonth||'all',s.retentionPeriod||'month',TODAY);
     const monthNames=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
     const analyticsMonths=[{value:'all',label:'Toute l’année'},...monthNames.map((label,i)=>({value:String(i+1).padStart(2,'0'),label}))];
@@ -3710,6 +3686,10 @@ class Component extends DCLogic {
         api:this.api.mfa,onVerified:()=>this.setState({mfaActive:true}),
         onDismiss:()=>this.setState({mfaPromptSeen:true}),
       }):null,
+      desktopSidebar:S.app&&isDesk&&DesktopSidebar?React.createElement(DesktopSidebar,{
+        items:deskNav,settings:moreItems,merchant:m,logo:profileLogoUrl,initials:initials(m.first+' '+m.last),demo:!!s.demo,
+        onProfile:canManageProfiles?openProfiles:go('more'),profilePopup:canManageProfiles?'dialog':undefined,
+      }):null,
       canManageProfiles,openProfiles,openProfile:canManageProfiles?openProfiles:go('more'),profilePopup:canManageProfiles?'dialog':undefined,
       profileControl:canManageProfiles?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,menuOpen:s.profileMenuOpen,onMenuClose:()=>this.setState({profileMenuOpen:false}),onAdd:this.beginAddProfile,hasAccess:s.hasAccess,accessSource:s.accessSource,
         needsActivation:!DPA_NATIVE_IOS&&s.role==='owner'&&!secondaryBlocked&&!!m.id&&m.id!==s.billingMerchantId&&!s.selectedActivated&&!s.hasAccess&&P&&(P.designStatus!=='draft'||designUnpaid(s.designReq)),
@@ -3793,10 +3773,7 @@ class Component extends DCLogic {
       downloadQr:()=>locked?this.go('invite'):(s.live?this.downloadJoinQr():this.showToast('Démo : le téléchargement du QR code n’est pas activé.','info')),
       canScan,canAddClients,canReward,canCorrections,canNotify,canEnrollHome:canAddClients&&!locked,homeJoinLabel:s.busy?'Création de la carte…':'Créer la carte du client',
       mobNav, deskNav, toScanner:go('scanner'), toMore:go('more'), toInvite:go('invite'), toCard:go('card'), toClients:go('clients'), toJoin:()=>{ if(locked) return this.go('invite'); const w=window.open(pubUrl,'_blank'); if(w) w.opener=null; else window.location.assign(pubUrl); }, toHome:go('home'),
-      profileLogo:isDesk&&profileLogoUrl?React.createElement('img',{
-        key:profileLogoUrl,src:profileLogoUrl,alt:'',onError:e=>{e.currentTarget.hidden=true;}
-      }):null,
-      mInitials:initials(m.first+' '+m.last),moreInitials:s.live&&s.role==='staff'?'EM':initials(m.first+' '+m.last),
+      moreInitials:s.live&&s.role==='staff'?'EM':initials(m.first+' '+m.last),
        moreHeading:s.live&&s.role==='staff'?'Espace employé':(m.first+' '+m.last).trim(),
        businessView:{name:m.business||'Non renseigné',activity:m.activity||'Non renseignée',address:m.address||'Non renseignée'},
        todayLabel:s.live?todayLong():'Mercredi 30 septembre',

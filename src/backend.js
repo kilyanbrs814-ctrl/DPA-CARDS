@@ -8,6 +8,7 @@ import { saveQrToPhotos } from './qr-photo.js';
 import { workspaceIdentity } from './workspace-identity.js';
 import { changeProfile, rememberProfile } from './merchant-profiles.js';
 import { makeProfileControls } from './profile-controls.js';
+import { makeDesktopSidebar } from './desktop-sidebar.js';
 import { publicSiteUrl } from './public-site.js';
 import { completePasswordSetup } from './password-setup.js';
 // Supabase access for the DPA Cards logic script.
@@ -466,6 +467,7 @@ const api = {
   DashboardInsights: dashboard.Merchant,
   DashboardOverview: dashboard.Overview,
   ProfileControls: makeProfileControls(window.React),
+  DesktopSidebar: makeDesktopSidebar(window.React),
   WalletRecoveryPanel: makeWalletRecoveryPanel(window.React),
   switchProfile: id => changeProfile(localStorage,window.location,profileUser.id,id,memberships),
   access: () => invokeFn('wallet/merchant-access', {}),
