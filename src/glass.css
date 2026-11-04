@@ -44,17 +44,21 @@
 }
 
 .dpa-workspace { display: flex; min-height: var(--dpa-page-height, 100dvh); }
+@media (min-width: 1024px) {
+  .dpa-workspace { padding-left: 252px; }
+}
 .dpa-desktop-sidebar {
-  position: sticky;
-  top: 12px;
+  position: fixed;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
   z-index: 25;
-  align-self: flex-start;
   display: flex;
   flex-direction: column;
   gap: 18px;
-  flex: 0 0 240px;
+  width: 240px;
   max-height: calc(var(--dpa-page-height, 100dvh) - 24px);
-  margin: 12px 0 12px 12px;
+  margin: 0;
   padding: 18px 12px 12px;
   border-radius: 24px;
   overflow: auto;
