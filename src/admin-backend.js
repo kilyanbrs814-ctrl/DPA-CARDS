@@ -45,14 +45,14 @@ const otpResend = document.getElementById('admin-otp-resend');
 const otpChange = document.getElementById('admin-otp-change');
 const nativeAdmin = isNativeIOS();
 let nativeOtpEmail = null;
-const ERROR_COLOR = '#C62828';
-const NORMAL_COLOR = '#5E636B';
+const ERROR_COLOR = 'var(--dpa-danger,#C62828)';
+const NORMAL_COLOR = 'var(--dpa-muted,#5E636B)';
 // Surface failed authentication as a red, accessible error message.
 function setAuthMessage(text, isError = false) {
   message.textContent = text;
   message.style.color = isError ? ERROR_COLOR : NORMAL_COLOR;
   message.setAttribute('role', isError ? 'alert' : 'status');
-  otpCode.style.borderColor = isError && nativeAdmin ? ERROR_COLOR : '#D4D1C9';
+  otpCode.style.borderColor = isError && nativeAdmin ? ERROR_COLOR : 'var(--dpa-border,#D4D1C9)';
 }
 if (nativeAdmin) {
   otpCode.addEventListener('input', () => {

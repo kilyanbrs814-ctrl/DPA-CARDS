@@ -7,7 +7,7 @@ export function makeAdminScanner(React,api){
   const h=React.createElement,CameraView=makeCameraView(React);
   const cardBox={borderRadius:18,padding:20};
   const action=(label,fn,dark=false,disabled=false)=>h('button',{type:'button',disabled,onClick:fn,
-    style:{borderRadius:12,minHeight:46,border:dark?'none':'1.5px solid #D4D1C9',background:dark?'#2448F0':'#FFFFFF',color:dark?'#FFFFFF':'#1C1F24',fontWeight:700,padding:'0 16px',cursor:disabled?'not-allowed':'pointer'}},label);
+    style:{borderRadius:12,minHeight:46,border:dark?'none':'1.5px solid var(--dpa-border,#D4D1C9)',background:dark?'#2448F0':'var(--dpa-surface,#FFFFFF)',color:dark?'#FFFFFF':'var(--dpa-text,#1C1F24)',fontWeight:700,padding:'0 16px',cursor:disabled?'not-allowed':'pointer'}},label);
   return function AdminScanner(){
     const [code,setCode]=React.useState(''),[result,setResult]=React.useState(null),[status,setStatus]=React.useState(''),[loading,setLoading]=React.useState(false),[stream,setStream]=React.useState(null);
     const current=React.useRef(null),lock=React.useRef(false);
@@ -44,7 +44,7 @@ export function makeAdminScanner(React,api){
     const c=result?.card;
     return h('section',{style:{display:'flex',flexDirection:'column',gap:18},'data-admin-scanner':true},
       h('div',null,h('h1',{style:{fontSize:34,fontWeight:800,margin:'0 0 6px'}},'Scanner une carte'),
-        h('p',{style:{margin:0,color:'#5E636B',fontSize:15}},'Scannez le QR code d’un client ou d’une carte test depuis l’administration DPA Cards.')),
+        h('p',{style:{margin:0,color:'var(--dpa-muted,#5E636B)',fontSize:15}},'Scannez le QR code d’un client ou d’une carte test depuis l’administration DPA Cards.')),
       h('div',{className:'dpa-glass-surface',style:cardBox},
         h('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
           action(stream?'Redémarrer la caméra':'Ouvrir la caméra',start,true,loading),
@@ -54,17 +54,17 @@ export function makeAdminScanner(React,api){
         h('form',{onSubmit:e=>{e.preventDefault();lookup(code);},style:{marginTop:18,display:'flex',flexWrap:'wrap',alignItems:'end',gap:10}},
           h('label',{style:{display:'flex',flex:'1 1 300px',flexDirection:'column',gap:7,fontWeight:700}},'QR code DPA1 / DPA_TEST',
             h('input',{type:'text',value:code,onChange:e=>setCode(e.target.value),autoComplete:'off',placeholder:'DPA1:… ou DPA_TEST:…',
-              style:{height:48,width:'100%',boxSizing:'border-box',border:'1.5px solid #D4D1C9',borderRadius:10,padding:'0 12px',fontSize:15}})),
+              style:{height:48,width:'100%',boxSizing:'border-box',border:'1.5px solid var(--dpa-border,#D4D1C9)',borderRadius:10,padding:'0 12px',fontSize:15}})),
           action(loading?'Recherche…':'Rechercher',()=>lookup(code),true,loading)),
-        status&&h('p',{role:'status',style:{color:'#2448F0',margin:'12px 0 0'}},status)),
+        status&&h('p',{role:'status',style:{color:'var(--dpa-link,#2448F0)',margin:'12px 0 0'}},status)),
       c&&h('div',{className:'dpa-glass-surface',style:cardBox},
         h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}},
           h('h2',{style:{margin:0,fontSize:22}},result.kind==='test'?'Carte de démonstration':'Carte client · '+c.merchant),
-          h('span',{style:{background:'#EEF1FF',color:'#2448F0',padding:'6px 12px',borderRadius:99,fontWeight:700}},result.kind==='test'?'TEST':'CARTE RÉELLE')),
+          h('span',{style:{background:'var(--dpa-info-bg,#EEF1FF)',color:'var(--dpa-link,#2448F0)',padding:'6px 12px',borderRadius:99,fontWeight:700}},result.kind==='test'?'TEST':'CARTE RÉELLE')),
         h('p',{style:{fontSize:17,fontWeight:700}},result.kind==='test'?c.name:c.name+' · '+c.number),
         h('p',{style:{fontSize:18,margin:'10px 0'}},'Progression : '+c.progress+' / '+c.goal),
         result.kind==='test'
           ? action('Ajouter un tampon test',addTest,true,loading||c.progress>=c.goal)
-          : h('p',{style:{fontSize:14,color:'#5E636B',lineHeight:1.5}},'Carte réelle identifiée : l’ajout de passages se fait dans le scanner du commerce, avec les droits du commerçant.')));
+          : h('p',{style:{fontSize:14,color:'var(--dpa-muted,#5E636B)',lineHeight:1.5}},'Carte réelle identifiée : l’ajout de passages se fait dans le scanner du commerce, avec les droits du commerçant.')));
   };
 }

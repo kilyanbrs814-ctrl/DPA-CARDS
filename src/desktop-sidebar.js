@@ -1,4 +1,3 @@
-const THEME_KEY = 'dpa.sidebar.theme.v1';
 const fold = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
 // The sidebar only receives actions already allowed by the merchant workspace.
@@ -29,9 +28,7 @@ export function makeDesktopSidebar(React) {
     const [settingsOpen, setSettingsOpen] = React.useState(false);
     const [settingsHovered, setSettingsHovered] = React.useState(false);
     const [failedLogo, setFailedLogo] = React.useState('');
-    const [theme, setTheme] = React.useState(() => {
-      try { return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light'; } catch { return 'light'; }
-    });
+    const [theme, setTheme] = React.useState(() => window.dpaTheme.get());
     const root = React.useRef(null);
     const search = React.useRef(null);
     const expanded = !suppressed && (hovered || focused || pinned);
@@ -41,8 +38,11 @@ export function makeDesktopSidebar(React) {
     const showSettings = expanded && (settingsOpen || settingsHovered || !!term);
 
     React.useEffect(() => {
-      try { localStorage.setItem(THEME_KEY, theme); } catch { /* Private browsing may disable storage. */ }
-    }, [theme]);
+      const update = () => setTheme(window.dpaTheme.get());
+      window.addEventListener('dpa:themechange', update);
+      update();
+      return () => window.removeEventListener('dpa:themechange', update);
+    }, []);
     React.useEffect(() => {
       const shortcut = event => {
         if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !event.altKey && !document.querySelector('[aria-modal="true"]')) {
@@ -117,9 +117,9 @@ export function makeDesktopSidebar(React) {
         !matches.length && h('p', {className: 'dpa-sidebar-empty', role: 'status'}, 'Aucune page trouvée.')),
       h('div', {className: 'dpa-sidebar-footer'},
         demo && h('span', {className: 'dpa-sidebar-demo dpa-sidebar-label'}, 'Mode démonstration'),
-        h('button', {type: 'button', role: 'switch', 'aria-checked': theme === 'dark', 'aria-label': 'Mode nuit de la barre de navigation',
+        h('button', {type: 'button', role: 'switch', 'aria-checked': theme === 'dark', 'aria-label': 'Mode nuit',
           className: 'dpa-sidebar-item dpa-sidebar-theme', title: expanded ? undefined : 'Mode nuit',
-          onClick: () => setTheme(theme === 'dark' ? 'light' : 'dark')}, icon(theme === 'dark' ? 'moon' : 'sun'),
+          onClick: () => window.dpaTheme.toggle()}, icon(theme === 'dark' ? 'moon' : 'sun'),
           h('span', {className: 'dpa-sidebar-label'}, 'Mode nuit'), h('span', {className: 'dpa-sidebar-switch', 'aria-hidden': true})),
         h('a', {className: 'dpa-sidebar-item', href: 'mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards',
           'aria-label': 'Contacter le support DPA Cards par e-mail', title: expanded ? undefined : 'Support'}, icon('chat'), h('span', {className: 'dpa-sidebar-label'}, 'Support')),

@@ -1,0 +1,79 @@
+/* Inline UI styles use these tokens with their original light-color fallback. */
+html[data-dpa-theme="dark"] {
+  color-scheme: dark;
+  color: #edf2fc;
+  background: #101725;
+  --dpa-surface: #1b2639;
+  --dpa-subtle: #233149;
+  --dpa-hover: #2d3d59;
+  --dpa-solid: #3d527b;
+  --dpa-text: #edf2fc;
+  --dpa-secondary: #cbd5e5;
+  --dpa-muted: #b0bed3;
+  --dpa-placeholder: #91a1bb;
+  --dpa-link: #a9baff;
+  --dpa-link-strong: #bfccff;
+  --dpa-border: #4c5c77;
+  --dpa-border-soft: #35445d;
+  --dpa-info-bg: #273759;
+  --dpa-success-bg: #183f36;
+  --dpa-success: #9ae4bf;
+  --dpa-warning-bg: #493b24;
+  --dpa-warning: #f8d496;
+  --dpa-danger-bg: #4b2c37;
+  --dpa-danger: #ffb4bb;
+  --dpa-app-background: #101725;
+  --dpa-toggle-surface: #26334cbb;
+  --dpa-glass-border: #a7bbdf30;
+  --dpa-glass-surface: #1b2639;
+  --dpa-glass-depth: inset 0 1px 0 #ffffff14, 0 2px 4px #0002, 0 12px 32px #0003;
+  --dpa-glass-float: inset 0 1px 0 #ffffff20, 0 3px 8px #0002, 0 16px 40px #0004;
+}
+html[data-dpa-theme="dark"][data-dpa-glass-test] { --dpa-app-background: transparent; }
+html[data-dpa-theme="dark"][data-dpa-glass-test]::before {
+  background: linear-gradient(#0c1425df, #0e1628e8), url('/assets/glass-test-background.svg') center / cover no-repeat, #101725;
+}
+html[data-dpa-theme="dark"] .dpa-glass-sheet,
+html[data-dpa-theme="dark"] .dpa-profile-dialog,
+html[data-dpa-theme="dark"] .dpa-mfa-panel { background: #1b2639; color: var(--dpa-text); }
+@supports (backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px)) {
+  html[data-dpa-theme="dark"] :is(.dpa-glass-surface, .legal-card, .dpa-di-metric, .dpa-di-panel, .dpa-glass-bar) { background: #1b2639b8; }
+  html[data-dpa-theme="dark"] :is(.dpa-glass-sheet, .dpa-profile-dialog, .dpa-mfa-panel.dpa-mfa-dialog) { background: #1b2639ef; }
+}
+html[data-dpa-theme="dark"] :is(input:not([type="color"]), textarea, select) { color: var(--dpa-text); }
+html[data-dpa-theme="dark"] :is(input, textarea)::placeholder { color: var(--dpa-placeholder); opacity: 1; }
+html[data-dpa-theme="dark"] :is(input[type="checkbox"], input[type="radio"]) { accent-color: #8ba4ff; }
+html[data-dpa-theme="dark"] .dpa-mobile-dock button[aria-current="page"] { background: #3a4e76 !important; box-shadow: inset 0 0 0 1px #a6bbff40; }
+html[data-dpa-theme="dark"] .dpa-di { --di-ink: var(--dpa-text); --di-muted: var(--dpa-muted); }
+html[data-dpa-theme="dark"] .dpa-di-icon { color: #c0ceff; color: color-mix(in srgb, var(--di-accent) 40%, white); }
+html[data-dpa-theme="dark"] .dpa-mfa-dialog::backdrop { background: #060c18a6; }
+html[data-dpa-theme="dark"] img[src$="/assets/dpa-cards-logo.png"]:not([data-dpa-artwork] img) { background: #fff; border-radius: 8px; padding: 4px; object-fit: contain; }
+html[data-dpa-theme="dark"] .dpa-sidebar-brand-mark img { padding: 0; background: transparent; }
+html[data-dpa-theme="dark"] ::selection { background: #4c65a2; color: #fff; }
+.dpa-theme-row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-left: auto; }
+.legal-top > div { display: flex; align-items: center; gap: 12px; }
+
+/* Artwork, brand headers and QR codes retain their exact original colors. */
+[data-dpa-artwork] {
+  color-scheme: light;
+  --dpa-surface: initial;
+  --dpa-subtle: initial;
+  --dpa-hover: initial;
+  --dpa-solid: initial;
+  --dpa-text: initial;
+  --dpa-secondary: initial;
+  --dpa-muted: initial;
+  --dpa-placeholder: initial;
+  --dpa-link: initial;
+  --dpa-link-strong: initial;
+  --dpa-border: initial;
+  --dpa-border-soft: initial;
+  --dpa-info-bg: initial;
+  --dpa-success-bg: initial;
+  --dpa-success: initial;
+  --dpa-warning-bg: initial;
+  --dpa-warning: initial;
+  --dpa-danger-bg: initial;
+  --dpa-danger: initial;
+}
+[data-dpa-theme-qr] { background: #fff !important; color: #15171b; border-radius: 14px; padding: 12px; }

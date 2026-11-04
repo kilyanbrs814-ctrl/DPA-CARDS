@@ -1,7 +1,7 @@
 @import './desktop-sidebar.css';
 
 :root {
-  --dpa-glass-border: #dce1e8;
+  --dpa-glass-border:var(--dpa-border,#dce1e8);
   --dpa-glass-surface: #f8f8f9;
   --dpa-glass-depth: inset 0 1px 0 #fffe, inset 0 -10px 22px #23262b08, 0 2px 4px #24262a0a, 0 12px 32px #24262a12;
   --dpa-glass-float: inset 0 1px 0 #fff, 0 3px 8px #17243b0d, 0 16px 40px #17243b16;
@@ -11,8 +11,8 @@
 .legal-card,
 .dpa-di-metric,
 .dpa-di-panel {
-  background: var(--dpa-glass-surface);
-  border: 1px solid var(--dpa-glass-border);
+  background:var(--dpa-glass-surface);
+  border:1px solid var(--dpa-glass-border);
   box-shadow: var(--dpa-glass-depth);
 }
 
@@ -20,8 +20,8 @@
 .dpa-glass-sheet,
 .dpa-profile-dialog,
 .dpa-mfa-panel.dpa-mfa-dialog {
-  background: #fff;
-  border: 1px solid var(--dpa-glass-border);
+  background:var(--dpa-surface,#fff);
+  border:1px solid var(--dpa-glass-border);
   box-shadow: var(--dpa-glass-float);
 }
 
@@ -31,7 +31,7 @@
   .dpa-di-metric,
   .dpa-di-panel,
   .dpa-glass-bar {
-    background: rgba(232, 233, 235, .28);
+    background:rgba(232, 233, 235, .28);
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
   }
@@ -39,7 +39,7 @@
   .dpa-glass-sheet,
   .dpa-profile-dialog,
   .dpa-mfa-panel.dpa-mfa-dialog {
-    background: rgba(250, 251, 253, .86);
+    background:rgba(250, 251, 253, .86);
     -webkit-backdrop-filter: blur(18px) saturate(120%);
     backdrop-filter: blur(18px) saturate(120%);
   }
@@ -52,10 +52,10 @@
   gap: 6px;
   min-height: 44px;
   padding: 6px 10px;
-  border: 1px solid transparent;
+  border:1px solid transparent;
   border-radius: 999px;
-  background: transparent;
-  color: #303846;
+  background:transparent;
+  color:var(--dpa-secondary,#303846);
   font-weight: 650;
   font-size: 14px;
   text-decoration: none;
@@ -64,10 +64,10 @@
 .dpa-glass-pill:hover,
 .dpa-glass-pill[aria-current="page"],
 .dpa-glass-pill[aria-selected="true"] {
-  background: #fff;
-  border-color: var(--dpa-glass-border);
+  background:var(--dpa-surface,#fff);
+  border-color:var(--dpa-glass-border);
   box-shadow: inset 0 1px 0 #fff, 0 3px 10px #17243b12;
-  color: #1a36c4;
+  color:var(--dpa-link-strong,#1a36c4);
 }
 .dpa-glass-pill .material-symbols-rounded {
   width: 1em;
@@ -97,21 +97,21 @@
   border-radius: 26px;
 }
 .dpa-mobile-dock button { min-width: 0; border-radius: 20px; }
-.dpa-mobile-dock button[aria-current="page"] { background: #ffffffd9 !important; box-shadow: inset 0 0 0 1px #e4e8ef; }
+.dpa-mobile-dock button[aria-current="page"] { background:#ffffffd9 !important; box-shadow: inset 0 0 0 1px #e4e8ef; }
 .dpa-mobile-dock button > span:first-child { max-width: 100%; }
 .dpa-mobile-dock .material-symbols-rounded { width: 1em; overflow: hidden; white-space: nowrap; }
 
 .dpa-glass-auth { padding: clamp(20px, 4vw, 34px); border-radius: 26px; }
-.dpa-glass-sheet { color: #1c1f24; }
+.dpa-glass-sheet { color:var(--dpa-text,#1c1f24); }
 .dpa-mfa-dialog::backdrop { -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
 
 /* Shared image backdrop. fond-test=0 restores the plain surface. */
 html[data-dpa-glass-test] {
-  --dpa-app-background: transparent;
+  --dpa-app-background:transparent;
 }
 
 html[data-dpa-glass-test] body {
-  background: transparent;
+  background:transparent;
 }
 
 html[data-dpa-glass-test]::before {
@@ -119,6 +119,6 @@ html[data-dpa-glass-test]::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: #e7f2ff url('/assets/glass-test-background.svg') center / cover no-repeat;
+  background:#e7f2ff url('/assets/glass-test-background.svg') center / cover no-repeat;
   pointer-events: none;
 }

@@ -13,8 +13,8 @@ export async function createRecoveryLink(api, cardId, platform) {
 
 export function makeWalletRecoveryPanel(React) {
   const h=React.createElement;
-  const button={minHeight:44,padding:'10px 12px',border:'1px solid #D4D1C9',borderRadius:12,
-    background:'#FFFFFF',color:'#2448F0',fontSize:14,fontWeight:700,cursor:'pointer'};
+  const button={minHeight:44,padding:'10px 12px',border:'1px solid var(--dpa-border,#D4D1C9)',borderRadius:12,
+    background:'var(--dpa-surface,#FFFFFF)',color:'var(--dpa-link,#2448F0)',fontSize:14,fontWeight:700,cursor:'pointer'};
   return function WalletRecoveryPanel({api,cardId,merchantId}) {
     const [platform,setPlatform]=React.useState(null),[links,setLinks]=React.useState({});
     const [loading,setLoading]=React.useState(false),[error,setError]=React.useState('');
@@ -50,29 +50,29 @@ export function makeWalletRecoveryPanel(React) {
       catch {if(request===sequence.current)setCopyError('Copie impossible. Sélectionnez le lien ci-dessous pour le copier.');}
     };
     return h('section',{'aria-label':'Récupérer la carte du client','data-wallet-recovery':true,
-      style:{marginTop:18,padding:16,border:'1px solid #E4E1DA',borderRadius:16,background:'#F8F7F4',
+      style:{marginTop:18,padding:16,border:'1px solid var(--dpa-border-soft,#E4E1DA)',borderRadius:16,background:'var(--dpa-subtle,#F8F7F4)',
         display:'flex',flexDirection:'column',gap:12,textAlign:'left',minWidth:0}},
       h('h3',{style:{margin:0,fontSize:17,lineHeight:1.3}},'Remettre la carte sur le téléphone'),
-      h('p',{style:{margin:0,fontSize:13,color:'#4A4E55',lineHeight:1.5}},
+      h('p',{style:{margin:0,fontSize:13,color:'var(--dpa-secondary,#4A4E55)',lineHeight:1.5}},
         'Le client a supprimé sa carte ? Choisissez son téléphone pour retrouver le lien et le QR code. Sa carte et ses tampons sont conservés.'),
       h('div',{role:'group','aria-label':'Téléphone du client',style:{display:'flex',gap:8,flexWrap:'wrap'}},
         ...[['apple','iPhone · Apple Wallet'],['google','Android · Google Wallet']].map(([key,label])=>h('button',{
           key,type:'button','aria-pressed':platform===key,onClick:()=>load(key),
-          style:{...button,flex:'1 1 100%',borderColor:platform===key?'#2448F0':'#D4D1C9',background:platform===key?'#EEF1FF':'#FFFFFF'}},label))),
+          style:{...button,flex:'1 1 100%',borderColor:platform===key?'var(--dpa-link,#2448F0)':'var(--dpa-border,#D4D1C9)',background:platform===key?'var(--dpa-info-bg,#EEF1FF)':'var(--dpa-surface,#FFFFFF)'}},label))),
       loading&&h('div',{role:'status',style:{fontSize:14}},'Préparation du lien…'),
-      error&&h('div',null,h('p',{role:'alert',style:{margin:'0 0 10px',color:'#B42318',fontSize:13}},error),
+      error&&h('div',null,h('p',{role:'alert',style:{margin:'0 0 10px',color:'var(--dpa-danger,#B42318)',fontSize:13}},error),
         h('button',{type:'button',onClick:()=>load(platform),style:button},'Réessayer')),
       result&&!loading&&!error&&h(React.Fragment,null,
         h('p',{style:{margin:0,fontSize:13,lineHeight:1.5}},'Faites scanner ce QR code par le client ou envoyez-lui le lien pour ajouter sa carte à '+name+'.'),
         h('img',{src:result.qr,alt:'QR code pour remettre la carte dans '+name,width:208,height:208,
-          style:{alignSelf:'center',width:208,maxWidth:'100%',height:'auto',borderRadius:10,background:'#FFFFFF'}}),
+          style:{alignSelf:'center',width:208,maxWidth:'100%',height:'auto',borderRadius:10,background:'var(--dpa-surface,#FFFFFF)'}}),
         h('label',{style:{display:'flex',flexDirection:'column',gap:6,fontSize:12,fontWeight:600}},'Lien de récupération '+name,
           h('input',{readOnly:true,value:result.url,onFocus:e=>e.currentTarget.select(),
-            style:{width:'100%',boxSizing:'border-box',height:44,padding:'0 10px',border:'1px solid #D4D1C9',borderRadius:10,fontSize:12,background:'#FFFFFF',minWidth:0}})),
-        h('button',{type:'button',onClick:copy,style:{...button,background:'#2448F0',color:'#FFFFFF',borderColor:'#2448F0'}},'Copier le lien'),
-        copied&&h('div',{role:'status',style:{fontSize:13,color:'#17583A'}},'Lien copié.'),
-        copyError&&h('div',{role:'alert',style:{fontSize:13,color:'#B42318'}},copyError),
-        h('a',{href:result.url,target:'_blank',rel:'noopener noreferrer',style:{fontSize:13,color:'#2448F0',textAlign:'center',padding:8}},'Ouvrir sur cet appareil'),
-        platform==='apple'&&h('p',{style:{fontSize:12,color:'#5E636B',margin:0,lineHeight:1.4}},'Lien Apple valable 7 jours. Un nouveau lien Apple remplace le précédent.')));
+            style:{width:'100%',boxSizing:'border-box',height:44,padding:'0 10px',border:'1px solid var(--dpa-border,#D4D1C9)',borderRadius:10,fontSize:12,background:'var(--dpa-surface,#FFFFFF)',minWidth:0}})),
+        h('button',{type:'button',onClick:copy,style:{...button,background:'#2448F0',color:'#FFFFFF',borderColor:'var(--dpa-link,#2448F0)'}},'Copier le lien'),
+        copied&&h('div',{role:'status',style:{fontSize:13,color:'var(--dpa-success,#17583A)'}},'Lien copié.'),
+        copyError&&h('div',{role:'alert',style:{fontSize:13,color:'var(--dpa-danger,#B42318)'}},copyError),
+        h('a',{href:result.url,target:'_blank',rel:'noopener noreferrer',style:{fontSize:13,color:'var(--dpa-link,#2448F0)',textAlign:'center',padding:8}},'Ouvrir sur cet appareil'),
+        platform==='apple'&&h('p',{style:{fontSize:12,color:'var(--dpa-muted,#5E636B)',margin:0,lineHeight:1.4}},'Lien Apple valable 7 jours. Un nouveau lien Apple remplace le précédent.')));
   };
 }

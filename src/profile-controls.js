@@ -3,8 +3,8 @@ const date=v=>new Date(v).toLocaleString('fr-FR',{dateStyle:'long',timeStyle:'sh
 
 export function makeProfileControls(React) {
  const h=React.createElement;
- const button={minHeight:46,padding:'10px 16px',border:'1px solid #D4D1C9',borderRadius:12,background:'#FFF',fontWeight:700};
- const primary={...button,background:'#2448F0',color:'#FFF',borderColor:'#2448F0'};
+ const button={minHeight:46,padding:'10px 16px',border:'1px solid var(--dpa-border,#D4D1C9)',borderRadius:12,background:'var(--dpa-surface,#FFF)',fontWeight:700};
+ const primary={...button,background:'#2448F0',color:'#FFF',borderColor:'var(--dpa-link,#2448F0)'};
  return function ProfileControls({api,profiles,merchant,busy,onAdd,needsActivation,hasAccess=false,accessSource='none',onActivated,initialChoice,onInitialDone,native=false,menuOpen,onMenuClose}) {
   const [paymentOpen,setPaymentOpen]=React.useState(false),[operation,setOperation]=React.useState(null),[quote,setQuote]=React.useState(null);
   const [working,setWorking]=React.useState(false),[error,setError]=React.useState(''),[confirmed,setConfirmed]=React.useState(false);
@@ -60,21 +60,21 @@ export function makeProfileControls(React) {
   return open?h('div',{className:'dpa-profile-overlay',onClick:e=>{if(e.target===e.currentTarget)close();}},
     h('section',{ref:dialog,role:'dialog','aria-modal':true,'aria-labelledby':'profile-dialog-title',tabIndex:-1,onKeyDown:trap,className:'dpa-profile-dialog'},
      h('h2',{id:'profile-dialog-title',style:{margin:0,fontSize:24}},quote?'Confirmer les montants':'Vos commerces'),
-     !quote&&!initial&&h('p',{style:{margin:'8px 0 0',fontSize:13,color:'#5E636B',lineHeight:1.5}},native?'L’accès est vérifié à chaque changement de commerce.':'« Sélectionné » indique seulement l’espace affiché, pas son activation ni sa facturation.'),
-     error&&h('p',{role:'alert',style:{color:'#B42318'}},error),
+     !quote&&!initial&&h('p',{style:{margin:'8px 0 0',fontSize:13,color:'var(--dpa-muted,#5E636B)',lineHeight:1.5}},native?'L’accès est vérifié à chaque changement de commerce.':'« Sélectionné » indique seulement l’espace affiché, pas son activation ni sa facturation.'),
+     error&&h('p',{role:'alert',style:{color:'var(--dpa-danger,#B42318)'}},error),
      working&&h('p',{role:'status'},'Vérification en cours…'),
      !quote&&!initial&&h(React.Fragment,null,
-      h('div',{style:{fontSize:13,color:hasAccess?'#1F7A4F':'#B42318'}},
+      h('div',{style:{fontSize:13,color:hasAccess?'var(--dpa-success,#1F7A4F)':'var(--dpa-danger,#B42318)'}},
        hasAccess?(accessSource==='manual'?'Accès DPA Cards : autorisé manuellement':'Accès DPA Cards : actif'):'Accès DPA Cards : non activé'),
       !native&&needsActivation&&h('button',{type:'button',style:primary,disabled:busy||working,onClick:getQuote},'Activer ce commerce'),
       ...profiles.map(p=>h('button',{key:p.id,type:'button',disabled:working||busy,'aria-current':p.id===merchant.id?'true':undefined,
-       style:{...button,display:'flex',alignItems:'center',gap:12,textAlign:'left',borderColor:p.id===merchant.id?'#2448F0':'#D4D1C9'},
+       style:{...button,display:'flex',alignItems:'center',gap:12,textAlign:'left',borderColor:p.id===merchant.id?'var(--dpa-link,#2448F0)':'var(--dpa-border,#D4D1C9)'},
        onClick:()=>{if(p.id!==merchant.id)run(()=>api.switchProfile(p.id));}},p.logo&&h('img',{src:p.logo,alt:'',width:36,height:36,style:{objectFit:'contain',borderRadius:8}}),
-       h('span',{style:{flex:1}},p.name),p.id===merchant.id&&h('span',{style:{color:'#2448F0'}},'Sélectionné'))),
+       h('span',{style:{flex:1}},p.name),p.id===merchant.id&&h('span',{style:{color:'var(--dpa-link,#2448F0)'}},'Sélectionné'))),
       !native&&merchant.id&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')&&h('button',{type:'button',style:primary,disabled:working||busy,onClick:()=>{close();onAdd();}},'Ajouter un commerce')),
      quote&&h(React.Fragment,null,
-      h('dl',{style:{margin:0}},...rows.map(([k,v])=>h('div',{key:k,style:{display:'flex',justifyContent:'space-between',gap:16,padding:'12px 0',borderBottom:'1px solid #E4E1DA',flexWrap:'wrap'}},h('dt',null,k),h('dd',{style:{margin:0,fontWeight:700}},v)))),
-      h('p',{style:{fontSize:14,color:'#5E636B',lineHeight:1.5}},'20 €/mois par commerce, sans remise dégressive. Les frais d’activation sont uniques et identiques avec ou sans engagement. Les modalités d’engagement existantes sont conservées.'),
+      h('dl',{style:{margin:0}},...rows.map(([k,v])=>h('div',{key:k,style:{display:'flex',justifyContent:'space-between',gap:16,padding:'12px 0',borderBottom:'1px solid var(--dpa-border-soft,#E4E1DA)',flexWrap:'wrap'}},h('dt',null,k),h('dd',{style:{margin:0,fontWeight:700}},v)))),
+      h('p',{style:{fontSize:14,color:'var(--dpa-muted,#5E636B)',lineHeight:1.5}},'20 €/mois par commerce, sans remise dégressive. Les frais d’activation sont uniques et identiques avec ou sans engagement. Les modalités d’engagement existantes sont conservées.'),
       h('label',{style:{display:'flex',gap:12,alignItems:'flex-start',lineHeight:1.5}},h('input',{type:'checkbox',checked:confirmed,disabled:working,onChange:e=>setConfirmed(e.target.checked),style:{width:22,height:22,flexShrink:0}}),'Je confirme les montants ci-dessus et la modification de ma facturation.'),
       h('button',{type:'button',style:primary,disabled:native||!confirmed||working,onClick:pay},native?'Paiement Apple non disponible':'Confirmer et continuer vers le paiement'),
       !initial&&h('button',{type:'button',style:button,disabled:working,onClick:()=>run(async()=>{const r=await api.billing.profileCancel();if(r.operation?.status==='complete')onActivated();else{setOperation(null);setQuote(null);setConfirmed(false);}})},'Annuler ce parcours de paiement')),
