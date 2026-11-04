@@ -119,6 +119,6 @@ html[data-dpa-glass-test]::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background:#e7f2ff url('/assets/glass-test-background.svg') center / cover no-repeat;
+  background:#f4f1fb url('/assets/dpa-workspace-lavender-v1.webp') center / cover no-repeat;
   pointer-events: none;
 }
