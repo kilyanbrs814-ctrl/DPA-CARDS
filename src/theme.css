@@ -31,7 +31,7 @@ html[data-dpa-theme="dark"] {
 }
 html[data-dpa-theme="dark"][data-dpa-glass-test] { --dpa-app-background: transparent; }
 html[data-dpa-theme="dark"][data-dpa-glass-test]::before {
-  background: linear-gradient(#0c1425df, #0e1628e8), url('/assets/dpa-workspace-lavender-v1.webp') center / cover no-repeat, #101725;
+  background: linear-gradient(#0c1425df, #0e1628e8), url('/assets/dpa-workspace-lavender-lossless-v2.webp') center / cover no-repeat, #101725;
 }
 html[data-dpa-theme="dark"] .dpa-glass-sheet,
 html[data-dpa-theme="dark"] .dpa-profile-dialog,

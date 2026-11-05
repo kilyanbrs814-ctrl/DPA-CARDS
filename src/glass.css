@@ -119,6 +119,7 @@ html[data-dpa-glass-test]::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background:#f4f1fb url('/assets/dpa-workspace-lavender-v1.webp') center / cover no-repeat;
+  /* Preserve smooth gradients and wave edges with the lossless background. */
+  background:#f4f1fb url('/assets/dpa-workspace-lavender-lossless-v2.webp') center / cover no-repeat;
   pointer-events: none;
 }
