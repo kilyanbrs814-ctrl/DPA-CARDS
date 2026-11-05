@@ -4,6 +4,7 @@ import { registrationPage, registrationPayload } from './registration-page.js';
 import { STAMP_LIBRARY } from './stamp-library.js';
 import { prepareProgramPreview } from './program-card-preview.js';
 import { makeWalletRecoveryPanel } from './wallet-recovery.js';
+import { makeCardHandoffPanel } from './card-handoff.js';
 import { saveQrToPhotos } from './qr-photo.js';
 import { workspaceIdentity } from './workspace-identity.js';
 import { changeProfile, rememberProfile } from './merchant-profiles.js';
@@ -469,6 +470,7 @@ const api = {
   ProfileControls: makeProfileControls(window.React),
   DesktopSidebar: makeDesktopSidebar(window.React),
   WalletRecoveryPanel: makeWalletRecoveryPanel(window.React),
+  CardHandoffPanel: makeCardHandoffPanel(window.React),
   switchProfile: id => changeProfile(localStorage,window.location,profileUser.id,id,memberships),
   access: () => invokeFn('wallet/merchant-access', {}),
   async listEmployees() {

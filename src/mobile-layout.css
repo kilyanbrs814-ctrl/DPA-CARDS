@@ -1,6 +1,20 @@
 @import './glass.css';
 @import './theme.css';
 
+.dpa-home-return{width:100%;max-width:1160px;margin:0 auto;padding:16px clamp(16px,4vw,40px) 0;box-sizing:border-box}
+.dpa-home-return button{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:9px 14px;border-radius:999px;color:var(--dpa-text,#1C1F24);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+.dpa-home-return svg{width:20px;height:20px;flex:none}
+.dpa-card-handoff{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px;min-width:0}
+.dpa-card-handoff-option{padding:16px 12px;border-radius:18px;display:flex;flex-direction:column;align-items:center;gap:10px;min-width:0;text-align:center}
+.dpa-card-handoff-option h3,.dpa-card-handoff-option p{margin:0;line-height:1.4}
+.dpa-card-handoff-option h3{font-size:19px}
+.dpa-card-handoff-option p{font-size:14px;color:var(--dpa-secondary,#4A4E55)}
+.dpa-card-handoff-option [role=alert]{color:var(--dpa-danger,#B42318)}
+.dpa-card-handoff-option button{min-height:44px;width:100%;padding:10px 12px;border:1px solid var(--dpa-border,#D4D1C9);border-radius:12px;background:var(--dpa-surface,#FFFFFF);color:var(--dpa-link,#2448F0);font:inherit;font-size:14px;font-weight:700}
+.dpa-card-handoff-qr{padding:10px;border-radius:14px;background:#fff;max-width:100%;box-sizing:border-box;line-height:0}
+.dpa-card-handoff-qr img{display:block;width:240px;max-width:100%;height:auto}
+.dpa-card-handoff-loading{min-height:180px;display:grid;place-items:center;font-size:14px;color:var(--dpa-muted,#5E636B)}
+
 /* Shared viewport frame: reserve iPhone system areas once, including admin. */
 :root{--dpa-page-height:100dvh;--dpa-safe-top:env(safe-area-inset-top,0px);--dpa-safe-bottom:env(safe-area-inset-bottom,0px)}
 html.dpa-native-ios{--dpa-safe-top:calc(env(safe-area-inset-top,0px) + 8px);--dpa-safe-bottom:calc(env(safe-area-inset-bottom,0px) + 8px);--dpa-page-height:calc(100dvh - var(--dpa-safe-top) - var(--dpa-safe-bottom))}
