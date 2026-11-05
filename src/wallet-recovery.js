@@ -7,7 +7,7 @@ export async function createRecoveryLink(api, cardId, platform) {
   const result=platform==='apple' ? await api.appleWalletLink(cardId) : await api.walletLink(cardId);
   const url=new URL(result?.url || '');
   if (url.protocol!=='https:') throw new Error('wallet_unavailable');
-  const qr=await QRCode.toDataURL(url.href,{margin:2,width:256,errorCorrectionLevel:'M'});
+  const qr=await QRCode.toDataURL(url.href,{margin:2,width:512,errorCorrectionLevel:'M'});
   return {url:url.href,qr,platform};
 }
 
