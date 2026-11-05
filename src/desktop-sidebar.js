@@ -6,10 +6,7 @@ export function makeDesktopSidebar(React) {
   const paths = {
     home: 'm3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z',
     group: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.87M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m7-7.87a4 4 0 0 1 0 7.75',
-    qr_code_scanner: 'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M7 7h3v3H7Zm7 0h3v3h-3ZM7 14h3v3H7Zm7 0h1v1h-1Zm3 0v3h-3',
     notifications: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4',
-    qr_code_2: 'M3 3h6v6H3Zm12 0h6v6h-6ZM3 15h6v6H3Zm12 0h2v2h-2Zm6 0v3h-3v3m-3 0h1',
-    settings: 'm9 3-1 3-3 1-2 3 2 2-1 3 2 3 3-1 3 2 3-1 1-3 3-1 2-3-2-2 1-3-2-3-3 1Zm3 6a3 3 0 1 0 0 6 3 3 0 0 0 0-6',
     search: 'm21 21-5-5M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15',
     chevron: 'm9 5 7 7-7 7',
     chat: 'M21 11.5a8.5 8.5 0 0 1-8.5 8.5 10 10 0 0 1-4-.8L3 21l1.8-5.5a10 10 0 0 1-.8-4A8.5 8.5 0 0 1 12.5 3h.5a8.5 8.5 0 0 1 8 8v.5Z',
@@ -17,7 +14,12 @@ export function makeDesktopSidebar(React) {
     sun: 'M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 0-8 0 4 4 0 0 0 8 0',
     switch: 'm8 9 4-4 4 4m-8 6 4 4 4-4',
   };
-  const icon = name => h('svg', {className: 'dpa-sidebar-icon', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true}, h('path', {d: paths[name] || paths.settings}));
+  const mobileIcons = new Set(['qr_code_scanner', 'qr_code_2', 'settings']);
+  const icon = name => {
+    // Use the same glyphs as the mobile dock instead of approximating their outlines.
+    if (mobileIcons.has(name) || !paths[name]) return h('span', {className: 'material-symbols-rounded dpa-sidebar-icon', 'aria-hidden': true}, mobileIcons.has(name) ? name : 'settings');
+    return h('svg', {className: 'dpa-sidebar-icon', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true}, h('path', {d: paths[name]}));
+  };
 
   return function DesktopSidebar({items, settings, merchant, logo, initials, demo, onProfile, profilePopup}) {
     const [hovered, setHovered] = React.useState(false);
