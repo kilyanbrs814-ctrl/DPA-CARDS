@@ -775,7 +775,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
           </sc-if>
         </section>
       </sc-if>
-          <button type="button" onClick="{{ toInvite }}" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border:1px solid var(--dpa-border-soft,#E4E1DA);border-radius:20px;background:var(--dpa-surface,#FFFFFF);text-align:left" style-hover="border-color:var(--dpa-link,#2448F0)">
+          <button type="button" class="dpa-glass-surface" onClick="{{ toInvite }}" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:20px;text-align:left" style-hover="border-color:var(--dpa-link,#2448F0)">
             <div style="width:48px;height:48px;border-radius:14px;background:var(--dpa-info-bg,#E8EDFF);color:var(--dpa-link,#2448F0);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:26px">qr_code_2</span></div>
             <div style="flex:1"><div style="font-weight:700;font-size:16px">Inviter mes clients</div><div style="font-size:14px;color:var(--dpa-muted,#5E636B);margin-top:2px">QR code d’inscription et lien à partager</div></div>
             
@@ -885,7 +885,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
       </section>
     </div>
     </sc-if>
-    <sc-if value="{{ canEditRegistration }}"><section style="max-width:1080px;margin:0 auto 24px;padding:0 16px"><div style="padding:20px;border:1px solid var(--dpa-border-soft,#E4E1DA);border-radius:20px;background:var(--dpa-surface,#FFFFFF)"><h2 style="margin:0 0 8px;font-size:20px">Page d’inscription</h2><p style="margin:0 0 16px;line-height:1.5;color:var(--dpa-muted,#5E636B)">Personnalisez la page ouverte par vos clients après avoir scanné votre QR code.</p><button type="button" onClick="{{ toRegistration }}" style="min-height:48px;padding:0 16px;border:0;border-radius:12px;background:#2448F0;color:white;font-weight:700">Modifier ma page d’inscription</button></div></section></sc-if>
+    <sc-if value="{{ canEditRegistration }}"><section style="max-width:1080px;margin:0 auto 24px;padding:0 16px"><div class="dpa-glass-surface" style="padding:20px;border-radius:20px"><h2 style="margin:0 0 8px;font-size:20px">Page d’inscription</h2><p style="margin:0 0 16px;line-height:1.5;color:var(--dpa-muted,#5E636B)">Personnalisez la page ouverte par vos clients après avoir scanné votre QR code.</p><button type="button" onClick="{{ toRegistration }}" style="min-height:48px;padding:0 16px;border:0;border-radius:12px;background:#2448F0;color:white;font-weight:700">Modifier ma page d’inscription</button></div></section></sc-if>
     </sc-if>
 
     <sc-if value="{{ s.scanner }}" hint-placeholder-val="{{ false }}">
