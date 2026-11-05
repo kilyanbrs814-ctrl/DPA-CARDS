@@ -45,6 +45,11 @@
 .dpa-sidebar-content > * { flex-shrink: 0; }
 .dpa-sidebar-content > nav { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #64748b55 transparent; }
 .dpa-desktop-sidebar .dpa-sidebar-icon { display: block; width: 20px; height: 20px; flex: 0 0 20px; }
+.dpa-desktop-sidebar .material-symbols-rounded.dpa-sidebar-icon {
+  font-size: 20px;
+  line-height: 20px;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
 .dpa-sidebar-label { opacity: 0; visibility: hidden; transform: translateX(-6px); transition: opacity 150ms, transform 250ms, visibility 150ms; white-space: nowrap; }
 [data-expanded="true"] .dpa-sidebar-label { opacity: 1; visibility: visible; transform: translateX(0); }
 .dpa-sidebar-brand { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 5px; }
