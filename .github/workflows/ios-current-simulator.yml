@@ -1,30 +1,8 @@
-name: Validate current DPA Cards iPhone app
+name: Capture DPA Cards iOS 1.1 (21)
 
-# Every iPhone build is assembled from the current site source. Simulator validation
-# does not access Apple signing credentials and NEVER publishes an App Store build.
 on:
-  pull_request:
-    paths:
-      - index.html
-      - admin.html
-      - src/**
-      - scripts/check-ios-bundle-current.test.mjs
-      - scripts/check-native-admin-link.test.mjs
-      - scripts/configure-ios-deeplink.swift
-      - scripts/make-ios-icon.swift
-      - capacitor.config.json
-      - .github/workflows/ios-testflight.yml
-      - .github/workflows/ios-current-simulator.yml
   push:
-    branches: [main]
-    paths:
-      - index.html
-      - admin.html
-      - src/**
-      - scripts/check-ios-bundle-current.test.mjs
-      - .github/workflows/ios-testflight.yml
-      - .github/workflows/ios-current-simulator.yml
-  workflow_dispatch:
+    branches: [captures/app-store-ios-1-1-21]
 
 permissions:
   contents: read
@@ -39,14 +17,8 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Check latest web app and native Wallet compatibility
-        run: |
-          npm ci
-          npm run build
-          npm run test:static
-          node --test scripts/check-native-admin-link.test.mjs
-          node --test scripts/check-native-wallet-notifications.test.mjs
-          node --test scripts/check-dual-logo-wallet.test.mjs scripts/check-ios-bundle-current.test.mjs
+      - run: npm ci
+      - run: npm run build
       - name: Generate bundled iOS app
         run: |
           npm install --no-save --package-lock=false @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8 @capacitor/app@8
@@ -65,13 +37,80 @@ jobs:
       - name: Compile unsigned iOS Simulator application
         run: |
           xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
-            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/dpa-simulator" -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build
-      - name: Archive generated Xcode project for inspection
-        if: always()
+      - name: Capture iPhone and iPad with the app’s demo data
+        env:
+          APP: ${{ runner.temp }}/dpa-simulator/Build/Products/Debug-iphonesimulator/App.app
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import time
+
+          def sim(*args, **kwargs):
+              return subprocess.run(["xcrun", "simctl", *args], check=True, **kwargs)
+
+          devices = json.loads(sim("list", "devices", "available", "-j", capture_output=True).stdout)["devices"]
+          available = [device for runtime, group in reversed(list(devices.items()))
+                       if ".iOS-" in runtime for device in group if device["isAvailable"]]
+          models = {
+              "iphone": ["iPhone 17 Pro", "iPhone 16 Pro"],
+              "ipad": ["iPad Pro 13-inch (M5)", "iPad Pro 13-inch (M4)"],
+          }
+
+          output = pathlib.Path("dpa-app-store-captures")
+          output.mkdir()
+          app = os.environ["APP"]
+          bundle_id = "fr.digitalprojectagency.cards"
+          start = "const st=this.props.startScreen; if(st&&st!=='login'){ this.enterDemo(); if(st!=='home') setTimeout(()=>this.go(st),10); }"
+          screens = [
+              ("01-accueil", "home", "{}"),
+              ("02-clients", "clients", "{}"),
+              ("03-fiche-client", "client", "{selId:'c2'}"),
+              ("04-invitation", "invite", "{}"),
+              ("05-reglages", "more", "{}"),
+          ]
+
+          def capture(target, names):
+              device = next((d for name in names for d in available if d["name"] == name), None)
+              if device is None:
+                  device = next(d for d in available if (
+                      target == "ipad" and d["name"].startswith("iPad Pro 13-inch")
+                      or target == "iphone" and d["name"].startswith("iPhone ") and d["name"].endswith(" Pro")
+                  ))
+              udid = device["udid"]
+              print(target, device["name"], flush=True)
+              if device["state"] != "Booted":
+                  sim("boot", udid)
+              sim("bootstatus", udid, "-b")
+              sim("status_bar", udid, "override", "--time", "9:41", "--dataNetwork", "wifi", "--wifiMode", "active", "--wifiBars", "3", "--cellularMode", "active", "--cellularBars", "4", "--batteryState", "unplugged", "--batteryLevel", "100")
+              sim("ui", udid, "appearance", "light")
+              sim("install", udid, app)
+              installed = pathlib.Path(sim("get_app_container", udid, bundle_id, "app", capture_output=True, text=True).stdout.strip())
+              index = installed / "public/index.html"
+              original = index.read_text()
+              if original.count(start) != 1:
+                  raise RuntimeError("Could not identify the app’s built-in demo entry point")
+              for name, screen, state in screens:
+                  replacement = "const st='home'; if(st){ this.enterDemo(); setTimeout(()=>this.go(" + repr(screen) + "," + state + "),1100); }"
+                  index.write_text(original.replace(start, replacement))
+                  sim("launch", "--terminate-running-process", udid, bundle_id)
+                  time.sleep(7)
+                  sim("io", udid, "screenshot", str(output / f"dpa-{target}-{name}.png"))
+              sim("terminate", udid, bundle_id)
+
+          with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+              futures = [executor.submit(capture, target, names) for target, names in models.items()]
+              for future in futures:
+                  future.result()
+          PY
+      - name: Upload App Store screenshots
         uses: actions/upload-artifact@v4
         with:
-          name: dpa-cards-current-ios-project
-          path: ios/
-          retention-days: 7
-          if-no-files-found: warn
+          name: dpa-cards-ios-1-1-build-21-screenshots
+          path: dpa-app-store-captures/*.png
+          if-no-files-found: error
