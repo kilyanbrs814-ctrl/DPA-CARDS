@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 const source=(path)=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 test('TestFlight embeds the exact commit selected for the manual run',()=>{
  const y=source('.github/workflows/ios-testflight.yml');
@@ -44,14 +44,20 @@ test('iPhone and website share the lavender background and frosted-glass CSS',()
  assert.match(html,/dataset\.dpaGlassTest/);
  assert.match(mobile,/@import '\.\/glass\.css'/);
  assert.match(glass,/html\[data-dpa-glass-test\]::before/);
- assert.match(glass,/dpa-workspace-lavender-lossless-v2\.webp/);
+ for (const file of ['dpa-bg-light-mobile.webp','dpa-bg-light-desktop.webp','dpa-bg-dark-mobile.webp','dpa-bg-dark-desktop.webp']) {
+   assert.ok(glass.includes(file), 'CSS references '+file);
+   assert.ok(existsSync(new URL('../public/assets/'+file,import.meta.url)), 'iPhone bundles '+file);
+ }
+ assert.match(glass, /@media \(min-width: 768px\)/);
  assert.match(glass,/\.dpa-glass-surface/);
  assert.match(glass,/-webkit-backdrop-filter:\s*blur\(12px\)/);
  // Dark mode must keep exactly the same lavender/white background image as light mode.
  assert.doesNotMatch(night,/html\[data-dpa-theme="dark"\]\[data-dpa-glass-test\]::before/);
  assert.doesNotMatch(night,/linear-gradient\(#0c1425df/);
  assert.match(night,/--dpa-surface:\s*#1b2639/);
- assert.match(glass,/background:#f4f1fb url\('\/assets\/dpa-workspace-lavender-lossless-v2\.webp'\)/);
+ assert.match(glass,/background:#f4f1fb url\('\/assets\/dpa-bg-light-mobile\.webp'\)/);
+ assert.match(glass,/html\[data-dpa-theme="dark"\]\[data-dpa-glass-test\]::before/);
+ assert.doesNotMatch(glass,/linear-gradient\(#0c1425df/);
  // The iOS safe-area veil must not replace the page artwork's ::before.
  assert.doesNotMatch(mobile,/html\.dpa-native-ios::before\s*\{/);
  assert.match(mobile,/html\.dpa-native-ios::after\s*\{/);
