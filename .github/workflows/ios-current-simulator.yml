@@ -10,7 +10,7 @@ permissions:
 jobs:
   ios-current:
     runs-on: macos-26
-    timeout-minutes: 40
+    timeout-minutes: 16
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,7 +44,6 @@ jobs:
           APP: ${{ runner.temp }}/dpa-simulator/Build/Products/Debug-iphonesimulator/App.app
         run: |
           python3 - <<'PY'
-          import concurrent.futures
           import json
           import os
           import pathlib
@@ -52,7 +51,7 @@ jobs:
           import time
 
           def sim(*args, **kwargs):
-              return subprocess.run(["xcrun", "simctl", *args], check=True, **kwargs)
+              return subprocess.run(["xcrun", "simctl", *args], check=True, timeout=kwargs.pop("timeout", 90), **kwargs)
 
           devices = json.loads(sim("list", "devices", "available", "-j", capture_output=True).stdout)["devices"]
           available = [device for runtime, group in reversed(list(devices.items()))
@@ -86,7 +85,10 @@ jobs:
               print(target, device["name"], flush=True)
               if device["state"] != "Booted":
                   sim("boot", udid)
-              sim("bootstatus", udid, "-b")
+              try:
+                  sim("bootstatus", udid, "-b", timeout=150)
+              except subprocess.TimeoutExpired:
+                  print("Initial simulator setup timed out; checking app installation", flush=True)
               sim("status_bar", udid, "override", "--time", "9:41", "--dataNetwork", "wifi", "--wifiMode", "active", "--wifiBars", "3", "--cellularMode", "active", "--cellularBars", "4", "--batteryState", "unplugged", "--batteryLevel", "100")
               sim("ui", udid, "appearance", "light")
               sim("install", udid, app)
@@ -102,13 +104,20 @@ jobs:
                   time.sleep(7)
                   sim("io", udid, "screenshot", str(output / f"dpa-{target}-{name}.png"))
               sim("terminate", udid, bundle_id)
+              sim("shutdown", udid)
 
-          with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
-              futures = [executor.submit(capture, target, names) for target, names in models.items()]
-              for future in futures:
-                  future.result()
+          failures = []
+          for target, names in models.items():
+              try:
+                  capture(target, names)
+              except (RuntimeError, subprocess.SubprocessError, StopIteration) as error:
+                  failures.append((target, str(error)))
+                  print(f"{target} failed: {error}", flush=True)
+          if failures:
+              raise RuntimeError(f"Failed to capture all devices: {failures}")
           PY
       - name: Upload App Store screenshots
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: dpa-cards-ios-1-1-build-21-screenshots
