@@ -55,8 +55,8 @@ jobs:
           # Fail the iOS release if the current lavender workspace image was omitted.
           # Both device orientations and both color themes must be bundled.
           for name in dpa-bg-light-mobile dpa-bg-light-desktop dpa-bg-dark-mobile dpa-bg-dark-desktop; do
-            test -s "dist/assets/${name}.webp"
-            test -s "ios/App/App/public/assets/${name}.webp"
+            test -s "dist/assets/${name}-4k.svg"
+            test -s "ios/App/App/public/assets/${name}-4k.svg"
           done
           swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
           swift scripts/configure-ios-deeplink.swift ios/App/App/Info.plist
