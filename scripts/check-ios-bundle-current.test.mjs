@@ -51,7 +51,7 @@ test('iPhone and website share the lavender background and frosted-glass CSS',()
  assert.match(glass, /@media \(min-width: 768px\)/);
  assert.match(glass,/\.dpa-glass-surface/);
  assert.match(glass,/-webkit-backdrop-filter:\s*blur\(12px\)/);
- // Dark mode must keep exactly the same lavender/white background image as light mode.
+ // Theme CSS must not add a dark filter; glass.css selects the approved dark image.
  assert.doesNotMatch(night,/html\[data-dpa-theme="dark"\]\[data-dpa-glass-test\]::before/);
  assert.doesNotMatch(night,/linear-gradient\(#0c1425df/);
  assert.match(night,/--dpa-surface:\s*#1b2639/);
