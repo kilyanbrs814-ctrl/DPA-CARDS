@@ -52,6 +52,9 @@ jobs:
           npm run test:real-apple
           npx cap add ios
           npx cap sync ios
+          # Fail the iOS release if the current lavender workspace image was omitted.
+          test -f dist/assets/dpa-workspace-lavender-lossless-v2.webp
+          test -f ios/App/App/public/assets/dpa-workspace-lavender-lossless-v2.webp
           swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
           swift scripts/configure-ios-deeplink.swift ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName DPA Cards" ios/App/App/Info.plist || true
