@@ -44,9 +44,13 @@ test('iPhone and website share the lavender background and frosted-glass CSS',()
  assert.match(html,/dataset\.dpaGlassTest/);
  assert.match(mobile,/@import '\.\/glass\.css'/);
  assert.match(glass,/html\[data-dpa-glass-test\]::before/);
- for (const file of ['dpa-bg-light-mobile.webp','dpa-bg-light-desktop.webp','dpa-bg-dark-mobile.webp','dpa-bg-dark-desktop.webp']) {
+ for (const file of ['dpa-bg-light-mobile-4k.svg','dpa-bg-light-desktop-4k.svg','dpa-bg-dark-mobile-4k.svg','dpa-bg-dark-desktop-4k.svg']) {
    assert.ok(glass.includes(file), 'CSS references '+file);
    assert.ok(existsSync(new URL('../public/assets/'+file,import.meta.url)), 'iPhone bundles '+file);
+   const art=source('public/assets/'+file);
+   assert.match(art, /<svg/);
+   assert.match(art, /width="(?:2160|3840)"/);
+   assert.match(art, /height="(?:2160|3840)"/);
  }
  assert.match(glass, /@media \(min-width: 768px\)/);
  assert.match(glass,/\.dpa-glass-surface/);
@@ -55,7 +59,7 @@ test('iPhone and website share the lavender background and frosted-glass CSS',()
  assert.doesNotMatch(night,/html\[data-dpa-theme="dark"\]\[data-dpa-glass-test\]::before/);
  assert.doesNotMatch(night,/linear-gradient\(#0c1425df/);
  assert.match(night,/--dpa-surface:\s*#1b2639/);
- assert.match(glass,/background:#f4f1fb url\('\/assets\/dpa-bg-light-mobile\.webp'\)/);
+ assert.match(glass,/background:#f4f1fb url\('\/assets\/dpa-bg-light-mobile-4k\.svg'\)/);
  assert.match(glass,/html\[data-dpa-theme="dark"\]\[data-dpa-glass-test\]::before/);
  assert.doesNotMatch(glass,/linear-gradient\(#0c1425df/);
  // The iOS safe-area veil must not replace the page artwork's ::before.
