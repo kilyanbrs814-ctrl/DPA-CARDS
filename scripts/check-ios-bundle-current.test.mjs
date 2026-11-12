@@ -47,7 +47,11 @@ test('iPhone and website share the lavender background and frosted-glass CSS',()
  assert.match(glass,/dpa-workspace-lavender-lossless-v2\.webp/);
  assert.match(glass,/\.dpa-glass-surface/);
  assert.match(glass,/-webkit-backdrop-filter:\s*blur\(12px\)/);
- assert.match(night,/html\[data-dpa-theme="dark"\]\[data-dpa-glass-test\]::before/);
+ // Dark mode must keep exactly the same lavender/white background image as light mode.
+ assert.doesNotMatch(night,/html\[data-dpa-theme="dark"\]\[data-dpa-glass-test\]::before/);
+ assert.doesNotMatch(night,/linear-gradient\(#0c1425df/);
+ assert.match(night,/--dpa-surface:\s*#1b2639/);
+ assert.match(glass,/background:#f4f1fb url\('\/assets\/dpa-workspace-lavender-lossless-v2\.webp'\)/);
  // The iOS safe-area veil must not replace the page artwork's ::before.
  assert.doesNotMatch(mobile,/html\.dpa-native-ios::before\s*\{/);
  assert.match(mobile,/html\.dpa-native-ios::after\s*\{/);
