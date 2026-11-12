@@ -53,8 +53,11 @@ jobs:
           npx cap add ios
           npx cap sync ios
           # Fail the iOS release if the current lavender workspace image was omitted.
-          test -f dist/assets/dpa-workspace-lavender-lossless-v2.webp
-          test -f ios/App/App/public/assets/dpa-workspace-lavender-lossless-v2.webp
+          # Both device orientations and both color themes must be bundled.
+          for name in dpa-bg-light-mobile dpa-bg-light-desktop dpa-bg-dark-mobile dpa-bg-dark-desktop; do
+            test -s "dist/assets/${name}.webp"
+            test -s "ios/App/App/public/assets/${name}.webp"
+          done
           swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
           swift scripts/configure-ios-deeplink.swift ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName DPA Cards" ios/App/App/Info.plist || true
