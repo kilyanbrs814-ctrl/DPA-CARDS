@@ -119,7 +119,25 @@ html[data-dpa-glass-test]::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  /* Preserve smooth gradients and wave edges with the lossless background. */
-  background:#f4f1fb url('/assets/dpa-workspace-lavender-lossless-v2.webp') center / cover no-repeat;
+  /* Identical responsive wallpapers for the website and Capacitor iOS app. */
+  background:#f4f1fb url('/assets/dpa-bg-light-mobile.webp') center / cover no-repeat;
   pointer-events: none;
+}
+
+/* Desktop: keep the landscape artwork. */
+@media (min-width: 768px) {
+  html[data-dpa-glass-test]::before {
+    background-image: url('/assets/dpa-bg-light-desktop.webp');
+  }
+}
+
+/* Dark mode uses its own real artwork, never a tint on the light background. */
+html[data-dpa-theme="dark"][data-dpa-glass-test]::before {
+  background-color:#171323;
+  background-image:url('/assets/dpa-bg-dark-mobile.webp');
+}
+@media (min-width: 768px) {
+  html[data-dpa-theme="dark"][data-dpa-glass-test]::before {
+    background-image:url('/assets/dpa-bg-dark-desktop.webp');
+  }
 }
