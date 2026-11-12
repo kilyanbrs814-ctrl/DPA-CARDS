@@ -34,3 +34,21 @@ test('Existing iPhone admin OTP and merchant scanner stay intact',()=>{
  assert.match(merchant,/listenForAdminDeepLinks\(forwardAdminAuthToPage\)/);
  assert.match(merchant,/saveQrToPhotos/);
 });
+
+test('iPhone and website share the lavender background and frosted-glass CSS',()=>{
+ const html=source('index.html');
+ const mobile=source('src/mobile-layout.css');
+ const glass=source('src/glass.css');
+ const night=source('src/theme.css');
+ assert.match(html,/href="\/src\/mobile-layout\.css"/);
+ assert.match(html,/dataset\.dpaGlassTest/);
+ assert.match(mobile,/@import '\.\/glass\.css'/);
+ assert.match(glass,/html\[data-dpa-glass-test\]::before/);
+ assert.match(glass,/dpa-workspace-lavender-lossless-v2\.webp/);
+ assert.match(glass,/\.dpa-glass-surface/);
+ assert.match(glass,/-webkit-backdrop-filter:\s*blur\(12px\)/);
+ assert.match(night,/html\[data-dpa-theme="dark"\]\[data-dpa-glass-test\]::before/);
+ // The iOS safe-area veil must not replace the page artwork's ::before.
+ assert.doesNotMatch(mobile,/html\.dpa-native-ios::before\s*\{/);
+ assert.match(mobile,/html\.dpa-native-ios::after\s*\{/);
+});
