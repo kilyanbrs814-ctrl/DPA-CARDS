@@ -564,10 +564,10 @@ export function makeCardDesigner(React, api) {
         h('input', { type: 'color', 'aria-label': label + ' (sélecteur)', value: (value || '#000000').toLowerCase(), onChange: e => onChange(e.target.value.toUpperCase()), style: { width: 52, height: 46, padding: 3, border: '1.5px solid var(--dpa-border,#D4D1C9)', borderRadius: 12, background: 'var(--dpa-surface,#FFFFFF)', flex: 'none' } }),
         h('input', { id, type: 'text', value: txt, maxLength: 7, spellCheck: false, onChange: e => { const v = e.target.value.toUpperCase(); setTxt(v); if (HEX.test(v)) onChange(v); }, style: { ...inputStyle, fontFamily: "'IBM Plex Mono', monospace", borderColor: HEX.test(txt) ? 'var(--dpa-border,#D4D1C9)' : 'var(--dpa-danger,#B42318)' } })));
   }
-  function Select({ label, value, onChange, options }) {
+  function Select({ label, value, onChange, options, disabled }) {
     const id = useId('s');
     return h('div', null, h('label', { htmlFor: id, style: labelStyle }, label),
-      h('select', { id, value, onChange: e => onChange(e.target.value), style: { ...inputStyle, fontWeight: 600 } }, options.map(([v, l]) => h('option', { key: v, value: v }, l))));
+      h('select', { id, value, disabled, onChange: e => onChange(e.target.value), style: { ...inputStyle, fontWeight: 600 } }, options.map(([v, l]) => h('option', { key: v, value: v }, l))));
   }
   function Check({ label, checked, onChange }) {
     return h('label', { style: { display: 'flex', alignItems: 'center', gap: 10, minHeight: 40, fontSize: 15, cursor: 'pointer' } },
@@ -709,8 +709,70 @@ export function makeCardDesigner(React, api) {
       program: { id: null, name: 'Carte de démonstration', mode: pv.mode === 'points' ? 'points' : 'passages', goal: pv.goal || 10, reward: pv.reward || DEMO.reward, bg: '#1C1F24', accent: '#2448F0', logo_path: null, hero_path: null },
       draft: null, requests: [], account: null }; };
 
+  const testCardLabel = t => t.name + (t.creator_name ? ' (' + t.creator_name + ')' : '');
+
+  function MerchantCardDesign({ merchantId, merchantName, onCreate, onApplied }) {
+    const [open, setOpen] = useState(false);
+    const [tests, setTests] = useState(null);
+    const [testId, setTestId] = useState('');
+    const [busy, setBusy] = useState(null);
+    const [error, setError] = useState('');
+    const [notice, setNotice] = useState('');
+    const panelId = useId('merchant-card-design');
+    const buttonStyle = {
+      minHeight: 44, padding: '8px 12px', border: '1px solid var(--dpa-border,#D4D1C9)',
+      borderRadius: 10, background: 'var(--dpa-surface,#FFFFFF)', fontSize: 14, fontWeight: 700
+    };
+
+    const loadTests = async () => {
+      setBusy('loading');
+      setError('');
+      try { setTests((await api.testList()).tests || []); }
+      catch (e) { setError('Impossible de charger les cartes test. ' + errText(e)); }
+      finally { setBusy(null); }
+    };
+    const applyDesign = async () => {
+      const test = tests?.find(t => t.id === testId);
+      if (busy || !test) return;
+      if (!window.confirm(`Appliquer « ${test.name} » à « ${merchantName} » ? Le design actuel de ses cartes de fidélité et le brouillon associé seront remplacés.`)) return;
+      setBusy('applying');
+      setError('');
+      setNotice('');
+      try {
+        const result = await api.testAssign(test.id, merchantId);
+        setTestId('');
+        setNotice(result.google?.status === 'error'
+          ? 'Design appliqué. Relancez la synchronisation Google Wallet dans le générateur.'
+          : 'Design appliqué au commerce.');
+        onApplied();
+      } catch (e) { setError(errText(e)); }
+      finally { setBusy(null); }
+    };
+    const button = (label, props) => h('button', { type: 'button', style: buttonStyle, ...props }, label);
+    return h('div', { style: { display: 'grid', gap: 10 } },
+      button('Changer le design de la carte', {
+        'aria-expanded': open, 'aria-controls': panelId, disabled: busy === 'applying',
+        onClick: () => setOpen(!open)
+      }),
+      h('div', { id: panelId, hidden: !open }, open && h('div', { style: { display: 'grid', gap: 10 } },
+        button('Créer un nouveau design', { onClick: onCreate, disabled: busy === 'applying' }),
+        tests === null && button(busy === 'loading' ? 'Chargement des cartes…' : 'Utiliser un design existant', {
+          onClick: loadTests, disabled: !!busy
+        }),
+        tests?.length === 0 && h('div', { role: 'status' }, 'Aucune carte test enregistrée.'),
+        tests?.length > 0 && h(React.Fragment, null,
+          h(Select, { label: 'Design existant (carte test)', value: testId, disabled: !!busy,
+            onChange: id => { setTestId(id); setError(''); setNotice(''); },
+            options: [['', 'Choisir une carte test…'], ...tests.map(t => [t.id, testCardLabel(t)])] }),
+          button(busy === 'applying' ? 'Application…' : 'Appliquer ce design', { onClick: applyDesign, disabled: !testId || !!busy })),
+        error && h('div', { role: 'alert', style: { fontSize: 14, color: 'var(--dpa-danger,#B42318)' } }, error),
+        notice && h('div', { role: 'status', style: { fontSize: 14 } }, notice)
+      ))
+    );
+  }
+
   // ------------------------------------------------------------ the designer screen
-  function CardDesigner({ merchants, target, onTarget, toast, width, onMerchantsChanged }) {
+  function CardDesigner({ merchants, target, onTarget, toast, width, onMerchantsChanged, onPublished }) {
     const [project, setProject] = useState(null);
     const [design, setDesign] = useState(null);
     const [saved, setSaved] = useState('');
@@ -758,8 +820,9 @@ export function makeCardDesigner(React, api) {
       }
       api.load(target.requestId ? { design_request_id: target.requestId } : { merchant_id: target.merchantId })
         .then(p => { if (!live) return; setProject(p); setRequestId(p.request ? p.request.id : null);
-          const cfg = p.program ? normalize((p.draft && p.draft.config) || p.program.card_design || null, p) : null;
-          setDesign(cfg); setSaved(cfg ? JSON.stringify(cfg) : ''); setAutoSaveError('');failedSnapshot.current=''; setLoading(false);
+          const original = target.newDesign ? null : p.draft?.config || p.program?.card_design;
+          const cfg = p.program ? normalize(original, p) : null;
+          setDesign(cfg); setSaved(cfg && !target.newDesign ? JSON.stringify(cfg) : ''); setAutoSaveError('');failedSnapshot.current=''; setLoading(false);
           if (p.merchant && target.merchantId !== p.merchant.id) onTarget({ merchantId: p.merchant.id, requestId: target.requestId || null }); })
         .catch(e => { if (live) { setLoading(false); setError(errText(e)); } });
       return () => { live = false; };
@@ -851,7 +914,12 @@ export function makeCardDesigner(React, api) {
       if (busy) return; failedSnapshot.current='';setAutoSaveError('');setBusy('save');
       try { const next=await forSave();
         if (isTest) { const r = await api.testSave(project.test.id, testName, next); setProject(p => ({ ...p, test: r.test })); if(latestSnapshot.current.value===snap())setDesign(next); setSaved(savedMark(next)); refreshTests(); toast('Carte test enregistrée.'); }
-        else { await api.save(project.program.id, requestId, next); setDesign(next); setSaved(savedMark(next)); toast('Brouillon enregistré.'); } }
+        else {
+          const { draft } = await api.save(project.program.id, requestId, next);
+          setProject(p => ({ ...p, draft })); setDesign(next); setSaved(savedMark(next));
+          if (target.newDesign) onTarget({ merchantId: target.merchantId });
+          toast('Brouillon enregistré.');
+        } }
       catch (e) { toast(errText(e)); } finally { setBusy(null); }
     };
     // Test cards autosave after the admin stops typing or moving a slider.
@@ -945,6 +1013,8 @@ export function makeCardDesigner(React, api) {
       if (busy) return; setBusy('validate');
       try { const next=await forSave(); const r = await api.validate(project.program.id, requestId, next);
         setProject(p => ({ ...p, program: r.program, draft: r.draft })); setDesign(next); setSaved(savedMark(next)); setConfirm(false);
+        if (target.newDesign) onTarget({ merchantId: target.merchantId });
+        onPublished?.(project.merchant.id);
         toast('Design validé et appliqué au programme.' + (r.google && r.google.status === 'synced' ? ' Google Wallet mis à jour.' : r.google && r.google.status === 'error' ? ' Synchro Google Wallet en erreur : réessayez.' : '')); }
       catch (e) { toast(errText(e)); } finally { setBusy(null); }
     };
@@ -1041,7 +1111,6 @@ export function makeCardDesigner(React, api) {
 
     const desk = width >= 1024, two = width >= 900;
     const list = created && !merchants.some(m => m.id === created.merchant.id) ? [...merchants, { id: created.merchant.id, name: created.merchant.business_name, program: true }] : merchants;
-    const testCardLabel = t => t.name + (t.creator_name ? ' (' + t.creator_name + ')' : '');
     const merchantOptions = [['', 'Sélectionner un commerce…'], ...list.map(m => [m.id, m.name + (m.program ? '' : ' (sans programme)')]),
       ...(tests || []).map(t => ['t:' + t.id, 'Carte test · ' + testCardLabel(t)])];
     const selValue = adding ? '' : target && target.testId ? 't:' + target.testId : project && project.merchant && project.merchant.id ? project.merchant.id : (target && target.merchantId) || '';
@@ -1091,6 +1160,7 @@ export function makeCardDesigner(React, api) {
       ...(isTest ? { qr: project.test.qr_value, cardNumber: project.test.card_number } : {}) };
     const po = design[platform], pName = platform === 'apple' ? 'Apple Wallet' : 'Google Wallet';
     const status = isTest ? (busy==='save' ? ['Enregistrement automatique…','var(--dpa-info-bg,#EEF1FF)','var(--dpa-link-strong,#1A36C4)'] : autoSaveError ? ['Échec de sauvegarde automatique','var(--dpa-danger-bg,#FCEBEA)','var(--dpa-danger,#B42318)'] : dirty ? ['Sauvegarde automatique prévue…', 'var(--dpa-warning-bg,#FFF3DC)', 'var(--dpa-warning,#8A5A00)'] : ['CARTE TEST · enregistrée le ' + fmtDate(project.test.updated_at), 'var(--dpa-info-bg,#EEF1FF)', 'var(--dpa-link-strong,#1A36C4)'])
+      : target.newDesign ? ['Nouveau design · non enregistré', 'var(--dpa-warning-bg,#FFF3DC)', 'var(--dpa-warning,#8A5A00)']
       : project.draft && project.draft.status === 'validated' && !dirty ? ['Design validé le ' + fmtDate(project.draft.validated_at), 'var(--dpa-success-bg,#E4F3EB)', 'var(--dpa-success,#1F6B45)']
       : dirty ? ['Modifications non enregistrées', 'var(--dpa-warning-bg,#FFF3DC)', 'var(--dpa-warning,#8A5A00)']
       : project.draft ? ['Brouillon enregistré le ' + fmtDate(project.draft.updated_at), 'var(--dpa-info-bg,#E8EDFF)', 'var(--dpa-link-strong,#1A36C4)'] : ['Nouveau projet', 'var(--dpa-subtle,#EFEDE8)', 'var(--dpa-secondary,#3E424A)'];
@@ -1434,5 +1504,5 @@ export function makeCardDesigner(React, api) {
         () => busy !== 'validate' && setConfirm(false), 'Valider le design') : null);
   }
 
-  return { CardDesigner, CardPreview, FitCard, AppleCard, GoogleCard, Qr };
+  return { CardDesigner, MerchantCardDesign, CardPreview, FitCard, AppleCard, GoogleCard, Qr };
 }
