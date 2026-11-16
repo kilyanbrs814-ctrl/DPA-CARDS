@@ -21,7 +21,7 @@ export function makeDesktopSidebar(React) {
     return h('svg', {className: 'dpa-sidebar-icon', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true}, h('path', {d: paths[name]}));
   };
 
-  return function DesktopSidebar({items, settings, merchant, logo, initials, demo, onLogout, onProfile, profilePopup}) {
+  return function DesktopSidebar({items, settings, merchant, logo, initials, demo, onLogout, onSupport}) {
     const [hovered, setHovered] = React.useState(false);
     const [focused, setFocused] = React.useState(false);
     const [pinned, setPinned] = React.useState(false);
@@ -97,8 +97,8 @@ export function makeDesktopSidebar(React) {
       onClick: () => { if (pinned) { setPinned(false); setSuppressed(true); } else { setSuppressed(false); setPinned(true); } }}, icon('chevron')),
     h('div', {id: 'dpa-sidebar-content', className: 'dpa-sidebar-content'},
       h('div', {className: 'dpa-sidebar-brand'},
-        h('span', {className: 'dpa-sidebar-brand-mark'}, h('img', {src: '/assets/dpa-cards-logo-mono.svg', alt: 'DPA Cards', width: 36, height: 36})),
-        h('span', {className: 'dpa-sidebar-label dpa-sidebar-brand-text'}, h('strong', null, 'DPA Cards'), h('small', null, 'Espace commerçant'))),
+        h('span', {className: 'dpa-sidebar-brand-mark'}, logo && failedLogo !== logo ? h('img', {src:logo,alt:'',width:36,height:36,onError:()=>setFailedLogo(logo)}) : initials),
+        h('span', {className: 'dpa-sidebar-label dpa-sidebar-brand-text'}, h('strong', null, merchant.business || 'DPA Cards'), h('small', null, 'Espace commerçant'))),
       h('div', {className: 'dpa-sidebar-search'},
         h('button', {type: 'button', className: 'dpa-sidebar-search-button', 'aria-label': 'Rechercher une page', title: expanded ? undefined : 'Rechercher une page',
           onClick: () => { setSuppressed(false); setPinned(true); search.current?.focus(); }}, icon('search')),
@@ -115,18 +115,10 @@ export function makeDesktopSidebar(React) {
           className: 'dpa-sidebar-item dpa-sidebar-theme', title: expanded ? undefined : 'Mode nuit',
           onClick: () => window.dpaTheme.toggle()}, icon(theme === 'dark' ? 'moon' : 'sun'),
           h('span', {className: 'dpa-sidebar-label'}, 'Mode nuit'), h('span', {className: 'dpa-sidebar-switch', 'aria-hidden': true})),
-        h('a', {className: 'dpa-sidebar-item', href: 'mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards',
+        h('button', {type:'button',className: 'dpa-sidebar-item', onClick:onSupport,
           'aria-label': 'Contacter le support DPA Cards par e-mail', title: expanded ? undefined : 'Support'}, icon('chat'), h('span', {className: 'dpa-sidebar-label'}, 'Support')),
         h('button', {type: 'button', className: 'dpa-sidebar-item', 'aria-label': 'Se déconnecter',
           title: expanded ? undefined : 'Se déconnecter', onClick: onLogout}, icon('logout'),
-          h('span', {className: 'dpa-sidebar-label'}, 'Se déconnecter')),
-        h('button', {type: 'button', className: 'dpa-desktop-profile dpa-sidebar-item', 'aria-haspopup': profilePopup,
-          'aria-label': `${merchant.first} ${merchant.last} · ${merchant.business} · Gérer mes commerces`,
-          title: expanded ? undefined : merchant.business, onClick: onProfile},
-          h('span', {className: 'dpa-desktop-avatar', 'aria-hidden': true}, initials,
-            logo && failedLogo !== logo && h('img', {src: logo, alt: '', onError: () => setFailedLogo(logo)})),
-          h('span', {className: 'dpa-sidebar-label dpa-sidebar-profile-text'},
-            h('strong', null, `${merchant.first} ${merchant.last}`), h('small', null, merchant.business)),
-          h('span', {className: 'dpa-sidebar-label dpa-sidebar-profile-arrow'}, icon('switch'))))));
+          h('span', {className: 'dpa-sidebar-label'}, 'Se déconnecter')))));
   };
 }
