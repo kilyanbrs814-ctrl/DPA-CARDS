@@ -821,3 +821,18 @@ const api = {
 };
 
 window.__dpaResolve(api);
+
+api.sendSupport = body => invokeFn('merchant-support',body);
+api.SupportDialog = function SupportDialog({merchant,send,close}){
+ const R=window.React,h=R.createElement,ref=R.useRef(null),[busy,B]=R.useState(false),[status,S]=R.useState('');
+ R.useEffect(()=>{ref.current?.showModal();},[]);
+ const style={width:'100%',padding:10,borderRadius:8,border:'1px solid var(--dpa-border,#bbb)',background:'var(--dpa-surface,#fff)',color:'inherit'};
+ return h('dialog',{ref,className:'dpa-support-dialog','aria-labelledby':'dpa-support-title',onCancel:e=>{e.preventDefault();if(!busy)close();},style:{width:'min(480px,92vw)',borderRadius:20,border:'1px solid var(--dpa-border,#bbb)',padding:24,background:'var(--dpa-surface,#fff)',color:'var(--dpa-text,#111)'}},
+ h('form',{style:{display:'grid',gap:14},onSubmit:async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget;const data=Object.fromEntries(new FormData(form));if(String(data.message).trim()==='Bonjour,'){S('Ajoutez votre message avant de l’envoyer.');return;}B(true);S('');try{const r=await send({...data,merchantId:merchant.id});if(!r?.ok)throw Error();S('Message envoyé.');form.reset();}catch(err){S(err?.code==='support_rate_limited'?'Réessayez dans une minute.':'Envoi impossible. Votre message est conservé.');}finally{B(false);}}},
+ h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},h('h2',{id:'dpa-support-title',style:{margin:0}},'Contacter le support'),h('button',{type:'button',disabled:busy,onClick:close,'aria-label':'Fermer'},'×')),
+ h('label',null,'Nom du commerce',h('input',{name:'shop',defaultValue:merchant.business,maxLength:120,required:true,style})),
+ h('label',null,'Objet',h('input',{name:'subject',defaultValue:'Demande de support',maxLength:130,required:true,style})),
+ h('label',null,'Message',h('textarea',{name:'message',defaultValue:'Bonjour,\n\n',rows:6,maxLength:4000,required:true,style})),
+ h('button',{type:'submit',disabled:busy||status==='Message envoyé.',style:{minHeight:44,background:'#2448F0',color:'white',border:0,borderRadius:10}},busy?'Envoi…':'Envoyer'),
+ h('div',{role:'status'},status)));
+};
