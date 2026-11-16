@@ -85,4 +85,15 @@ html[data-dpa-theme="dark"] ::selection { background: #4c65a2; color: #fff; }
 .dpa-brand-pair .dpa-brand-dark, html[data-dpa-theme="dark"] .dpa-brand-pair .dpa-brand-light { display:none !important; }
 html[data-dpa-theme="dark"] .dpa-brand-pair .dpa-brand-dark { display:block !important; }
 .dpa-sidebar-brand-mark img { object-fit:contain; }
-.dpa-support-dialog::backdrop { background:rgba(13,8,26,.56); backdrop-filter:blur(4px); }
+.dpa-support-dialog { box-sizing:border-box; }
+.dpa-support-dialog::backdrop { backdrop-filter:blur(4px); }
+.dpa-support-dialog .dpa-support-header { margin:0 0 14px; }
+.dpa-support-dialog .dpa-support-header p { color:var(--dpa-muted,#5e636b); font-size:14px; margin:4px 0 0; }
+.dpa-support-dialog .dpa-support-form { display:grid; gap:12px; }
+.dpa-support-dialog .dpa-support-form label { margin:0; text-align:left; font-size:14px; font-weight:650; }
+.dpa-support-dialog .dpa-support-form :is(input,textarea) { display:block; box-sizing:border-box; width:100%; margin:5px 0 0; padding:9px 12px; min-height:42px; border:1px solid var(--dpa-border,#D4D1C9); border-radius:10px; color:inherit; background:var(--dpa-info-bg,#f1f3ff); font:inherit; font-weight:400; text-align:left; }
+.dpa-support-dialog .dpa-support-form textarea { resize:vertical; min-height:88px; }
+.dpa-support-dialog .dpa-support-form :is(input,textarea):focus-visible { outline:2px solid var(--dpa-link,#2448f0); outline-offset:1px; }
+.dpa-support-dialog .dpa-mfa-button { justify-self:center; }
+.dpa-support-status { font-size:14px; }
+.dpa-support-status:empty { margin-top:-12px; }
