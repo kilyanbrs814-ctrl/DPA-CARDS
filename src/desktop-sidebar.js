@@ -97,7 +97,7 @@ export function makeDesktopSidebar(React) {
       onClick: () => { if (pinned) { setPinned(false); setSuppressed(true); } else { setSuppressed(false); setPinned(true); } }}, icon('chevron')),
     h('div', {id: 'dpa-sidebar-content', className: 'dpa-sidebar-content'},
       h('div', {className: 'dpa-sidebar-brand'},
-        h('span', {className: 'dpa-sidebar-brand-mark'}, h('img', {src: '/assets/dpa-cards-logo.png', alt: 'DPA Cards', width: 36, height: 36})),
+        h('span', {className: 'dpa-sidebar-brand-mark'}, h('img', {src: '/assets/dpa-cards-logo-mono.svg', alt: 'DPA Cards', width: 36, height: 36})),
         h('span', {className: 'dpa-sidebar-label dpa-sidebar-brand-text'}, h('strong', null, 'DPA Cards'), h('small', null, 'Espace commerçant'))),
       h('div', {className: 'dpa-sidebar-search'},
         h('button', {type: 'button', className: 'dpa-sidebar-search-button', 'aria-label': 'Rechercher une page', title: expanded ? undefined : 'Rechercher une page',
