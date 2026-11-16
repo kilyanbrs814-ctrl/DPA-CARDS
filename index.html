@@ -56,7 +56,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 <div class="dpa-auth-shell" style="min-height:var(--dpa-page-height,100dvh);display:flex">
   <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:clamp(20px,5vw,56px)">
     <div style="display:flex;align-items:center;gap:10px">
-      <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:44px;width:auto;display:block">
+      <img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:44px;width:auto;display:block">
       <div class="dpa-theme-row"><dpa-theme-switch></dpa-theme-switch></div>
     </div>
     <div class="dpa-auth-center" style="flex:1;display:flex;align-items:center;justify-content:center;padding:40px 0">
@@ -65,6 +65,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
         <sc-if value="{{ s.login }}" hint-placeholder-val="{{ true }}">
           <h1 style="font-weight:800;font-size:clamp(34px,7vw,46px);line-height:1.04;letter-spacing:-0.035em;margin:0 0 12px;text-wrap:balance">Votre fidélité, simplement.</h1>
           <p style="margin:0 0 32px;color:var(--dpa-muted,#5E636B);font-size:17px;line-height:1.5;text-wrap:pretty">Connectez-vous pour scanner les cartes de vos clients et suivre votre programme.</p>
+          <sc-if value="{{ isWeb }}" hint-placeholder-val="{{ true }}"><button type="button" class="dpa-login-create-card" onClick="{{ toSignup }}" style="width:100%;min-height:56px;padding:12px 16px;margin:0 0 24px;border:0;border-radius:14px;background:linear-gradient(110deg,#5022AE,#6235C9);color:#FFFFFF;font-weight:800;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#47219B"><span class="material-symbols-rounded" aria-hidden="true">add_card</span>Créer ma carte de fidélité</button></sc-if>
           <form onSubmit="{{ login }}" noValidate="{{ true }}" style="display:flex;flex-direction:column;gap:20px">
             <div>
               <label for="le" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Adresse e-mail</label>
@@ -85,7 +86,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
             </div>
             <button type="submit" disabled="{{ busy }}" style="height:56px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;gap:10px" style-hover="background:#1A36C4"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}">{{ spin }}</sc-if>{{ loginBtn }}</button>
           </form>
-          <sc-if value="{{ isWeb }}" hint-placeholder-val="{{ true }}"><p style="margin:32px 0 0;text-align:center;font-size:15px;color:var(--dpa-secondary,#3E424A)">Pas encore de compte ? <button type="button" onClick="{{ toSignup }}" style="border:0;background:none;padding:8px 2px;color:var(--dpa-link,#2448F0);font-weight:700;font-size:15px" style-hover="text-decoration:underline">Créer mon compte</button></p></sc-if>
+
         </sc-if>
 
         <sc-if value="{{ s.signup }}" hint-placeholder-val="{{ false }}">
@@ -147,7 +148,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
           <div style="width:64px;height:64px;border-radius:18px;background:var(--dpa-info-bg,#E8EDFF);color:var(--dpa-link,#2448F0);display:grid;place-items:center;margin-bottom:24px"><span class="material-symbols-rounded" style="font-size:32px">mark_email_read</span></div>
           <h1 style="font-weight:800;font-size:clamp(30px,6vw,38px);line-height:1.08;letter-spacing:-0.03em;margin:0 0 12px">Vérifiez votre boîte mail</h1>
           <p style="margin:0 0 8px;color:var(--dpa-secondary,#3E424A);font-size:16px;line-height:1.55">Si un compte existe pour <strong>{{ f.fpEmail }}</strong>, vous recevrez un lien de réinitialisation valable 30 minutes.</p>
-          <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ false }}"><p style="margin:0 0 28px;color:var(--dpa-muted,#5E636B);font-size:14px">Prototype : aucun e-mail n’est réellement envoyé.</p></sc-if><sc-if value="{{ isLive }}" hint-placeholder-val="{{ true }}"><div style="height:20px"></div></sc-if>
+          <div style="height:20px"></div>
           <div style="display:flex;flex-direction:column;gap:12px">
             <button type="button" onClick="{{ toLogin }}" style="height:56px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:17px" style-hover="background:#1A36C4">Retour à la connexion</button>
             <button type="button" onClick="{{ resend }}" style="height:52px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:14px;background:var(--dpa-surface,#FFFFFF);font-weight:600;font-size:16px" style-hover="background:var(--dpa-subtle,#F6F5F1)">Renvoyer le lien</button>
@@ -185,7 +186,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 
       </div>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--dpa-muted,#5E636B)">{{ authFooter }}<span style="display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap"><a href="/mentions-legales" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">Mentions légales</a><a href="/confidentialite" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">Confidentialité</a><a href="/cgv" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">CGV</a></span><a href="/admin.html" style="display:inline-flex;align-items:center;gap:6px;min-height:40px;font-weight:600;font-size:14px;text-decoration:none"><span class="material-symbols-rounded" style="font-size:18px">admin_panel_settings</span>Accès administrateur</a></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--dpa-muted,#5E636B)"><span style="display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap"><a href="/mentions-legales" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">Mentions légales</a><a href="/confidentialite" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">Confidentialité</a><a href="/cgv" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">CGV</a></span><a href="/admin.html" style="display:inline-flex;align-items:center;gap:6px;min-height:40px;font-weight:600;font-size:14px;text-decoration:none"><span class="material-symbols-rounded" style="font-size:18px">admin_panel_settings</span>Accès administrateur</a></div>
   </div>
   </div>
 </sc-if>
@@ -193,7 +194,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 <div style="min-height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid var(--dpa-border-soft,#E4E1DA);background:var(--dpa-surface,#FFFFFF)">
     <div style="display:flex;align-items:center;gap:10px">
-      <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:38px;width:auto;display:block"><dpa-theme-switch compact></dpa-theme-switch>
+      <img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:38px;width:auto;display:block"><dpa-theme-switch compact></dpa-theme-switch>
     </div>
     <div style="font-size:14px;color:var(--dpa-muted,#5E636B)">Bienvenue, {{ m.first }}</div>
   </div>
@@ -409,7 +410,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 <sc-if value="{{ s.bill }}" hint-placeholder-val="{{ false }}">
 <div style="min-height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column;background:var(--dpa-surface,#FFFFFF)">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid var(--dpa-border-soft,#E4E1DA);background:var(--dpa-surface,#FFFFFF)">
-    <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:38px;width:auto;display:block"><dpa-theme-switch compact></dpa-theme-switch>
+    <img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:38px;width:auto;display:block"><dpa-theme-switch compact></dpa-theme-switch>
     <div style="display:flex;align-items:center;gap:12px;font-size:14px;color:var(--dpa-muted,#5E636B)"><span style="overflow-wrap:anywhere">{{ m.business }}</span><button type="button" onClick="{{ logout }}" style="min-height:40px;padding:0 12px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:10px;background:var(--dpa-surface,#FFFFFF);font-weight:600;font-size:14px;flex:none">Se déconnecter</button></div>
   </div>
   {{ homeReturnControl }}
@@ -607,7 +608,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
       <header class="dpa-mobile-header dpa-glass-bar" style="position:sticky;top:0;z-index:20;padding-top:var(--dpa-safe-top,env(safe-area-inset-top))">
         <div style="max-width:640px;margin:0 auto;height:56px;padding:0 8px;display:flex;align-items:center;gap:4px">
           <sc-if value="{{ mBar.hasBack }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ mBar.back }}" aria-label="Retour" style="width:44px;height:44px;flex:none;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;color:var(--dpa-text,#1C1F24)" style-active="background:var(--dpa-hover,#ECEAE4)"><span style="font-size:13px;font-weight:700">Retour</span></button></sc-if>
-          <sc-if value="{{ mBar.logo }}" hint-placeholder-val="{{ false }}"><img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:34px;width:auto;display:block;margin-left:8px"></sc-if>
+          <sc-if value="{{ mBar.logo }}" hint-placeholder-val="{{ false }}"><img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:34px;width:auto;display:block;margin-left:8px"></sc-if>
           <div style="flex:1;min-width:0;padding:0 8px">
             <sc-if value="{{ mBar.hasTitle }}" hint-placeholder-val="{{ false }}"><h1 style="margin:0;font-weight:800;font-size:20px;letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ mBar.title }}</h1></sc-if>
           </div>
@@ -1545,7 +1546,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
         </div>
         <button type="button" onClick="{{ newNotif }}" style="min-height:52px;padding:0 20px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:16px;display:flex;align-items:center;gap:8px" style-hover="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:22px">add</span>Créer une notification</button>
       </div>
-      <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ true }}"><div role="note" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px dashed #C9B37A;border-radius:14px;background:var(--dpa-warning-bg,#FFFBF0);color:var(--dpa-warning,#5C4200);font-size:14px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:20px">science</span><div><strong>Données de démonstration.</strong> Historique fictif : aucune notification réelle n’est envoyée depuis ce prototype.</div></div></sc-if>
+      <sc-if value="{{ isDemo }}" hint-placeholder-val="{{ true }}"><div role="note" style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px dashed #C9B37A;border-radius:14px;background:var(--dpa-warning-bg,#FFFBF0);color:var(--dpa-warning,#5C4200);font-size:14px;line-height:1.45"><span class="material-symbols-rounded" style="font-size:20px">science</span><div><strong>Données de démonstration.</strong> Historique de démonstration.</div></div></sc-if>
       <sc-if value="{{ nNoneAtAll }}" hint-placeholder-val="{{ false }}">
         <div class="dpa-glass-surface" style="border-radius:20px;padding:44px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px">
           <div style="width:56px;height:56px;border-radius:16px;background:var(--dpa-info-bg,#E8EDFF);color:var(--dpa-link,#2448F0);display:grid;place-items:center"><span class="material-symbols-rounded" style="font-size:30px">notifications</span></div>
@@ -1816,7 +1817,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
         </sc-for>
       </ul>
       <button type="button" onClick="{{ logout }}" style="min-height:54px;border:1.5px solid var(--dpa-danger,#E3B3AE);border-radius:14px;background:var(--dpa-surface,#FFFFFF);color:var(--dpa-danger,#B42318);font-weight:700;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">logout</span>Se déconnecter</button>
-      <div style="text-align:center;font-size:13px;color:var(--dpa-muted,#5E636B)">DPA CARDS · prototype v0.1 · aucune offre ni paiement à ce stade<div style="margin-top:6px"><a href="/mentions-legales" target="_blank" rel="noopener">Mentions légales</a> · <a href="/confidentialite" target="_blank" rel="noopener">Confidentialité</a></div></div>
+      <div style="text-align:center;font-size:13px;color:var(--dpa-muted,#5E636B)"><div style="margin-top:6px"><a href="/mentions-legales" target="_blank" rel="noopener">Mentions légales</a> · <a href="/confidentialite" target="_blank" rel="noopener">Confidentialité</a></div></div>
     </div>
     </sc-if>
 
@@ -1901,7 +1902,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
         <div class="dpa-glass-surface" style="border-radius:20px;padding:6px 20px">
           <details style="border-bottom:1px solid var(--dpa-border-soft,#EFEDE8);padding:14px 0"><summary style="font-weight:600;font-size:16px;cursor:pointer;min-height:28px">Comment créditer un passage ?</summary><p style="margin:10px 0 0;color:var(--dpa-secondary,#4A4E55);font-size:15px;line-height:1.5">Touchez « Scanner une carte », scannez le QR code personnel du client, puis validez avec « Ajouter un passage ». Le scan seul ne crédite rien.</p></details>
           <details style="border-bottom:1px solid var(--dpa-border-soft,#EFEDE8);padding:14px 0"><summary style="font-weight:600;font-size:16px;cursor:pointer;min-height:28px">Un passage a été ajouté par erreur</summary><p style="margin:10px 0 0;color:var(--dpa-secondary,#4A4E55);font-size:15px;line-height:1.5">Ouvrez la fiche du client, choisissez « Corriger » sur l’opération concernée et indiquez un motif. La correction reste visible dans l’historique.</p></details>
-          <details style="padding:14px 0"><summary style="font-weight:600;font-size:16px;cursor:pointer;min-height:28px">Mes clients doivent-ils installer une application ?</summary><p style="margin:10px 0 0;color:var(--dpa-secondary,#4A4E55);font-size:15px;line-height:1.5">Non. La carte s’ajoute à Apple Wallet ou Google Wallet depuis la page d’inscription. Dans ce prototype, cette étape est simulée.</p></details>
+          <details style="padding:14px 0"><summary style="font-weight:600;font-size:16px;cursor:pointer;min-height:28px">Mes clients doivent-ils installer une application ?</summary><p style="margin:10px 0 0;color:var(--dpa-secondary,#4A4E55);font-size:15px;line-height:1.5">Non. La carte s’ajoute à Apple Wallet ou Google Wallet depuis la page d’inscription. </p></details>
         </div>
         <a href="mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards" style="min-height:54px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:14px;background:var(--dpa-surface,#FFFFFF);color:var(--dpa-text,#1C1F24);font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none"><span class="material-symbols-rounded" style="font-size:20px">mail</span>Écrire au support</a>
       </sc-if>
@@ -2115,7 +2116,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
     <sc-if value="{{ mod.wallet }}" hint-placeholder-val="{{ false }}">
       <span style="align-self:flex-start;padding:4px 10px;border-radius:999px;background:#FFE9B0;color:var(--dpa-warning,#5C4200);font-size:12px;font-weight:800;letter-spacing:0.06em">DÉMONSTRATION</span>
       <h2 id="dlg-t" style="margin:0;font-weight:800;font-size:22px">Ajout à {{ walletName }}</h2>
-      <p style="margin:0;color:var(--dpa-secondary,#3E424A);font-size:16px;line-height:1.5">Aucune carte n’est installée dans ce prototype. Une fois DPA CARDS connecté à {{ walletName }}, ce bouton proposera au client d’enregistrer sa carte sur son téléphone.</p>
+      <p style="margin:0;color:var(--dpa-secondary,#3E424A);font-size:16px;line-height:1.5">L’ajout à {{ walletName }} n’est pas disponible en mode démonstration.</p>
       <p style="margin:0;color:var(--dpa-secondary,#4A4E55);font-size:15px;line-height:1.5">Le QR code personnel affiché sur la carte servira ensuite à l’identifier en caisse.</p>
       <button type="button" onClick="{{ closeModal }}" style="height:54px;border:0;border-radius:14px;background:var(--dpa-solid,#1C1F24);color:#FFFFFF;font-weight:700;font-size:16px">J’ai compris</button>
     </sc-if>
@@ -3059,10 +3060,21 @@ class Component extends DCLogic {
       .then(r=>{ this.setState(s=>({busy:false,pubWallet:r.wallet,clients:s.clients.map(c=>c.id===s.joinedId?{...c,balance:r.balance??c.balance}:c)})); if(r.wallet.url) open(r.wallet.url); else this.showToast(this.api.errorMessage(new Error(r.wallet.error||'wallet_unavailable')),'error'); })
       .catch(e=>{ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); }); }
   async downloadJoinQr(){ const m=this.state.merchant;if(this.state.qrSaving)return;this.setState({qrSaving:true});
-    try{ const href=await this.api.qrPng(joinUrl(m.slug));
-      if(DPA_NATIVE_IOS){await this.api.saveQrToPhotos(href);this.showToast('QR code enregistré dans Photos.');}
-      else {const a=document.createElement('a');a.href=href;a.download='qr-inscription-'+m.slug+'.png';document.body.appendChild(a);a.click();a.remove();} }
-    catch(e){this.showToast(e.code==='accessDenied'?'Autorisez l’ajout de photos pour DPA Cards dans les réglages de votre iPhone.':'Le QR code n’a pas pu être enregistré. Réessayez.','error');}
+    try{
+      const url=joinUrl(m.slug);
+      if(DPA_NATIVE_IOS){
+        await this.api.saveQrToPhotos(await this.api.qrPng(url));
+        this.showToast('QR code enregistré dans Photos.');
+      } else {
+        const bytes=await this.api.invitePosterPdf(url,m.business);
+        if(this.state.merchant.slug!==m.slug)return;
+        const href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+        const a=document.createElement('a');a.href=href;a.download='affiche-inscription-'+m.slug+'.pdf';
+        document.body.appendChild(a);
+        try{a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(href),30000);}
+      }
+    }
+    catch(e){this.showToast(e.code==='accessDenied'?'Autorisez l’ajout de photos pour DPA Cards dans les réglages de votre iPhone.':(DPA_NATIVE_IOS?'Le QR code n’a pas pu être enregistré. Réessayez.':'L’affiche PDF n’a pas pu être téléchargée. Réessayez.'),'error');}
     finally{this.setState({qrSaving:false});} }
   registrationConfig(p){const a=this.api||this.utils;return a&&a.registrationPage?a.registrationPage(p):{title:'Rejoignez le '+p.name,description:'',bg:p.bg,fg:lum(p.bg)<0.45?'#FFFFFF':'#1C1F24',button:'#1C1F24'};}
   registrationChange(k){return e=>this.setState(s=>({registrationDraft:{...s.registrationDraft,[k]:e.target.value}}));}
@@ -3719,7 +3731,7 @@ class Component extends DCLogic {
           'Retour à l’accueil')):null,
       desktopSidebar:S.app&&isDesk&&DesktopSidebar?React.createElement(DesktopSidebar,{
         items:deskNav,settings:moreItems,merchant:m,logo:profileLogoUrl,initials:initials(m.first+' '+m.last),demo:!!s.demo,
-        onProfile:canManageProfiles?openProfiles:go('more'),profilePopup:canManageProfiles?'dialog':undefined,
+        onLogout:()=>this.setState({modal:'logout'}),onProfile:canManageProfiles?openProfiles:go('more'),profilePopup:canManageProfiles?'dialog':undefined,
       }):null,
       canManageProfiles,openProfiles,openProfile:canManageProfiles?openProfiles:go('more'),profilePopup:canManageProfiles?'dialog':undefined,
       profileControl:canManageProfiles?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,menuOpen:s.profileMenuOpen,onMenuClose:()=>this.setState({profileMenuOpen:false}),onAdd:this.beginAddProfile,hasAccess:s.hasAccess,accessSource:s.accessSource,
@@ -3757,13 +3769,13 @@ class Component extends DCLogic {
        showDemoHints:false, isWeb:!DPA_NATIVE_IOS, isNative:DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
       workspaceError:s.workspaceError||'Les données de votre espace n’ont pas pu être récupérées. Réessayez.', workspaceRetryLabel:s.busy?'Chargement…':'Réessayer d’ouvrir mon espace',retryWorkspace:()=>this._lastWorkspaceSession?this.openLive(this._lastWorkspaceSession):this.resetToLogin(),
       joinPage:this.registrationConfig(P),joinLogo:P.registrationLogoUrl||P.logoUrl||'',joinButtonFg:lum((P.registrationPage||{}).button||'#1C1F24')<0.45?'#FFFFFF':'#1C1F24',
-      registrationDraft:s.registrationDraft||{},registrationPreview:this.registrationConfig({...P,registrationPage:s.registrationDraft||{}}),registrationTitle:this.registrationChange('title'),registrationDescription:this.registrationChange('description'),registrationBg:this.registrationChange('bg'),registrationFg:this.registrationChange('fg'),registrationButton:this.registrationChange('button'),saveRegistration:this.saveRegistration,toRegistration:()=>this.go('registration'),canEditRegistration:(s.demo||s.role==='owner')&&!locked,qrSaving:!!s.qrSaving,qrDownloadLabel:s.qrSaving?'Enregistrement…':(DPA_NATIVE_IOS?'Enregistrer dans Photos':'Télécharger le QR code'),
+      registrationDraft:s.registrationDraft||{},registrationPreview:this.registrationConfig({...P,registrationPage:s.registrationDraft||{}}),registrationTitle:this.registrationChange('title'),registrationDescription:this.registrationChange('description'),registrationBg:this.registrationChange('bg'),registrationFg:this.registrationChange('fg'),registrationButton:this.registrationChange('button'),saveRegistration:this.saveRegistration,toRegistration:()=>this.go('registration'),canEditRegistration:(s.demo||s.role==='owner')&&!locked,qrSaving:!!s.qrSaving,qrDownloadLabel:s.qrSaving?(DPA_NATIVE_IOS?'Enregistrement…':'Préparation du PDF…'):(DPA_NATIVE_IOS?'Enregistrer dans Photos':'Télécharger le QR code'),
       loginBtn:s.busy?'Connexion…':'Se connecter', signupBtn:s.busy?'Création du compte…':'Créer mon compte', forgotBtn:s.busy?'Envoi…':'Envoyer le lien',
       pwdType:s.showPwd?'text':'password', pwdIcon:s.showPwd?'visibility_off':'visibility', pwdAria:s.showPwd?'Masquer le mot de passe':'Afficher le mot de passe',
       togglePwd:()=>this.setState(x=>({showPwd:!x.showPwd})), remember:s.remember, toggleRemember:e=>this.setState({remember:e.target.checked}),
       login:this.login, signup:this.signup, forgot:this.forgot,
       toLogin:go('login'), toSignup:go('signup'), toForgot:go('forgot'), resend:this.resendReset, resendSignup:this.resendSignup, submitReset:this.submitReset, resetBtn:s.busy?'Enregistrement…':'Enregistrer le mot de passe',
-      isDemo:!!s.demo, isLive:!s.demo, authFooter:'DPA CARDS v0.1 · aucune connexion Apple ou Google',
+      isDemo:!!s.demo, isLive:!s.demo,
       linkNote:s.demo?'Lien et QR code de démonstration.':'Lien permanent : vous pouvez imprimer ce QR code ou partager ce lien.',
       notPublic:!s.pubSlug, pubRetry:()=>this.bootPublic(),
       pubMiss:s.pubErr==='unavailable'?{icon:'schedule',title:'Inscriptions bientôt ouvertes',text:'Les inscriptions à ce programme de fidélité ne sont pas encore ouvertes. Revenez un peu plus tard.',retry:false}:s.pubErr==='network'?{icon:'wifi_off',title:'Page momentanément indisponible',text:'Vérifiez votre connexion internet puis réessayez.',retry:true}

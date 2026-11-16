@@ -14,21 +14,19 @@ export function makeDesktopSidebar(React) {
     sun: 'M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 0-8 0 4 4 0 0 0 8 0',
     switch: 'm8 9 4-4 4 4m-8 6 4 4 4-4',
   };
-  const mobileIcons = new Set(['qr_code_scanner', 'qr_code_2', 'settings']);
+  const mobileIcons = new Set(['qr_code_scanner', 'qr_code_2', 'settings', 'logout']);
   const icon = name => {
     // Use the same glyphs as the mobile dock instead of approximating their outlines.
     if (mobileIcons.has(name) || !paths[name]) return h('span', {className: 'material-symbols-rounded dpa-sidebar-icon', 'aria-hidden': true}, mobileIcons.has(name) ? name : 'settings');
     return h('svg', {className: 'dpa-sidebar-icon', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true}, h('path', {d: paths[name]}));
   };
 
-  return function DesktopSidebar({items, settings, merchant, logo, initials, demo, onProfile, profilePopup}) {
+  return function DesktopSidebar({items, settings, merchant, logo, initials, demo, onLogout, onProfile, profilePopup}) {
     const [hovered, setHovered] = React.useState(false);
     const [focused, setFocused] = React.useState(false);
     const [pinned, setPinned] = React.useState(false);
     const [suppressed, setSuppressed] = React.useState(false);
     const [query, setQuery] = React.useState('');
-    const [settingsOpen, setSettingsOpen] = React.useState(false);
-    const [settingsHovered, setSettingsHovered] = React.useState(false);
     const [failedLogo, setFailedLogo] = React.useState('');
     const [theme, setTheme] = React.useState(() => window.dpaTheme.get());
     const root = React.useRef(null);
@@ -37,7 +35,7 @@ export function makeDesktopSidebar(React) {
     const term = fold(query.trim());
     const children = settings.filter(item => !term || fold(item.label).includes(term));
     const matches = items.filter(item => !term || fold(item.label).includes(term) || (item.k === 'more' && children.length));
-    const showSettings = expanded && (settingsOpen || settingsHovered || !!term);
+    const showSettings = expanded && !!term;
 
     React.useEffect(() => {
       const update = () => setTheme(window.dpaTheme.get());
@@ -60,23 +58,17 @@ export function makeDesktopSidebar(React) {
 
     const navigate = run => {
       setQuery('');
-      setSettingsOpen(false);
       run();
     };
     const renderItem = item => {
       const hasChildren = item.k === 'more' && settings.length > 0;
       return h('div', {
         key: item.k, className: 'dpa-sidebar-entry',
-        onMouseEnter: hasChildren ? () => setSettingsHovered(true) : undefined,
-        onMouseLeave: hasChildren ? () => setSettingsHovered(false) : undefined,
       },
       h('div', {className: 'dpa-sidebar-row'},
         h('button', {type: 'button', className: 'dpa-sidebar-item', 'aria-label': item.label, 'aria-current': item.current,
           title: expanded ? undefined : item.label, onClick: () => navigate(item.go)},
-          icon(item.icon), h('span', {className: 'dpa-sidebar-label'}, item.label)),
-        hasChildren && h('button', {type: 'button', className: 'dpa-sidebar-disclosure', tabIndex: expanded ? 0 : -1,
-          'aria-label': 'Sous-rubriques de Paramètres', 'aria-expanded': showSettings, 'aria-controls': 'dpa-sidebar-settings',
-          onClick: () => { setSettingsHovered(false); setSettingsOpen(!settingsOpen); }}, icon('chevron'))),
+          icon(item.icon), h('span', {className: 'dpa-sidebar-label'}, item.label))),
       hasChildren && h('div', {id: 'dpa-sidebar-settings', className: 'dpa-sidebar-submenu', hidden: !showSettings},
         children.map((child, index) => h('button', {key: child.label, type: 'button', className: 'dpa-sidebar-child',
           onClick: () => navigate(child.run)}, h('span', {className: 'dpa-sidebar-dot', 'data-color': index % 3, 'aria-hidden': true}), child.label))));
@@ -86,7 +78,7 @@ export function makeDesktopSidebar(React) {
 
     return h('aside', {ref: root, className: 'dpa-desktop-sidebar', 'data-expanded': expanded, 'data-pinned': pinned && expanded, 'data-theme': theme, 'aria-label': 'Menu DPA Cards',
       onPointerEnter: event => { if (event.pointerType === 'mouse') setHovered(true); },
-      onPointerLeave: () => { setHovered(false); setSettingsHovered(false); setSuppressed(false); },
+      onPointerLeave: () => { setHovered(false); setSuppressed(false); },
       onFocusCapture: event => {
         if (event.target.closest('.dpa-sidebar-toggle')) return;
         setFocused(event.target === search.current || event.target.matches(':focus-visible'));
@@ -95,7 +87,7 @@ export function makeDesktopSidebar(React) {
       onBlurCapture: event => { if (!event.currentTarget.contains(event.relatedTarget)) { setFocused(false); setSuppressed(false); } },
       onKeyDown: event => {
         if (event.key === 'Escape') {
-          event.preventDefault(); setQuery(''); setSettingsOpen(false); setSettingsHovered(false); setPinned(false); setFocused(false);
+          event.preventDefault(); setQuery(''); setPinned(false); setFocused(false);
           setSuppressed(true); root.current?.querySelector('.dpa-sidebar-toggle')?.focus(); setSuppressed(true);
         }
       }},
@@ -105,7 +97,7 @@ export function makeDesktopSidebar(React) {
       onClick: () => { if (pinned) { setPinned(false); setSuppressed(true); } else { setSuppressed(false); setPinned(true); } }}, icon('chevron')),
     h('div', {id: 'dpa-sidebar-content', className: 'dpa-sidebar-content'},
       h('div', {className: 'dpa-sidebar-brand'},
-        h('span', {className: 'dpa-sidebar-brand-mark'}, h('img', {src: '/assets/dpa-cards-logo.png', alt: 'DPA Cards', width: 36, height: 36})),
+        h('span', {className: 'dpa-sidebar-brand-mark'}, h('img', {src: '/assets/dpa-cards-logo-mono.svg', alt: 'DPA Cards', width: 36, height: 36})),
         h('span', {className: 'dpa-sidebar-label dpa-sidebar-brand-text'}, h('strong', null, 'DPA Cards'), h('small', null, 'Espace commerçant'))),
       h('div', {className: 'dpa-sidebar-search'},
         h('button', {type: 'button', className: 'dpa-sidebar-search-button', 'aria-label': 'Rechercher une page', title: expanded ? undefined : 'Rechercher une page',
@@ -125,6 +117,9 @@ export function makeDesktopSidebar(React) {
           h('span', {className: 'dpa-sidebar-label'}, 'Mode nuit'), h('span', {className: 'dpa-sidebar-switch', 'aria-hidden': true})),
         h('a', {className: 'dpa-sidebar-item', href: 'mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards',
           'aria-label': 'Contacter le support DPA Cards par e-mail', title: expanded ? undefined : 'Support'}, icon('chat'), h('span', {className: 'dpa-sidebar-label'}, 'Support')),
+        h('button', {type: 'button', className: 'dpa-sidebar-item', 'aria-label': 'Se déconnecter',
+          title: expanded ? undefined : 'Se déconnecter', onClick: onLogout}, icon('logout'),
+          h('span', {className: 'dpa-sidebar-label'}, 'Se déconnecter')),
         h('button', {type: 'button', className: 'dpa-desktop-profile dpa-sidebar-item', 'aria-haspopup': profilePopup,
           'aria-label': `${merchant.first} ${merchant.last} · ${merchant.business} · Gérer mes commerces`,
           title: expanded ? undefined : merchant.business, onClick: onProfile},

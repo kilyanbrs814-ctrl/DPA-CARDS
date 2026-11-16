@@ -46,7 +46,10 @@ html[data-dpa-theme="dark"] .dpa-mobile-dock button[aria-current="page"] { backg
 html[data-dpa-theme="dark"] .dpa-di { --di-ink: var(--dpa-text); --di-muted: var(--dpa-muted); }
 html[data-dpa-theme="dark"] .dpa-di-icon { color: #c0ceff; color: color-mix(in srgb, var(--di-accent) 40%, white); }
 html[data-dpa-theme="dark"] .dpa-mfa-dialog::backdrop { background: #060c18a6; }
-html[data-dpa-theme="dark"] img[src$="/assets/dpa-cards-logo.png"]:not([data-dpa-artwork] img) { background: #fff; border-radius: 8px; padding: 4px; object-fit: contain; }
+img[src$="/assets/dpa-cards-logo-mono.svg"] { background: transparent; padding: 0; border-radius: 0; object-fit: contain; }
+html[data-dpa-theme="dark"] img[src$="/assets/dpa-cards-logo-mono.svg"] { filter: invert(1); }
+.dpa-desktop-sidebar .dpa-sidebar-brand-mark { background: transparent !important; border: 0 !important; box-shadow: none !important; }
+.dpa-desktop-sidebar .dpa-sidebar-brand-mark img { background: transparent !important; border: 0; box-shadow: none; border-radius: 0; padding: 0; }
 html[data-dpa-theme="dark"] .dpa-sidebar-brand-mark img { padding: 0; background: transparent; }
 html[data-dpa-theme="dark"] ::selection { background: #4c65a2; color: #fff; }
 .dpa-theme-row { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-left: auto; }

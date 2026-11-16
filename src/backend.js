@@ -763,6 +763,11 @@ const api = {
   cgvUrl: LEGAL.CGV_URL || null,
   // PNG of the shop's sign-up QR code, for printing.
   qrPng: text => QRCode.toDataURL(text, { margin: 2, width: 1024, errorCorrectionLevel: 'M' }),
+  async invitePosterPdf(url, name) {
+    const { makeInvitePosterPdf } = await import('./invite-poster.js');
+    const { modules } = QRCode.create(url, { errorCorrectionLevel: 'M' });
+    return makeInvitePosterPdf({ name, url, modules });
+  },
   // Apple Wallet only: dedicated icon used by notifications. Does not alter card artwork.
   async setNotificationLogo(file) {
     const fd=new FormData(); fd.set('logo',file,'notification-logo.png');
