@@ -79,3 +79,10 @@ html[data-dpa-theme="dark"] ::selection { background: #4c65a2; color: #fff; }
   --dpa-danger: initial;
 }
 [data-dpa-theme-qr] { background: #fff !important; color: #15171b; border-radius: 14px; padding: 12px; }
+
+.dpa-brand-pair { display:inline-flex; align-items:center; flex:none; background:transparent; }
+.dpa-brand-pair img { background:transparent; padding:0; border:0; }
+.dpa-brand-pair .dpa-brand-dark, html[data-dpa-theme="dark"] .dpa-brand-pair .dpa-brand-light { display:none !important; }
+html[data-dpa-theme="dark"] .dpa-brand-pair .dpa-brand-dark { display:block !important; }
+.dpa-sidebar-brand-mark img { object-fit:contain; }
+.dpa-support-dialog::backdrop { background:rgba(13,8,26,.56); backdrop-filter:blur(4px); }
