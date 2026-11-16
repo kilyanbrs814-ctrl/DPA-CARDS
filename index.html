@@ -3060,10 +3060,21 @@ class Component extends DCLogic {
       .then(r=>{ this.setState(s=>({busy:false,pubWallet:r.wallet,clients:s.clients.map(c=>c.id===s.joinedId?{...c,balance:r.balance??c.balance}:c)})); if(r.wallet.url) open(r.wallet.url); else this.showToast(this.api.errorMessage(new Error(r.wallet.error||'wallet_unavailable')),'error'); })
       .catch(e=>{ this.setState({busy:false}); this.showToast(this.api.errorMessage(e),'error'); }); }
   async downloadJoinQr(){ const m=this.state.merchant;if(this.state.qrSaving)return;this.setState({qrSaving:true});
-    try{ const href=await this.api.qrPng(joinUrl(m.slug));
-      if(DPA_NATIVE_IOS){await this.api.saveQrToPhotos(href);this.showToast('QR code enregistré dans Photos.');}
-      else {const a=document.createElement('a');a.href=href;a.download='qr-inscription-'+m.slug+'.png';document.body.appendChild(a);a.click();a.remove();} }
-    catch(e){this.showToast(e.code==='accessDenied'?'Autorisez l’ajout de photos pour DPA Cards dans les réglages de votre iPhone.':'Le QR code n’a pas pu être enregistré. Réessayez.','error');}
+    try{
+      const url=joinUrl(m.slug);
+      if(DPA_NATIVE_IOS){
+        await this.api.saveQrToPhotos(await this.api.qrPng(url));
+        this.showToast('QR code enregistré dans Photos.');
+      } else {
+        const bytes=await this.api.invitePosterPdf(url,m.business);
+        if(this.state.merchant.slug!==m.slug)return;
+        const href=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+        const a=document.createElement('a');a.href=href;a.download='affiche-inscription-'+m.slug+'.pdf';
+        document.body.appendChild(a);
+        try{a.click();}finally{a.remove();setTimeout(()=>URL.revokeObjectURL(href),30000);}
+      }
+    }
+    catch(e){this.showToast(e.code==='accessDenied'?'Autorisez l’ajout de photos pour DPA Cards dans les réglages de votre iPhone.':(DPA_NATIVE_IOS?'Le QR code n’a pas pu être enregistré. Réessayez.':'L’affiche PDF n’a pas pu être téléchargée. Réessayez.'),'error');}
     finally{this.setState({qrSaving:false});} }
   registrationConfig(p){const a=this.api||this.utils;return a&&a.registrationPage?a.registrationPage(p):{title:'Rejoignez le '+p.name,description:'',bg:p.bg,fg:lum(p.bg)<0.45?'#FFFFFF':'#1C1F24',button:'#1C1F24'};}
   registrationChange(k){return e=>this.setState(s=>({registrationDraft:{...s.registrationDraft,[k]:e.target.value}}));}
