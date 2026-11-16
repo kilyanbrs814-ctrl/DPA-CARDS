@@ -57,7 +57,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 <div class="dpa-auth-shell" style="min-height:var(--dpa-page-height,100dvh);display:flex">
   <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:clamp(20px,5vw,56px)">
     <div style="display:flex;align-items:center;gap:10px">
-      <img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:44px;width:auto;display:block">
+      <span class="dpa-brand-pair"><img class="dpa-brand-light" src="/assets/dpa-cards-light.svg" alt="DPA Cards" style="height:44px;width:auto;display:block"><img class="dpa-brand-dark" src="/assets/dpa-cards-dark.svg" alt="DPA Cards" style="height:44px;width:auto;display:block"></span>
       <div class="dpa-theme-row"><dpa-theme-switch></dpa-theme-switch></div>
     </div>
     <div class="dpa-auth-center" style="flex:1;display:flex;align-items:center;justify-content:center;padding:40px 0">
@@ -195,7 +195,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 <div style="min-height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid var(--dpa-border-soft,#E4E1DA);background:var(--dpa-surface,#FFFFFF)">
     <div style="display:flex;align-items:center;gap:10px">
-      <img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:38px;width:auto;display:block"><dpa-theme-switch compact></dpa-theme-switch>
+      <span class="dpa-brand-pair"><img class="dpa-brand-light" src="/assets/dpa-cards-light.svg" alt="DPA Cards" style="height:38px;width:auto;display:block"><img class="dpa-brand-dark" src="/assets/dpa-cards-dark.svg" alt="DPA Cards" style="height:38px;width:auto;display:block"></span><dpa-theme-switch compact></dpa-theme-switch>
     </div>
     <div style="font-size:14px;color:var(--dpa-muted,#5E636B)">Bienvenue, {{ m.first }}</div>
   </div>
@@ -411,7 +411,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 <sc-if value="{{ s.bill }}" hint-placeholder-val="{{ false }}">
 <div style="min-height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column;background:var(--dpa-surface,#FFFFFF)">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid var(--dpa-border-soft,#E4E1DA);background:var(--dpa-surface,#FFFFFF)">
-    <img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:38px;width:auto;display:block"><dpa-theme-switch compact></dpa-theme-switch>
+    <span class="dpa-brand-pair"><img class="dpa-brand-light" src="/assets/dpa-cards-light.svg" alt="DPA Cards" style="height:38px;width:auto;display:block"><img class="dpa-brand-dark" src="/assets/dpa-cards-dark.svg" alt="DPA Cards" style="height:38px;width:auto;display:block"></span><dpa-theme-switch compact></dpa-theme-switch>
     <div style="display:flex;align-items:center;gap:12px;font-size:14px;color:var(--dpa-muted,#5E636B)"><span style="overflow-wrap:anywhere">{{ m.business }}</span><button type="button" onClick="{{ logout }}" style="min-height:40px;padding:0 12px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:10px;background:var(--dpa-surface,#FFFFFF);font-weight:600;font-size:14px;flex:none">Se déconnecter</button></div>
   </div>
   {{ homeReturnControl }}
@@ -609,11 +609,11 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
       <header class="dpa-mobile-header dpa-glass-bar" style="position:sticky;top:0;z-index:20;padding-top:var(--dpa-safe-top,env(safe-area-inset-top))">
         <div style="max-width:640px;margin:0 auto;height:56px;padding:0 8px;display:flex;align-items:center;gap:4px">
           <sc-if value="{{ mBar.hasBack }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ mBar.back }}" aria-label="Retour" style="width:44px;height:44px;flex:none;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;color:var(--dpa-text,#1C1F24)" style-active="background:var(--dpa-hover,#ECEAE4)"><span style="font-size:13px;font-weight:700">Retour</span></button></sc-if>
-          <sc-if value="{{ mBar.logo }}" hint-placeholder-val="{{ false }}"><img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:34px;width:auto;display:block;margin-left:8px"></sc-if>
+          <sc-if value="{{ mBar.logo }}" hint-placeholder-val="{{ false }}"><span class="dpa-brand-pair"><img class="dpa-brand-light" src="/assets/dpa-cards-light.svg" alt="DPA Cards" style="height:34px;width:auto;display:block;margin-left:8px"><img class="dpa-brand-dark" src="/assets/dpa-cards-dark.svg" alt="DPA Cards" style="height:34px;width:auto;display:block;margin-left:8px"></span></sc-if>
           <div style="flex:1;min-width:0;padding:0 8px">
             <sc-if value="{{ mBar.hasTitle }}" hint-placeholder-val="{{ false }}"><h1 style="margin:0;font-weight:800;font-size:20px;letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ mBar.title }}</h1></sc-if>
           </div>
-          <sc-if value="{{ mBar.support }}" hint-placeholder-val="{{ false }}"><a href="mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards" aria-label="Contacter le support DPA Cards par e-mail" style="flex:none;margin-right:6px;height:34px;padding:0 11px 0 9px;display:inline-flex;align-items:center;gap:6px;border-radius:14px 14px 14px 4px;background:var(--dpa-info-bg,#E8EDFF);color:var(--dpa-link-strong,#1A36C4);font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap" style-active="background:#D9E1FF"><span class="material-symbols-rounded" style="font-size:18px">chat</span>Support</a></sc-if>
+          <sc-if value="{{ mBar.support }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openSupport }}" aria-label="Contacter le support DPA Cards par e-mail" style="flex:none;margin-right:6px;height:34px;border:0;padding:0 11px 0 9px;display:inline-flex;align-items:center;gap:6px;border-radius:14px 14px 14px 4px;background:var(--dpa-info-bg,#E8EDFF);color:var(--dpa-link-strong,#1A36C4);font-weight:700;font-size:14px;text-decoration:none;white-space:nowrap" style-active="background:#D9E1FF"><span class="material-symbols-rounded" style="font-size:18px">chat</span>Support</button></sc-if>
           <sc-if value="{{ mBar.addClient }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ openAddClient }}" aria-label="Ajouter un client" style="width:44px;height:44px;flex:none;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;color:var(--dpa-link,#2448F0)" style-active="background:var(--dpa-info-bg,#E8EDFF)"><span class="material-symbols-rounded" style="font-size:26px">person_add</span></button></sc-if>
           <sc-if value="{{ mBar.create }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ newNotif }}" style="height:44px;flex:none;padding:0 16px 0 12px;border:0;border-radius:999px;background:#2448F0;color:#FFFFFF;font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px" style-active="background:#1A36C4"><span class="material-symbols-rounded" style="font-size:22px">add</span>Créer</button></sc-if>
         <dpa-theme-switch compact></dpa-theme-switch>
@@ -3730,11 +3730,12 @@ class Component extends DCLogic {
         React.createElement('button',{type:'button',className:'dpa-glass-surface',onClick:()=>this.go('home')},
           React.createElement('svg',{viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},React.createElement('path',{d:'m12 19-7-7 7-7m-7 7h14'})),
           'Retour à l’accueil')):null,
-      supportDialog:S.app&&s.supportOpen&&this.api?.SupportDialog?React.createElement(this.api.SupportDialog,{key:m.id,merchant:m,send:this.api.sendSupport,close:()=>this.setState({supportOpen:false})}):null,
+      openSupport:()=>{if(DPA_NATIVE_IOS){window.location.href='mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards';return;}if(s.live&&m.id)this.setState({supportOpen:true});else this.showToast('Connectez-vous à un compte commerçant pour contacter le support.','info');},
+      supportDialog:S.app&&s.live&&m.id&&s.supportOpen&&this.api?.SupportDialog?React.createElement(this.api.SupportDialog,{key:m.id,merchant:m,send:this.api.sendSupport,close:()=>this.setState({supportOpen:false})}):null,
       homeMerchantButton:canManageProfiles&&(s.profiles.length>1||s.role==='owner')?React.createElement('button',{type:'button',className:'dpa-glass-surface',style:{position:'absolute',right:0,top:26,minHeight:44,padding:'8px 14px',borderRadius:12,fontWeight:700},onClick:s.profiles.length>1?openProfiles:this.beginAddProfile},s.profiles.length>1?'Changer de commerce':'Ajouter un commerce'):null,
       desktopSidebar:S.app&&isDesk&&DesktopSidebar?React.createElement(DesktopSidebar,{
         items:deskNav,settings:moreItems,merchant:m,logo:profileLogoUrl,initials:initials(m.first+' '+m.last),demo:!!s.demo,
-        onSupport:()=>this.setState({supportOpen:true}),onLogout:()=>this.setState({modal:'logout'}),onProfile:canManageProfiles?openProfiles:go('more'),profilePopup:canManageProfiles?'dialog':undefined,
+        onSupport:()=>{if(s.live&&m.id)this.setState({supportOpen:true});else this.showToast('Connectez-vous à un compte commerçant pour contacter le support.','info');},onLogout:()=>this.setState({modal:'logout'}),onProfile:canManageProfiles?openProfiles:go('more'),profilePopup:canManageProfiles?'dialog':undefined,
       }):null,
       canManageProfiles,openProfiles,openProfile:canManageProfiles?openProfiles:go('more'),profilePopup:canManageProfiles?'dialog':undefined,
       profileControl:canManageProfiles?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,menuOpen:s.profileMenuOpen,onMenuClose:()=>this.setState({profileMenuOpen:false}),onAdd:this.beginAddProfile,hasAccess:s.hasAccess,accessSource:s.accessSource,
