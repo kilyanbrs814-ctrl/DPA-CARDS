@@ -56,7 +56,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 <div class="dpa-auth-shell" style="min-height:var(--dpa-page-height,100dvh);display:flex">
   <div style="flex:1;min-width:0;display:flex;flex-direction:column;padding:clamp(20px,5vw,56px)">
     <div style="display:flex;align-items:center;gap:10px">
-      <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:44px;width:auto;display:block">
+      <img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:44px;width:auto;display:block">
       <div class="dpa-theme-row"><dpa-theme-switch></dpa-theme-switch></div>
     </div>
     <div class="dpa-auth-center" style="flex:1;display:flex;align-items:center;justify-content:center;padding:40px 0">
@@ -194,7 +194,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 <div style="min-height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid var(--dpa-border-soft,#E4E1DA);background:var(--dpa-surface,#FFFFFF)">
     <div style="display:flex;align-items:center;gap:10px">
-      <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:38px;width:auto;display:block"><dpa-theme-switch compact></dpa-theme-switch>
+      <img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:38px;width:auto;display:block"><dpa-theme-switch compact></dpa-theme-switch>
     </div>
     <div style="font-size:14px;color:var(--dpa-muted,#5E636B)">Bienvenue, {{ m.first }}</div>
   </div>
@@ -410,7 +410,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 <sc-if value="{{ s.bill }}" hint-placeholder-val="{{ false }}">
 <div style="min-height:var(--dpa-page-height,100dvh);display:flex;flex-direction:column;background:var(--dpa-surface,#FFFFFF)">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px clamp(20px,4vw,40px);border-bottom:1px solid var(--dpa-border-soft,#E4E1DA);background:var(--dpa-surface,#FFFFFF)">
-    <img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:38px;width:auto;display:block"><dpa-theme-switch compact></dpa-theme-switch>
+    <img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:38px;width:auto;display:block"><dpa-theme-switch compact></dpa-theme-switch>
     <div style="display:flex;align-items:center;gap:12px;font-size:14px;color:var(--dpa-muted,#5E636B)"><span style="overflow-wrap:anywhere">{{ m.business }}</span><button type="button" onClick="{{ logout }}" style="min-height:40px;padding:0 12px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:10px;background:var(--dpa-surface,#FFFFFF);font-weight:600;font-size:14px;flex:none">Se déconnecter</button></div>
   </div>
   {{ homeReturnControl }}
@@ -608,7 +608,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
       <header class="dpa-mobile-header dpa-glass-bar" style="position:sticky;top:0;z-index:20;padding-top:var(--dpa-safe-top,env(safe-area-inset-top))">
         <div style="max-width:640px;margin:0 auto;height:56px;padding:0 8px;display:flex;align-items:center;gap:4px">
           <sc-if value="{{ mBar.hasBack }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ mBar.back }}" aria-label="Retour" style="width:44px;height:44px;flex:none;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;color:var(--dpa-text,#1C1F24)" style-active="background:var(--dpa-hover,#ECEAE4)"><span style="font-size:13px;font-weight:700">Retour</span></button></sc-if>
-          <sc-if value="{{ mBar.logo }}" hint-placeholder-val="{{ false }}"><img src="/assets/dpa-cards-logo.png" alt="DPA CARDS" style="height:34px;width:auto;display:block;margin-left:8px"></sc-if>
+          <sc-if value="{{ mBar.logo }}" hint-placeholder-val="{{ false }}"><img src="/assets/dpa-cards-logo-mono.svg" alt="DPA CARDS" style="height:34px;width:auto;display:block;margin-left:8px"></sc-if>
           <div style="flex:1;min-width:0;padding:0 8px">
             <sc-if value="{{ mBar.hasTitle }}" hint-placeholder-val="{{ false }}"><h1 style="margin:0;font-weight:800;font-size:20px;letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ mBar.title }}</h1></sc-if>
           </div>
@@ -3769,7 +3769,7 @@ class Component extends DCLogic {
        showDemoHints:false, isWeb:!DPA_NATIVE_IOS, isNative:DPA_NATIVE_IOS, nativeRetry:async()=>{try{const session=await this.api.session();if(session) await this.openLive(session);}catch(e){this.showToast('Impossible d’actualiser votre accès.','error');}}, nativeLogout:()=>this.logoutLive(),
       workspaceError:s.workspaceError||'Les données de votre espace n’ont pas pu être récupérées. Réessayez.', workspaceRetryLabel:s.busy?'Chargement…':'Réessayer d’ouvrir mon espace',retryWorkspace:()=>this._lastWorkspaceSession?this.openLive(this._lastWorkspaceSession):this.resetToLogin(),
       joinPage:this.registrationConfig(P),joinLogo:P.registrationLogoUrl||P.logoUrl||'',joinButtonFg:lum((P.registrationPage||{}).button||'#1C1F24')<0.45?'#FFFFFF':'#1C1F24',
-      registrationDraft:s.registrationDraft||{},registrationPreview:this.registrationConfig({...P,registrationPage:s.registrationDraft||{}}),registrationTitle:this.registrationChange('title'),registrationDescription:this.registrationChange('description'),registrationBg:this.registrationChange('bg'),registrationFg:this.registrationChange('fg'),registrationButton:this.registrationChange('button'),saveRegistration:this.saveRegistration,toRegistration:()=>this.go('registration'),canEditRegistration:(s.demo||s.role==='owner')&&!locked,qrSaving:!!s.qrSaving,qrDownloadLabel:s.qrSaving?'Enregistrement…':(DPA_NATIVE_IOS?'Enregistrer dans Photos':'Télécharger le QR code'),
+      registrationDraft:s.registrationDraft||{},registrationPreview:this.registrationConfig({...P,registrationPage:s.registrationDraft||{}}),registrationTitle:this.registrationChange('title'),registrationDescription:this.registrationChange('description'),registrationBg:this.registrationChange('bg'),registrationFg:this.registrationChange('fg'),registrationButton:this.registrationChange('button'),saveRegistration:this.saveRegistration,toRegistration:()=>this.go('registration'),canEditRegistration:(s.demo||s.role==='owner')&&!locked,qrSaving:!!s.qrSaving,qrDownloadLabel:s.qrSaving?(DPA_NATIVE_IOS?'Enregistrement…':'Préparation du PDF…'):(DPA_NATIVE_IOS?'Enregistrer dans Photos':'Télécharger le QR code'),
       loginBtn:s.busy?'Connexion…':'Se connecter', signupBtn:s.busy?'Création du compte…':'Créer mon compte', forgotBtn:s.busy?'Envoi…':'Envoyer le lien',
       pwdType:s.showPwd?'text':'password', pwdIcon:s.showPwd?'visibility_off':'visibility', pwdAria:s.showPwd?'Masquer le mot de passe':'Afficher le mot de passe',
       togglePwd:()=>this.setState(x=>({showPwd:!x.showPwd})), remember:s.remember, toggleRemember:e=>this.setState({remember:e.target.checked}),
