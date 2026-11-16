@@ -50,6 +50,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 </helmet>
 <div style="min-height:var(--dpa-page-height,100dvh);background:var(--dpa-app-background,#FFFFFF);color:var(--dpa-text,#1C1F24)">
 {{ profileControl }}
+{{ supportDialog }}
 <sc-if value="{{ s.mfaChallenge }}"><div style="display:flex;justify-content:flex-end;padding:14px 16px"><dpa-theme-switch></dpa-theme-switch></div></sc-if>
 {{ mfaChallengePanel }}
 <sc-if value="{{ showAuthShell }}" hint-placeholder-val="{{ true }}">
@@ -651,7 +652,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
       {{ mfaEnrollmentPanel }}
 <sc-if value="{{ isDesk }}" hint-placeholder-val="{{ true }}">
     <div style="max-width:1160px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:24px">
-      <div>
+      <div style="position:relative;padding-right:clamp(135px,24vw,245px)">{{ homeMerchantButton }}
         <div style="font-size:14px;color:var(--dpa-muted,#5E636B);font-weight:500">{{ todayLabel }}</div>
         <h1 style="margin:6px 0 4px;font-weight:800;font-size:clamp(30px,5vw,40px);letter-spacing:-0.03em;line-height:1.05">Bonjour {{ m.first }}</h1>
         <div style="font-size:17px;color:var(--dpa-secondary,#3E424A);font-weight:500">{{ m.business }}</div>
@@ -3729,9 +3730,11 @@ class Component extends DCLogic {
         React.createElement('button',{type:'button',className:'dpa-glass-surface',onClick:()=>this.go('home')},
           React.createElement('svg',{viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},React.createElement('path',{d:'m12 19-7-7 7-7m-7 7h14'})),
           'Retour à l’accueil')):null,
+      supportDialog:S.app&&s.supportOpen&&this.api?.SupportDialog?React.createElement(this.api.SupportDialog,{key:m.id,merchant:m,send:this.api.sendSupport,close:()=>this.setState({supportOpen:false})}):null,
+      homeMerchantButton:canManageProfiles&&(s.profiles.length>1||s.role==='owner')?React.createElement('button',{type:'button',className:'dpa-glass-surface',style:{position:'absolute',right:0,top:26,minHeight:44,padding:'8px 14px',borderRadius:12,fontWeight:700},onClick:s.profiles.length>1?openProfiles:this.beginAddProfile},s.profiles.length>1?'Changer de commerce':'Ajouter un commerce'):null,
       desktopSidebar:S.app&&isDesk&&DesktopSidebar?React.createElement(DesktopSidebar,{
         items:deskNav,settings:moreItems,merchant:m,logo:profileLogoUrl,initials:initials(m.first+' '+m.last),demo:!!s.demo,
-        onLogout:()=>this.setState({modal:'logout'}),onProfile:canManageProfiles?openProfiles:go('more'),profilePopup:canManageProfiles?'dialog':undefined,
+        onSupport:()=>this.setState({supportOpen:true}),onLogout:()=>this.setState({modal:'logout'}),onProfile:canManageProfiles?openProfiles:go('more'),profilePopup:canManageProfiles?'dialog':undefined,
       }):null,
       canManageProfiles,openProfiles,openProfile:canManageProfiles?openProfiles:go('more'),profilePopup:canManageProfiles?'dialog':undefined,
       profileControl:canManageProfiles?React.createElement(this.api.ProfileControls,{key:'profiles-'+(m.id||'new'),api:this.api,profiles:s.profiles,merchant:m,busy:s.busy,native:DPA_NATIVE_IOS,menuOpen:s.profileMenuOpen,onMenuClose:()=>this.setState({profileMenuOpen:false}),onAdd:this.beginAddProfile,hasAccess:s.hasAccess,accessSource:s.accessSource,
