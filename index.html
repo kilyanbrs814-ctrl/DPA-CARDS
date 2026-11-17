@@ -52,6 +52,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 {{ profileControl }}
 {{ supportDialog }}
 {{ loyaltyAmountDialog }}
+{{ loyaltyRulesDialog }}
 <sc-if value="{{ s.mfaChallenge }}"><div style="display:flex;justify-content:flex-end;padding:14px 16px"><dpa-theme-switch></dpa-theme-switch></div></sc-if>
 {{ mfaChallengePanel }}
 <sc-if value="{{ showAuthShell }}" hint-placeholder-val="{{ true }}">
@@ -2847,6 +2848,32 @@ class Component extends DCLogic {
       if(bad) return this.setState(s=>({err:{...s.err,drfiles:`« ${bad.name} » : PNG, JPEG, WebP ou PDF de 5 Mo maximum.`}}));
       if(multi) this.setState(s=>({drRefs:[...s.drRefs,...files].slice(0,5),err:{...s.err,drfiles:null}}));
       else this.setState(s=>({drLogo:files[0]||null,err:{...s.err,drfiles:null}})); }; }
+  renderLoyaltyRules(){
+    const s=this.state,p=s.loyaltyRules,h=React.createElement;
+    const set=patch=>this.setState(x=>({loyaltyRules:{...x.loyaltyRules,...patch},loyaltyError:''}));
+    const close=()=>this.setState({loyaltyRules:null,loyaltyError:''});
+    const save=async e=>{
+      e.preventDefault();
+      if(this.state.busy||s.role!=='owner'||p.id!==s.program.id)return;
+      if(p.mode==='points'&&!this.validPointRate(p))return this.setState({loyaltyError:'Indiquez un taux entier entre 1 et 100 points.'});
+      if(!String(p.reward||'').trim())return this.setState({loyaltyError:'Indiquez la récompense ou la réduction.'});
+      this.setState({busy:true,loyaltyError:''});
+      try{const updated=await this.api.saveRules(p.id,p);
+        this.setState({program:updated,draft:{...updated},busy:false});close();this.showToast('Programme enregistré.');
+      }catch(error){this.setState({busy:false,loyaltyError:this.api.errorMessage(error)});}
+    };
+    const modeChange=e=>{const mode=e.target.value;if(mode!==p.mode)set({mode,goal:mode==='points'?100:10});};
+    const pts=p.mode==='points';
+    return h(this.api.LoyaltyRulesDialog,{busy:s.busy,onClose:close},
+      h('form',{className:'dpa-support-form',onSubmit:save},
+        h('label',null,'Type de fidélité',h('select',{value:p.mode,onChange:modeChange,disabled:s.busy},h('option',{value:'passages'},'Tampons / réduction'),h('option',{value:'points'},'Points'))),
+        h('label',null,pts?'Objectif en points':'Nombre de passages',h('input',{type:'number',min:pts?50:3,max:pts?1000:20,required:true,value:p.goal,onChange:e=>set({goal:e.target.value}),disabled:s.busy})),
+        this.renderEarnSettings('loyaltyRules'),
+        h('label',null,'Récompense',h('input',{value:p.reward||'',onChange:e=>set({reward:e.target.value}),maxLength:120,required:true,disabled:s.busy})),
+        h('small',null,'Vous pouvez essayer les réglages sans enregistrer. Le type de solde ne peut pas être changé si des cartes clients existent déjà.'),
+        s.loyaltyError&&h('div',{role:'alert'},s.loyaltyError),
+        h('button',{type:'submit',className:'dpa-mfa-button',disabled:s.busy},s.busy?'Enregistrement…':'Enregistrer le programme')));
+  }
   renderEarnSettings(store){
     const p=this.state[store]; if(!p)return null;
     const R=React,h=R.createElement, set=patch=>this.setState(s=>({[store]:{...s[store],...patch}}));
@@ -2858,7 +2885,7 @@ class Component extends DCLogic {
       const match=/^([1-9][0-9]?|100) % de réduction$/.exec(p.reward||'');
       return h('div',{style:box},
         h('strong',null,'Réduction après les tampons'),
-        h('small',null,'Optionnel. Après '+p.goal+' passages, la remise est utilisable une fois en caisse. Laissez vide pour choisir une autre récompense.'),
+        h('small',null,'Après '+p.goal+' passages, validez la remise dans DPA Cards puis appliquez-la en caisse. Vous pouvez aussi choisir une autre récompense.'),
         label('Remise (%)',number(match?.[1]||'',v=>{if(v===''){if(match)set({reward:''});}else if(/^\d+$/.test(v)&&+v>=1&&+v<=100)set({reward:+v+' % de réduction'});},{min:1,max:100,step:1,placeholder:'Ex. 10'})));
     }
     const byEuro=p.pointsBasis==='euro', rate=p.pointsRate??10, basket=Number(p.exampleBasket??20);
@@ -3666,6 +3693,7 @@ class Component extends DCLogic {
     const canManageProfiles=!!(s.live&&this.api&&s.profiles?.length>(DPA_NATIVE_IOS?1:0));
     const openProfiles=()=>this.setState({profileMenuOpen:true});
     const moreItems=[
+      ...(s.live&&s.role==='owner'&&P.id?[{icon:'loyalty',label:'Programme de fidélité',sub:'Tampons, réductions et points',run:()=>this.setState({loyaltyRules:{...P},loyaltyError:''})}]:[]),
       ...(canManageProfiles?[{icon:'storefront',label:'Gérer mes commerces',sub:m.business,run:openProfiles}]:[]),
       {icon:'qr_code_2',label:'Inviter mes clients',sub:"QR code et lien d'inscription",run:go('invite')},
       {icon:'public',label:"Page d'inscription publique",sub:s.live?'Inscrire un client sur cet appareil':'Aperçu côté client',run:go('join')},
@@ -3766,6 +3794,7 @@ class Component extends DCLogic {
           React.createElement('svg',{viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},React.createElement('path',{d:'m12 19-7-7 7-7m-7 7h14'})),
           'Retour à l’accueil')):null,
       openSupport:()=>{if(DPA_NATIVE_IOS){window.location.href='mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards';return;}if(s.live&&m.id)this.setState({supportOpen:true});else this.showToast('Connectez-vous à un compte commerçant pour contacter le support.','info');},
+      loyaltyRulesDialog:S.app&&s.loyaltyRules&&this.api?.LoyaltyRulesDialog?this.renderLoyaltyRules():null,
       obEarnSettings:earnSettings('ob'),draftEarnSettings:earnSettings('draft'),
       loyaltyAmountDialog:S.app&&s.loyaltyAmount&&this.api?.LoyaltyAmountDialog?React.createElement(this.api.LoyaltyAmountDialog,{key:m.id+'-'+s.loyaltyAmount.id,rate:step,busy:s.busy,onClose:()=>this.setState({loyaltyAmount:null}),onAccept:cents=>this.addVisitLive(s.loyaltyAmount.id,s.loyaltyAmount.ctx,cents)}):null,
       supportDialog:S.app&&s.live&&m.id&&s.supportOpen&&this.api?.SupportDialog?React.createElement(this.api.SupportDialog,{key:m.id,merchant:m,send:this.api.sendSupport,close:()=>this.setState({supportOpen:false})}):null,
