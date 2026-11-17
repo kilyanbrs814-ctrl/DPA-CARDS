@@ -1810,7 +1810,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
     <sc-if value="{{ s.more }}" hint-placeholder-val="{{ false }}">
     <div style="max-width:720px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:20px">
       <div style="display:flex;align-items:center;gap:14px">
-        <div style="width:56px;height:56px;border-radius:50%;background:var(--dpa-solid,#1C1F24);color:#FFFFFF;display:grid;place-items:center;font-weight:700;font-size:18px">{{ moreInitials }}</div>
+        <div style="width:56px;height:56px;border-radius:50%;background:{{ settingsAvatarBackground }};color:#FFFFFF;display:grid;place-items:center;font-weight:700;font-size:18px;overflow:hidden;flex-shrink:0">{{ settingsMerchantAvatar }}</div>
         <div><h1 style="margin:0;font-weight:800;font-size:26px;letter-spacing:-0.02em">{{ moreHeading }}</h1><div style="color:var(--dpa-muted,#5E636B);font-size:15px">{{ m.business }}</div></div>
       </div>
       <ul class="dpa-glass-surface" style="list-style:none;margin:0;padding:0;border-radius:20px;overflow:hidden">
@@ -3715,6 +3715,7 @@ class Component extends DCLogic {
 
     const openSec=k=>()=>this.go('settings',{section:k});
     const profileLogoUrl=P.logoUrl||s.profiles?.find(profile=>profile.id===m.id)?.logo;
+    const hasSettingsLogo=!!profileLogoUrl&&s.settingsFailedLogo!==profileLogoUrl;
     const canManageProfiles=!!(s.live&&this.api&&s.profiles?.length>(DPA_NATIVE_IOS?1:0));
     const openProfiles=()=>this.setState({profileMenuOpen:true});
     const moreItems=[
@@ -3913,7 +3914,8 @@ class Component extends DCLogic {
       downloadQr:()=>locked?this.go('invite'):(s.live?this.downloadJoinQr():this.showToast('Démo : le téléchargement du QR code n’est pas activé.','info')),
       canScan,canAddClients,canReward,canCorrections,canNotify,canEnrollHome:canAddClients&&!locked,homeJoinLabel:s.busy?'Création de la carte…':'Créer la carte du client',
       mobNav, deskNav, toScanner:go('scanner'), toMore:go('more'), toInvite:go('invite'), toCard:go('card'), toClients:go('clients'), toJoin:()=>{ if(locked) return this.go('invite'); const w=window.open(pubUrl,'_blank'); if(w) w.opener=null; else window.location.assign(pubUrl); }, toHome:go('home'),
-      moreInitials:s.live&&s.role==='staff'?'EM':initials(m.first+' '+m.last),
+      settingsAvatarBackground:hasSettingsLogo?'transparent':'var(--dpa-solid,#1C1F24)',
+      settingsMerchantAvatar:hasSettingsLogo?React.createElement('img',{key:profileLogoUrl,src:profileLogoUrl,alt:'',style:{width:'100%',height:'100%',objectFit:'contain',display:'block'},onError:()=>this.setState({settingsFailedLogo:profileLogoUrl})}):(s.live&&s.role==='staff'?'EM':initials(m.first+' '+m.last)),
        moreHeading:s.live&&s.role==='staff'?'Espace employé':(m.first+' '+m.last).trim(),
        businessView:{name:m.business||'Non renseigné',activity:m.activity||'Non renseignée',address:m.address||'Non renseignée'},
        todayLabel:s.live?todayLong():'Mercredi 30 septembre',
