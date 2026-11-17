@@ -247,8 +247,10 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
             </div>
           </div>
           <div>
+            <sc-if value="{{ obPoints }}" hint-placeholder-val="{{ false }}">
             <label for="ob3" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Récompense</label>
             <input id="ob3" placeholder="Ex. 1 café offert" value="{{ ob.reward }}" onChange="{{ O.reward }}" aria-invalid="{{ inv.obreward }}" style="width:100%;height:54px;padding:0 16px;border:1.5px solid {{ eb.obreward }};border-radius:12px;background:var(--dpa-surface,#FFFFFF);font-size:16px;outline:none" style-focus="border-color:var(--dpa-link,#2448F0);box-shadow:0 0 0 4px #DCE3FF">
+            </sc-if>
             <sc-if value="{{ err.obreward }}" hint-placeholder-val="{{ false }}"><div role="alert" style="display:flex;gap:6px;align-items:center;margin-top:8px;color:var(--dpa-danger,#B42318);font-size:14px;font-weight:500"><span class="material-symbols-rounded" style="font-size:18px">error</span>{{ err.obreward }}</div></sc-if>
           </div>
         </sc-if>
@@ -1431,7 +1433,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
                 <button type="button" onClick="{{ dGoalUp }}" aria-label="Augmenter l’objectif" style="width:48px;height:48px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:12px;background:var(--dpa-surface,#FFFFFF);display:grid;place-items:center"><span class="material-symbols-rounded">add</span></button>
               </div>
             </div>
-            <div><label for="dr" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Libellé de la récompense</label><input id="dr" value="{{ d.reward }}" onChange="{{ D.reward }}" style="width:100%;height:52px;padding:0 16px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:12px;background:var(--dpa-surface,#FFFFFF);font-size:16px;outline:none" style-focus="border-color:var(--dpa-link,#2448F0);box-shadow:0 0 0 4px #DCE3FF"></div>
+            <sc-if value="{{ draftPoints }}" hint-placeholder-val="{{ false }}"><div><label for="dr" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Libellé de la récompense</label><input id="dr" value="{{ d.reward }}" onChange="{{ D.reward }}" style="width:100%;height:52px;padding:0 16px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:12px;background:var(--dpa-surface,#FFFFFF);font-size:16px;outline:none" style-focus="border-color:var(--dpa-link,#2448F0);box-shadow:0 0 0 4px #DCE3FF"></div></sc-if>
             <div><label for="dc" style="display:block;font-weight:600;font-size:15px;margin-bottom:8px">Conditions d’utilisation</label><textarea id="dc" rows="3" value="{{ d.conditions }}" onChange="{{ D.conditions }}" style="width:100%;padding:12px 16px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:12px;background:var(--dpa-surface,#FFFFFF);font-size:15px;line-height:1.5;outline:none;resize:vertical" style-focus="border-color:var(--dpa-link,#2448F0);box-shadow:0 0 0 4px #DCE3FF"></textarea></div>
           </section>
           <section class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:18px">
@@ -2856,20 +2858,20 @@ class Component extends DCLogic {
       e.preventDefault();
       if(this.state.busy||s.role!=='owner'||p.id!==s.program.id)return;
       if(p.mode==='points'&&!this.validPointRate(p))return this.setState({loyaltyError:'Indiquez un taux entier entre 1 et 100 points.'});
-      if(!String(p.reward||'').trim())return this.setState({loyaltyError:'Indiquez la récompense ou la réduction.'});
+      if(!this.validLoyaltyReward(p))return this.setState({loyaltyError:pts?'Indiquez la récompense.':'Renseignez une prestation offerte ou une remise entière entre 1 et 100 %.'});
       this.setState({busy:true,loyaltyError:''});
       try{const updated=await this.api.saveRules(p.id,p);
         this.setState({program:updated,draft:{...updated},busy:false});close();this.showToast('Programme enregistré.');
       }catch(error){this.setState({busy:false,loyaltyError:this.api.errorMessage(error)});}
     };
-    const modeChange=e=>{const mode=e.target.value;if(mode!==p.mode)set({mode,goal:mode==='points'?100:10});};
+    const modeChange=e=>{const mode=e.target.value;if(mode!==p.mode)set({mode,stampRewardKind:undefined,goal:mode==='points'?100:10});};
     const pts=p.mode==='points';
     return h(this.api.LoyaltyRulesDialog,{busy:s.busy,onClose:close},
       h('form',{className:'dpa-support-form',onSubmit:save},
         h('label',null,'Type de fidélité',h('select',{value:p.mode,onChange:modeChange,disabled:s.busy},h('option',{value:'passages'},'Tampons / réduction'),h('option',{value:'points'},'Points'))),
         h('label',null,pts?'Objectif en points':'Nombre de passages',h('input',{type:'number',min:pts?50:3,max:pts?1000:20,required:true,value:p.goal,onChange:e=>set({goal:e.target.value}),disabled:s.busy})),
         this.renderEarnSettings('loyaltyRules'),
-        h('label',null,'Récompense',h('input',{value:p.reward||'',onChange:e=>set({reward:e.target.value}),maxLength:120,required:true,disabled:s.busy})),
+        pts&&h('label',null,'Récompense',h('input',{value:p.reward||'',onChange:e=>set({reward:e.target.value}),maxLength:120,required:true,disabled:s.busy})),
         h('small',null,'Vous pouvez essayer les réglages sans enregistrer. Le type de solde ne peut pas être changé si des cartes clients existent déjà.'),
         s.loyaltyError&&h('div',{role:'alert'},s.loyaltyError),
         h('button',{type:'submit',className:'dpa-mfa-button',disabled:s.busy},s.busy?'Enregistrement…':'Enregistrer le programme')));
@@ -2882,11 +2884,23 @@ class Component extends DCLogic {
     const label=(caption,control)=>h('label',{style:{display:'grid',gap:5}},caption,control);
     const number=(value,onChange,extra={})=>h('input',{type:'number',style:field,value,onChange:e=>onChange(e.target.value),...extra});
     if(p.mode!=='points'){
-      const match=/^([1-9][0-9]?|100) % de réduction$/.exec(p.reward||'');
+      const match=this.stampDiscount(p);
+      const kind=p.stampRewardKind||(match?'discount':String(p.reward||'').trim()?'gift':'');
+      const disabled=!!this.state.busy;
+      const pick=e=>{
+        const next=e.target.value;
+        if(next!==kind)set({stampRewardKind:next,reward:''});
+      };
       return h('div',{style:box},
-        h('strong',null,'Réduction après les tampons'),
-        h('small',null,'Après '+p.goal+' passages, validez la remise dans DPA Cards puis appliquez-la en caisse. Vous pouvez aussi choisir une autre récompense.'),
-        label('Remise (%)',number(match?.[1]||'',v=>{if(v===''){if(match)set({reward:''});}else if(/^\d+$/.test(v)&&+v>=1&&+v<=100)set({reward:+v+' % de réduction'});},{min:1,max:100,step:1,placeholder:'Ex. 10'})));
+        h('strong',null,'Récompense après les tampons'),
+        h('small',null,'Choisissez une seule option : une prestation offerte ou une réduction en %.'),
+        label('Type de récompense',h('select',{style:field,value:kind,onChange:pick,disabled,required:true},
+          h('option',{value:'',disabled:true},'Choisir une option'),
+          h('option',{value:'gift'},'Prestation offerte'),
+          h('option',{value:'discount'},'Réduction en %'))),
+        kind==='gift'&&label('Prestation offerte',h('input',{style:field,value:p.reward||'',onChange:e=>set({reward:e.target.value}),maxLength:120,required:true,disabled,placeholder:'Ex. Un café offert'})),
+        kind==='discount'&&label('Remise (%)',number(match?.[1]||'',v=>set({reward:/^(?:[1-9][0-9]?|100)$/.test(v)?v+' % de réduction':''}),{min:1,max:100,step:1,required:true,disabled,placeholder:'Ex. 10'})),
+        kind==='discount'&&h('small',null,'Une fois le seuil de tampons atteint, validez la remise dans DPA Cards, puis appliquez-la en caisse.'));
     }
     const byEuro=p.pointsBasis==='euro', rate=p.pointsRate??10, basket=Number(p.exampleBasket??20);
     const rounded=Math.floor(Math.round(basket*100)*Number(rate)/100);
@@ -2901,12 +2915,19 @@ class Component extends DCLogic {
       byEuro&&label('Panier moyen TTC (€)',number(p.exampleBasket??20,v=>set({exampleBasket:v}),{min:0,max:100000,step:'0.01'})),
       h('div',{role:'status'},this.validPointRate(p)&&visits?(byEuro?euros(basket)+' = '+gain+' points. ':gain+' points par passage. ')+'Objectif de '+p.goal+' points atteint en '+visits+' passage'+(visits===1?'':'s')+(byEuro?' à ce montant.':'.'):'Ajustez le taux ou le panier pour simuler l’objectif.'));
   }
+  stampDiscount(p){return /^([1-9][0-9]?|100) % de réduction$/.exec(String(p.reward||'').trim());}
+  validLoyaltyReward(p){
+    const reward=String(p.reward||'').trim();
+    if(!reward||reward.length>120)return false;
+    if(p.mode==='points'||!p.stampRewardKind)return true;
+    return p.stampRewardKind==='discount'?!!this.stampDiscount(p):p.stampRewardKind==='gift'&&!this.stampDiscount(p);
+  }
   validPointRate(p){return /^\d{1,3}$/.test(String(p.pointsRate??10))&&+ (p.pointsRate??10)>=1&&+(p.pointsRate??10)<=100;}
   obNext=()=>{ const o=this.state.ob;
     if(o.step===1&&!this.validate([['obbiz',o.biz.trim(),'Indiquez le nom de votre commerce.']])) return;
     if(o.step===1&&o.activity==='Autre'&&!this.validate([['obactivity',(o.otherActivity||'').trim(),'Indiquez votre profession.']])) return;
     if(o.step===2&&o.mode==='points'&&!this.validPointRate(o))return this.showToast('Indiquez un taux entier entre 1 et 100 points.','error');
-    if(o.step===2&&!this.validate([['obreward',o.reward.trim(),'Indiquez la récompense offerte.']])) return;
+    if(o.step===2&&!this.validate([['obreward',this.validLoyaltyReward(o),'Renseignez la récompense choisie : une prestation offerte ou une remise entre 1 et 100 %.']])) return;
     if(o.step===1) return this.setState({ob:{...o,step:2}});
     if(!this.state.live) return;
     if(this.state.busy) return;
@@ -3042,7 +3063,7 @@ class Component extends DCLogic {
   saveCard=()=>{ if(this.state.busy||this.state.live&&this.state.role!=='owner') return;
     if(this.state.live){ const d=this.state.draft;
       if(d.mode==='points'&&!this.validPointRate(d))return this.showToast('Indiquez un taux entier entre 1 et 100 points.','error');
-      if(!String(d.name||'').trim()||!String(d.reward||'').trim()){ this.showToast('Indiquez le nom du programme et la récompense.','error'); return; }
+      if(!String(d.name||'').trim()||!this.validLoyaltyReward(d)){ this.showToast('Indiquez le nom du programme et la récompense.','error'); return; }
       this.setState({busy:true});
       this.api.saveProgram(this.state.program.id,d).then(p=>{ this.setState({busy:false,program:p,draft:{...p}}); this.showToast('Modifications enregistrées'); }).catch(e=>this.liveFail(e));
       return; }
@@ -3625,7 +3646,7 @@ class Component extends DCLogic {
       camTextMob:CAMX[ce]?CAMX[ce]:ce==='denied'?'L’accès à la caméra a été refusé. Autorisez-le dans les réglages du navigateur, ou saisissez le numéro de carte.':(ce==='unavailable'?'Aucune caméra utilisable n’a été trouvée sur cet appareil (la page doit aussi être ouverte en HTTPS). Saisissez le numéro de carte.':'L’accès a été refusé ou aucune caméra n’est détectée. Autorisez-la dans les réglages du navigateur, ou recherchez le client.'),
       perm:st==='permission',denied:st==='denied',view:['ready','scanning','unknown','other','demo'].includes(st),scanning:st==='scanning',ready:st==='ready',unknown:st==='unknown',other:st==='other',demo:st==='demo',found:st==='found'&&!!sc,notFound:!(st==='found'&&sc)&&st!=='test-found',added:s.scan.added&&!s.scan.used,used:s.scan.used,msg:s.scan.msg,canSim:st!=='scanning'};
 
-    const d=s.draft, comparable=p=>{const {exampleBasket,...data}=p;return JSON.stringify({...data,goal:+p.goal,pointsRate:+(p.pointsRate??10)});}, dirty=comparable(d)!==comparable(P);
+    const d=s.draft, comparable=p=>{const {exampleBasket,stampRewardKind,...data}=p;return JSON.stringify({...data,goal:+p.goal,pointsRate:+(p.pointsRate??10)});}, dirty=comparable(d)!==comparable(P);
     const D={}; ['name','reward','conditions','logo'].forEach(k=>D[k]=this.dh(k));
     const sampleC=c1||clients[0];
     const sample=sampleC?{member:sampleC.first+' '+(sampleC.last?sampleC.last[0]+'.':''),value:`${Math.min(sampleC.balance,goal)} / ${+d.goal}`,card:sampleC.card}:{member:'Nora',value:`0 / ${+d.goal}`,card:'DPA 4821 0000'};
@@ -3633,7 +3654,7 @@ class Component extends DCLogic {
     const draftCard=this.cardProps(d,m.business,sample.member,sample.value,sample.card,qrPrev,true);
     const mkSw=(arr,field,store)=>arr.map(c=>{ const cur=s[store][field]; return {c,ring:c===cur?'0 0 0 3px #FFFFFF, 0 0 0 5px #2448F0':'inset 0 0 0 1px rgba(0,0,0,0.14)',pressed:c===cur,label:'Couleur '+c,pick:()=>this.setState(x=>({[store]:{...x[store],[field]:c}}))}; });
     const mkPat=store=>PATTERNS.map(p=>{ const a=s[store].pattern===p.k; return {...p,bg:a?'var(--dpa-info-bg,#E8EDFF)':'var(--dpa-surface,#FFFFFF)',border:a?'var(--dpa-link,#2448F0)':'var(--dpa-border,#D4D1C9)',fg:a?'var(--dpa-link-strong,#1A36C4)':'var(--dpa-text,#1C1F24)',pressed:a,pick:()=>this.setState(x=>({[store]:{...x[store],pattern:p.k}}))}; });
-    const mkMode=store=>[{k:'passages',label:'Passages'},{k:'points',label:'Points'}].map(o=>{ const a=s[store].mode===o.k; return {...o,bg:a?'var(--dpa-surface,#FFFFFF)':'transparent',fg:a?'var(--dpa-text,#1C1F24)':'var(--dpa-muted,#5E636B)',shadow:a?'0 1px 3px rgba(20,22,28,0.14)':'none',pressed:a,pick:()=>this.setState(x=>({[store]:{...x[store],mode:o.k,goal:o.k==='points'?(+x[store].goal<50?100:x[store].goal):(+x[store].goal>20?10:x[store].goal)}}))}; });
+    const mkMode=store=>[{k:'passages',label:'Passages'},{k:'points',label:'Points'}].map(o=>{ const a=s[store].mode===o.k; return {...o,bg:a?'var(--dpa-surface,#FFFFFF)':'transparent',fg:a?'var(--dpa-text,#1C1F24)':'var(--dpa-muted,#5E636B)',shadow:a?'0 1px 3px rgba(20,22,28,0.14)':'none',pressed:a,pick:()=>this.setState(x=>({[store]:{...x[store],mode:o.k,stampRewardKind:x[store].mode===o.k?x[store].stampRewardKind:undefined,goal:o.k==='points'?(+x[store].goal<50?100:x[store].goal):(+x[store].goal>20?10:x[store].goal)}}))}; });
     const earnSettings=store=>this.renderEarnSettings(store);
     const stepGoal=(store,dir)=>()=>this.setState(x=>{ const pts=x[store].mode==='points'; const g=+x[store].goal+dir*(pts?50:1); return {[store]:{...x[store],goal:Math.max(pts?50:3,Math.min(pts?1000:20,g))}}; });
     const tabs=[{k:'apple',label:'Apple Wallet'},{k:'google',label:'Google Wallet'}].map(t=>{ const a=s.tab===t.k; return {...t,bg:a?'var(--dpa-surface,#FFFFFF)':'transparent',fg:a?'var(--dpa-text,#1C1F24)':'var(--dpa-muted,#5E636B)',shadow:a?'0 1px 3px rgba(20,22,28,0.14)':'none',pressed:a,pick:()=>this.setState({tab:t.k})}; });
@@ -3795,7 +3816,7 @@ class Component extends DCLogic {
           'Retour à l’accueil')):null,
       openSupport:()=>{if(DPA_NATIVE_IOS){window.location.href='mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards';return;}if(s.live&&m.id)this.setState({supportOpen:true});else this.showToast('Connectez-vous à un compte commerçant pour contacter le support.','info');},
       loyaltyRulesDialog:S.app&&s.loyaltyRules&&this.api?.LoyaltyRulesDialog?this.renderLoyaltyRules():null,
-      obEarnSettings:earnSettings('ob'),draftEarnSettings:earnSettings('draft'),
+      obPoints:s.ob.mode==='points',draftPoints:s.draft.mode==='points',obEarnSettings:earnSettings('ob'),draftEarnSettings:earnSettings('draft'),
       loyaltyAmountDialog:S.app&&s.loyaltyAmount&&this.api?.LoyaltyAmountDialog?React.createElement(this.api.LoyaltyAmountDialog,{key:m.id+'-'+s.loyaltyAmount.id,rate:step,busy:s.busy,onClose:()=>this.setState({loyaltyAmount:null}),onAccept:cents=>this.addVisitLive(s.loyaltyAmount.id,s.loyaltyAmount.ctx,cents)}):null,
       supportDialog:S.app&&s.live&&m.id&&s.supportOpen&&this.api?.SupportDialog?React.createElement(this.api.SupportDialog,{key:m.id,merchant:m,send:this.api.sendSupport,close:()=>this.setState({supportOpen:false})}):null,
       homeMerchantButton:canManageProfiles&&(s.profiles.length>1||s.role==='owner')?React.createElement('button',{type:'button',className:'dpa-glass-surface',style:{position:'absolute',right:0,top:26,minHeight:44,padding:'8px 14px',borderRadius:12,fontWeight:700},onClick:s.profiles.length>1?openProfiles:this.beginAddProfile},s.profiles.length>1?'Changer de commerce':'Ajouter un commerce'):null,
