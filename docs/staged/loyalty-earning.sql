@@ -169,4 +169,17 @@ revoke all on function app_private.record_points_visit(uuid,uuid,integer) from p
 grant execute on function app_private.record_points_visit(uuid,uuid,integer) to authenticated;
 revoke all on function public.add_points_visit_recorded(uuid,uuid,text,integer) from public,anon;
 grant execute on function public.add_points_visit_recorded(uuid,uuid,text,integer) to authenticated;
+-- Changing earning rates affects future visits only. Never reinterpret existing card balances.
+create function app_private.keep_loyalty_units() returns trigger
+language plpgsql set search_path to '' as $guard$
+begin
+  if new.mode is distinct from old.mode and exists (
+    select 1 from public.cards c where c.program_id=old.id and c.merchant_id=old.merchant_id
+  ) then raise exception 'loyalty_mode_has_cards' using errcode='22023'; end if;
+  return new;
+end;
+$guard$;
+revoke all on function app_private.keep_loyalty_units() from public, anon;
+create trigger programs_keep_loyalty_units before update of mode on public.programs
+for each row execute function app_private.keep_loyalty_units();
 commit;
