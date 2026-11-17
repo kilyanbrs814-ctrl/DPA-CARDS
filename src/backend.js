@@ -113,6 +113,9 @@ function isNetwork(e) {
 }
 
 const DB_ERRORS = {
+  purchase_amount_required: 'Saisissez le montant payé pour créditer les points. Si le formulaire ne s’ouvre pas, actualisez le site.',
+  purchase_below_point_minimum: 'Ce montant ne rapporte pas encore un point au taux actuel.',
+  loyalty_mode_has_cards: 'Ce programme a déjà des cartes clients. Le type de solde ne peut pas être changé ; vous pouvez ajuster le taux ou la récompense sans convertir les soldes.',
   mfa_required: 'Vérifiez votre connexion avec le code de votre téléphone.',
   email_unconfirmed: 'Confirmez votre adresse e-mail avant d’accéder à votre compte.',
   profile_required: 'Choisissez le commerce à utiliser.',
