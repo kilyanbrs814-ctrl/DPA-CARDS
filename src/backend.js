@@ -113,6 +113,9 @@ function isNetwork(e) {
 }
 
 const DB_ERRORS = {
+  purchase_amount_required: 'Saisissez le montant payé pour créditer les points. Si le formulaire ne s’ouvre pas, actualisez le site.',
+  purchase_below_point_minimum: 'Ce montant ne rapporte pas encore un point au taux actuel.',
+  loyalty_mode_has_cards: 'Ce programme a déjà des cartes clients. Le type de solde ne peut pas être changé ; vous pouvez ajuster le taux ou la récompense sans convertir les soldes.',
   mfa_required: 'Vérifiez votre connexion avec le code de votre téléphone.',
   email_unconfirmed: 'Confirmez votre adresse e-mail avant d’accéder à votre compte.',
   profile_required: 'Choisissez le commerce à utiliser.',
@@ -266,7 +269,7 @@ function toProgram(p) {
   return {
     registrationPage: p.registration_page || {},
     registrationLogoUrl: assetUrl(p.card_design?.assets?.logo?.path || p.logo_path),
-    id: p.id, merchantId: p.merchant_id, name: p.name, mode: p.mode, goal: p.goal, reward: p.reward, bg: p.bg, accent: p.accent,
+    id: p.id, merchantId: p.merchant_id, name: p.name, mode: p.mode, pointsBasis: p.points_basis || 'visit', pointsRate: p.points_rate ?? 10, goal: p.goal, reward: p.reward, bg: p.bg, accent: p.accent,
     pattern: p.pattern, logo: p.logo, conditions: p.conditions,
     designStatus: p.design_status || 'validated', designMode: p.design_mode || null,
     selfServiceStampId: p.self_service_stamp_id || null,
@@ -542,8 +545,8 @@ const api = {
   prepareCardDesign(program, business, activity) {
     return prepareProgramPreview(program, business, activity, assetUrl);
   },
-  async saveRules(programId, { mode, goal, reward }) {
-    const { data, error } = await sb.from('programs').update({ mode, goal: +goal, reward: reward.trim() }).eq('id', programId).select().single();
+  async saveRules(programId, { mode, goal, reward, pointsBasis='visit', pointsRate=10 }) {
+    const { data, error } = await sb.from('programs').update({ mode, goal: +goal, reward: reward.trim(), points_basis: pointsBasis, points_rate: +pointsRate }).eq('id', programId).select().single();
     if (error) throw error;
     return toProgram(data);
   },
@@ -634,13 +637,13 @@ const api = {
     });
     return toClient(r.card, r.customer, [r.event]);
   },
-  addVisit: (cardId, requestId, source='client') => rpc('add_visit_recorded', { p_card_id: cardId, p_request_id: requestId, p_source: source }),
+  addVisit: (cardId, requestId, source='client', amountCents=null) => rpc(amountCents===null?'add_visit_recorded':'add_points_visit_recorded', { p_card_id: cardId, p_request_id: requestId, p_source: source, ...(amountCents===null?{}:{p_amount_cents:amountCents}) }),
   redeem: (cardId, requestId) => rpc('redeem_reward', { p_card_id: cardId, p_request_id: requestId }),
   correct: (eventId, motif, note, requestId) =>
     rpc('correct_event', { p_event_id: eventId, p_motif: motif, p_note: note || null, p_request_id: requestId }),
   async saveProgram(id, p) {
     const { data, error } = await sb.from('programs').update({
-      name: p.name.trim(), mode: p.mode, goal: +p.goal, reward: p.reward.trim(), conditions: (p.conditions || '').trim(),
+      name: p.name.trim(), mode: p.mode, points_basis: p.pointsBasis || 'visit', points_rate: +(p.pointsRate ?? 10), goal: +p.goal, reward: p.reward.trim(), conditions: (p.conditions || '').trim(),
       bg: p.bg, accent: p.accent, pattern: p.pattern, logo: (p.logo || '').slice(0, 4).toUpperCase(),
     }).eq('id', id).select().single();
     if (error) throw error;
@@ -839,4 +842,28 @@ api.SupportDialog = function SupportDialog({merchant,send,close}){
  h('label',null,'Message',h('textarea',{name:'message',defaultValue:'Bonjour,\n\n',rows:6,maxLength:4000,required:true})),
  h('button',{type:'submit',disabled:busy||status==='Message envoyé.',className:'dpa-mfa-button'},busy?'Envoi…':'Envoyer'),
  h('div',{role:'status',className:'dpa-support-status'},status)));
+};
+
+api.LoyaltyAmountDialog = function LoyaltyAmountDialog({rate,busy,onAccept,onClose}){
+  const R=window.React,h=R.createElement,ref=R.useRef(null),[raw,setRaw]=R.useState('');
+  R.useEffect(()=>{ref.current?.showModal();},[]);
+  const value=String(raw).trim().replace(',','.');
+  const cents=/^\d{1,6}(?:\.\d{1,2})?$/.test(value)?Math.round(Number(value)*100):0;
+  const points=Math.floor(cents*rate/100);
+  const valid=cents>0&&cents<=10000000&&points>0;
+  return h('dialog',{ref,className:'dpa-mfa-panel dpa-mfa-dialog dpa-support-dialog','aria-labelledby':'loyalty-amount-title',onCancel:e=>{e.preventDefault();if(!busy)onClose();}},
+    h('button',{type:'button',className:'dpa-mfa-close','aria-label':'Fermer',disabled:busy,onClick:onClose},'×'),
+    h('h2',{id:'loyalty-amount-title'},'Montant de l’achat'),
+    h('form',{className:'dpa-support-form',onSubmit:e=>{e.preventDefault();if(valid&&!busy)onAccept(cents);}},
+      h('label',null,'Montant payé TTC (€)',h('input',{inputMode:'decimal',value:raw,onChange:e=>setRaw(e.target.value),autoFocus:true,disabled:busy,placeholder:'Ex. 24,90',maxLength:10})),
+      h('p',{role:'status'},valid?points+' point'+(points===1?'':'s')+' à créditer':rate+' point'+(rate===1?'':'s')+' par euro dépensé · arrondi à l’entier inférieur'),
+      h('button',{type:'submit',className:'dpa-mfa-button',disabled:!valid||busy},busy?'Validation…':'Créditer les points')));
+};
+
+api.LoyaltyRulesDialog = function LoyaltyRulesDialog({children,busy,onClose}){
+  const R=window.React,h=R.createElement,ref=R.useRef(null);
+  R.useEffect(()=>{ref.current?.showModal();},[]);
+  return h('dialog',{ref,className:'dpa-mfa-panel dpa-mfa-dialog dpa-support-dialog','aria-labelledby':'loyalty-rule-title',onCancel:e=>{e.preventDefault();if(!busy)onClose();}},
+    h('button',{type:'button',className:'dpa-mfa-close','aria-label':'Fermer',disabled:busy,onClick:onClose},'×'),
+    h('h2',{id:'loyalty-rule-title'},'Programme de fidélité'),children);
 };

@@ -51,6 +51,8 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 <div style="min-height:var(--dpa-page-height,100dvh);background:var(--dpa-app-background,#FFFFFF);color:var(--dpa-text,#1C1F24)">
 {{ profileControl }}
 {{ supportDialog }}
+{{ loyaltyAmountDialog }}
+{{ loyaltyRulesDialog }}
 <sc-if value="{{ s.mfaChallenge }}"><div style="display:flex;justify-content:flex-end;padding:14px 16px"><dpa-theme-switch></dpa-theme-switch></div></sc-if>
 {{ mfaChallengePanel }}
 <sc-if value="{{ showAuthShell }}" hint-placeholder-val="{{ true }}">
@@ -236,6 +238,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
             </div>
           </div>
           <div>
+            {{ obEarnSettings }}
             <div style="font-weight:600;font-size:15px;margin-bottom:10px">Objectif à atteindre</div>
             <div style="display:flex;align-items:center;gap:12px">
               <button type="button" onClick="{{ obGoalDown }}" aria-label="Diminuer l’objectif" style="width:52px;height:52px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:14px;background:var(--dpa-surface,#FFFFFF);display:grid;place-items:center"><span class="material-symbols-rounded">remove</span></button>
@@ -1420,6 +1423,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
             <div><div style="font-weight:600;font-size:15px;margin-bottom:8px">Type de fidélité</div>
               <div role="group" aria-label="Type de fidélité" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--dpa-hover,#ECEAE4);border-radius:14px"><sc-for list="{{ dMode }}" as="md" hint-placeholder-count="2"><button type="button" onClick="{{ md.pick }}" aria-pressed="{{ md.pressed }}" style="height:44px;border:0;border-radius:10px;background:{{ md.bg }};color:{{ md.fg }};box-shadow:{{ md.shadow }};font-weight:700;font-size:15px">{{ md.label }}</button></sc-for></div>
             </div>
+            {{ draftEarnSettings }}
             <div><div style="font-weight:600;font-size:15px;margin-bottom:8px">Objectif à atteindre</div>
               <div style="display:flex;align-items:center;gap:12px">
                 <button type="button" onClick="{{ dGoalDown }}" aria-label="Diminuer l’objectif" style="width:48px;height:48px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:12px;background:var(--dpa-surface,#FFFFFF);display:grid;place-items:center"><span class="material-symbols-rounded">remove</span></button>
@@ -2592,7 +2596,7 @@ class Component extends DCLogic {
     }catch(e){ this._liveUid=null; useCalendar(false); this.setState({busy:false,screen:'workspaceError',workspaceError:api.errorMessage(e),err:{}}); }
     finally{ this._opening=false; }
   }
-  obStep3(m,p,design){ return {...this.initState().ob,step:3,biz:m.business,activity:ACTIVITIES.includes(m.activity)?m.activity:'Autre',otherActivity:ACTIVITIES.includes(m.activity)?'':(m.activity||''),mode:p.mode,goal:p.goal,reward:p.reward,prog:p.name,hex:(p.bg||'#FFFFFF').toUpperCase(),stampId:p.selfServiceStampId||'',stampOpacity:p.selfServiceInactiveOpacity??32,drName:(m.first+' '+m.last).trim(),drEmail:m.email,...(design?{design}:{})}; }
+  obStep3(m,p,design){ return {...this.initState().ob,step:3,biz:m.business,activity:ACTIVITIES.includes(m.activity)?m.activity:'Autre',otherActivity:ACTIVITIES.includes(m.activity)?'':(m.activity||''),mode:p.mode,pointsBasis:p.pointsBasis,pointsRate:p.pointsRate,goal:p.goal,reward:p.reward,prog:p.name,hex:(p.bg||'#FFFFFF').toUpperCase(),stampId:p.selfServiceStampId||'',stampOpacity:p.selfServiceInactiveOpacity??32,drName:(m.first+' '+m.last).trim(),drEmail:m.email,...(design?{design}:{})}; }
   beginAddProfile=()=>{
     if(DPA_NATIVE_IOS||this.state.busy||this.state.role!=='owner')return;
     this.stopCamera();
@@ -2844,9 +2848,64 @@ class Component extends DCLogic {
       if(bad) return this.setState(s=>({err:{...s.err,drfiles:`« ${bad.name} » : PNG, JPEG, WebP ou PDF de 5 Mo maximum.`}}));
       if(multi) this.setState(s=>({drRefs:[...s.drRefs,...files].slice(0,5),err:{...s.err,drfiles:null}}));
       else this.setState(s=>({drLogo:files[0]||null,err:{...s.err,drfiles:null}})); }; }
+  renderLoyaltyRules(){
+    const s=this.state,p=s.loyaltyRules,h=React.createElement;
+    const set=patch=>this.setState(x=>({loyaltyRules:{...x.loyaltyRules,...patch},loyaltyError:''}));
+    const close=()=>this.setState({loyaltyRules:null,loyaltyError:''});
+    const save=async e=>{
+      e.preventDefault();
+      if(this.state.busy||s.role!=='owner'||p.id!==s.program.id)return;
+      if(p.mode==='points'&&!this.validPointRate(p))return this.setState({loyaltyError:'Indiquez un taux entier entre 1 et 100 points.'});
+      if(!String(p.reward||'').trim())return this.setState({loyaltyError:'Indiquez la récompense ou la réduction.'});
+      this.setState({busy:true,loyaltyError:''});
+      try{const updated=await this.api.saveRules(p.id,p);
+        this.setState({program:updated,draft:{...updated},busy:false});close();this.showToast('Programme enregistré.');
+      }catch(error){this.setState({busy:false,loyaltyError:this.api.errorMessage(error)});}
+    };
+    const modeChange=e=>{const mode=e.target.value;if(mode!==p.mode)set({mode,goal:mode==='points'?100:10});};
+    const pts=p.mode==='points';
+    return h(this.api.LoyaltyRulesDialog,{busy:s.busy,onClose:close},
+      h('form',{className:'dpa-support-form',onSubmit:save},
+        h('label',null,'Type de fidélité',h('select',{value:p.mode,onChange:modeChange,disabled:s.busy},h('option',{value:'passages'},'Tampons / réduction'),h('option',{value:'points'},'Points'))),
+        h('label',null,pts?'Objectif en points':'Nombre de passages',h('input',{type:'number',min:pts?50:3,max:pts?1000:20,required:true,value:p.goal,onChange:e=>set({goal:e.target.value}),disabled:s.busy})),
+        this.renderEarnSettings('loyaltyRules'),
+        h('label',null,'Récompense',h('input',{value:p.reward||'',onChange:e=>set({reward:e.target.value}),maxLength:120,required:true,disabled:s.busy})),
+        h('small',null,'Vous pouvez essayer les réglages sans enregistrer. Le type de solde ne peut pas être changé si des cartes clients existent déjà.'),
+        s.loyaltyError&&h('div',{role:'alert'},s.loyaltyError),
+        h('button',{type:'submit',className:'dpa-mfa-button',disabled:s.busy},s.busy?'Enregistrement…':'Enregistrer le programme')));
+  }
+  renderEarnSettings(store){
+    const p=this.state[store]; if(!p)return null;
+    const R=React,h=R.createElement, set=patch=>this.setState(s=>({[store]:{...s[store],...patch}}));
+    const field={width:'100%',boxSizing:'border-box',minHeight:44,borderRadius:10,border:'1px solid var(--dpa-border,#D4D1C9)',padding:'8px 10px',background:'var(--dpa-surface,#fff)',color:'inherit',font:'inherit'};
+    const box={display:'grid',gap:10,padding:14,borderRadius:14,background:'var(--dpa-info-bg,#f1f3ff)',color:'var(--dpa-text,#1c1f24)'};
+    const label=(caption,control)=>h('label',{style:{display:'grid',gap:5}},caption,control);
+    const number=(value,onChange,extra={})=>h('input',{type:'number',style:field,value,onChange:e=>onChange(e.target.value),...extra});
+    if(p.mode!=='points'){
+      const match=/^([1-9][0-9]?|100) % de réduction$/.exec(p.reward||'');
+      return h('div',{style:box},
+        h('strong',null,'Réduction après les tampons'),
+        h('small',null,'Après '+p.goal+' passages, validez la remise dans DPA Cards puis appliquez-la en caisse. Vous pouvez aussi choisir une autre récompense.'),
+        label('Remise (%)',number(match?.[1]||'',v=>{if(v===''){if(match)set({reward:''});}else if(/^\d+$/.test(v)&&+v>=1&&+v<=100)set({reward:+v+' % de réduction'});},{min:1,max:100,step:1,placeholder:'Ex. 10'})));
+    }
+    const byEuro=p.pointsBasis==='euro', rate=p.pointsRate??10, basket=Number(p.exampleBasket??20);
+    const rounded=Math.floor(Math.round(basket*100)*Number(rate)/100);
+    const gain=byEuro?rounded:Number(rate), visits=gain>0?Math.ceil(p.goal/gain):0;
+    const euros=v=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(v);
+    return h('div',{style:box},
+      label('Attribuer les points',h('select',{style:field,value:byEuro?'euro':'visit',onChange:e=>{const basis=e.target.value;set({pointsBasis:basis,pointsRate:basis==='euro'?1:10});}},
+        h('option',{value:'visit'},'Par passage'),h('option',{value:'euro'},'Par euro dépensé'))),
+      label(byEuro?'Points par euro':'Points par passage',number(rate,v=>set({pointsRate:v}),{min:1,max:100,step:1})),
+      h('small',null,byEuro?'Repère : 1 point par euro est facile à expliquer. Les points sont arrondis à l’entier inférieur.':'Repère : 10 points par passage, avec un objectif de 100 points, donnent une récompense après 10 passages.'),
+      h('strong',null,'Simuler le programme'),
+      byEuro&&label('Panier moyen TTC (€)',number(p.exampleBasket??20,v=>set({exampleBasket:v}),{min:0,max:100000,step:'0.01'})),
+      h('div',{role:'status'},this.validPointRate(p)&&visits?(byEuro?euros(basket)+' = '+gain+' points. ':gain+' points par passage. ')+'Objectif de '+p.goal+' points atteint en '+visits+' passage'+(visits===1?'':'s')+(byEuro?' à ce montant.':'.'):'Ajustez le taux ou le panier pour simuler l’objectif.'));
+  }
+  validPointRate(p){return /^\d{1,3}$/.test(String(p.pointsRate??10))&&+ (p.pointsRate??10)>=1&&+(p.pointsRate??10)<=100;}
   obNext=()=>{ const o=this.state.ob;
     if(o.step===1&&!this.validate([['obbiz',o.biz.trim(),'Indiquez le nom de votre commerce.']])) return;
     if(o.step===1&&o.activity==='Autre'&&!this.validate([['obactivity',(o.otherActivity||'').trim(),'Indiquez votre profession.']])) return;
+    if(o.step===2&&o.mode==='points'&&!this.validPointRate(o))return this.showToast('Indiquez un taux entier entre 1 et 100 points.','error');
     if(o.step===2&&!this.validate([['obreward',o.reward.trim(),'Indiquez la récompense offerte.']])) return;
     if(o.step===1) return this.setState({ob:{...o,step:2}});
     if(!this.state.live) return;
@@ -2861,8 +2920,9 @@ class Component extends DCLogic {
         const r=await this.api.createMerchant({requestId:s.addingProfile,business:o.biz.trim(),first:(m.first||'').trim()||'Responsable',last:(m.last||'').trim(),activity,slug:slugify(o.biz),
           program:{name:'Club '+o.biz.trim(),mode:o.mode,goal:+o.goal,reward:o.reward.trim(),bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',logo:initials(o.biz).slice(0,4).toUpperCase(),conditions:'Une validation par visite.'}});
         merchant=this.api.toMerchant(r.merchant,m.email); program=r.program;
+        if(o.mode==='points')program=await this.api.saveRules(program.id,{mode:o.mode,goal:o.goal,reward:o.reward,pointsBasis:o.pointsBasis||'visit',pointsRate:o.pointsRate??10});
         if(s.addingProfile || this.api.switchProfile){window.location.replace('/');return;}}
-      if(program.designStatus==='draft'&&(program.mode!==o.mode||+program.goal!==+o.goal||program.reward!==o.reward.trim())) program=await this.api.saveRules(program.id,{mode:o.mode,goal:o.goal,reward:o.reward});
+      if(program.designStatus==='draft'&&(program.mode!==o.mode||+program.goal!==+o.goal||program.reward!==o.reward.trim()||program.pointsBasis!==(o.pointsBasis||'visit')||program.pointsRate!==+(o.pointsRate??10))) program=await this.api.saveRules(program.id,{mode:o.mode,goal:o.goal,reward:o.reward,pointsBasis:o.pointsBasis||'visit',pointsRate:o.pointsRate??10});
       if(o.biz.trim()!==merchant.business||activity!==merchant.activity){ const row=await this.api.saveMerchant(merchant.id,{business_name:o.biz.trim(),activity}); merchant=this.api.toMerchant(row,m.email); }
       if(program.designStatus!=='draft'){ this.setState({busy:false,merchant,sd:{...merchant},program,draft:{...program}}); return this.go(program.designStatus==='pending_dpa'?'designSent':'home'); }
       this.setState(x=>({busy:false,merchant,sd:{...merchant},program,draft:{...program},
@@ -2914,20 +2974,20 @@ class Component extends DCLogic {
     if(!s.hasAccess) return this.go('billing');
     this.go('home'); };
   unitOf(p){ return p.mode==='points'?'points':'passages'; }
-  stepOf(p){ return p.mode==='points'?10:1; }
+  stepOf(p){ return p.mode==='points'? +(p.pointsRate??10):1; }
   addVisit(id,ctx){
-    if(this.state.busy) return; if(this.state.live) return this.addVisitLive(id,ctx); this.setState({busy:true});
+    if(this.state.busy) return; if(this.state.live){if(this.state.program.mode==='points'&&this.state.program.pointsBasis==='euro')return this.setState({loyaltyAmount:{id,ctx}});return this.addVisitLive(id,ctx);} this.setState({busy:true});
     setTimeout(()=>{ this.setState(s=>{ const p=s.program, step=this.stepOf(p), goal=+p.goal;
       const clients=s.clients.map(c=>c.id!==id?c:{...c,balance:c.balance+step,history:[{id:'h'+(UID++),type:'visit',date:TODAY,time:nowTime(),delta:step,label:step===1?'Passage ajouté':step+' points ajoutés'},...c.history]});
       const c=clients.find(x=>x.id===id); const msg=(step===1?'Passage ajouté':'Points ajoutés')+` : ${c.balance} / ${goal}`;
       return {clients,busy:false,scan:ctx==='scan'?{...s.scan,added:true,msg}:s.scan,toast:{msg,kind:'ok'},flash:ctx==='client'?{id}:s.flash}; }); this.armToast();
       if(ctx==='client'){ clearTimeout(this._ft); this._ft=setTimeout(()=>this.setState({flash:null}),1800); } },900);
   }
-  async addVisitLive(id,ctx){ const key='visit:'+id; this.setState({busy:true});
-    try{ const ev=await this.api.addVisit(id,this.reqId(key),ctx==='scan'?'scan':'client'); this.settleReq(key);
+  async addVisitLive(id,ctx,amountCents=null){ const key='visit:'+id+(amountCents===null?'':':'+amountCents); this.setState({busy:true});
+    try{ const ev=await this.api.addVisit(id,this.reqId(key),ctx==='scan'?'scan':'client',amountCents); this.settleReq(key);
       this.setState(s=>{ const goal=+s.program.goal; const clients=s.clients.map(c=>c.id!==id?c:this.api.applyEvent(c,ev));
-        const c=clients.find(x=>x.id===id); const msg=(ev.delta===1?'Passage ajouté':'Points ajoutés')+` : ${c.balance} / ${goal}`;
-        return {clients,busy:false,scan:ctx==='scan'?{...s.scan,added:true,msg}:s.scan,toast:{msg,kind:'ok'},flash:ctx==='client'?{id}:s.flash}; }); this.armToast();
+        const c=clients.find(x=>x.id===id); const msg=(s.program.mode!=='points'?'Passage ajouté':'Points ajoutés')+` : ${c.balance} / ${goal}`;
+        return {clients,busy:false,loyaltyAmount:null,scan:ctx==='scan'?{...s.scan,added:true,msg}:s.scan,toast:{msg,kind:'ok'},flash:ctx==='client'?{id}:s.flash}; }); this.armToast();
       if(ctx==='scan') this.scheduleReady(id);
       if(ctx==='client'){ clearTimeout(this._ft); this._ft=setTimeout(()=>this.setState({flash:null}),1800); } }
     catch(e){ this.settleReq(key,e); this.liveFail(e); } }
@@ -2981,6 +3041,7 @@ class Component extends DCLogic {
   }
   saveCard=()=>{ if(this.state.busy||this.state.live&&this.state.role!=='owner') return;
     if(this.state.live){ const d=this.state.draft;
+      if(d.mode==='points'&&!this.validPointRate(d))return this.showToast('Indiquez un taux entier entre 1 et 100 points.','error');
       if(!String(d.name||'').trim()||!String(d.reward||'').trim()){ this.showToast('Indiquez le nom du programme et la récompense.','error'); return; }
       this.setState({busy:true});
       this.api.saveProgram(this.state.program.id,d).then(p=>{ this.setState({busy:false,program:p,draft:{...p}}); this.showToast('Modifications enregistrées'); }).catch(e=>this.liveFail(e));
@@ -3522,7 +3583,7 @@ class Component extends DCLogic {
 
     const sel=cv(clients.find(c=>c.id===s.selId));
     const scC=clients.find(c=>c.id===s.scan.id), sc=cv(scC);
-    const addLabel=step===1?'Ajouter un passage':`Ajouter ${step} points`;
+    const addLabel=P.mode!=='points'?'Ajouter un passage':P.pointsBasis==='euro'?'Saisir le montant':`Ajouter ${step} point${step===1?'':'s'}`;
     const btn=(style,label,icon,run,extra={})=>({...style,label,icon,run,disabled:false,hasIcon:!!icon,...extra});
     const busyBtn=(label,icon,run)=>s.busy?btn(PRIMARY,'Validation en cours…','',()=>{},{disabled:true,busy:true,opacity:0.75}):btn(PRIMARY,label,icon,run);
     const scanActs=[];
@@ -3564,7 +3625,7 @@ class Component extends DCLogic {
       camTextMob:CAMX[ce]?CAMX[ce]:ce==='denied'?'L’accès à la caméra a été refusé. Autorisez-le dans les réglages du navigateur, ou saisissez le numéro de carte.':(ce==='unavailable'?'Aucune caméra utilisable n’a été trouvée sur cet appareil (la page doit aussi être ouverte en HTTPS). Saisissez le numéro de carte.':'L’accès a été refusé ou aucune caméra n’est détectée. Autorisez-la dans les réglages du navigateur, ou recherchez le client.'),
       perm:st==='permission',denied:st==='denied',view:['ready','scanning','unknown','other','demo'].includes(st),scanning:st==='scanning',ready:st==='ready',unknown:st==='unknown',other:st==='other',demo:st==='demo',found:st==='found'&&!!sc,notFound:!(st==='found'&&sc)&&st!=='test-found',added:s.scan.added&&!s.scan.used,used:s.scan.used,msg:s.scan.msg,canSim:st!=='scanning'};
 
-    const d=s.draft, dirty=JSON.stringify({...d,goal:+d.goal})!==JSON.stringify({...P,goal:+P.goal});
+    const d=s.draft, comparable=p=>{const {exampleBasket,...data}=p;return JSON.stringify({...data,goal:+p.goal,pointsRate:+(p.pointsRate??10)});}, dirty=comparable(d)!==comparable(P);
     const D={}; ['name','reward','conditions','logo'].forEach(k=>D[k]=this.dh(k));
     const sampleC=c1||clients[0];
     const sample=sampleC?{member:sampleC.first+' '+(sampleC.last?sampleC.last[0]+'.':''),value:`${Math.min(sampleC.balance,goal)} / ${+d.goal}`,card:sampleC.card}:{member:'Nora',value:`0 / ${+d.goal}`,card:'DPA 4821 0000'};
@@ -3573,6 +3634,7 @@ class Component extends DCLogic {
     const mkSw=(arr,field,store)=>arr.map(c=>{ const cur=s[store][field]; return {c,ring:c===cur?'0 0 0 3px #FFFFFF, 0 0 0 5px #2448F0':'inset 0 0 0 1px rgba(0,0,0,0.14)',pressed:c===cur,label:'Couleur '+c,pick:()=>this.setState(x=>({[store]:{...x[store],[field]:c}}))}; });
     const mkPat=store=>PATTERNS.map(p=>{ const a=s[store].pattern===p.k; return {...p,bg:a?'var(--dpa-info-bg,#E8EDFF)':'var(--dpa-surface,#FFFFFF)',border:a?'var(--dpa-link,#2448F0)':'var(--dpa-border,#D4D1C9)',fg:a?'var(--dpa-link-strong,#1A36C4)':'var(--dpa-text,#1C1F24)',pressed:a,pick:()=>this.setState(x=>({[store]:{...x[store],pattern:p.k}}))}; });
     const mkMode=store=>[{k:'passages',label:'Passages'},{k:'points',label:'Points'}].map(o=>{ const a=s[store].mode===o.k; return {...o,bg:a?'var(--dpa-surface,#FFFFFF)':'transparent',fg:a?'var(--dpa-text,#1C1F24)':'var(--dpa-muted,#5E636B)',shadow:a?'0 1px 3px rgba(20,22,28,0.14)':'none',pressed:a,pick:()=>this.setState(x=>({[store]:{...x[store],mode:o.k,goal:o.k==='points'?(+x[store].goal<50?100:x[store].goal):(+x[store].goal>20?10:x[store].goal)}}))}; });
+    const earnSettings=store=>this.renderEarnSettings(store);
     const stepGoal=(store,dir)=>()=>this.setState(x=>{ const pts=x[store].mode==='points'; const g=+x[store].goal+dir*(pts?50:1); return {[store]:{...x[store],goal:Math.max(pts?50:3,Math.min(pts?1000:20,g))}}; });
     const tabs=[{k:'apple',label:'Apple Wallet'},{k:'google',label:'Google Wallet'}].map(t=>{ const a=s.tab===t.k; return {...t,bg:a?'var(--dpa-surface,#FFFFFF)':'transparent',fg:a?'var(--dpa-text,#1C1F24)':'var(--dpa-muted,#5E636B)',shadow:a?'0 1px 3px rgba(20,22,28,0.14)':'none',pressed:a,pick:()=>this.setState({tab:t.k})}; });
 
@@ -3631,6 +3693,7 @@ class Component extends DCLogic {
     const canManageProfiles=!!(s.live&&this.api&&s.profiles?.length>(DPA_NATIVE_IOS?1:0));
     const openProfiles=()=>this.setState({profileMenuOpen:true});
     const moreItems=[
+      ...(s.live&&s.role==='owner'&&P.id?[{icon:'loyalty',label:'Programme de fidélité',sub:'Tampons, réductions et points',run:()=>this.setState({loyaltyRules:{...P},loyaltyError:''})}]:[]),
       ...(canManageProfiles?[{icon:'storefront',label:'Gérer mes commerces',sub:m.business,run:openProfiles}]:[]),
       {icon:'qr_code_2',label:'Inviter mes clients',sub:"QR code et lien d'inscription",run:go('invite')},
       {icon:'public',label:"Page d'inscription publique",sub:s.live?'Inscrire un client sur cet appareil':'Aperçu côté client',run:go('join')},
@@ -3678,7 +3741,7 @@ class Component extends DCLogic {
     const mSelActs=[];
     if(sel){ const fl=s.flash&&s.flash.id===sel.id, two=sel.hasReward;
       if(two) mSelActs.push(btn(SUCCESS,'Récompense','redeem',()=>this.setState({modal:'reward',target:sel.id})));
-      const addL=two?(step===1?'+1 passage':'+'+step+' points'):addLabel;
+      const addL=two&&P.mode!=='points'?'+1 passage':addLabel;
       if(fl) mSelActs.push(btn({bg:'var(--dpa-success-bg,#E4F3EB)',fg:'var(--dpa-success,#17583A)',border:'1.5px solid var(--dpa-success,#9FD3B7)'},step===1?'Passage ajouté':'Points ajoutés','check_circle',()=>{},{disabled:true}));
       else if(s.busy&&s.modal===null) mSelActs.push(btn(two?SECONDARY:PRIMARY,'Validation…','',()=>{},{disabled:true,busy:true}));
       else mSelActs.push(btn(two?SECONDARY:PRIMARY,addL,'add',()=>this.addVisit(sel.id,'client')));
@@ -3731,6 +3794,9 @@ class Component extends DCLogic {
           React.createElement('svg',{viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},React.createElement('path',{d:'m12 19-7-7 7-7m-7 7h14'})),
           'Retour à l’accueil')):null,
       openSupport:()=>{if(DPA_NATIVE_IOS){window.location.href='mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards';return;}if(s.live&&m.id)this.setState({supportOpen:true});else this.showToast('Connectez-vous à un compte commerçant pour contacter le support.','info');},
+      loyaltyRulesDialog:S.app&&s.loyaltyRules&&this.api?.LoyaltyRulesDialog?this.renderLoyaltyRules():null,
+      obEarnSettings:earnSettings('ob'),draftEarnSettings:earnSettings('draft'),
+      loyaltyAmountDialog:S.app&&s.loyaltyAmount&&this.api?.LoyaltyAmountDialog?React.createElement(this.api.LoyaltyAmountDialog,{key:m.id+'-'+s.loyaltyAmount.id,rate:step,busy:s.busy,onClose:()=>this.setState({loyaltyAmount:null}),onAccept:cents=>this.addVisitLive(s.loyaltyAmount.id,s.loyaltyAmount.ctx,cents)}):null,
       supportDialog:S.app&&s.live&&m.id&&s.supportOpen&&this.api?.SupportDialog?React.createElement(this.api.SupportDialog,{key:m.id,merchant:m,send:this.api.sendSupport,close:()=>this.setState({supportOpen:false})}):null,
       homeMerchantButton:canManageProfiles&&(s.profiles.length>1||s.role==='owner')?React.createElement('button',{type:'button',className:'dpa-glass-surface',style:{position:'absolute',right:0,top:26,minHeight:44,padding:'8px 14px',borderRadius:12,fontWeight:700},onClick:s.profiles.length>1?openProfiles:this.beginAddProfile},s.profiles.length>1?'Changer de commerce':'Ajouter un commerce'):null,
       desktopSidebar:S.app&&isDesk&&DesktopSidebar?React.createElement(DesktopSidebar,{
@@ -3825,7 +3891,7 @@ class Component extends DCLogic {
        businessView:{name:m.business||'Non renseigné',activity:m.activity||'Non renseignée',address:m.address||'Non renseignée'},
        todayLabel:s.live?todayLong():'Mercredi 30 septembre',
       activities, hasActivities:activities.length>0, noActivities:activities.length===0,
-      homeCard, ruleText:`${goal} ${unit} = ${P.reward}`,
+      homeCard, ruleText:`${goal} ${unit} = ${P.reward}`+(P.mode==='points'?` · ${step} ${step===1?'point':'points'} par ${P.pointsBasis==='euro'?'euro dépensé':'passage'}`:''),
       q:s.q, setQ:e=>this.setState({q:e.target.value}), clearQ:()=>this.setState({q:''}), hasQ:!!s.q, filters, list, hasList:list.length>0, emptyList:list.length===0,
       noClientsAtAll:clients.length===0, emptyTitle:clients.length===0?'Aucun client pour le moment':'Aucun résultat', emptyText:clients.length===0?'Partagez votre QR code d’inscription pour accueillir vos premiers clients.':'Essayez un autre nom, un numéro de carte ou un autre filtre.',
       clientCount:clients.length,
