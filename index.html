@@ -53,6 +53,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 {{ supportDialog }}
 {{ loyaltyAmountDialog }}
 {{ loyaltyRulesDialog }}
+{{ pointsSimulatorDialog }}
 <sc-if value="{{ s.mfaChallenge }}"><div style="display:flex;justify-content:flex-end;padding:14px 16px"><dpa-theme-switch></dpa-theme-switch></div></sc-if>
 {{ mfaChallengePanel }}
 <sc-if value="{{ showAuthShell }}" hint-placeholder-val="{{ true }}">
@@ -3704,16 +3705,20 @@ class Component extends DCLogic {
     const activeKey=scr==='client'?'clients':(scr==='notifNew'?'notifs':(['invite','settings','card','registration'].includes(scr)?'more':scr));
     const mobNav=navDef.filter(n=>(n.k!=='scanner'||canScan)&&(n.k!=='notifs'||canNotify)).map(n=>{ const a=activeKey===n.k, c=n.k==='scanner';
       return {...n,current:a?'page':undefined,labelColor:a?'var(--dpa-link,#2448F0)':'var(--dpa-muted,#5E636B)',iconColor:c?'#FFFFFF':(a?'var(--dpa-link,#2448F0)':'var(--dpa-muted,#5E636B)'),iconBg:c?'#2448F0':(a?'var(--dpa-info-bg,#E8EDFF)':'transparent'),iconW:c?'56px':'52px',iconH:c?'56px':'32px',iconMt:c?'-26px':'0px',iconShadow:c?'0 6px 16px rgba(36,72,240,0.35)':'none',iconFill:a?"'FILL' 1":"'FILL' 0",go:go(n.k)}; });
-    const deskDef=[{k:'home',label:'Accueil',icon:'home'},{k:'clients',label:'Clients',icon:'group'},{k:'scanner',label:'Scanner',icon:'qr_code_scanner'},{k:'notifs',label:'Notifications',icon:'notifications'},{k:'invite',label:'Inviter mes clients',icon:'qr_code_2'},{k:'more',label:'Paramètres',icon:'settings'}];
+    const showPointsSimulator=s.live&&P.id&&P.mode==='points';
+    const simulatorLabel='Simulation points de fidélité';
+    const openPointsSimulator=()=>this.setState({pointsSimulatorMerchant:m.id});
+    const deskDef=[{k:'home',label:'Accueil',icon:'home'},{k:'clients',label:'Clients',icon:'group'},{k:'scanner',label:'Scanner',icon:'qr_code_scanner'},{k:'notifs',label:'Notifications',icon:'notifications'},{k:'invite',label:'Inviter mes clients',icon:'qr_code_2'},{k:'more',label:'Paramètres',icon:'settings'},...(showPointsSimulator?[{k:'pointsSimulator',label:simulatorLabel,icon:'calculate'}]:[])];
     const deskActive=scr==='client'?'clients':(scr==='settings'?'more':(scr==='notifNew'?'notifs':scr));
     const deskNav=deskDef.filter(n=>(n.k!=='scanner'||canScan)&&(n.k!=='notifs'||canNotify))
-      .map(n=>({...n,current:deskActive===n.k?'page':undefined,go:go(n.k)}));
+      .map(n=>({...n,current:deskActive===n.k?'page':undefined,go:n.k==='pointsSimulator'?openPointsSimulator:go(n.k)}));
 
     const openSec=k=>()=>this.go('settings',{section:k});
     const profileLogoUrl=P.logoUrl||s.profiles?.find(profile=>profile.id===m.id)?.logo;
     const canManageProfiles=!!(s.live&&this.api&&s.profiles?.length>(DPA_NATIVE_IOS?1:0));
     const openProfiles=()=>this.setState({profileMenuOpen:true});
     const moreItems=[
+      ...(!isDesk&&showPointsSimulator?[{icon:'calculate',label:simulatorLabel,sub:'Estimer les points sans les créditer',run:openPointsSimulator}]:[]),
       ...(s.live&&s.role==='owner'&&P.id?[{icon:'loyalty',label:'Programme de fidélité',sub:'Tampons, réductions et points',run:()=>this.setState({loyaltyRules:{...P},loyaltyError:''})}]:[]),
       ...(canManageProfiles?[{icon:'storefront',label:'Gérer mes commerces',sub:m.business,run:openProfiles}]:[]),
       {icon:'qr_code_2',label:'Inviter mes clients',sub:"QR code et lien d'inscription",run:go('invite')},
@@ -3815,6 +3820,7 @@ class Component extends DCLogic {
           React.createElement('svg',{viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},React.createElement('path',{d:'m12 19-7-7 7-7m-7 7h14'})),
           'Retour à l’accueil')):null,
       openSupport:()=>{if(DPA_NATIVE_IOS){window.location.href='mailto:contact@digitalprojectagency.fr?subject=Support%20DPA%20Cards';return;}if(s.live&&m.id)this.setState({supportOpen:true});else this.showToast('Connectez-vous à un compte commerçant pour contacter le support.','info');},
+      pointsSimulatorDialog:S.app&&showPointsSimulator&&s.pointsSimulatorMerchant===m.id&&this.api?.PointsSimulatorDialog?React.createElement(this.api.PointsSimulatorDialog,{key:m.id,rate:step,byEuro:P.pointsBasis==='euro',onClose:()=>this.setState({pointsSimulatorMerchant:null})}):null,
       loyaltyRulesDialog:S.app&&s.loyaltyRules&&this.api?.LoyaltyRulesDialog?this.renderLoyaltyRules():null,
       obPoints:s.ob.mode==='points',draftPoints:s.draft.mode==='points',obEarnSettings:earnSettings('ob'),draftEarnSettings:earnSettings('draft'),
       loyaltyAmountDialog:S.app&&s.loyaltyAmount&&this.api?.LoyaltyAmountDialog?React.createElement(this.api.LoyaltyAmountDialog,{key:m.id+'-'+s.loyaltyAmount.id,rate:step,busy:s.busy,onClose:()=>this.setState({loyaltyAmount:null}),onAccept:cents=>this.addVisitLive(s.loyaltyAmount.id,s.loyaltyAmount.ctx,cents)}):null,
