@@ -14,7 +14,7 @@ test('Other profession is required, sent to merchant persistence and restored on
  a.state.ob.otherActivity=' Fleuriste '; a.obNext(); assert.equal(a.state.ob.step,2);
  a.state.program=null; a.state.merchant={first:'A',last:'B'};
  let payload;
- a.api={createMerchant:async p=>{payload=p;return {merchant:{},program:{designStatus:'draft',mode:'passages',goal:10,reward:''}};},toMerchant:()=>({id:'m',business:'Fleurs',activity:'Fleuriste'})};
+ a.api={createMerchant:async p=>{payload=p;return {merchant:{},program:{designStatus:'draft',mode:'passages',goal:10,reward:'',pointsBasis:'visit',pointsRate:10}};},toMerchant:()=>({id:'m',business:'Fleurs',activity:'Fleuriste'})};
  await a.obCreateProgram(); assert.equal(payload.activity,'Fleuriste'); assert.equal(a.state.ob.step,3);
  const resumed=a.obStep3({business:'Fleurs',activity:'Fleuriste',first:'A',last:'B'},{mode:'passages',goal:10});
  assert.equal(resumed.activity,'Autre'); assert.equal(resumed.otherActivity,'Fleuriste');
