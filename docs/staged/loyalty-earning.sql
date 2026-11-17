@@ -182,4 +182,6 @@ $guard$;
 revoke all on function app_private.keep_loyalty_units() from public, anon;
 create trigger programs_keep_loyalty_units before update of mode on public.programs
 for each row execute function app_private.keep_loyalty_units();
+grant update (points_basis, points_rate) on table public.programs to authenticated;
+grant insert (amount_cents) on table public.card_events to authenticated;
 commit;
