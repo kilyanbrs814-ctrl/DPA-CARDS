@@ -859,3 +859,11 @@ api.LoyaltyAmountDialog = function LoyaltyAmountDialog({rate,busy,onAccept,onClo
       h('p',{role:'status'},valid?points+' point'+(points===1?'':'s')+' à créditer':rate+' point'+(rate===1?'':'s')+' par euro dépensé · arrondi à l’entier inférieur'),
       h('button',{type:'submit',className:'dpa-mfa-button',disabled:!valid||busy},busy?'Validation…':'Créditer les points')));
 };
+
+api.LoyaltyRulesDialog = function LoyaltyRulesDialog({children,busy,onClose}){
+  const R=window.React,h=R.createElement,ref=R.useRef(null);
+  R.useEffect(()=>{ref.current?.showModal();},[]);
+  return h('dialog',{ref,className:'dpa-mfa-panel dpa-mfa-dialog dpa-support-dialog','aria-labelledby':'loyalty-rule-title',onCancel:e=>{e.preventDefault();if(!busy)onClose();}},
+    h('button',{type:'button',className:'dpa-mfa-close','aria-label':'Fermer',disabled:busy,onClick:onClose},'×'),
+    h('h2',{id:'loyalty-rule-title'},'Programme de fidélité'),children);
+};
