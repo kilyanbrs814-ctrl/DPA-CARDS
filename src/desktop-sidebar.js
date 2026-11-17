@@ -14,7 +14,7 @@ export function makeDesktopSidebar(React) {
     sun: 'M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 0-8 0 4 4 0 0 0 8 0',
     switch: 'm8 9 4-4 4 4m-8 6 4 4 4-4',
   };
-  const mobileIcons = new Set(['qr_code_scanner', 'qr_code_2', 'settings', 'logout']);
+  const mobileIcons = new Set(['qr_code_scanner', 'qr_code_2', 'settings', 'logout', 'calculate']);
   const icon = name => {
     // Use the same glyphs as the mobile dock instead of approximating their outlines.
     if (mobileIcons.has(name) || !paths[name]) return h('span', {className: 'material-symbols-rounded dpa-sidebar-icon', 'aria-hidden': true}, mobileIcons.has(name) ? name : 'settings');
@@ -106,8 +106,8 @@ export function makeDesktopSidebar(React) {
           placeholder: 'Rechercher une page', onChange: event => setQuery(event.target.value)}),
         h('kbd', {'aria-hidden': true}, '⌘ / Ctrl K')),
       h('nav', {'aria-label': 'Navigation principale'},
-        section('Principal', matches.filter(item => !['invite', 'more'].includes(item.k))),
-        section('Mon commerce', matches.filter(item => ['invite', 'more'].includes(item.k))),
+        section('Principal', matches.filter(item => !['invite', 'more', 'pointsSimulator'].includes(item.k))),
+        section('Mon commerce', matches.filter(item => ['invite', 'more', 'pointsSimulator'].includes(item.k))),
         !matches.length && h('p', {className: 'dpa-sidebar-empty', role: 'status'}, 'Aucune page trouvée.')),
       h('div', {className: 'dpa-sidebar-footer'},
         demo && h('span', {className: 'dpa-sidebar-demo dpa-sidebar-label'}, 'Mode démonstration'),
