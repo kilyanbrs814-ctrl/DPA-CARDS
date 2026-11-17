@@ -847,9 +847,7 @@ api.SupportDialog = function SupportDialog({merchant,send,close}){
 api.LoyaltyAmountDialog = function LoyaltyAmountDialog({rate,busy,onAccept,onClose}){
   const R=window.React,h=R.createElement,ref=R.useRef(null),[raw,setRaw]=R.useState('');
   R.useEffect(()=>{ref.current?.showModal();},[]);
-  const value=String(raw).trim().replace(',','.');
-  const cents=/^\d{1,6}(?:\.\d{1,2})?$/.test(value)?Math.round(Number(value)*100):0;
-  const points=Math.floor(cents*rate/100);
+  const {cents,points}=estimateLoyaltyPoints(raw,rate);
   const valid=cents>0&&cents<=10000000&&points>0;
   return h('dialog',{ref,className:'dpa-mfa-panel dpa-mfa-dialog dpa-support-dialog','aria-labelledby':'loyalty-amount-title',onCancel:e=>{e.preventDefault();if(!busy)onClose();}},
     h('button',{type:'button',className:'dpa-mfa-close','aria-label':'Fermer',disabled:busy,onClick:onClose},'×'),
@@ -866,4 +864,25 @@ api.LoyaltyRulesDialog = function LoyaltyRulesDialog({children,busy,onClose}){
   return h('dialog',{ref,className:'dpa-mfa-panel dpa-mfa-dialog dpa-support-dialog','aria-labelledby':'loyalty-rule-title',onCancel:e=>{e.preventDefault();if(!busy)onClose();}},
     h('button',{type:'button',className:'dpa-mfa-close','aria-label':'Fermer',disabled:busy,onClick:onClose},'×'),
     h('h2',{id:'loyalty-rule-title'},'Programme de fidélité'),children);
+};
+
+function estimateLoyaltyPoints(raw,rate){
+  const value=String(raw).trim().replace(',','.');
+  const cents=/^\d{1,6}(?:\.\d{1,2})?$/.test(value)?Math.round(Number(value)*100):0;
+  const points=Math.floor(cents*rate/100);
+  return {cents,points};
+}
+api.PointsSimulatorDialog=function PointsSimulatorDialog({rate,byEuro,onClose}){
+  const R=window.React,h=R.createElement,ref=R.useRef(null),[raw,setRaw]=R.useState('');
+  R.useEffect(()=>{ref.current?.showModal();},[]);
+  const {cents,points}=estimateLoyaltyPoints(raw,rate);
+  const units=n=>n+' point'+(n===1?'':'s');
+  return h('dialog',{ref,className:'dpa-mfa-panel dpa-mfa-dialog dpa-support-dialog','aria-labelledby':'points-simulator-title',onCancel:e=>{e.preventDefault();onClose();}},
+    h('button',{type:'button',className:'dpa-mfa-close','aria-label':'Fermer',onClick:onClose},'×'),
+    h('header',{className:'dpa-support-header',style:{paddingInline:28}},h('h2',{id:'points-simulator-title'},'Simulation points de fidélité')),
+    h('div',{className:'dpa-support-form'},
+      h('p',null,byEuro?units(rate)+' par euro dépensé · arrondi à l’entier inférieur.':'Ce programme attribue '+units(rate)+' par passage, quel que soit le montant payé.'),
+      byEuro&&h('label',null,'Montant payé TTC (€)',h('input',{inputMode:'decimal',value:raw,onChange:e=>setRaw(e.target.value),autoFocus:true,placeholder:'Ex. 24,90',maxLength:10})),
+      h('div',{role:'status',className:'dpa-mfa-warning'},!byEuro?units(rate)+' pour un passage':!raw.trim()?'Saisissez un montant pour calculer les points.':cents<1||cents>10000000?'Saisissez un montant valide, de 0,01 € à 100 000 €.':units(points)+' pour cet achat'),
+      h('small',null,'Simulation uniquement : aucun point n’est crédité.')));
 };
