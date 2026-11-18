@@ -191,12 +191,12 @@ html[data-dpa-theme="dark"] .dpa-l-eyebrow { color: var(--dpa-link, #a9baff); }
   content: "";
   position: absolute;
   z-index: -1;
-  inset: -20% -22%;
+  inset: -4% -3% -7%;
   pointer-events: none;
-  background: radial-gradient(56% 52% at 50% 48%, rgba(244, 241, 251, 0.94) 0%, rgba(244, 241, 251, 0.88) 46%, rgba(244, 241, 251, 0.5) 74%, rgba(244, 241, 251, 0) 100%);
+  background: radial-gradient(54% 52% at 50% 50%, rgba(244, 241, 251, 0.92) 0%, rgba(244, 241, 251, 0.84) 56%, rgba(244, 241, 251, 0) 100%);
 }
 html[data-dpa-theme="dark"] .dpa-l-hero-text::before {
-  background: radial-gradient(56% 52% at 50% 48%, rgba(23, 19, 35, 0.92) 0%, rgba(23, 19, 35, 0.86) 46%, rgba(23, 19, 35, 0.48) 74%, rgba(23, 19, 35, 0) 100%);
+  background: radial-gradient(54% 52% at 50% 50%, rgba(23, 19, 35, 0.9) 0%, rgba(23, 19, 35, 0.82) 56%, rgba(23, 19, 35, 0) 100%);
 }
 
 /* Le calque des téléphones ne reçoit jamais le pointeur : les boutons du hero
@@ -440,17 +440,17 @@ html[data-dpa-theme="dark"] .dpa-l-hero-text::before {
   .dpa-l-footer-links { margin-left: 0; }
   /* Même composition, téléphones plus petits et plus en retrait : ils tiennent
      derrière le contenu sans jamais le concurrencer. */
-  .dpa-l-phone { opacity: 0.6; }
+  .dpa-l-phone { opacity: 0.4; }
   .dpa-l-phone-apple { left: -8%; height: min(54svh, 520px); }
   .dpa-l-phone-android { right: -8%; height: min(48svh, 468px); }
   /* Le bloc occupe presque toute la largeur : le voile doit être plus franc
      pour que le texte garde la même lisibilité qu'en grand format. */
   .dpa-l-hero-text::before {
-    inset: -22% -18%;
-    background: radial-gradient(62% 56% at 50% 48%, rgba(244, 241, 251, 0.97) 0%, rgba(244, 241, 251, 0.95) 54%, rgba(244, 241, 251, 0.6) 80%, rgba(244, 241, 251, 0) 100%);
+    inset: -5% -16% -8%;
+    background: radial-gradient(58% 54% at 50% 50%, rgba(244, 241, 251, 0.96) 0%, rgba(244, 241, 251, 0.92) 58%, rgba(244, 241, 251, 0) 100%);
   }
   html[data-dpa-theme="dark"] .dpa-l-hero-text::before {
-    background: radial-gradient(62% 56% at 50% 48%, rgba(23, 19, 35, 0.96) 0%, rgba(23, 19, 35, 0.93) 54%, rgba(23, 19, 35, 0.58) 80%, rgba(23, 19, 35, 0) 100%);
+    background: radial-gradient(58% 54% at 50% 50%, rgba(23, 19, 35, 0.95) 0%, rgba(23, 19, 35, 0.9) 58%, rgba(23, 19, 35, 0) 100%);
   }
 }
 @media (max-width: 560px) {
@@ -459,9 +459,10 @@ html[data-dpa-theme="dark"] .dpa-l-hero-text::before {
   .dpa-l-scan-big { font-size: 34px; }
   .dpa-l-plan-rows { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .dpa-l-plan-rows dd { margin-bottom: 8px; }
-  .dpa-l-phone { opacity: 0.52; }
-  .dpa-l-phone-apple { left: -22%; height: min(46svh, 380px); translate: 0 -56%; }
-  .dpa-l-phone-android { right: -22%; height: min(41svh, 340px); translate: 0 -40%; }
+  /* Sur un écran étroit, le bloc occupe presque toute la largeur : les deux
+     appareils se retirent vers les bords plutôt que de passer sous le titre. */
+  .dpa-l-phone-apple { left: -40%; height: min(46svh, 380px); translate: 0 -56%; }
+  .dpa-l-phone-android { right: -34%; height: min(41svh, 340px); translate: 0 -40%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
