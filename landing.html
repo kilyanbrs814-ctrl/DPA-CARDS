@@ -72,22 +72,43 @@
 
 <main id="contenu">
 
-  <!-- 1. Premier écran : titre, sous-titre, deux boutons, puis le visuel produit,
-       posés directement sur le fond lavande du site. -->
-  <section class="dpa-l-wrap dpa-l-section dpa-l-hero" aria-labelledby="titre">
-    <h1 id="titre">Votre carte de fidélité, sur iPhone et Android</h1>
-    <p class="dpa-l-hero-lead">Vos clients l’ajoutent à Apple Cartes ou Google Wallet. En caisse, vous scannez leur carte et validez leur passage.</p>
-    <div class="dpa-l-actions">
-      <a class="dpa-l-cta" href="/connexion?mode=inscription" data-dpa-web-only>
-        <span class="material-symbols-rounded" aria-hidden="true">add_card</span>Créer ma carte de fidélité
-      </a>
-      <a class="dpa-l-ghost" href="/connexion">Se connecter</a>
+  <!-- 1. Premier écran : le bloc titre, sous-titre et boutons occupe le centre de
+       la zone visible sous la navigation ; les deux téléphones sont posés derrière
+       lui, sur les tiers gauche et droit, dans un calque qui ne reçoit pas le
+       pointeur. Chaque téléphone a deux éléments imbriqués : le conteneur porte la
+       réaction au pointeur, l'élément intérieur le flottement continu. -->
+  <section class="dpa-l-wrap dpa-l-section dpa-l-hero" aria-labelledby="titre" data-dpa-hero>
+    <div class="dpa-l-phones">
+      <div class="dpa-l-phone dpa-l-phone-apple">
+        <div class="dpa-l-phone-float">
+          <picture>
+            <source srcset="/assets/landing/telephone-apple.webp" type="image/webp">
+            <img src="/assets/landing/telephone-apple.png" width="494" height="997" fetchpriority="high" decoding="async"
+                 alt="La carte du commerce de démonstration Grain Café dans Apple Cartes, sur iPhone : 6 passages effectués, 4 restants.">
+          </picture>
+        </div>
+      </div>
+      <div class="dpa-l-phone dpa-l-phone-android">
+        <div class="dpa-l-phone-float">
+          <picture>
+            <source srcset="/assets/landing/telephone-android.webp" type="image/webp">
+            <img src="/assets/landing/telephone-android.png" width="531" height="1002" fetchpriority="high" decoding="async"
+                 alt="La même carte Grain Café dans Google Wallet, sur Android.">
+          </picture>
+        </div>
+      </div>
     </div>
-    <picture class="dpa-l-phones">
-      <source srcset="/assets/landing/hero-grain-cafe.webp" type="image/webp">
-      <img src="/assets/landing/hero-grain-cafe.png" width="1070" height="1014" fetchpriority="high" decoding="async"
-           alt="La carte du commerce de démonstration Grain Café, dans Apple Cartes sur iPhone et dans Google Wallet sur Android : 6 passages effectués, 4 restants.">
-    </picture>
+
+    <div class="dpa-l-hero-text">
+      <h1 id="titre">Votre carte de fidélité, sur iPhone et Android</h1>
+      <p class="dpa-l-hero-lead">Vos clients l’ajoutent à Apple Cartes ou Google Wallet. En caisse, vous scannez leur carte et validez leur passage.</p>
+      <div class="dpa-l-actions">
+        <a class="dpa-l-cta" href="/connexion?mode=inscription" data-dpa-web-only>
+          <span class="material-symbols-rounded" aria-hidden="true">add_card</span>Créer ma carte de fidélité
+        </a>
+        <a class="dpa-l-ghost" href="/connexion">Se connecter</a>
+      </div>
+    </div>
   </section>
 
   <!-- 2. Parcours en trois étapes, ouvertes sur le fond. La distinction entre le QR
