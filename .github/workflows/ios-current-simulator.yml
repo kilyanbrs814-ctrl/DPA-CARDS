@@ -6,7 +6,11 @@ on:
   pull_request:
     paths:
       - index.html
+      - landing.html
       - admin.html
+      - public/landing-start.js
+      - scripts/prepare-ios-web.mjs
+      - vite.config.js
       - src/**
       - scripts/check-ios-bundle-current.test.mjs
       - scripts/check-native-admin-link.test.mjs
@@ -19,7 +23,11 @@ on:
     branches: [main]
     paths:
       - index.html
+      - landing.html
       - admin.html
+      - public/landing-start.js
+      - scripts/prepare-ios-web.mjs
+      - vite.config.js
       - src/**
       - scripts/check-ios-bundle-current.test.mjs
       - .github/workflows/ios-testflight.yml
@@ -50,6 +58,7 @@ jobs:
       - name: Generate bundled iOS app
         run: |
           npm install --no-save --package-lock=false @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8 @capacitor/app@8
+          node scripts/prepare-ios-web.mjs
           npx cap add ios
           npx cap sync ios
           # Fail the iOS release if the current lavender workspace image was omitted.

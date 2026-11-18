@@ -1,10 +1,11 @@
 # Cloudflare Pages: preserve DPA Cards URLs without a Vercel dependency.
 # Status 200 = internal proxy/rewrite, not a redirect. Preserve checkout query strings.
-/join/* /index.html 200
-/subscription/success /index.html 200
-/subscription/cancel /index.html 200
-/design/success /index.html 200
-/design/cancel /index.html 200
-# Cloudflare Pages automatically serves /cgv, /mentions-legales and /confidentialite
+/join/* /connexion.html 200
+/subscription/success /connexion.html 200
+/subscription/cancel /connexion.html 200
+/design/success /connexion.html 200
+/design/cancel /connexion.html 200
+/landing / 302
+# Cloudflare Pages automatically serves /connexion, /cgv, /mentions-legales and /confidentialite
 # from their matching .html files. Do not rewrite these routes to *.html:
 # Cloudflare normalizes HTML URLs to their extensionless paths.

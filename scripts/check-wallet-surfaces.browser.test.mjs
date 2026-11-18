@@ -8,16 +8,19 @@ import {fileURLToPath} from 'node:url';
 test('dashboard enrollment, effective Wallet previews, onboarding fallback and public member progression',async()=>{
   const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();
   const url=server.resolvedUrls.local[0],browser=await chromium.launch();
+  const entry=new URL('/connexion',url).href;
   const dir=new URL('../test-results/wallet-surfaces/',import.meta.url);mkdirSync(dir,{recursive:true});
   try {
     const page=await browser.newPage({viewport:{width:1440,height:1100}}),errors=[];
     page.setDefaultTimeout(8000);page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/ReferenceError|TypeError|SyntaxError/.test(m.text()))errors.push(m.text())});
     // Fail closed: no test is allowed to write to the real backend.
     await page.route('https://*.supabase.co/**',route=>route.abort());
-    await page.route(url,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
-    await page.goto(url,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__testApp);
+    await page.route(entry,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
+    await page.goto(entry,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__testApp);
     await page.evaluate(async()=>{
       const a=window.__testApp;a.api={...await window.dpaReady,configured:true,
+        appleWalletLink:async id=>({url:'https://wallet.example/apple/'+id}),
+        walletLink:async id=>({url:'https://wallet.example/google/'+id}),
         access:async()=>({has_access:true}),enroll:async(request,first,email)=>{
           window.__enrolled={request,first,email};return {id:'new-client',first,last:'',card:'DPA 8765',qrValue:'DPA1:enrolled',balance:0,history:[],joined:'2026-10-26'};
         }};
@@ -37,17 +40,26 @@ test('dashboard enrollment, effective Wallet previews, onboarding fallback and p
     await enroll.getByRole('button',{name:'Créer la carte du client'}).click();assert.equal(await page.evaluate(()=>window.__enrolled),undefined);
     await enroll.getByLabel('Prénom',{exact:true}).fill('Camille');await enroll.getByLabel(/E-mail/).fill('camille@example.com');
     await enroll.getByRole('checkbox').check();await enroll.getByRole('button',{name:'Créer la carte du client'}).click();
-    await page.getByRole('heading',{name:'Votre carte est prête'}).waitFor();
+    const handoff=page.getByRole('dialog',{name:'Carte créée pour Camille'});
+    await handoff.getByRole('img',{name:'QR code pour ajouter la carte à Apple Wallet'}).waitFor();
+    await handoff.getByRole('img',{name:'QR code pour ajouter la carte à Google Wallet'}).waitFor();
     assert.equal((await page.evaluate(()=>window.__enrolled)).first,'Camille');
-    assert.equal(await page.locator('[data-dpa-qr="DPA1:enrolled"]').count(),1);
     await page.setViewportSize({width:393,height:852});
     await page.screenshot({path:fileURLToPath(new URL('joined-mobile.png',dir)),fullPage:true});
+    await handoff.getByRole('button',{name:'Terminé'}).click();
     // Saved request retried after visits must display the server ledger balance.
-    await page.evaluate(async()=>{const a=window.__testApp;a.api.publicJoin=async()=>({first:'Camille',cardNumber:'DPA 8765',qrValue:'DPA1:enrolled',balance:4,apple:{},wallet:{}});a.setState({pubSlug:'boulangerie'});await a.joinPublic(a.state.f)});
+    await page.evaluate(async()=>{
+      const a=window.__testApp;
+      a.api.publicJoin=async()=>({first:'Camille',cardNumber:'DPA 8765',qrValue:'DPA1:enrolled',balance:4,apple:{},wallet:{}});
+      a.setState({pubSlug:'boulangerie',live:false,program:{...a.state.program,selfServiceShowStamps:true}});
+      await a.joinPublic({joinFirst:'Camille',joinEmail:'camille@example.com'});
+    });
+    await page.getByRole('heading',{name:'Votre carte est prête'}).waitFor();
+    await page.waitForFunction(()=>document.querySelectorAll('[data-native-stamp="filled"]').length===4);
     assert.equal(await page.locator('[data-native-stamp="filled"]').count(),4);
     // The API remains the authority when staff permissions or access change.
     await page.setViewportSize({width:1440,height:1100});
-    await page.evaluate(()=>window.__testApp.setState({screen:'home',pubSlug:null,role:'staff',permissions:{add_clients:false}}));
+    await page.evaluate(()=>window.__testApp.setState({screen:'home',live:true,pubSlug:null,role:'staff',permissions:{add_clients:false}}));
     assert.equal(await enroll.count(),0);
     await page.evaluate(async()=>{const a=window.__testApp;window.__enrolled=null;await a.joinLive({joinFirst:'Forbidden',joinEmail:''})});
     assert.equal(await page.evaluate(()=>window.__enrolled),null);

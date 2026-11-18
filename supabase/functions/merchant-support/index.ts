@@ -3,14 +3,19 @@ const url = Deno.env.get('SUPABASE_URL')!;
 const key = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') || '{}').default || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const db = createClient(url, key, { auth: { persistSession:false, autoRefreshToken:false } });
 const site = 'https://cards.digitalprojectagency.fr';
-const cors = {'access-control-allow-origin':site,'access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'authorization, apikey, x-client-info, content-type, x-merchant-id','cache-control':'no-store'};
-const json = (status:number, value:Record<string,unknown>) => Response.json(value,{status,headers:cors});
+const allowedOrigins = new Set([site, 'capacitor://localhost']);
+const baseHeaders = {'vary':'Origin','access-control-allow-methods':'POST, OPTIONS','access-control-allow-headers':'authorization, apikey, x-client-info, content-type, x-merchant-id','cache-control':'no-store'};
 const field = (x:unknown) => typeof x === 'string' ? x.trim() : '';
 Deno.serve(async req => {
-  if(req.method==='OPTIONS') return new Response(null,{status:204,headers:cors});
-  if(req.method!=='POST') return json(405,{error:'method_not_allowed'});
   const origin=req.headers.get('origin');
-  if(origin && origin!==site) return json(403,{error:'origin_not_allowed'});
+  const headers=new Headers(baseHeaders);
+  const json = (status:number, value:Record<string,unknown>) => Response.json(value,{status,headers});
+  if(origin){
+    if(!allowedOrigins.has(origin)) return json(403,{error:'origin_not_allowed'});
+    headers.set('access-control-allow-origin',origin);
+  }
+  if(req.method==='OPTIONS') return new Response(null,{status:204,headers});
+  if(req.method!=='POST') return json(405,{error:'method_not_allowed'});
   const token=/^Bearer\s+(\S+)$/i.exec(req.headers.get('authorization')||'')?.[1];
   if(!token) return json(401,{error:'not_authenticated'});
   try {

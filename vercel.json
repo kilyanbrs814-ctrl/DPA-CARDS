@@ -1,12 +1,13 @@
 {
   "rewrites": [
-    { "source": "/join/:slug", "destination": "/index.html" },
+    { "source": "/connexion", "destination": "/connexion.html" },
+    { "source": "/join/:slug", "destination": "/connexion.html" },
     { "source": "/mentions-legales", "destination": "/mentions-legales.html" },
     { "source": "/confidentialite", "destination": "/confidentialite.html" },
     { "source": "/cgv", "destination": "/cgv.html" },
-    { "source": "/subscription/success", "destination": "/index.html" },
-    { "source": "/subscription/cancel", "destination": "/index.html" },
-    { "source": "/design/success", "destination": "/index.html" },
-    { "source": "/design/cancel", "destination": "/index.html" }
+    { "source": "/subscription/success", "destination": "/connexion.html" },
+    { "source": "/subscription/cancel", "destination": "/connexion.html" },
+    { "source": "/design/success", "destination": "/connexion.html" },
+    { "source": "/design/cancel", "destination": "/connexion.html" }
   ]
 }

@@ -4,7 +4,7 @@ import {createServer} from 'vite';
 import {chromium} from '@playwright/test';
 import {mkdirSync} from 'node:fs';
 test('web profiles: profile entry, commerce selector, onboarding and explicit payment consent',async()=>{
- const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=server.resolvedUrls.local[0];
+ const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=new URL('/connexion',server.resolvedUrls.local[0]).href;
  const browser=await chromium.launch({headless:true});
  try{
   const page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -18,20 +18,30 @@ test('web profiles: profile entry, commerce selector, onboarding and explicit pa
   });
   assert.equal(await page.getByText('Accès DPA Cards : actif',{exact:true}).count(),0);
   await page.setViewportSize({width:1440,height:960});
-  const profile=page.locator('.dpa-desktop-sidebar').getByRole('button',{name:/Commerce A/});
-  const avatar=profile.locator('.dpa-desktop-avatar');
+  const profile=page.getByRole('button',{name:'Changer de commerce',exact:true});
+  const avatar=page.locator('.dpa-desktop-sidebar .dpa-sidebar-brand-mark');
   await avatar.locator('img').waitFor();
   assert.equal(await avatar.locator('img').getAttribute('src'),'/assets/dpa-cards-logo.png');
   await page.evaluate(()=>window.__testApp.setState(s=>({profiles:s.profiles.map(({logo,...profile})=>profile)})));
   await avatar.locator('img').waitFor({state:'detached'});
   assert.match(await avatar.textContent(),/\S/);
   await profile.click();
-  await page.getByRole('dialog',{name:'Vos commerces'}).getByRole('button',{name:'Fermer',exact:true}).click();
+  const desktopDialog=page.getByRole('dialog',{name:'Vos commerces'});
+  await page.evaluate(()=>{
+   const event=new Event('beforeinstallprompt',{cancelable:true});
+   event.prompt=async()=>{window.__installPrompted=true;};
+   event.userChoice=Promise.resolve({outcome:'dismissed'});
+   window.dispatchEvent(event);
+  });
+  await desktopDialog.getByRole('button',{name:'Installer l’application'}).click();
+  assert.equal(await page.evaluate(()=>window.__installPrompted),true);
+  await desktopDialog.getByRole('button',{name:'Fermer',exact:true}).click();
   assert.equal(await profile.evaluate(el=>el===document.activeElement),true);
   await page.setViewportSize({width:393,height:852});
   await page.getByRole('button',{name:/Réglages/}).click();
   await page.getByRole('button',{name:/Gérer mes commerces/}).click();
   const dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'Vos commerces'}).waitFor();
+  assert.equal(await dialog.getByRole('button',{name:'Installer l’application'}).count(),0);
   assert.equal(await dialog.getByRole('button',{name:'Commerce A Sélectionné'}).getAttribute('aria-current'),'true');
   assert.equal(await page.getByText('Commerce sélectionné',{exact:true}).count(),0);
   assert.equal(await page.getByText('Accès DPA Cards : actif',{exact:true}).count(),1);
@@ -55,7 +65,7 @@ test('web profiles: profile entry, commerce selector, onboarding and explicit pa
 });
 
 test('web profiles: a secondary merchant cannot start a quote before the primary is billed',async()=>{
- const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=server.resolvedUrls.local[0];
+ const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=new URL('/connexion',server.resolvedUrls.local[0]).href;
  const browser=await chromium.launch({headless:true});
  try{
   const page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);
@@ -89,7 +99,7 @@ test('web profiles: a secondary merchant cannot start a quote before the primary
 
 
 test('native iPhone switches existing commerces without signup or payment',async()=>{
- const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=server.resolvedUrls.local[0];
+ const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=new URL('/connexion',server.resolvedUrls.local[0]).href;
  const browser=await chromium.launch({headless:true});
  try{
   const page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);

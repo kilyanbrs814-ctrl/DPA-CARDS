@@ -15,6 +15,7 @@ test('onboarding imports and crops a logo into the actual Storage API and saves 
     'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY':JSON.stringify('test-publishable-key')
   },server:{host:'127.0.0.1',port:0}});await server.listen();
   const origin=server.resolvedUrls.local[0],browser=await chromium.launch();
+  const entry=new URL('/connexion',origin).href;
   const merchant='20000000-0000-4000-8000-000000000002',program='30000000-0000-4000-8000-000000000002';
   const row={id:program,merchant_id:merchant,name:'Club test',mode:'passages',goal:10,reward:'Café',bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',design_status:'draft',logo_path:null};
   const out=new URL('../test-results/onboarding-logo/',import.meta.url);mkdirSync(out,{recursive:true});
@@ -42,8 +43,8 @@ test('onboarding imports and crops a logo into the actual Storage API and saves 
       if(url.pathname.startsWith('/storage/v1/object/public/program-assets/'))return route.fulfill({contentType:'image/png',body:fixture(660,660)});
       return route.abort();
     });
-    await page.route(origin,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
-    await page.goto(origin,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__testApp);
+    await page.route(entry,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
+    await page.goto(entry,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__testApp);
     await page.evaluate(async({row,merchant})=>{
       const a=window.__testApp;a.api=await window.dpaReady;
       a.setState({live:true,demo:false,screen:'ob',role:'owner',hasAccess:false,clients:[],program:a.api.toProgram(row),

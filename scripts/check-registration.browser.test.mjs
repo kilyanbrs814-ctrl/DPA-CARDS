@@ -2,8 +2,8 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'vite';
 import {chromium} from '@playwright/test';
-test('mobile registration edit persists, public header reflects it, photo export is awaited and system area stays opaque',async()=>{
- const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=server.resolvedUrls.local[0];const browser=await chromium.launch({headless:true});
+test('mobile registration edit persists, photo export is awaited and the native status bar has its own veil',async()=>{
+ const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=new URL('/connexion',server.resolvedUrls.local[0]).href;const browser=await chromium.launch({headless:true});
  try{const page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(5000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.route(url,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace("const DPA_NATIVE_IOS=window.location.protocol==='capacitor:';",'const DPA_NATIVE_IOS=true;').replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')})});
  await page.goto(url);await page.waitForFunction(()=>window.__testApp);await page.evaluate(async()=>{const a=window.__testApp;a.utils=await window.dpaReady;a.enterDemo();document.documentElement.classList.add('dpa-native-ios');document.documentElement.style.setProperty('--dpa-safe-top','55px')});
@@ -12,7 +12,13 @@ test('mobile registration edit persists, public header reflects it, photo export
  await page.evaluate(async()=>{const a=window.__testApp;let p=a.state.program;window.__savedPhotos=0;a.api={...await window.dpaReady,configured:true,qrPng:async()=> 'data:image/png;base64,aGVsbG8=',saveQrToPhotos:async()=>{window.__savedPhotos++},access:async()=>({has_access:true})};a.setState({live:true,demo:false,hasAccess:true,screen:'invite'})});
  await page.getByRole('button',{name:'Enregistrer dans Photos',exact:true}).click();await page.getByText('QR code enregistré dans Photos.',{exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.__savedPhotos),1);
  await page.evaluate(()=>{const a=window.__testApp;a.go('home');document.body.style.minHeight='1800px'});await page.locator('.dpa-mobile-header').waitFor();await page.evaluate(()=>window.scrollTo(0,200));await page.waitForTimeout(50);
- const cover=await page.evaluate(()=>{const s=getComputedStyle(document.documentElement,'::before');return {position:s.position,height:s.height,bg:s.backgroundColor,z:s.zIndex}});assert.deepEqual(cover,{position:'fixed',height:'55px',bg:'rgb(246, 245, 241)',z:'35'});
+ const cover=await page.evaluate(()=>{
+  const veil=getComputedStyle(document.documentElement,'::after');
+  const artwork=getComputedStyle(document.documentElement,'::before');
+  return {position:veil.position,height:veil.height,blur:veil.backdropFilter,z:veil.zIndex,artwork:artwork.backgroundImage};
+ });
+ assert.deepEqual({position:cover.position,height:cover.height,blur:cover.blur,z:cover.z},{position:'fixed',height:'55px',blur:'blur(18px)',z:'35'});
+ assert.match(cover.artwork,/dpa-bg-light-mobile-4k\.svg/);
  await page.screenshot({path:'/tmp/dpa-next-home.png'});
  // A load failure keeps the valid session and offers retry, without blaming the password.
  await page.evaluate(async()=>{const a=window.__testApp;a.api.loadAll=async()=>{throw Error('workspace_members_unavailable')};await a.openLive({user:{id:'u'}})});await page.getByRole('heading',{name:'Connexion réussie',exact:true}).waitFor();assert.ok(await page.getByRole('button',{name:'Réessayer d’ouvrir mon espace',exact:true}).isVisible());assert.deepEqual(errors,[]);

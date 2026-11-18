@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {stripTypeScriptTypes} from 'node:module';
 import {walletUserHeaders,selectedMembership} from '../supabase/functions/_shared/merchant-context.ts';
+import {merchantSessionError} from '../supabase/functions/_shared/merchant-session.js';
 import {selfServiceChoice} from '../supabase/functions/_shared/self-service-layout.js';
 
 const source=readFileSync(new URL('../supabase/functions/wallet/index.ts',import.meta.url),'utf8');
@@ -16,9 +17,9 @@ function extract(start,end,context){
 test('real Wallet authentication forwards explicit profile and web-view together; old clients retain primary scope',async()=>{
  for(const selected of [null,'secondary']){
   let options;
-  const user={id:'owner'},client={auth:{getUser:async token=>{assert.equal(token,'owner-token');return {data:{user}};}}};
+  const user={id:'owner',email_confirmed_at:'2026-11-18T00:00:00Z'},client={auth:{getUser:async token=>{assert.equal(token,'owner-token');return {data:{user}};}}};
   const authUser=extract('async function authUser','// Real format and dimensions',{
-   SUPABASE_URL:'https://test.supabase.co',PUBLISHABLE_KEY:'publishable',HttpError,walletUserHeaders,
+   SUPABASE_URL:'https://test.supabase.co',PUBLISHABLE_KEY:'publishable',HttpError,walletUserHeaders,merchantSessionError,
    createClient:(url,key,o)=>{options=o;return client;}
   });
   const headers={authorization:'Bearer owner-token',...(selected?{'x-merchant-id':selected}:{})};

@@ -7,15 +7,15 @@ import {fileURLToPath} from 'node:url';
 
 test('customer profiles recover their own card on desktop/mobile, copy links, handle races and retry errors',async()=>{
   const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();
-  const origin=server.resolvedUrls.local[0],browser=await chromium.launch();
+  const entry=new URL('/connexion',server.resolvedUrls.local[0]).href,browser=await chromium.launch();
   const out=new URL('../test-results/wallet-recovery/',import.meta.url);mkdirSync(out,{recursive:true});
   try {
     const context=await browser.newContext({viewport:{width:1440,height:1100},permissions:['clipboard-read','clipboard-write']});
     const page=await context.newPage(),errors=[];page.setDefaultTimeout(6000);
     page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error'&&/ReferenceError|TypeError/.test(m.text()))errors.push(m.text())});
     await page.route('https://*.supabase.co/**',route=>route.abort());
-    await page.route(origin,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
-    await page.goto(origin);await page.waitForFunction(()=>window.__testApp);
+    await page.route(entry,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
+    await page.goto(entry);await page.waitForFunction(()=>window.__testApp);
     await page.evaluate(async()=>{
       const a=window.__testApp;window.__walletCalls=[];window.__googleFail=false;window.__delayApple=true;
       const google=async id=>{window.__walletCalls.push(['google',id]);if(window.__googleFail){window.__googleFail=false;throw Error('wallet_unavailable')}return {url:'https://pay.google.com/gp/v/save/'+id}};
