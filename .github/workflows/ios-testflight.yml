@@ -116,7 +116,7 @@ jobs:
             -scheme App -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/DPA-Cards.xcarchive" \
-            MARKETING_VERSION='1.1' \
+            MARKETING_VERSION='1.2' \
             CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
             archive
 
