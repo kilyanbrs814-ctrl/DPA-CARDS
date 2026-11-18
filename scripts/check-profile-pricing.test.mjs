@@ -21,7 +21,9 @@ test('device-local selection validates access and destroys the old document on s
  const memberships=[{merchant_id:'a'},{merchant_id:'b'}];
  assert.equal(rememberedProfile(storage,'u',memberships).merchant_id,'a');
  let destination;changeProfile(storage,{replace:p=>destination=p},'u','b',memberships);
- assert.equal(destination,'/');assert.equal(rememberedProfile(storage,'u',memberships).merchant_id,'b');
+ assert.equal(destination,'/connexion');assert.equal(rememberedProfile(storage,'u',memberships).merchant_id,'b');
+ changeProfile(storage,{protocol:'capacitor:',replace:p=>destination=p},'u','b',memberships);
+ assert.equal(destination,'/connexion.html');
  assert.throws(()=>changeProfile(storage,{replace:()=>assert.fail()},'u','foreign',memberships));
  assert.equal(rememberedProfile(storage,'other',memberships).merchant_id,'a');
 });

@@ -1,0 +1,33 @@
+dpa-install-app { display: inline-flex; }
+dpa-install-app[hidden] { display: none; }
+
+.dpa-install-action {
+  min-height: 44px;
+  padding: 9px 15px;
+  border: 1px solid var(--dpa-border, #d4d1c9);
+  border-radius: 12px;
+  background: var(--dpa-surface, #fff);
+  color: var(--dpa-text, #1c1f24);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dpa-install-action:focus-visible {
+  outline: 3px solid var(--dpa-link, #2448f0);
+  outline-offset: 2px;
+}
+
+.dpa-install-help {
+  width: min(440px, calc(100% - 32px));
+  box-sizing: border-box;
+  padding: 24px;
+  border: 1px solid var(--dpa-border, #d4d1c9);
+  border-radius: 20px;
+  background: var(--dpa-surface, #fff);
+  color: var(--dpa-text, #1c1f24);
+}
+
+.dpa-install-help::backdrop { background: #10172580; }
+.dpa-install-help h2 { margin: 0; font-size: 20px; }
+.dpa-install-help p { line-height: 1.5; }

@@ -4,29 +4,31 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runInNewContext } from 'node:vm';
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const required = [
-  'index.html', 'admin.html', '_redirects',
+  'index.html', 'connexion.html', 'admin.html', 'activation-result.html', '_redirects',
   'mentions-legales.html', 'confidentialite.html', 'cgv.html',
   'support.js', 'theme.js', 'LoyaltyCard.dc.html',
   'assets/wallet-badge-apple.png', 'assets/wallet-badge-google.png',
+  'manifest.webmanifest', 'install-app.js', 'install-app.css', 'landing-start.js',
 ];
 for (const f of required) {
   assert.ok(existsSync(join(dist, f)), 'Required output missing: ' + f);
 }
-for (const name of ['index', 'admin', 'mentions-legales', 'confidentialite', 'cgv']) {
+for (const name of ['index', 'connexion', 'admin', 'mentions-legales', 'confidentialite', 'cgv']) {
   const page = readFileSync(join(dist, name + '.html'), 'utf8');
   const theme = page.indexOf('<script src="/theme.js"></script>');
   assert.ok(theme > -1 && theme < page.indexOf('</head>'), 'Early theme initialization missing: ' + name);
 }
 const redirects = readFileSync(join(dist, '_redirects'), 'utf8');
 const expected = new Map([
-  ['/join/*', '/index.html'],
-  ['/subscription/success', '/index.html'],
-  ['/subscription/cancel', '/index.html'],
-  ['/design/success', '/index.html'],
-  ['/design/cancel', '/index.html'],
+  ['/join/*', '/connexion.html'],
+  ['/subscription/success', '/connexion.html'],
+  ['/subscription/cancel', '/connexion.html'],
+  ['/design/success', '/connexion.html'],
+  ['/design/cancel', '/connexion.html'],
 ]);
 for (const [from, to] of expected) {
   const line = from + ' ' + to + ' 200';
@@ -41,7 +43,42 @@ for (const name of ['cgv', 'mentions-legales', 'confidentialite']) {
   const html = readFileSync(join(dist, name + '.html'), 'utf8');
   assert.ok(html.includes('<html') && html.includes('<main'), 'Invalid legal HTML page: ' + name);
 }
-const index = readFileSync(join(dist, 'index.html'), 'utf8');
+const index = readFileSync(join(dist, 'connexion.html'), 'utf8');
+assert.match(index, /rel="manifest" href="\/manifest\.webmanifest"/);
+const manifest = JSON.parse(readFileSync(join(dist, 'manifest.webmanifest'), 'utf8'));
+assert.equal(manifest.start_url, '/connexion');
+assert.equal(manifest.display, 'standalone');
+assert.equal(manifest.scope, '/');
+const landingStart = readFileSync(join(dist, 'landing-start.js'), 'utf8');
+function landingDestination(url) {
+  let destination = null;
+  const location = new URL(url, 'https://cards.digitalprojectagency.fr');
+  location.replace = path => destination = path;
+  runInNewContext(landingStart, { URLSearchParams, location });
+  return destination;
+}
+assert.equal(landingDestination('/?utm_source=caisse#fonctionnalites'), null);
+assert.equal(landingDestination('/?profile_payment=return'), '/connexion?profile_payment=return');
+assert.equal(landingDestination('/?error_code=otp_expired'), '/connexion?error_code=otp_expired');
+assert.equal(landingDestination('/?utm_source=email#type=recovery&access_token=example'), '/connexion?utm_source=email#type=recovery&access_token=example');
+for (const size of [192, 512]) {
+  const icon = manifest.icons.find(value => value.sizes === `${size}x${size}`);
+  assert.ok(icon);
+  const png = readFileSync(join(dist, icon.src.slice(1)));
+  assert.equal(png.toString('hex', 0, 8), '89504e470d0a1a0a');
+  assert.equal(png.readUInt32BE(16), size);
+  assert.equal(png.readUInt32BE(20), size);
+}
+if (existsSync(join(dist, 'landing.html'))) {
+  const landing = readFileSync(join(dist, 'landing.html'), 'utf8');
+  assert.equal(readFileSync(join(dist, 'index.html'), 'utf8'), landing);
+  assert.match(landing, /\/landing-start\.js/);
+  assert.match(landing, /rel="manifest" href="\/manifest\.webmanifest"/);
+  assert.match(landing, /<a\b[^>]+href=["']\/connexion["']/);
+  assert.match(landing, /<a\b[^>]+href=["']\/connexion\?mode=inscription["']/);
+  assert.match(landing, /<dpa-install-app\b/);
+  assert.doesNotMatch(landing, /<x-dc>/);
+}
 assert.ok(index.includes('cards.digitalprojectagency.fr'), 'Public QR origin not updated');
 for (const [kind,pixels] of [
   ['merchant-logo','660 × 660 px'],

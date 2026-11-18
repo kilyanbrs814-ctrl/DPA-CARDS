@@ -7,6 +7,9 @@
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="stylesheet" href="/install-app.css">
+<script src="/install-app.js" defer></script>
 <title>DPA Cards</title>
 <!-- React 18.3.1 UMD, vendored locally (same version dc-runtime would otherwise
      pull from unpkg). Defining the globals up front makes support.js skip its
@@ -2253,6 +2256,8 @@ const JOIN_SLUG=(()=>{ try{ const r=/^\/join\/([^\/]+)\/?$/.exec(window.location
 // Local dev keeps its own origin for testing; no link depends on Vercel.
 const PUBLIC_SITE=/^https?:$/.test(window.location.protocol)&&/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)?window.location.origin:'https://cards.digitalprojectagency.fr';
 const DPA_NATIVE_IOS=window.location.protocol==='capacitor:';
+const DPA_NATIVE_LANDING=DPA_NATIVE_IOS&&/^\/(?:index\.html)?$/.test(window.location.pathname)&&!!document.querySelector('meta[name="dpa-native-landing"]');
+const DPA_SIGNUP_LINK=!DPA_NATIVE_IOS&&/^\/connexion(?:\.html)?\/?$/.test(window.location.pathname)&&new URLSearchParams(window.location.search).get('mode')==='inscription';
 function joinUrl(slug){ return PUBLIC_SITE+'/join/'+slug; }
 // Return from Stripe Checkout: /subscription/success?session_id=… or /subscription/cancel.
 const SUB_RETURN=(()=>{ try{ const r=/^\/subscription\/(success|cancel)\/?$/.exec(window.location.pathname); return r?r[1]:null; }catch(e){ return null; } })();
@@ -2562,6 +2567,10 @@ class Component extends DCLogic {
     if(this.state.demo||this._settingPassword) return;
     if(ev==='PASSWORD_RECOVERY'||(session&&this.api.recoveryPending)){ this._liveUid=null; this.setState({screen:'reset',busy:false,err:{},f:{...this.state.f,pwdNew:'',pwdConf:''}}); return; }
     if(ev==='SIGNED_OUT'){ if(this.state.live||this.state.screen==='mfaChallenge') this.resetToLogin(); return; }
+    if(ev==='INITIAL_SESSION'&&!session&&this.state.screen==='login'&&!this.api.linkError&&!this.api.recoveryPending){
+      if(DPA_NATIVE_LANDING) { window.location.replace('/landing.html'); return; }
+      if(DPA_SIGNUP_LINK) this.go('signup');
+    }
     if(session&&this.state.screen!=='workspaceError'&&(ev==='INITIAL_SESSION'||ev==='SIGNED_IN')&&!this._opening&&this._liveUid!==session.user.id) this.openLive(session);
   }
   resetToLogin(extra={}){ this._liveUid=null; this._req={}; useCalendar(false); this.setState({...this.initState(),w:window.innerWidth,remember:this.state.remember,screen:'login',...extra}); this.scrollTop(); }
@@ -2943,7 +2952,7 @@ class Component extends DCLogic {
           program:{name:'Club '+o.biz.trim(),mode:o.mode,goal:+o.goal,reward:o.reward.trim(),bg:'#FFFFFF',accent:'#EFEDE8',pattern:'none',logo:initials(o.biz).slice(0,4).toUpperCase(),conditions:'Une validation par visite.'}});
         merchant=this.api.toMerchant(r.merchant,m.email); program=r.program;
         if(o.mode==='points')program=await this.api.saveRules(program.id,{mode:o.mode,goal:o.goal,reward:o.reward,pointsBasis:o.pointsBasis||'visit',pointsRate:o.pointsRate??10});
-        if(s.addingProfile || this.api.switchProfile){window.location.replace('/');return;}}
+        if(s.addingProfile || this.api.switchProfile){window.location.replace('/connexion');return;}}
       if(program.designStatus==='draft'&&(program.mode!==o.mode||+program.goal!==+o.goal||program.reward!==o.reward.trim()||program.pointsBasis!==(o.pointsBasis||'visit')||program.pointsRate!==+(o.pointsRate??10))) program=await this.api.saveRules(program.id,{mode:o.mode,goal:o.goal,reward:o.reward,pointsBasis:o.pointsBasis||'visit',pointsRate:o.pointsRate??10});
       if(o.biz.trim()!==merchant.business||activity!==merchant.activity){ const row=await this.api.saveMerchant(merchant.id,{business_name:o.biz.trim(),activity}); merchant=this.api.toMerchant(row,m.email); }
       if(program.designStatus!=='draft'){ this.setState({busy:false,merchant,sd:{...merchant},program,draft:{...program}}); return this.go(program.designStatus==='pending_dpa'?'designSent':'home'); }

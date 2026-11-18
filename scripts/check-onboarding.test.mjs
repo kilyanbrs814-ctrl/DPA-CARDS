@@ -4,11 +4,34 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const script=html.match(/<script type="text\/x-dc"[^>]*>([\s\S]*?)<\/script>/)[1];
-function app(){
- const context=vm.createContext({window:{innerWidth:1200,location:{pathname:'/',search:''}},document:{},console,setTimeout,clearTimeout,URLSearchParams,DCLogic:class {setState(p){Object.assign(this.state,typeof p==='function'?p(this.state):p);}}});
+function app(location={},hasLanding=false){
+ const context=vm.createContext({window:{innerWidth:1200,location:{pathname:'/',search:'',...location}},document:{querySelector:()=>hasLanding},console,setTimeout,clearTimeout,URLSearchParams,DCLogic:class {setState(p){Object.assign(this.state,typeof p==='function'?p(this.state):p);}}});
  vm.runInContext(script+'\nglobalThis.App=Component;',context);
  const a=new context.App(); a.reqId=()=> 'request'; a.settleReq=()=>{}; a.scrollTop=()=>{}; a.showToast=()=>{}; return a;
 }
+test('web creation CTA opens existing signup after an empty initial session',()=>{
+ const a=app({pathname:'/connexion',search:'?mode=inscription'});
+ a.api={};
+ a.onAuthEvent('INITIAL_SESSION',null);
+ assert.equal(a.state.screen,'signup');
+});
+test('iPhone opens the bundled landing only when launching without a session',()=>{
+ const destinations=[];
+ const location={protocol:'capacitor:',pathname:'/',replace:path=>destinations.push(path)};
+ const a=app(location,true);
+ a.api={};
+ a.onAuthEvent('INITIAL_SESSION',null);
+ assert.deepEqual(destinations,['/landing.html']);
+ const login=app({...location,pathname:'/connexion.html',search:'?mode=inscription'},true);
+ login.api={};
+ login.onAuthEvent('INITIAL_SESSION',null);
+ assert.equal(login.state.screen,'login');
+ assert.equal(destinations.length,1);
+ const session={user:{id:'merchant'}};
+ a.openLive=live=>assert.equal(live,session);
+ a.onAuthEvent('INITIAL_SESSION',session);
+ assert.equal(destinations.length,1);
+});
 test('Other profession is required, sent to merchant persistence and restored on resume',async()=>{
  const a=app(); a.state.ob={...a.state.ob,biz:'Fleurs',activity:'Autre',otherActivity:''}; a.obNext(); assert.equal(a.state.ob.step,1); assert.ok(a.state.err.obactivity);
  a.state.ob.otherActivity=' Fleuriste '; a.obNext(); assert.equal(a.state.ob.step,2);

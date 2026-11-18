@@ -21,7 +21,7 @@ export function makeProfileControls(React) {
   React.useEffect(()=>{
    if(!native&&needsActivation && new URLSearchParams(location.search).has('profile_payment')){
     setPaymentOpen(true);run(async()=>{const r=await api.billing.profileResume();
-     if(r.operation?.status==='complete'){history.replaceState(null,'','/');onActivated();return;}
+     if(r.operation?.status==='complete'){history.replaceState(null,'','/connexion');onActivated();return;}
      if(r.operation?.status==='cancelled'){setError(r.operation.stripe_refund_id?'Le paiement a été remboursé car votre facturation a changé. Actualisez le récapitulatif pour reprendre.':'Ce parcours de paiement a expiré. Vous pouvez reprendre l’activation.');return;}
      if(r.operation){setOperation(r.operation);setQuote(r.operation.quote);} });
    }
@@ -71,7 +71,8 @@ export function makeProfileControls(React) {
        style:{...button,display:'flex',alignItems:'center',gap:12,textAlign:'left',borderColor:p.id===merchant.id?'var(--dpa-link,#2448F0)':'var(--dpa-border,#D4D1C9)'},
        onClick:()=>{if(p.id!==merchant.id)run(()=>api.switchProfile(p.id));}},p.logo&&h('img',{src:p.logo,alt:'',width:36,height:36,style:{objectFit:'contain',borderRadius:8}}),
        h('span',{style:{flex:1}},p.name),p.id===merchant.id&&h('span',{style:{color:'var(--dpa-link,#2448F0)'}},'Sélectionné'))),
-      !native&&merchant.id&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')&&h('button',{type:'button',style:primary,disabled:working||busy,onClick:()=>{close();onAdd();}},'Ajouter un commerce')),
+      !native&&merchant.id&&profiles.some(p=>p.id===merchant.id&&p.role==='owner')&&h('button',{type:'button',style:primary,disabled:working||busy,onClick:()=>{close();onAdd();}},'Ajouter un commerce'),
+      !native&&h('dpa-install-app',{'data-context':'profile'})),
      quote&&h(React.Fragment,null,
       h('dl',{style:{margin:0}},...rows.map(([k,v])=>h('div',{key:k,style:{display:'flex',justifyContent:'space-between',gap:16,padding:'12px 0',borderBottom:'1px solid var(--dpa-border-soft,#E4E1DA)',flexWrap:'wrap'}},h('dt',null,k),h('dd',{style:{margin:0,fontWeight:700}},v)))),
       h('p',{style:{fontSize:14,color:'var(--dpa-muted,#5E636B)',lineHeight:1.5}},'20 €/mois par commerce, sans remise dégressive. Les frais d’activation sont uniques et identiques avec ou sans engagement. Les modalités d’engagement existantes sont conservées.'),

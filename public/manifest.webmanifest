@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "DPA Cards",
+  "short_name": "DPA Cards",
+  "lang": "fr",
+  "start_url": "/connexion",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#5022ae",
+  "background_color": "#f4f1fb",
+  "icons": [
+    {"src": "/assets/dpa-install-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "/assets/dpa-install-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}
+  ]
+}

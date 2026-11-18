@@ -16,5 +16,5 @@ export function rememberProfile(storage, userId, merchantId) {
 export function changeProfile(storage, location, userId, merchantId, memberships) {
   if (!memberships.some(m => m.merchant_id === merchantId)) throw new Error('forbidden');
   rememberProfile(storage, userId, merchantId);
-  location.replace('/');
+  location.replace(location.protocol === 'capacitor:' ? '/connexion.html' : '/connexion');
 }

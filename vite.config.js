@@ -1,26 +1,57 @@
+import { copyFileSync, existsSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import { defineConfig } from 'vite';
 
-// Same rules as public/_redirects (Cloudflare Pages), for `vite` and `vite preview`: /join/<slug> and the Stripe return pages
-// (/subscription/success, /subscription/cancel) are served by index.html, the legal pages by their
-// own HTML file. Every other path keeps the MPA behaviour.
-const joinRoute = {
-  name: 'dpa-join-route',
-  configureServer(server) { server.middlewares.use(rewriteJoin); },
-  configurePreviewServer(server) { server.middlewares.use(rewriteJoin); },
-};
-function rewriteJoin(req, res, next) {
-  const url = req.url || '';
-  const legal = /^\/(mentions-legales|confidentialite|cgv)\/?(\?|$)/.exec(url);
-  if (/^\/join\/[^/?#]+\/?(\?|$)/.test(url) || /^\/(subscription|design)\/(success|cancel)\/?(\?|$)/.test(url)) req.url = '/index.html' + (url.includes('?') ? url.slice(url.indexOf('?')) : '');
-  else if (legal) req.url = '/' + legal[1] + '.html';
-  next();
+const hasLanding = existsSync(new URL('./landing.html', import.meta.url));
+const merchantRoute = /^\/(?:connexion(?:\.html)?|join\/[^/]+|(?:subscription|design)\/(?:success|cancel))\/?$/;
+const staticPage = /^\/(admin|mentions-legales|confidentialite|cgv|activation-result)\/?$/;
+
+function serveRoutes(merchant, landing) {
+  return (req, _res, next) => {
+    const { pathname, search } = new URL(req.url || '/', 'http://localhost');
+    const page = staticPage.exec(pathname)?.[1];
+    if (merchantRoute.test(pathname)) req.url = merchant + search;
+    else if (page) req.url = '/' + page + '.html' + search;
+    else if (landing && pathname === '/') req.url = landing + search;
+    next();
+  };
 }
+
+const entries = {
+  name: 'dpa-entrypoints',
+  configureServer(server) {
+    server.middlewares.use(serveRoutes('/index.html', hasLanding && '/landing.html'));
+  },
+  configurePreviewServer(server) {
+    server.middlewares.use(serveRoutes('/connexion.html'));
+  },
+  transformIndexHtml: {
+    order: 'pre',
+    handler(_html, { filename }) {
+      if (basename(filename) !== 'landing.html') return [];
+      return [
+        {tag: 'meta', attrs: {name: 'referrer', content: 'no-referrer'}, injectTo: 'head-prepend'},
+        {tag: 'script', attrs: {src: '/landing-start.js'}, injectTo: 'head-prepend'},
+        {tag: 'style', children: 'html.dpa-native-ios [data-dpa-web-only], html.dpa-native-ios dpa-install-app { display:none!important }', injectTo: 'head-prepend'},
+        {tag: 'link', attrs: {rel: 'manifest', href: '/manifest.webmanifest'}},
+        {tag: 'link', attrs: {rel: 'stylesheet', href: '/install-app.css'}},
+        {tag: 'script', attrs: {src: '/install-app.js', defer: true}},
+        {tag: 'script', attrs: {type: 'module', src: '/src/native-landing.js'}},
+      ];
+    },
+  },
+  writeBundle({ dir }) {
+    const app = join(dir, 'index.html');
+    copyFileSync(app, join(dir, 'connexion.html'));
+    if (hasLanding) copyFileSync(join(dir, 'landing.html'), app);
+  },
+};
 
 export default defineConfig({
   root: '.',
   appType: 'mpa',
   publicDir: 'public',
-  plugins: [joinRoute],
+  plugins: [entries],
   server: { port: 5173, strictPort: false, open: false, allowedHosts: ['terminal.local'] },
   build: {
     outDir: 'dist',
@@ -29,7 +60,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: 'index.html',
+        ...(hasLanding ? { landing: 'landing.html' } : {}),
         admin: 'admin.html',
+        activationResult: 'activation-result.html',
         mentions: 'mentions-legales.html',
         confidentialite: 'confidentialite.html',
         cgv: 'cgv.html',

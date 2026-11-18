@@ -4,6 +4,12 @@ name: Upload signed iOS build to TestFlight
 # Only runs after Apple signing materials are configured in GitHub Actions secrets.
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Open marketing version in App Store Connect
+        required: true
+        type: string
+        default: '1.2'
 
 permissions:
   contents: read
@@ -15,6 +21,7 @@ jobs:
     env:
       APP_BUNDLE_ID: fr.digitalprojectagency.cards
       APP_TEAM_ID: HDK7R3283T
+      MARKETING_VERSION: ${{ inputs.version }}
       CERT_B64: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
       CERT_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
       PROFILE_B64: ${{ secrets.IOS_APPSTORE_PROFILE_BASE64 }}
@@ -25,6 +32,10 @@ jobs:
       - name: Check signing configuration
         shell: bash
         run: |
+          if [[ ! "$MARKETING_VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "::error::A numeric App Store version such as 1.2 is required."
+            exit 1
+          fi
           for name in CERT_B64 CERT_PASSWORD PROFILE_B64 ASC_API_KEY_B64 ASC_API_KEY_ID ASC_API_ISSUER_ID; do
             if [[ -z "${!name}" ]]; then
               echo "::error::Missing required iOS signing secret: $name"
@@ -50,6 +61,7 @@ jobs:
           node --test scripts/check-native-wallet-notifications.test.mjs
           node --test scripts/check-dual-logo-wallet.test.mjs scripts/check-ios-bundle-current.test.mjs
           npm run test:real-apple
+          node scripts/prepare-ios-web.mjs
           npx cap add ios
           npx cap sync ios
           # Fail the iOS release if the current lavender workspace image was omitted.
@@ -116,7 +128,7 @@ jobs:
             -scheme App -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath "$RUNNER_TEMP/DPA-Cards.xcarchive" \
-            MARKETING_VERSION='1.2' \
+            MARKETING_VERSION="$MARKETING_VERSION" \
             CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
             archive
 

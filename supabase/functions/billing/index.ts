@@ -711,7 +711,7 @@ async function portal(req: Request): Promise<Response> {
   if (!row?.stripe_customer_id) throw new HttpError(409, 'no_subscription');
   // During a 12-month commitment the portal configuration has cancellation turned off.
   const configuration = commitmentRunning(row) ? Deno.env.get('STRIPE_PORTAL_CONFIG_COMMITMENT') : Deno.env.get('STRIPE_PORTAL_CONFIG_DEFAULT');
-  const p = await s.billingPortal.sessions.create({ customer: row.stripe_customer_id, return_url: `${siteOrigin(req)}/`, ...(configuration ? { configuration } : {}), locale: 'fr' });
+  const p = await s.billingPortal.sessions.create({ customer: row.stripe_customer_id, return_url: `${siteOrigin(req)}/connexion`, ...(configuration ? { configuration } : {}), locale: 'fr' });
   return json(req, 200, { url: p.url });
 }
 

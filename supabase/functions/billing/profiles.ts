@@ -108,7 +108,7 @@ export function profileBilling(d: any) {
   if(q.proration_collection==='now' && q.proration_cents>0)items.push({price_data:{currency:'eur',unit_amount:q.proration_cents,product_data:{name:'Complément au prorata de la période prépayée restante'}},quantity:1});
   const cs=found||await s.checkout.sessions.create({mode:'payment',customer:c.row.stripe_customer_id,payment_method_types:['card','sepa_debit'],line_items:items,metadata,
    payment_intent_data:{metadata},invoice_creation:{enabled:true,invoice_data:{metadata}},locale:'fr',
-   success_url:`${origin}/?profile_payment=return`,cancel_url:`${origin}/?profile_payment=cancel`,
+   success_url:`${origin}/connexion?profile_payment=return`,cancel_url:`${origin}/connexion?profile_payment=cancel`,
    custom_text:{submit:{message:`Activation unique : ${(q.activation_cents/100).toFixed(2)} €. Nouveau total : ${(q.new_monthly_cents/100).toFixed(2)} €/mois pour ${q.new_count} commerces. ${q.proration_collection==='next_invoice'?'Prorata sur la prochaine facture.':'Complément de période prépayée inclus.'}`}}
   },{idempotencyKey:`dpa-profile-checkout-${op.id}`});
   op=await save(op.id,{stripe_session_id:cs.id});
