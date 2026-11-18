@@ -24,26 +24,17 @@ img, svg { max-width: 100%; }
 .material-symbols-rounded { font-variation-settings: 'wght' 400, 'opsz' 24; user-select: none; }
 
 /* L'illustration lavande partagée (glass.css ::before) reste telle quelle, comme
-   sur la connexion : aucun voile ne la recouvre. La lisibilité vient des surfaces
-   translucides, qui portent tous les textes de la page. */
-
-/* Les surfaces de la vitrine sont un peu plus denses que celles de la connexion :
-   la page porte de longs paragraphes sur toute la hauteur du fond lavande, et le
-   contraste du texte doit tenir partout. Un panneau posé dans un panneau est plus
-   dense encore, sans perdre le flou du verre. */
-.dpa-l-panel,
-.dpa-l-hero-text,
-.dpa-l-final,
+   sur la connexion : aucun voile ne la recouvre. Les textes courts sont posés
+   dessus ; seuls les blocs denses — tarifs, questions, pied de page — gardent
+   une surface translucide, comme la carte de la connexion. */
+.dpa-l-plan,
+.dpa-l-faq,
 .dpa-l-footer { background: var(--dpa-surface, #fff); }
-.dpa-l-panel .dpa-glass-surface { background: var(--dpa-surface, #fff); }
 @supports (backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px)) {
-  .dpa-l-panel,
-  .dpa-l-hero-text,
-  .dpa-l-final,
-  .dpa-l-footer { background: rgba(243, 243, 246, 0.46); }
-  html[data-dpa-theme="dark"] :is(.dpa-l-panel, .dpa-l-hero-text, .dpa-l-final, .dpa-l-footer) { background: rgba(27, 38, 57, 0.78); }
-  .dpa-l-panel .dpa-glass-surface { background: rgba(252, 252, 253, 0.56); }
-  html[data-dpa-theme="dark"] .dpa-l-panel .dpa-glass-surface { background: rgba(27, 38, 57, 0.66); }
+  .dpa-l-plan,
+  .dpa-l-faq,
+  .dpa-l-footer { background: rgba(250, 250, 252, 0.52); }
+  html[data-dpa-theme="dark"] :is(.dpa-l-plan, .dpa-l-faq, .dpa-l-footer) { background: rgba(27, 38, 57, 0.74); }
 }
 
 /* ---------- Trame commune ---------- */
@@ -52,6 +43,9 @@ img, svg { max-width: 100%; }
   left: -9999px;
   top: 8px;
   z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   padding: 10px 16px;
   border-radius: 12px;
   background: var(--dpa-surface, #fff);
@@ -63,10 +57,9 @@ img, svg { max-width: 100%; }
 
 .dpa-l-wrap { width: 100%; max-width: 1180px; margin: 0 auto; padding-inline: clamp(16px, 4vw, 40px); }
 
-.dpa-l-section { padding-block: clamp(40px, 6vw, 88px); }
+.dpa-l-section { padding-block: clamp(44px, 6vw, 92px); }
 /* L'en-tête collant ne doit pas masquer le titre d'une section atteinte par une ancre. */
 .dpa-l-section[id], #contenu { scroll-margin-top: 84px; }
-.dpa-l-panel { border-radius: 26px; padding: clamp(22px, 3.2vw, 42px); }
 
 .dpa-l-eyebrow {
   margin: 0 0 10px;
@@ -88,14 +81,14 @@ html[data-dpa-theme="dark"] .dpa-l-eyebrow { color: var(--dpa-link, #a9baff); }
 }
 .dpa-l-h3 { margin: 0; font-weight: 700; font-size: 18px; line-height: 1.25; letter-spacing: -0.01em; }
 .dpa-l-lead {
-  margin: 0 0 clamp(20px, 3vw, 34px);
+  margin: 0 0 clamp(20px, 3vw, 32px);
   max-width: 62ch;
   color: var(--dpa-secondary, #3E424A);
   font-size: clamp(16px, 1.3vw, 18px);
   line-height: 1.55;
   text-wrap: pretty;
 }
-.dpa-l-note { margin: 0; color: var(--dpa-secondary, #3E424A); font-size: 14px; line-height: 1.5; }
+.dpa-l-note { margin: 18px 0 0; max-width: 78ch; color: var(--dpa-secondary, #3E424A); font-size: 14px; line-height: 1.55; }
 .dpa-l-body { margin: 0; color: var(--dpa-secondary, #3E424A); font-size: 15px; line-height: 1.55; }
 
 /* ---------- Boutons ---------- */
@@ -153,43 +146,64 @@ html[data-dpa-theme="dark"] .dpa-l-eyebrow { color: var(--dpa-link, #a9baff); }
 .dpa-l-login:hover { background: #1A36C4; color: #fff; }
 .dpa-l-menu { display: none; }
 
-/* ---------- Premier écran ---------- */
-.dpa-l-hero { display: grid; grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr); gap: clamp(20px, 2.6vw, 34px); align-items: center; }
-.dpa-l-hero-text { border-radius: 28px; padding: clamp(22px, 3vw, 40px); }
+/* ---------- Premier écran ----------
+   Titre, sous-titre et boutons centrés sur le fond, puis le visuel produit. */
+.dpa-l-hero { text-align: center; padding-top: clamp(28px, 3.2vw, 48px); padding-bottom: clamp(16px, 2vw, 32px); }
 .dpa-l-hero h1 {
-  margin: 0 0 14px;
+  margin: 0 auto 16px;
+  max-width: 17ch;
   font-weight: 800;
-  font-size: clamp(34px, 5.2vw, 60px);
+  font-size: clamp(34px, 5.4vw, 62px);
   line-height: 1.03;
   letter-spacing: -0.038em;
   text-wrap: balance;
 }
-.dpa-l-wallets { display: flex; align-items: center; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
-.dpa-l-wallets img { height: 40px; width: auto; display: block; border-radius: 8px; }
-.dpa-l-wallet-note { color: var(--dpa-secondary, #3E424A); font-size: 14px; line-height: 1.45; max-width: 30ch; }
-
-/* ---------- Aperçus produit ---------- */
-.dpa-l-preview { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 272px), 1fr)); align-items: start; justify-items: center; }
-.dpa-l-shot { width: 100%; max-width: 340px; margin: 0; }
-.dpa-l-shot-label {
-  display: block;
-  margin: 12px auto 0;
-  width: fit-content;
-  max-width: 100%;
-  padding: 7px 13px;
-  border: 1px solid var(--dpa-glass-border);
-  border-radius: 999px;
-  background: var(--dpa-surface, #fff);
+.dpa-l-hero-lead {
+  margin: 0 auto clamp(24px, 3vw, 34px);
+  max-width: 56ch;
   color: var(--dpa-secondary, #3E424A);
-  font-size: 13px;
-  line-height: 1.4;
-  text-align: center;
-  text-wrap: balance;
+  font-size: clamp(17px, 1.4vw, 20px);
+  line-height: 1.5;
+  text-wrap: pretty;
 }
-@supports (backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px)) {
-  .dpa-l-shot-label { background: rgba(252, 252, 253, 0.62); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
-  html[data-dpa-theme="dark"] .dpa-l-shot-label { background: rgba(27, 38, 57, 0.7); }
+.dpa-l-hero .dpa-l-actions { justify-content: center; }
+
+/* Le visuel est traité comme un produit posé sur le fond : pas de cadre, pas de
+   légende, pas de fond propre. Ses dimensions intrinsèques sont déclarées dans
+   le HTML pour que la page ne bouge pas au chargement.
+   Sa hauteur est bornée par celle de la fenêtre pour que les deux téléphones
+   restent sur le premier écran, sans jamais dépasser leur taille réelle. */
+.dpa-l-phones { display: flex; justify-content: center; margin-top: clamp(22px, 2.6vw, 38px); }
+.dpa-l-phones img { display: block; width: auto; height: auto; max-width: min(100%, 900px); max-height: min(58vh, 720px); }
+
+/* ---------- Parcours ---------- */
+.dpa-l-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: clamp(22px, 3vw, 36px);
 }
+.dpa-l-step { display: flex; flex-direction: column; gap: 10px; }
+.dpa-l-step-no {
+  width: 38px; height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(110deg, #5022AE, #6235C9);
+  color: #fff;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 17px;
+}
+
+/* ---------- Démonstrations ---------- */
+.dpa-l-demos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: clamp(26px, 3.4vw, 44px); align-items: start; }
+.dpa-l-demo { display: grid; gap: 12px; width: 100%; max-width: 420px; margin-inline: auto; }
+.dpa-l-demo > .dpa-l-h3 { margin-top: 6px; }
+
+/* Les deux modes de fidélité, tels qu'ils sont présentés dans l'espace commerçant. */
+.dpa-l-modes { display: flex; width: fit-content; gap: 6px; margin: 2px auto 0; padding: 4px; border-radius: 999px; background: var(--dpa-subtle, #F1EFFB); }
+.dpa-l-mode { padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--dpa-secondary, #4A4E55); }
+.dpa-l-mode.is-on { background: var(--dpa-surface, #fff); color: var(--dpa-text, #1C1F24); font-weight: 700; box-shadow: 0 1px 4px rgba(20, 22, 28, 0.14); }
 
 /* Carte de fidélité : même structure que le composant LoyaltyCard du produit. */
 .dpa-l-card {
@@ -267,8 +281,8 @@ html[data-dpa-theme="dark"] .dpa-l-eyebrow { color: var(--dpa-link, #a9baff); }
   display: grid; place-items: center;
   font-weight: 800; font-size: 17px;
 }
-.dpa-l-scan-who h3 { margin: 0; font-weight: 800; font-size: 26px; letter-spacing: -0.02em; line-height: 1.05; }
-.dpa-l-scan-who p { margin: 4px 0 0; font-size: 14px; color: var(--dpa-secondary, #4A4E55); }
+.dpa-l-scan-name { margin: 0; font-weight: 800; font-size: 26px; letter-spacing: -0.02em; line-height: 1.05; }
+.dpa-l-scan-who p + p { margin: 4px 0 0; font-size: 14px; color: var(--dpa-secondary, #4A4E55); }
 .dpa-l-scan-who code { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; }
 .dpa-l-scan-box { background: var(--dpa-subtle, #F6F5F1); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .dpa-l-scan-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -288,63 +302,29 @@ html[data-dpa-theme="dark"] .dpa-l-eyebrow { color: var(--dpa-link, #a9baff); }
 }
 .dpa-l-scan-ok .material-symbols-rounded { font-size: 24px; }
 
-/* ---------- Parcours ---------- */
-.dpa-l-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 16px; }
-.dpa-l-step { border-radius: 22px; padding: 22px; display: flex; flex-direction: column; gap: 10px; }
-.dpa-l-step-no {
-  width: 38px; height: 38px;
-  border-radius: 12px;
-  background: linear-gradient(110deg, #5022AE, #6235C9);
-  color: #fff;
-  display: grid; place-items: center;
-  font-weight: 800; font-size: 17px;
+/* ---------- Tarifs ----------
+   Deux cartes comparables : mêmes rubriques, dans le même ordre, alignées
+   l'une en face de l'autre dès que les deux tiennent côte à côte. */
+.dpa-l-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 18px; }
+.dpa-l-plan {
+  border-radius: 22px;
+  padding: clamp(20px, 2.4vw, 28px);
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 4;
+  gap: 16px;
+  align-content: start;
 }
-.dpa-l-qr-tags { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; margin-top: 20px; }
-.dpa-l-qr-tag { border-radius: 20px; padding: 18px; display: flex; gap: 16px; align-items: flex-start; }
-.dpa-l-qr-tag img { width: 92px; height: 92px; flex: none; background: #fff; padding: 7px; border-radius: 12px; }
-.dpa-l-qr-tag h3 { margin: 0 0 4px; }
-.dpa-l-qr-who {
-  display: inline-block;
-  margin-top: 8px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--dpa-info-bg, #E8EDFF);
-  color: var(--dpa-link-strong, #1A36C4);
-  font-weight: 700; font-size: 12px;
+@supports not (grid-template-rows: subgrid) {
+  .dpa-l-plan { grid-template-rows: none; grid-row: auto; }
 }
-
-/* ---------- Fonctionnalités ---------- */
-.dpa-l-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 272px), 1fr)); gap: 16px; }
-.dpa-l-feature { border-radius: 22px; padding: 22px; display: flex; flex-direction: column; gap: 10px; }
-.dpa-l-feature-icon {
-  width: 46px; height: 46px;
-  border-radius: 14px;
-  background: var(--dpa-info-bg, #E8EDFF);
-  color: var(--dpa-link, #2448F0);
-  display: grid; place-items: center;
-}
-.dpa-l-feature-icon .material-symbols-rounded { font-size: 25px; }
-
-/* ---------- Tarifs ---------- */
-.dpa-l-plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; align-items: start; }
-.dpa-l-plan { border-radius: 22px; padding: 24px; display: flex; flex-direction: column; gap: 14px; }
-.dpa-l-plan-tag {
-  align-self: flex-start;
-  padding: 4px 11px;
-  border-radius: 999px;
-  background: var(--dpa-info-bg, #E8EDFF);
-  color: var(--dpa-link-strong, #1A36C4);
-  font-weight: 700; font-size: 12px;
-}
-.dpa-l-price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.dpa-l-price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0; }
 .dpa-l-price b { font-weight: 800; font-size: 40px; letter-spacing: -0.03em; line-height: 1; }
 .dpa-l-price span { color: var(--dpa-secondary, #3E424A); font-size: 15px; font-weight: 600; }
-.dpa-l-plan ul { margin: 0; padding-left: 20px; display: grid; gap: 7px; }
-.dpa-l-plan li { font-size: 15px; line-height: 1.5; color: var(--dpa-secondary, #3E424A); }
-.dpa-l-included { margin-top: 20px; border-radius: 20px; padding: 20px; }
-.dpa-l-included ul { margin: 10px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 8px 18px; }
-.dpa-l-included li { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--dpa-secondary, #3E424A); }
-.dpa-l-included .material-symbols-rounded { font-size: 19px; color: var(--dpa-success, #1F7A4F); flex: none; }
+.dpa-l-plan-rows { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 10px 18px; align-content: start; }
+.dpa-l-plan-rows dt { font-weight: 700; font-size: 14px; letter-spacing: 0.01em; }
+.dpa-l-plan-rows dd { margin: 0; color: var(--dpa-secondary, #3E424A); font-size: 15px; line-height: 1.5; }
+.dpa-l-plan .dpa-l-cta { align-self: end; }
 
 /* ---------- FAQ ---------- */
 .dpa-l-faq { border-radius: 24px; padding: 6px clamp(18px, 2.4vw, 28px); }
@@ -357,23 +337,26 @@ html[data-dpa-theme="dark"] .dpa-l-eyebrow { color: var(--dpa-link, #a9baff); }
 .dpa-l-faq details > p { margin-left: 18px; }
 .dpa-l-faq p { margin: 8px 0 0; color: var(--dpa-secondary, #4A4E55); font-size: 15px; line-height: 1.6; }
 
-/* ---------- Dernier appel + pied de page ---------- */
-.dpa-l-final { border-radius: 28px; padding: clamp(26px, 4vw, 52px); text-align: center; }
-.dpa-l-final .dpa-l-actions { justify-content: center; }
-.dpa-l-final .dpa-l-lead { margin-inline: auto; }
+/* ---------- Dernier accès + pied de page ---------- */
+.dpa-l-end { text-align: center; padding-top: clamp(24px, 3vw, 48px); }
+.dpa-l-end .dpa-l-h2 { margin-bottom: clamp(18px, 2.4vw, 26px); }
+.dpa-l-end .dpa-l-actions { justify-content: center; }
 
-.dpa-l-footer { border-radius: 24px 24px 0 0; margin-top: clamp(28px, 4vw, 56px); padding: clamp(22px, 3vw, 34px) clamp(18px, 3vw, 34px) calc(24px + var(--dpa-safe-bottom, 0px)); }
-.dpa-l-footer-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 176px), 1fr)); gap: 24px 28px; align-items: start; }
-.dpa-l-footer h2 { margin: 0 0 8px; font-size: 15px; font-weight: 800; }
-.dpa-l-footer ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
-.dpa-l-footer li a { font-size: 15px; font-weight: 600; text-decoration: none; display: inline-flex; min-height: 32px; align-items: center; }
-.dpa-l-footer li a:hover { text-decoration: underline; }
-.dpa-l-legal { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--dpa-border-soft, #EFEDE8); color: var(--dpa-secondary, #3E424A); font-size: 13px; line-height: 1.5; }
+.dpa-l-footer {
+  border-radius: 24px 24px 0 0;
+  margin-top: clamp(12px, 2vw, 24px);
+  padding: clamp(20px, 2.6vw, 28px) clamp(18px, 3vw, 32px) calc(22px + var(--dpa-safe-bottom, 0px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 28px;
+}
+.dpa-l-footer-links { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; margin-left: auto; }
+.dpa-l-footer-links a { font-size: 15px; font-weight: 600; text-decoration: none; display: inline-flex; min-height: 44px; align-items: center; }
+.dpa-l-footer-links a:hover { text-decoration: underline; }
+.dpa-l-legal { flex: 1 1 100%; margin: 0; padding-top: 14px; border-top: 1px solid var(--dpa-border-soft, #EFEDE8); color: var(--dpa-secondary, #3E424A); font-size: 13px; line-height: 1.55; }
 
 /* ---------- Adaptations ---------- */
-@media (max-width: 1099px) {
-  .dpa-l-hero { grid-template-columns: minmax(0, 1fr); }
-}
 @media (max-width: 860px) {
   .dpa-l-nav { display: none; }
   .dpa-l-menu { display: block; }
@@ -397,13 +380,16 @@ html[data-dpa-theme="dark"] .dpa-l-eyebrow { color: var(--dpa-link, #a9baff); }
   }
   .dpa-l-menu-panel a { min-height: 48px; justify-content: flex-start; padding-inline: 14px; width: 100%; }
   .dpa-l-login { padding-inline: 14px; }
+  .dpa-l-footer-links { margin-left: 0; }
 }
 @media (max-width: 560px) {
   .dpa-l-brand img { height: 34px; }
   .dpa-l-cta, .dpa-l-ghost { width: 100%; }
-  .dpa-l-qr-tag { flex-direction: column; }
   .dpa-l-scan-big { font-size: 34px; }
-  .dpa-l-footer-row { gap: 18px; }
+  .dpa-l-plan-rows { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .dpa-l-plan-rows dd { margin-bottom: 8px; }
+  /* Les deux téléphones gagnent la marge latérale : leurs écrans restent lisibles. */
+  .dpa-l-phones { width: calc(100% + 2 * clamp(16px, 4vw, 40px)); margin-inline: calc(-1 * clamp(16px, 4vw, 40px)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
