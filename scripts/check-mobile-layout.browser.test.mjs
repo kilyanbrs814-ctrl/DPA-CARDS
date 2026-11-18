@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {createServer} from 'vite';
 import {chromium} from '@playwright/test';
 test('iPhone viewport has one safe-area frame, no unnecessary page scroll and password setup survives auth events',async()=>{
- const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=server.resolvedUrls.local[0];
+ const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=new URL('/connexion',server.resolvedUrls.local[0]).href;
  const browser=await chromium.launch({headless:true});
  try{
  const page=await browser.newPage({viewport:{width:393,height:852}});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.setDefaultTimeout(5000);
