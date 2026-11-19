@@ -192,7 +192,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
 
       </div>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--dpa-muted,#5E636B)"><span style="display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap"><a href="/mentions-legales" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">Mentions légales</a><a href="/confidentialite" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">Confidentialité</a><a href="/cgv" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">CGV</a></span><a href="/admin.html" style="display:inline-flex;align-items:center;gap:6px;min-height:40px;font-weight:600;font-size:14px;text-decoration:none"><span class="material-symbols-rounded" style="font-size:18px">admin_panel_settings</span>Accès administrateur</a></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--dpa-muted,#5E636B)"><span style="display:inline-flex;align-items:center;gap:14px;flex-wrap:wrap"><a href="/mentions-legales" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">Mentions légales</a><a href="/confidentialite" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">Confidentialité</a><a href="/cgv" style="display:inline-flex;align-items:center;min-height:40px;font-size:13px">CGV</a> <dpa-build-info></dpa-build-info></span><a href="/admin.html" style="display:inline-flex;align-items:center;gap:6px;min-height:40px;font-weight:600;font-size:14px;text-decoration:none"><span class="material-symbols-rounded" style="font-size:18px">admin_panel_settings</span>Accès administrateur</a></div>
   </div>
   </div>
 </sc-if>
@@ -1916,7 +1916,8 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
           <details style="border-bottom:1px solid var(--dpa-border-soft,#EFEDE8);padding:14px 0"><summary style="font-weight:600;font-size:16px;cursor:pointer;min-height:28px">Un passage a été ajouté par erreur</summary><p style="margin:10px 0 0;color:var(--dpa-secondary,#4A4E55);font-size:15px;line-height:1.5">Ouvrez la fiche du client, choisissez « Corriger » sur l’opération concernée et indiquez un motif. La correction reste visible dans l’historique.</p></details>
           <details style="padding:14px 0"><summary style="font-weight:600;font-size:16px;cursor:pointer;min-height:28px">Mes clients doivent-ils installer une application ?</summary><p style="margin:10px 0 0;color:var(--dpa-secondary,#4A4E55);font-size:15px;line-height:1.5">Non. La carte s’ajoute à Apple Wallet ou Google Wallet depuis la page d’inscription. </p></details>
         </div>
-        <button type="button" onClick="{{ openSupport }}" style="min-height:54px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:14px;background:var(--dpa-surface,#FFFFFF);color:var(--dpa-text,#1C1F24);font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none"><span class="material-symbols-rounded" style="font-size:20px">mail</span>Écrire au support</button>
+        <button type="button" onClick="{{ openSupport }}" style="min-height:54px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:14px;background:var(--dpa-surface,#FFFFFF);color:var(--dpa-text,#1C1F24);font-weight:600;font-size:16px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none"><span class="material-symbols-rounded" style="font-size:20px">forum</span>Écrire au support</button>
+        <dpa-build-info></dpa-build-info>
       </sc-if>
     </div>
     </sc-if>
