@@ -87,7 +87,9 @@ export function makeMerchantMfaPanel(React) {
     return h(isReminder ? 'dialog' : 'section', container,
       isReminder && h('button', {type: 'button', className: 'dpa-mfa-close',
         'aria-label': 'Fermer le rappel de sécurité', disabled: busy, onClick: dismiss}, '×'),
-      isReminder && h('img', {src: '/assets/dpa-cards-logo.png', className: 'dpa-mfa-logo', alt: 'DPA Cards'}),
+      isReminder && h('span', {className: 'dpa-brand-pair dpa-mfa-brand'},
+        ...['light','dark'].map(theme => h('img', {key: theme, src: '/assets/dpa-cards-' + theme + '.svg',
+          className: 'dpa-brand-' + theme + ' dpa-mfa-logo', alt: 'DPA Cards'}))),
       h('h2', {id: titleId}, challenge ? 'Vérifiez votre connexion' : 'Protégez votre compte'),
       h('p', null, challenge
         ? 'Saisissez le code généré par votre application d’authentification.'
