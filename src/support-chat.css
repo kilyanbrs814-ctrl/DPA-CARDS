@@ -77,7 +77,7 @@
 }
 @media(prefers-reduced-motion:reduce) { .dpa-support-message { animation:none; }.dpa-support-history { scroll-behavior:auto; } }
 
-html[data-dpa-theme="dark"] :is(.dpa-experience-search,.dpa-experience-accents) { background:rgba(26,24,42,.66); }
+html[data-dpa-theme="dark"] .dpa-experience-search { background:rgba(26,24,42,.66); }
 
 .dpa-sidebar-footer .dpa-sidebar-item { position:relative; }
 .dpa-desktop-sidebar[data-expanded="false"] .dpa-support-badge { position:absolute;top:0;right:2px;min-width:16px;height:16px;padding:0 3px;font-size:10px; }
