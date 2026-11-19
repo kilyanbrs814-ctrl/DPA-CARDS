@@ -1,5 +1,6 @@
 // Vitrine publique DPA Cards : les comportements que le HTML seul ne couvre pas.
-// Aucune donnée client, aucun appel réseau, aucune dépendance au compte commerçant.
+// Le formulaire de contact reste indépendant du compte commerçant.
+import './landing-contact.js';
 
 // 0. Les deux téléphones du premier écran suivent légèrement le pointeur. Le
 //    flottement reste une animation CSS sur l'élément intérieur ; ce script ne

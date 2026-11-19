@@ -33,12 +33,14 @@ img, svg { max-width: 100%; }
    une surface translucide, comme la carte de la connexion. */
 .dpa-l-plan,
 .dpa-l-faq,
+.dpa-l-contact-form,
 .dpa-l-footer { background: var(--dpa-surface, #fff); }
 @supports (backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px)) {
   .dpa-l-plan,
   .dpa-l-faq,
+  .dpa-l-contact-form,
   .dpa-l-footer { background: rgba(250, 250, 252, 0.52); }
-  html[data-dpa-theme="dark"] :is(.dpa-l-plan, .dpa-l-faq, .dpa-l-footer) { background: rgba(27, 38, 57, 0.74); }
+  html[data-dpa-theme="dark"] :is(.dpa-l-plan, .dpa-l-faq, .dpa-l-contact-form, .dpa-l-footer) { background: rgba(27, 38, 57, 0.74); }
 }
 
 /* ---------- Trame commune ---------- */
@@ -408,7 +410,7 @@ html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
 /* ---------- Contact ---------- */
 .dpa-l-contact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: clamp(24px, 6vw, 72px); }
 .dpa-l-contact .dpa-l-lead { margin-bottom: 0; max-width: 44ch; }
-.dpa-l-contact-details { margin: 0; font-style: normal; border-top: 1px solid var(--dpa-border, #D4D1C9); }
+.dpa-l-contact-details { margin: 28px 0 0; font-style: normal; border-top: 1px solid var(--dpa-border, #D4D1C9); }
 .dpa-l-contact-link { display: flex; align-items: center; gap: 16px; padding-block: 20px; border-bottom: 1px solid var(--dpa-border, #D4D1C9); color: var(--dpa-text, #1C1F24); text-decoration: none; }
 .dpa-l-contact-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 14px; background: var(--dpa-subtle, #F1EFFB); color: var(--dpa-link-strong, #4A2AAE); font-size: 24px; }
 .dpa-l-contact-copy { display: grid; gap: 5px; min-width: 0; }
@@ -416,6 +418,23 @@ html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
 .dpa-l-contact-value { font-size: clamp(17px, 1.7vw, 22px); font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
 .dpa-l-contact-link:hover .dpa-l-contact-value { text-decoration: underline; text-underline-offset: 4px; }
 .dpa-l-contact-support { margin-top: 18px; }
+.dpa-l-contact-form { position: relative; min-width: 0; padding: clamp(18px, 2.4vw, 28px); border-radius: 24px; }
+.dpa-l-form-intro { margin: 10px 0 22px; font-size: 14px; color: var(--dpa-secondary, #4A4E55); line-height: 1.5; }
+.dpa-l-contact-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.dpa-l-contact-fields label { display: grid; align-content: start; gap: 8px; min-width: 0; font-size: 14px; font-weight: 700; }
+.dpa-l-contact-fields label small { font-size: inherit; font-weight: 400; color: var(--dpa-secondary, #4A4E55); }
+.dpa-l-contact-fields :is(input, select, textarea) { width: 100%; min-width: 0; min-height: 48px; padding: 12px; border: 1.5px solid var(--dpa-border, #D4D1C9); border-radius: 12px; background: var(--dpa-surface, #fff); color: var(--dpa-text, #1C1F24); font: inherit; font-size: 16px; font-weight: 400; line-height: 1.5; }
+.dpa-l-contact-fields textarea { resize: vertical; min-height: 136px; }
+.dpa-l-contact-fields ::placeholder { color: var(--dpa-placeholder, #6C717A); opacity: 1; }
+.dpa-l-contact-fields :is(input, select, textarea):focus { border-color: var(--dpa-link, #2448F0); }
+.dpa-l-field-full { grid-column: 1 / -1; }
+.dpa-l-form-privacy { margin: 18px 0; font-size: 13px; line-height: 1.5; color: var(--dpa-secondary, #4A4E55); }
+.dpa-l-contact-form > button { width: 100%; cursor: pointer; font-family: inherit; white-space: normal; }
+.dpa-l-contact-form > button:disabled { opacity: 0.65; cursor: wait; }
+.dpa-l-form-status { margin: 16px 0 0; min-height: 1.5em; font-size: 14px; line-height: 1.5; color: var(--dpa-secondary, #4A4E55); }
+.dpa-l-form-status[data-state="success"] { color: var(--dpa-success, #17583A); font-weight: 700; }
+.dpa-l-form-status[data-state="error"] { color: var(--dpa-danger, #AD1D32); }
+.dpa-l-visually-hidden, .dpa-l-contact-fields .dpa-l-contact-honeypot { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
 /* ---------- Dernier accès + pied de page ---------- */
 .dpa-l-end { text-align: center; padding-top: clamp(24px, 3vw, 48px); }
@@ -471,6 +490,7 @@ html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
   .dpa-l-phone-android { right: -18%; height: min(48svh, 468px); }
 }
 @media (max-width: 560px) {
+  .dpa-l-contact-fields { grid-template-columns: minmax(0, 1fr); }
   .dpa-l-brand img { height: 34px; }
   .dpa-l-cta, .dpa-l-ghost { width: 100%; }
   .dpa-l-scan-big { font-size: 34px; }

@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:static
+      - run: node --test scripts/check-contact-form.test.mjs
       - run: npm run test:apple
       - run: npm run test:real-apple
       - run: node --test scripts/check-dual-logo-wallet.test.mjs
@@ -55,4 +56,4 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - run: deno check --node-modules-dir=auto supabase/functions/wallet/index.ts supabase/functions/apple-pass/index.ts supabase/functions/billing/index.ts supabase/functions/merchant-team/index.ts
+      - run: deno check --node-modules-dir=auto supabase/functions/wallet/index.ts supabase/functions/apple-pass/index.ts supabase/functions/billing/index.ts supabase/functions/merchant-team/index.ts supabase/functions/public-contact/index.ts

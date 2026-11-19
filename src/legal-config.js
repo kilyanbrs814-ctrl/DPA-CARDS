@@ -33,5 +33,5 @@ export const LEGAL = {
 
   // Région du projet Supabase où sont stockées les données (voir le tableau de bord Supabase).
   DATA_REGION: TODO,
-  LAST_UPDATE: '11 octobre 2026',
+  LAST_UPDATE: '19 novembre 2026',
 };
