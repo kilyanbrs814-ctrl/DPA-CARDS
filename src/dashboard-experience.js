@@ -1,16 +1,8 @@
 import './dashboard-experience.css';
-const accents = [
-  { id: 'violet', label: 'Violet DPA', color: '#6935CB' },
-  { id: 'blue', label: 'Bleu', color: '#2448D8' },
-  { id: 'emerald', label: 'Émeraude', color: '#087867' },
-  { id: 'coral', label: 'Corail', color: '#B84047' },
-];
-const key = 'dpa.dashboard.accent.v1';
 const fold = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 export function makeDashboardExperience(React) {
   const h = React.createElement;
   return function DashboardExperience({ commands, pageKey, role }) {
-    const [accent, setAccent] = React.useState(() => { try { return localStorage.getItem(key) || 'violet'; } catch { return 'violet'; } });
     const [open, setOpen] = React.useState(false), [query, setQuery] = React.useState(''), [index, setIndex] = React.useState(0);
     const dialog = React.useRef(null), input = React.useRef(null), origin = React.useRef(null), toolbar = React.useRef(null), entered = React.useRef(false);
     const id = React.useId();
@@ -19,14 +11,10 @@ export function makeDashboardExperience(React) {
     const show = () => { if (document.querySelector('dialog[open], [aria-modal="true"]')) return; origin.current = document.activeElement; setQuery(''); setIndex(0); setOpen(true); };
     React.useEffect(() => {
       const root = document.documentElement;
-      root.dataset.dpaDashboard = role; root.dataset.dpaAccent = accents.some(a => a.id === accent) ? accent : 'violet';
-      try { localStorage.setItem(key, root.dataset.dpaAccent); } catch {}
+      root.dataset.dpaDashboard = role; root.dataset.dpaAccent = 'violet';
+      try { localStorage.removeItem('dpa.dashboard.accent.v1'); } catch {}
       return () => { delete root.dataset.dpaDashboard; delete root.dataset.dpaAccent; };
-    }, [accent, role]);
-    React.useEffect(() => {
-      const sync = event => { if (event.key === key) setAccent(event.newValue || 'violet'); };
-      window.addEventListener('storage', sync); return () => window.removeEventListener('storage', sync);
-    }, []);
+    }, [role]);
     React.useEffect(() => {
       const shortcut = event => {
         if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'k') {
@@ -69,10 +57,6 @@ export function makeDashboardExperience(React) {
       h('button', { type: 'button', className: 'dpa-experience-search', onClick: show, 'aria-haspopup': 'dialog' },
         h('svg', { viewBox: '0 0 24 24', width: 18, height: 18, fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, 'aria-hidden': true }, h('path', { d: 'm21 21-5-5M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15' })),
         h('span', null, 'Rechercher'), h('kbd', null, '⌘ / Ctrl K')),
-      h('div', { className: 'dpa-experience-accents', role: 'group', 'aria-label': 'Couleur du tableau de bord' },
-        h('span', null, 'Apparence'), accents.map(option => h('button', { type: 'button', key: option.id,
-          title: option.label, 'aria-label': option.label, 'aria-pressed': accent === option.id,
-          style: { '--swatch': option.color }, onClick: () => setAccent(option.id) }, h('i', { 'aria-hidden': true })))),
       h('dialog', { ref: dialog, className: 'dpa-command-dialog', 'aria-labelledby': id + '-title', onCancel: event => { event.preventDefault(); setOpen(false); },
         onClick: event => { if (event.target === dialog.current) { const r = dialog.current.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) setOpen(false); } } },
         h('header', null, h('h2', { id: id + '-title' }, 'Que souhaitez-vous ouvrir ?'), h('button', { type: 'button', onClick: () => setOpen(false), 'aria-label': 'Fermer la recherche' }, '×')),
