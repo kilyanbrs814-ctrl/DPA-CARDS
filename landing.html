@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<script src="/theme.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>DPA Cards — la carte de fidélité de votre commerce, sur iPhone et Android</title>
+<meta name="description" content="DPA Cards donne à votre commerce une carte de fidélité numérique. Vos clients l’ajoutent à Apple Cartes ou Google Wallet depuis votre QR code, et vous validez leurs passages en caisse.">
+<link rel="canonical" href="https://cards.digitalprojectagency.fr/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DPA Cards">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:url" content="https://cards.digitalprojectagency.fr/">
+<meta property="og:title" content="DPA Cards — votre carte de fidélité, sur iPhone et Android">
+<meta property="og:description" content="Carte de fidélité numérique pour les commerces : vos clients l’ajoutent à Apple Cartes ou Google Wallet, vous validez leurs passages en caisse.">
+<meta property="og:image" content="https://cards.digitalprojectagency.fr/assets/dpa-install-512.png">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="Logo DPA Cards">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="DPA Cards — votre carte de fidélité, sur iPhone et Android">
+<meta name="twitter:description" content="Carte de fidélité numérique pour les commerces : vos clients l’ajoutent à Apple Cartes ou Google Wallet, vous validez leurs passages en caisse.">
+<meta name="twitter:image" content="https://cards.digitalprojectagency.fr/assets/dpa-install-512.png">
+<meta name="theme-color" content="#f4f1fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171323" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block">
+<link rel="stylesheet" href="/src/landing.css">
+<script>if(new URLSearchParams(location.search).get('fond-test')!=='0')document.documentElement.dataset.dpaGlassTest='';</script>
+<script type="module" src="/src/landing.js"></script>
+</head>
+<body>
+<a class="dpa-l-skip" href="#contenu">Aller au contenu</a>
+
+<header class="dpa-l-header dpa-glass-bar">
+  <div class="dpa-l-wrap dpa-l-header-row">
+    <a class="dpa-l-brand dpa-brand-pair" href="/" aria-label="DPA Cards, accueil">
+      <img class="dpa-brand-light" src="/assets/dpa-cards-light.svg" alt="DPA Cards" width="145" height="79">
+      <img class="dpa-brand-dark" src="/assets/dpa-cards-dark.svg" alt="DPA Cards" width="145" height="79">
+    </a>
+
+    <nav class="dpa-l-nav" aria-label="Sections de la page">
+      <a class="dpa-glass-pill" href="#parcours">Comment ça marche</a>
+      <a class="dpa-glass-pill" href="#fonctionnalites">Fonctionnalités</a>
+      <a class="dpa-glass-pill" href="#tarifs" data-dpa-web-only>Tarifs</a>
+      <a class="dpa-glass-pill" href="#questions">Questions</a>
+    </nav>
+
+    <div class="dpa-l-tools">
+      <details class="dpa-l-menu" data-dpa-landing-menu>
+        <summary class="dpa-glass-pill" aria-label="Ouvrir le menu des sections">
+          <span class="material-symbols-rounded" aria-hidden="true">menu</span>Sections
+        </summary>
+        <nav class="dpa-l-menu-panel" aria-label="Sections de la page">
+          <a class="dpa-glass-pill" href="#parcours">Comment ça marche</a>
+          <a class="dpa-glass-pill" href="#fonctionnalites">Fonctionnalités</a>
+          <a class="dpa-glass-pill" href="#tarifs" data-dpa-web-only>Tarifs</a>
+          <a class="dpa-glass-pill" href="#questions">Questions</a>
+        </nav>
+      </details>
+      <dpa-install-app data-context="landing"></dpa-install-app>
+      <dpa-theme-switch compact></dpa-theme-switch>
+      <a class="dpa-l-login" href="/connexion">Se connecter</a>
+    </div>
+  </div>
+</header>
+
+<main id="contenu">
+
+  <!-- 1. Premier écran : le bloc titre, sous-titre et boutons occupe le centre de
+       la zone visible sous la navigation ; les deux téléphones sont posés derrière
+       lui, sur les tiers gauche et droit, dans un calque qui ne reçoit pas le
+       pointeur. Chaque téléphone a deux éléments imbriqués : le conteneur porte la
+       réaction au pointeur, l'élément intérieur le flottement continu. -->
+  <section class="dpa-l-wrap dpa-l-section dpa-l-hero" aria-labelledby="titre" data-dpa-hero>
+    <div class="dpa-l-phones">
+      <div class="dpa-l-phone dpa-l-phone-apple">
+        <div class="dpa-l-phone-float">
+          <picture>
+            <source srcset="/assets/landing/telephone-apple.webp" type="image/webp">
+            <img src="/assets/landing/telephone-apple.png" width="494" height="997" fetchpriority="high" decoding="async"
+                 alt="La carte du commerce de démonstration Grain Café dans Apple Cartes, sur iPhone : 6 passages effectués, 4 restants.">
+          </picture>
+        </div>
+      </div>
+      <div class="dpa-l-phone dpa-l-phone-android">
+        <div class="dpa-l-phone-float">
+          <picture>
+            <source srcset="/assets/landing/telephone-android.webp" type="image/webp">
+            <img src="/assets/landing/telephone-android.png" width="531" height="1002" fetchpriority="high" decoding="async"
+                 alt="La même carte Grain Café dans Google Wallet, sur Android.">
+          </picture>
+        </div>
+      </div>
+    </div>
+
+    <div class="dpa-l-hero-text">
+      <h1 id="titre">Votre carte de fidélité, sur iPhone et Android</h1>
+      <p class="dpa-l-hero-lead">Vos clients l’ajoutent à Apple Cartes ou Google Wallet. En caisse, vous scannez leur carte et validez leur passage.</p>
+      <div class="dpa-l-actions">
+        <a class="dpa-l-cta" href="/connexion?mode=inscription" data-dpa-web-only>
+          <span class="material-symbols-rounded" aria-hidden="true">add_card</span>Créer ma carte de fidélité
+        </a>
+        <a class="dpa-l-ghost" href="/connexion">Se connecter</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Parcours en trois étapes, ouvertes sur le fond. La distinction entre le QR
+       d'inscription et le QR de la carte du client est portée par les étapes 2 et 3. -->
+  <section class="dpa-l-wrap dpa-l-section" id="parcours" aria-labelledby="parcours-titre">
+    <p class="dpa-l-eyebrow">Comment ça marche</p>
+    <h2 class="dpa-l-h2" id="parcours-titre">Trois étapes</h2>
+
+    <ol class="dpa-l-steps">
+      <li class="dpa-l-step">
+        <div class="dpa-l-step-no" aria-hidden="true">1</div>
+        <h3 class="dpa-l-h3">Vous personnalisez votre carte</h3>
+        <p class="dpa-l-body">Votre logo, vos couleurs, vos tampons et votre récompense, avec des passages à collecter ou des points à cumuler.</p>
+      </li>
+      <li class="dpa-l-step">
+        <div class="dpa-l-step-no" aria-hidden="true">2</div>
+        <h3 class="dpa-l-h3">Le client scanne votre QR d’inscription</h3>
+        <p class="dpa-l-body">C’est le QR affiché à votre comptoir, le même pour tous : il ouvre sa page d’inscription, puis il ajoute sa carte à Apple Cartes ou Google Wallet.</p>
+      </li>
+      <li class="dpa-l-step">
+        <div class="dpa-l-step-no" aria-hidden="true">3</div>
+        <h3 class="dpa-l-h3">Vous scannez sa carte en caisse</h3>
+        <p class="dpa-l-body">Cette fois c’est le QR personnel de sa carte, différent du vôtre et propre à chaque client, que vous scannez avant de valider le passage.</p>
+      </li>
+    </ol>
+  </section>
+
+  <!-- 3. Deux démonstrations : la carte telle qu'elle est composée dans l'espace
+       commerçant, et le panneau « Carte reconnue » de l'écran de scan. -->
+  <section class="dpa-l-wrap dpa-l-section" id="fonctionnalites" aria-labelledby="fonctions-titre">
+    <p class="dpa-l-eyebrow">Fonctionnalités</p>
+    <h2 class="dpa-l-h2" id="fonctions-titre">La carte que vous dessinez, le passage que vous validez</h2>
+
+    <div class="dpa-l-demos">
+      <div class="dpa-l-demo">
+        <!-- Même composition que le composant LoyaltyCard du produit. -->
+        <div class="dpa-l-card" data-dpa-artwork role="img" aria-label="Carte de démonstration : Boulangerie du Marché, 6 passages sur 10, récompense une viennoiserie offerte, membre Camille D., carte DPA-DEMO-4821-7390.">
+          <div class="dpa-l-card-top">
+            <div class="dpa-l-card-biz">
+              <div class="dpa-l-card-logo">BDM</div>
+              <div class="dpa-l-card-name">Boulangerie du Marché</div>
+            </div>
+            <div class="dpa-l-card-count">
+              <div class="dpa-l-card-unit">PASSAGES</div>
+              <div class="dpa-l-card-value">6/10</div>
+            </div>
+          </div>
+          <div class="dpa-l-card-program">Club Boulangerie du Marché</div>
+          <div class="dpa-l-card-strip" aria-hidden="true">
+            <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="fait">
+            <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="fait">
+            <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="fait">
+            <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="fait">
+            <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="fait">
+            <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="fait">
+            <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="reste">
+            <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="reste">
+            <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="reste">
+            <img src="/assets/stamps/cadeau.png" width="64" height="64" alt="" data-dpa-stamp="reste">
+          </div>
+          <div class="dpa-l-card-foot">
+            <div>
+              <div class="dpa-l-card-key">RÉCOMPENSE</div>
+              <div class="dpa-l-card-val">Une viennoiserie offerte</div>
+            </div>
+            <div>
+              <div class="dpa-l-card-key">MEMBRE</div>
+              <div class="dpa-l-card-val">Camille D.</div>
+            </div>
+          </div>
+          <div class="dpa-l-card-qr">
+            <div><img src="/assets/landing/qr-carte-demo.svg" width="104" height="104" alt="" aria-hidden="true"></div>
+            <div class="dpa-l-card-no">DPA-DEMO-4821-7390</div>
+          </div>
+        </div>
+        <p class="dpa-l-modes" aria-hidden="true">
+          <span class="dpa-l-mode is-on">Passages</span>
+          <span class="dpa-l-mode">Points</span>
+        </p>
+        <h3 class="dpa-l-h3">Vous dessinez votre carte</h3>
+        <p class="dpa-l-body">Logo, couleurs, tampons du catalogue et récompense, avec un aperçu avant publication. Au choix : des passages à collecter, ou des points attribués par passage ou par euro dépensé.</p>
+      </div>
+
+      <div class="dpa-l-demo">
+        <!-- Même composition que le panneau « Carte reconnue » de l'écran de scan. -->
+        <div class="dpa-l-scan">
+          <span class="dpa-l-badge"><span class="material-symbols-rounded" aria-hidden="true">verified</span>Carte reconnue</span>
+          <div class="dpa-l-scan-who">
+            <div class="dpa-l-scan-ini" aria-hidden="true">CD</div>
+            <div>
+              <p class="dpa-l-scan-name">Camille D.</p>
+              <p><code>DPA-DEMO-4821-7390</code></p>
+            </div>
+          </div>
+          <div class="dpa-l-scan-box">
+            <div class="dpa-l-scan-head">
+              <div class="dpa-l-scan-big">7 <span>passages</span></div>
+              <div class="dpa-l-body">Solde actuel</div>
+            </div>
+            <div class="dpa-l-scan-dots" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i data-dpa-dot="reste"></i><i data-dpa-dot="reste"></i><i data-dpa-dot="reste"></i>
+            </div>
+            <div class="dpa-l-scan-line"><span class="material-symbols-rounded" aria-hidden="true">redeem</span>Encore 3 passages avant la récompense</div>
+          </div>
+          <div class="dpa-l-scan-ok"><span class="material-symbols-rounded" aria-hidden="true">check_circle</span>Passage ajouté</div>
+        </div>
+        <h3 class="dpa-l-h3">Vous comptez en caisse</h3>
+        <p class="dpa-l-body">Le scan affiche le client et son solde ; c’est vous qui validez le passage. Votre liste de clients garde l’historique, signale les récompenses disponibles et permet de corriger un passage ajouté par erreur.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Tarifs — propre à la vitrine web -->
+  <section class="dpa-l-wrap dpa-l-section" id="tarifs" aria-labelledby="tarifs-titre" data-dpa-web-only>
+    <p class="dpa-l-eyebrow">Tarifs</p>
+    <h2 class="dpa-l-h2" id="tarifs-titre">Deux offres</h2>
+    <p class="dpa-l-lead">Montants en euros TTC, par commerce. Les fonctionnalités sont identiques dans les deux offres.</p>
+
+    <div class="dpa-l-plans">
+      <div class="dpa-glass-surface dpa-l-plan">
+        <h3 class="dpa-l-h3">Sans engagement</h3>
+        <p class="dpa-l-price"><b>30 €</b><span>par mois et par commerce</span></p>
+        <dl class="dpa-l-plan-rows">
+          <dt>Mise en place</dt><dd>50 €, une seule fois, pour le premier commerce</dd>
+          <dt>Essai</dt><dd>Un mois gratuit sur l’abonnement</dd>
+          <dt>Engagement</dt><dd>Aucun. Résiliable à tout moment, avec effet à la fin de la période en cours</dd>
+          <dt>Paiement</dt><dd>Mensuel</dd>
+        </dl>
+        <a class="dpa-l-cta" href="/connexion?mode=inscription">Créer ma carte de fidélité</a>
+      </div>
+      <div class="dpa-glass-surface dpa-l-plan">
+        <h3 class="dpa-l-h3">Engagement 12 mois</h3>
+        <p class="dpa-l-price"><b>20 €</b><span>par mois et par commerce</span></p>
+        <dl class="dpa-l-plan-rows">
+          <dt>Mise en place</dt><dd>25 €, une seule fois, pour le premier commerce</dd>
+          <dt>Essai</dt><dd>Un mois gratuit compris dans les 12 mois</dd>
+          <dt>Engagement</dt><dd>12 mois. Pas de résiliation avant l’échéance</dd>
+          <dt>Paiement</dt><dd>Mensuel, ou 245 € en une fois pour les 12 mois : onze mensualités et la mise en place, sans essai ni renouvellement automatique</dd>
+        </dl>
+        <a class="dpa-l-cta" href="/connexion?mode=inscription">Créer ma carte de fidélité</a>
+      </div>
+    </div>
+
+    <p class="dpa-l-note">Chaque commerce supplémentaire est facturé au tarif mensuel de votre offre, avec ses propres frais d’activation. Une carte dessinée sur mesure par DPA Cards est proposée à 29,90 € TTC, en paiement unique. Les paiements sont gérés par Stripe, et le détail des conditions figure dans les <a href="/cgv">conditions générales de vente</a>.</p>
+  </section>
+
+  <!-- 5. Questions -->
+  <section class="dpa-l-wrap dpa-l-section" id="questions" aria-labelledby="questions-titre">
+    <p class="dpa-l-eyebrow">Questions fréquentes</p>
+    <h2 class="dpa-l-h2" id="questions-titre">Avant de commencer</h2>
+
+    <div class="dpa-glass-surface dpa-l-faq">
+      <details>
+        <summary>Mes clients doivent-ils installer DPA Cards ?</summary>
+        <p>Non. Leur carte s’ajoute à Apple Cartes ou à Google Wallet, déjà présents sur leur téléphone, depuis votre page d’inscription. DPA Cards est votre outil de commerçant, pas une application à leur faire installer.</p>
+      </details>
+      <details>
+        <summary>De quoi ai-je besoin pour scanner en caisse ?</summary>
+        <p>De la caméra du téléphone, de la tablette ou de l’ordinateur avec lequel vous ouvrez DPA Cards. Ni douchette, ni terminal particulier.</p>
+      </details>
+      <details>
+        <summary>Et si le client a oublié sa carte ?</summary>
+        <p>Vous le retrouvez dans votre liste de clients par son nom ou son numéro de carte, et vous ajoutez le passage depuis sa fiche, sans scanner.</p>
+      </details>
+      <details>
+        <summary>Puis-je gérer plusieurs commerces ?</summary>
+        <p>Oui. Un même compte gère plusieurs commerces, chacun avec sa carte, ses règles de fidélité et ses clients, et vous invitez vos employés à scanner.</p>
+      </details>
+    </div>
+  </section>
+
+  <!-- 6. Dernier accès -->
+  <section class="dpa-l-wrap dpa-l-section dpa-l-end" aria-labelledby="fin-titre">
+    <h2 class="dpa-l-h2" id="fin-titre">Prêt à donner une carte de fidélité à vos clients ?</h2>
+    <div class="dpa-l-actions">
+      <a class="dpa-l-cta" href="/connexion?mode=inscription" data-dpa-web-only>
+        <span class="material-symbols-rounded" aria-hidden="true">add_card</span>Créer ma carte de fidélité
+      </a>
+      <a class="dpa-l-ghost" href="/connexion">Se connecter</a>
+    </div>
+  </section>
+</main>
+
+<footer class="dpa-l-wrap">
+  <div class="dpa-glass-surface dpa-l-footer">
+    <span class="dpa-l-brand dpa-brand-pair">
+      <img class="dpa-brand-light" src="/assets/dpa-cards-light.svg" alt="DPA Cards" width="145" height="79">
+      <img class="dpa-brand-dark" src="/assets/dpa-cards-dark.svg" alt="DPA Cards" width="145" height="79">
+    </span>
+    <nav class="dpa-l-footer-links" aria-label="Liens légaux et assistance">
+      <a href="/mentions-legales">Mentions légales</a>
+      <a href="/confidentialite">Confidentialité</a>
+      <a href="/cgv" data-dpa-web-only>Conditions générales de vente</a>
+      <a href="mailto:contact@digitalprojectagency.fr">contact@digitalprojectagency.fr</a>
+      <a href="tel:+33753801415">07 53 80 14 15</a>
+    </nav>
+    <p class="dpa-l-legal">DPA Cards est un service édité par DigitalProjectAgency. Une fois connecté, vous écrivez à l’assistance depuis votre espace commerçant, dans « Aide ». Apple Cartes est une marque d’Apple Inc. et Google Wallet une marque de Google LLC ; leur mention ne signifie pas un partenariat. Les noms, données et QR codes présentés sur cette page sont des exemples de démonstration.</p>
+  </div>
+</footer>
+</body>
+</html>
