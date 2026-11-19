@@ -1,3 +1,7 @@
+import { makeSupportApi } from './support-chat-api.js';
+import { makeSupportComponents } from './support-chat.js';
+import { makeDashboardExperience } from './dashboard-experience.js';
+import './support-chat.css';
 import { makeDashboardInsights } from './dashboard-insights.js';
 import './dashboard-insights.css';
 import { registrationPage, registrationPayload } from './registration-page.js';
@@ -826,23 +830,12 @@ const api = {
 window.__dpaResolve(api);
 
 api.sendSupport = body => invokeFn('merchant-support',body);
-api.SupportDialog = function SupportDialog({merchant,send,close}){
- const R=window.React,h=R.createElement,ref=R.useRef(null),[busy,B]=R.useState(false),[status,S]=R.useState('');
- R.useEffect(()=>{ref.current?.showModal();},[]);
- return h('dialog',{ref,className:'dpa-mfa-panel dpa-mfa-dialog dpa-support-dialog','aria-labelledby':'dpa-support-title',onCancel:e=>{e.preventDefault();if(!busy)close();}},
- h('form',{className:'dpa-support-form',onSubmit:async e=>{e.preventDefault();if(busy)return;const form=e.currentTarget;const data=Object.fromEntries(new FormData(form));if(String(data.message).trim()==='Bonjour,'){S('Ajoutez votre message avant de l’envoyer.');return;}B(true);S('');try{const r=await send({...data,merchantId:merchant.id});if(!r?.ok)throw Error();S('Message envoyé.');form.reset();}catch(err){S(err?.code==='support_rate_limited'?'Réessayez dans une minute.':'Envoi impossible. Votre message est conservé.');}finally{B(false);}}},
- h('button',{type:'button',className:'dpa-mfa-close',disabled:busy,onClick:close,'aria-label':'Fermer'},'×'),
- h('header',{className:'dpa-support-header'},
-   h('span',{className:'dpa-brand-pair'},
-     ...['light','dark'].map(t=>h('img',{key:t,className:'dpa-brand-'+t+' dpa-mfa-logo',src:'/assets/dpa-cards-'+t+'.svg',alt:'DPA Cards'}))),
-   h('h2',{id:'dpa-support-title'},'Contacter le support'),
-   h('p',null,'Envoyez votre message directement à l’équipe DPA Cards.')),
- h('label',null,'Nom du commerce',h('input',{name:'shop',defaultValue:merchant.business,maxLength:120,required:true})),
- h('label',null,'Objet',h('input',{name:'subject',defaultValue:'Demande de support',maxLength:130,required:true})),
- h('label',null,'Message',h('textarea',{name:'message',defaultValue:'Bonjour,\n\n',rows:6,maxLength:4000,required:true})),
- h('button',{type:'submit',disabled:busy||status==='Message envoyé.',className:'dpa-mfa-button'},busy?'Envoi…':'Envoyer'),
- h('div',{role:'status',className:'dpa-support-status'},status)));
-};
+const support = makeSupportApi(sb);
+const supportComponents = makeSupportComponents(window.React);
+api.support = support;
+api.SupportDialog = supportComponents.Dialog;
+api.SupportUnread = supportComponents.Unread;
+api.DashboardExperience = makeDashboardExperience(window.React);
 
 api.LoyaltyAmountDialog = function LoyaltyAmountDialog({rate,busy,onAccept,onClose}){
   const R=window.React,h=R.createElement,ref=R.useRef(null),[raw,setRaw]=R.useState('');

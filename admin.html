@@ -102,9 +102,11 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
   </header>
 
   <main style="max-width:1280px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:22px">
+    {{ dashboardExperience }}
     <nav class="dpa-glass-bar dpa-glass-tabs" role="tablist" aria-label="Sections de l’administration" style="display:flex;gap:6px;align-self:flex-start;max-width:100%;overflow-x:auto">
-      <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{ tb.on }}" onClick="{{ tb.pick }}" class="dpa-glass-pill"><span class="material-symbols-rounded" style="font-size:20px">{{ tb.icon }}</span>{{ tb.label }}</button></sc-for>
+      <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{ tb.on }}" onClick="{{ tb.pick }}" class="dpa-glass-pill"><span class="material-symbols-rounded" style="font-size:20px">{{ tb.icon }}</span>{{ tb.label }}{{ tb.badge }}</button></sc-for>
     </nav>
+    <sc-if value="{{ tabSupport }}" hint-placeholder-val="{{ false }}">{{ supportEl }}</sc-if>
     <sc-if value="{{ tabGen }}" hint-placeholder-val="{{ false }}">{{ genEl }}</sc-if>
     <sc-if value="{{ tabScanner }}" hint-placeholder-val="{{ false }}">{{ scannerEl }}</sc-if>
     <sc-if value="{{ tabSales }}" hint-placeholder-val="{{ false }}">{{ salesEl }}</sc-if>
@@ -368,10 +370,10 @@ const unitOf=p=>p&&p.mode==='points'?'points':'passages';
 const statusOf=m=>['trialing','active','manual'].includes(subKey(m))?'active':'setup';
 // #generateur, #generateur/m/<merchant id>, #generateur/r/<design request id>[/<merchant id>], #generateur/t/<test card id>
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-function readHash(){ try{ const p=(window.location.hash||'').replace(/^#/,'').split('/'); if(p[0]==='commerciaux') return {tab:'sales',gen:null}; if(p[0]==='scanner') return {tab:'scanner',gen:null}; if(p[0]!=='generateur') return {tab:'list',gen:null};
+function readHash(){ try{ const p=(window.location.hash||'').replace(/^#/,'').split('/'); if(p[0]==='messagerie') return {tab:'support',gen:null}; if(p[0]==='commerciaux') return {tab:'sales',gen:null}; if(p[0]==='scanner') return {tab:'scanner',gen:null}; if(p[0]!=='generateur') return {tab:'list',gen:null};
   if(p[1]==='r'&&UUID.test(p[2]||'')) return {tab:'gen',gen:{requestId:p[2],merchantId:UUID.test(p[3]||'')?p[3]:null}};
   if(p[1]==='m'&&UUID.test(p[2]||'')) return {tab:'gen',gen:{merchantId:p[2],requestId:null}}; if(p[1]==='t'&&UUID.test(p[2]||'')) return {tab:'gen',gen:{testId:p[2]}}; return {tab:'gen',gen:null}; }catch(e){ return {tab:'list',gen:null}; } }
-function writeHash(tab,g){ const h=tab==='sales'?'#commerciaux':tab==='scanner'?'#scanner':tab!=='gen'?'':'#generateur'+(g&&g.testId?'/t/'+g.testId:g&&g.requestId?'/r/'+g.requestId+(g.merchantId?'/'+g.merchantId:''):(g&&g.merchantId?'/m/'+g.merchantId:''));
+function writeHash(tab,g){ const h=tab==='support'?'#messagerie':tab==='sales'?'#commerciaux':tab==='scanner'?'#scanner':tab!=='gen'?'':'#generateur'+(g&&g.testId?'/t/'+g.testId:g&&g.requestId?'/r/'+g.requestId+(g.merchantId?'/'+g.merchantId:''):(g&&g.merchantId?'/m/'+g.merchantId:''));
   try{ history.replaceState(null,'',window.location.pathname+window.location.search+h); }catch(e){} }
 const ERR={not_admin:'Accès refusé : ce compte n’est pas administrateur.',not_director:'Rubrique réservée au compte de direction.',not_authenticated:'Session expirée. Reconnectez-vous.'};
 
@@ -495,6 +497,7 @@ class Component extends DCLogic {
     const director=!!(s.me&&s.me.role==='director'), tab=s.tab==='sales'&&!director?'list':s.tab;
     const tabs=[{label:'Commerçants',icon:'storefront',...tabOn('list'),pick:()=>this.goTab('list')},{label:'Générateur de cartes',icon:'style',...tabOn('gen'),pick:()=>this.goTab('gen')},
       {label:'Scanner',icon:'qr_code_scanner',...tabOn('scanner'),pick:()=>this.goTab('scanner')},
+      {label:'Messagerie',icon:'forum',...tabOn('support'),pick:()=>this.goTab('support'),badge:s.me&&this.api?.SupportUnread?React.createElement(this.api.SupportUnread,{api:this.api.support}):null},
       ...(director?[{label:'Commerciaux',icon:'groups',...tabOn('sales'),pick:()=>this.goTab('sales')}]:[])];
     const salesApi=director&&this.api&&this.api.sales?this.api.sales():null;
     const salesEl=tab==='sales'&&salesApi?React.createElement(salesApi.SalesDashboard,{width:s.w,toast:m=>this.toast(m),onOpenMerchant:id=>this.open(id)}):null;
@@ -524,7 +527,10 @@ class Component extends DCLogic {
           {label:'Aucun pass généré',value:none}
         ]
       }):null;
-    return {dashboardInsights,tabs,tabGen:tab==='gen',tabScanner:tab==='scanner',scannerEl,tabList:tab==='list',tabSales:tab==='sales',salesEl,hasSalesEl:!!selSalesEl,selSalesEl,genEl,isDesk,isMob:!isDesk,
+    const supportEl=tab==='support'&&s.me&&this.api?.SupportWorkspace?React.createElement(this.api.SupportWorkspace,{api:this.api.support,admin:true}):null;
+    const dashboardExperience=s.me&&this.api?.DashboardExperience?React.createElement(this.api.DashboardExperience,{role:'admin',pageKey:tab,
+      commands:[...tabs.map(t=>({label:t.label,detail:'Administration',run:t.pick})),...D.map(m=>({id:m.id,label:m.business_name,detail:'Commerce',run:()=>{this.goTab('list');this.open(m.id);}}))]}):null;
+    return {dashboardInsights,dashboardExperience,supportEl,tabSupport:tab==='support',tabs,tabGen:tab==='gen',tabScanner:tab==='scanner',scannerEl,tabList:tab==='list',tabSales:tab==='sales',salesEl,hasSalesEl:!!selSalesEl,selSalesEl,genEl,isDesk,isMob:!isDesk,
       loading:s.loading,hasError:!!s.error,error:s.error||'',reload:()=>this.load(),
       q:s.q,setQ:e=>this.setState({q:e.target.value}),sort:s.sort,setSort:e=>this.setState({sort:e.target.value}),
       statusFilters,rows:s.loading?[]:list.map(m=>this.view(m)),emptyAll:!s.loading&&!s.error&&D.length===0,emptyFiltered:!s.loading&&D.length>0&&list.length===0,
