@@ -29,7 +29,7 @@ export const LEGAL = {
   // Conditions générales de vente et d’abonnement (page publique /cgv). Le lien « Voir les conditions »
   // de la page d’abonnement pointe ici.
   CGV_URL: '/cgv',
-  CGV_LAST_UPDATE: '11 octobre 2026',
+  CGV_LAST_UPDATE: '19 novembre 2026',
 
   // Région du projet Supabase où sont stockées les données (voir le tableau de bord Supabase).
   DATA_REGION: TODO,

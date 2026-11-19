@@ -53,7 +53,7 @@ export function makeProfileControls(React) {
    ['Nouveau total mensuel',money(quote.new_monthly_cents)],
    ['Différence mensuelle',money(quote.monthly_difference_cents)],
    ['Date d’effet',date(quote.effective_at)],
-   ['Prorata',money(quote.proration_cents)+(quote.proration_collection==='next_invoice'?' · sur la prochaine facture':quote.proration_collection==='after_trial'?' · 15 jours d’essai, puis prorata jusqu’au 1er du mois':' · inclus au paiement immédiat')],
+   ['Prorata',money(quote.proration_cents)+(quote.proration_collection==='next_invoice'?' · sur la prochaine facture':quote.proration_collection==='after_trial'?' · abonnement facturé après le mois d’essai':' · inclus au paiement immédiat')],
    ...(quote.access_end?[['Période prépayée conservée',`Jusqu’au ${date(quote.access_end)}`],['Renouvellement','Aucun renouvellement automatique']]:[]),
    ['À payer immédiatement',money(quote.immediate_cents)]
   ]:[];
@@ -75,7 +75,7 @@ export function makeProfileControls(React) {
       !native&&h('dpa-install-app',{'data-context':'profile'})),
      quote&&h(React.Fragment,null,
       h('dl',{style:{margin:0}},...rows.map(([k,v])=>h('div',{key:k,style:{display:'flex',justifyContent:'space-between',gap:16,padding:'12px 0',borderBottom:'1px solid var(--dpa-border-soft,#E4E1DA)',flexWrap:'wrap'}},h('dt',null,k),h('dd',{style:{margin:0,fontWeight:700}},v)))),
-      h('p',{style:{fontSize:14,color:'var(--dpa-muted,#5E636B)',lineHeight:1.5}},'20 €/mois par commerce, sans remise dégressive. Les frais d’activation sont uniques et identiques avec ou sans engagement. Les modalités d’engagement existantes sont conservées.'),
+      h('p',{style:{fontSize:14,color:'var(--dpa-muted,#5E636B)',lineHeight:1.5}},'Le tarif mensuel dépend de votre offre. Les frais d’activation sont uniques et les montants applicables figurent dans ce récapitulatif. Votre engagement en cours est conservé.'),
       h('label',{style:{display:'flex',gap:12,alignItems:'flex-start',lineHeight:1.5}},h('input',{type:'checkbox',checked:confirmed,disabled:working,onChange:e=>setConfirmed(e.target.checked),style:{width:22,height:22,flexShrink:0}}),'Je confirme les montants ci-dessus et la modification de ma facturation.'),
       h('button',{type:'button',style:primary,disabled:native||!confirmed||working,onClick:pay},native?'Paiement Apple non disponible':'Confirmer et continuer vers le paiement'),
       !initial&&h('button',{type:'button',style:button,disabled:working,onClick:()=>run(async()=>{const r=await api.billing.profileCancel();if(r.operation?.status==='complete')onActivated();else{setOperation(null);setQuote(null);setConfirmed(false);}})},'Annuler ce parcours de paiement')),
