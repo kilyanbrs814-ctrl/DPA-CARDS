@@ -1,0 +1,17 @@
+{
+  "releaseId": "2026.11.19.1",
+  "label": "19.11.1",
+  "date": "19/11/2026",
+  "appVersion": "1.3",
+  "changes": [
+    "Nouvelle page d’accueil avec les téléphones animés, démonstrations et FAQ.",
+    "Accueil intégré à l’iPhone et accès à la connexion.",
+    "Démonstrations de fidélité par points et par passages corrigées.",
+    "Section Contact et formulaire de demande.",
+    "Dashboards commerçant et admin animés, graphiques interactifs et recherche.",
+    "Conversations Support et réponses depuis la messagerie admin.",
+    "Violet DPA fixe et mode clair/sombre.",
+    "Logos DPA adaptés aux fonds clairs et sombres.",
+    "Pages légales, liens intégrés à l’iPhone et identifiant de mise à jour commun."
+  ]
+}

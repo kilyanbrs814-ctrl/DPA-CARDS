@@ -57,6 +57,7 @@ export function makeDashboardExperience(React) {
       h('button', { type: 'button', className: 'dpa-experience-search', onClick: show, 'aria-haspopup': 'dialog' },
         h('svg', { viewBox: '0 0 24 24', width: 18, height: 18, fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, 'aria-hidden': true }, h('path', { d: 'm21 21-5-5M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15' })),
         h('span', null, 'Rechercher'), h('kbd', null, '⌘ / Ctrl K')),
+      h('dpa-build-info'),
       h('dialog', { ref: dialog, className: 'dpa-command-dialog', 'aria-labelledby': id + '-title', onCancel: event => { event.preventDefault(); setOpen(false); },
         onClick: event => { if (event.target === dialog.current) { const r = dialog.current.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) setOpen(false); } } },
         h('header', null, h('h2', { id: id + '-title' }, 'Que souhaitez-vous ouvrir ?'), h('button', { type: 'button', onClick: () => setOpen(false), 'aria-label': 'Fermer la recherche' }, '×')),

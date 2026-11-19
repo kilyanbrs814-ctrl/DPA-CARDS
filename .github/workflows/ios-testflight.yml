@@ -1,6 +1,7 @@
 name: Upload signed iOS build to TestFlight
 
-# Deliberately manual: never uploads an unreviewed build automatically.
+# Deliberately explicit: manual dispatch or creation of a release/testflight-* branch.
+# Ordinary branches and main pushes never upload a build.
 # Only runs after Apple signing materials are configured in GitHub Actions secrets.
 on:
   workflow_dispatch:
@@ -9,19 +10,26 @@ on:
         description: Open marketing version in App Store Connect
         required: true
         type: string
-        default: '1.2'
+        default: '1.3'
+  create:
 
 permissions:
   contents: read
 
 jobs:
   testflight:
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/testflight-'))
+    concurrency:
+      group: dpa-cards-testflight
+      cancel-in-progress: false
     runs-on: macos-26
     timeout-minutes: 45
     env:
       APP_BUNDLE_ID: fr.digitalprojectagency.cards
       APP_TEAM_ID: HDK7R3283T
-      MARKETING_VERSION: ${{ inputs.version }}
+      MARKETING_VERSION: ${{ inputs.version || '1.3' }}
+      DPA_MARKETING_VERSION: ${{ inputs.version || '1.3' }}
+      DPA_IOS_BUILD_NUMBER: ${{ github.run_number }}
       CERT_B64: ${{ secrets.IOS_DISTRIBUTION_P12_BASE64 }}
       CERT_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_P12_PASSWORD }}
       PROFILE_B64: ${{ secrets.IOS_APPSTORE_PROFILE_BASE64 }}
@@ -57,13 +65,17 @@ jobs:
           npm install --no-save --package-lock=false @capacitor/core@8 @capacitor/cli@8 @capacitor/ios@8 @capacitor/app@8
           npm run build
           npm run test:static
+          node --test scripts/check-release.test.mjs scripts/check-testflight-processing.test.mjs scripts/check-support-messaging.test.mjs scripts/check-site-theme.test.mjs
+          node scripts/check-release-bundle.mjs
           node --test scripts/check-native-admin-link.test.mjs
           node --test scripts/check-native-wallet-notifications.test.mjs
           node --test scripts/check-dual-logo-wallet.test.mjs scripts/check-ios-bundle-current.test.mjs
           npm run test:real-apple
           node scripts/prepare-ios-web.mjs
+          node scripts/check-release-bundle.mjs --native
           npx cap add ios
           npx cap sync ios
+          node scripts/check-release-bundle.mjs --native --ios-dir ios/App/App/public
           # Fail the iOS release if the current lavender workspace image was omitted.
           # Both device orientations and both color themes must be bundled.
           for name in dpa-bg-light-mobile dpa-bg-light-desktop dpa-bg-dark-mobile dpa-bg-dark-desktop; do
@@ -131,6 +143,8 @@ jobs:
             MARKETING_VERSION="$MARKETING_VERSION" \
             CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
             archive
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$RUNNER_TEMP/DPA-Cards.xcarchive/Products/Applications/App.app/Info.plist")" = "$MARKETING_VERSION"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$RUNNER_TEMP/DPA-Cards.xcarchive/Products/Applications/App.app/Info.plist")" = "$GITHUB_RUN_NUMBER"
 
       - name: Export App Store Connect IPA
         shell: bash
@@ -163,3 +177,40 @@ jobs:
           chmod 600 "$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_API_KEY_ID.p8"
           IPA="$(find "$RUNNER_TEMP/ipa" -maxdepth 1 -name '*.ipa' -print -quit)"
           xcrun altool --upload-app -f "$IPA" -t ios --apiKey "$ASC_API_KEY_ID" --apiIssuer "$ASC_API_ISSUER_ID"
+
+      - name: Preserve the public release identity
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dpa-release-${{ github.run_number }}
+          path: dist/release.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  verify-testflight:
+    needs: testflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP_STORE_APP_ID: '6823642562'
+      MARKETING_VERSION: ${{ inputs.version || '1.3' }}
+      ASC_API_KEY_B64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+      ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+      ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Confirm Apple processing and internal beta state
+        run: node scripts/check-testflight-processing.mjs
+      - name: Preserve Apple processing result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-status-${{ github.run_number }}
+          path: testflight-status.json
+          if-no-files-found: warn
+          retention-days: 30
