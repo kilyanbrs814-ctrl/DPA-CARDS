@@ -1,3 +1,7 @@
+import { makeSupportApi } from './support-chat-api.js';
+import { makeSupportComponents } from './support-chat.js';
+import { makeDashboardExperience } from './dashboard-experience.js';
+import './support-chat.css';
 import { makeDashboardInsights } from './dashboard-insights.js';
 import './dashboard-insights.css';
 import { createClient } from '@supabase/supabase-js';
@@ -480,7 +484,13 @@ const scannerApi={
 let scanner = null;
 
 refreshAccess();
+const support = makeSupportApi(sb);
+const supportComponents = makeSupportComponents(window.React);
 window.__dpaAdminResolve({
+  support,
+  SupportWorkspace: supportComponents.Workspace,
+  SupportUnread: supportComponents.Unread,
+  DashboardExperience: makeDashboardExperience(window.React),
   DashboardInsights: makeDashboardInsights(window.React).Admin,
   designer: () => designer || (designer = makeCardDesigner(window.React, designerApi)),
   sales: () => sales || (sales = makeSales(window.React, salesApi)),

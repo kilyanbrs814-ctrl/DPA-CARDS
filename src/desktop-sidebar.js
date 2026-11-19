@@ -21,7 +21,7 @@ export function makeDesktopSidebar(React) {
     return h('svg', {className: 'dpa-sidebar-icon', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true}, h('path', {d: paths[name]}));
   };
 
-  return function DesktopSidebar({items, settings, merchant, logo, initials, demo, onLogout, onSupport}) {
+  return function DesktopSidebar({items, settings, merchant, logo, initials, demo, onLogout, onSupport, supportBadge}) {
     const [hovered, setHovered] = React.useState(false);
     const [focused, setFocused] = React.useState(false);
     const [pinned, setPinned] = React.useState(false);
@@ -45,7 +45,7 @@ export function makeDesktopSidebar(React) {
     }, []);
     React.useEffect(() => {
       const shortcut = event => {
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !event.altKey && !document.querySelector('[aria-modal="true"]')) {
+        if (!event.defaultPrevented && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k' && !event.altKey && !document.querySelector('[aria-modal="true"]')) {
           event.preventDefault();
           setSuppressed(false);
           setPinned(true);
@@ -116,7 +116,7 @@ export function makeDesktopSidebar(React) {
           onClick: () => window.dpaTheme.toggle()}, icon(theme === 'dark' ? 'moon' : 'sun'),
           h('span', {className: 'dpa-sidebar-label'}, 'Mode nuit'), h('span', {className: 'dpa-sidebar-switch', 'aria-hidden': true})),
         h('button', {type:'button',className: 'dpa-sidebar-item', onClick:onSupport,
-          'aria-label': 'Contacter le support DPA Cards par e-mail', title: expanded ? undefined : 'Support'}, icon('chat'), h('span', {className: 'dpa-sidebar-label'}, 'Support')),
+          'aria-label': 'Ouvrir la messagerie du support DPA Cards', title: expanded ? undefined : 'Support'}, icon('chat'), h('span', {className: 'dpa-sidebar-label'}, 'Support'), supportBadge),
         h('button', {type: 'button', className: 'dpa-sidebar-item', 'aria-label': 'Se déconnecter',
           title: expanded ? undefined : 'Se déconnecter', onClick: onLogout}, icon('logout'),
           h('span', {className: 'dpa-sidebar-label'}, 'Se déconnecter')))));

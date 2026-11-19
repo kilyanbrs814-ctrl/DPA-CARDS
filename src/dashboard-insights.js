@@ -1,8 +1,9 @@
+import { makeDashboardMotion, sampleCurve } from './dashboard-motion.js';
 const number = new Intl.NumberFormat('fr-FR');
 const dayLabel = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 const monthLabel = new Intl.DateTimeFormat('fr-FR', { month: 'short', timeZone: 'UTC' });
 const weekdays = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-const palette = ['#3956db', '#7951d4', '#187d70', '#929bb2'];
+const palette = ['var(--dpa-link,#6935CB)', '#7951d4', '#187d70', '#929bb2'];
 const metricIcons = {
   monitoring: 'M3 3v18h18M7 15l4-5 4 2 5-6',
   calendar_month: 'M7 3v4m10-4v4M4 9h16M4 5h16v15H4zM8 13h2m4 0h2m-8 3h2m4 0h2',
@@ -61,6 +62,7 @@ export function registrationTrend(merchants, now) {
 
 export function makeDashboardInsights(React) {
   const h = React.createElement;
+  const { Counter, useTween } = makeDashboardMotion(React);
   const icon = (name) => h('span', { className: 'dpa-di-icon', 'aria-hidden': true },
     h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor',
       strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', focusable: 'false' },
@@ -71,7 +73,7 @@ export function makeDashboardInsights(React) {
       h('div', { className: 'dpa-di-metric', key: item.label, style: { '--di-accent': palette[index % 3] } },
         h('dt', null, icon(item.icon), h('span', null, item.label)),
         h('dd', null,
-          h('strong', { className: item.text ? 'dpa-di-value dpa-di-text-value' : 'dpa-di-value' }, item.value),
+          h('strong', { className: item.text ? 'dpa-di-value dpa-di-text-value' : 'dpa-di-value' }, item.text ? item.value : h(Counter, { value: item.value })),
           item.note && h('span', { className: 'dpa-di-note' }, item.note)))));
   }
 
@@ -97,25 +99,33 @@ export function makeDashboardInsights(React) {
 
   function Trend({ points, unit, empty }) {
     const gradientId = 'dpa-trend-' + React.useId();
-    const peak = Math.max(...points.map(point => point.value));
-    if (!peak) return h('p', { className: 'dpa-di-empty' }, empty);
-    const tickSize = Math.ceil(peak / 3);
+    const [active, setActive] = React.useState(null);
+    const peak = Math.max(0, ...points.map(point => point.value));
+    const tickSize = Math.max(1, Math.ceil(peak / 3));
     const ticks = [3, 2, 1, 0].map(tick => tick * tickSize);
-    const coordinates = points.map((point, index) => [
-      index * 600 / (points.length - 1), 150 - point.value * 150 / ticks[0],
-    ]);
+    const coordinates = useTween(sampleCurve(points, ticks[0]));
+    React.useEffect(() => setActive(null), [points.length]);
+    if (!peak) return h('p', { className: 'dpa-di-empty' }, empty);
     const line = coordinates.map(([x, y]) => x + ',' + y).join(' ');
     const labels = points.length > 7 ? [0, 7, 14, 21, points.length - 1] : points.map((_, index) => index);
+    const selected = active === null ? null : points[Math.min(active, points.length - 1)];
+    const position = selected ? Math.min(active, points.length - 1) * 100 / Math.max(1, points.length - 1) : 0;
     return h(React.Fragment, null,
-      h('div', { className: 'dpa-di-chart', 'aria-hidden': true },
-        h('div', { className: 'dpa-di-ticks' }, ticks.map(tick => h('span', { key: tick }, number.format(tick)))),
-        h('div', { className: 'dpa-di-plot' },
-          h('svg', { viewBox: '0 0 600 150', preserveAspectRatio: 'none', focusable: 'false' },
+      h('div', { className: 'dpa-di-chart' },
+        h('div', { className: 'dpa-di-ticks', 'aria-hidden': true }, ticks.map(tick => h('span', { key: tick }, number.format(tick)))),
+        h('div', { className: 'dpa-di-plot', tabIndex: 0, role: 'group', 'aria-label': 'Graphique interactif. Utilisez les flèches pour parcourir les valeurs.',
+          onPointerMove: event => { const rect = event.currentTarget.getBoundingClientRect(); setActive(Math.max(0, Math.min(points.length - 1, Math.round((event.clientX - rect.left) / rect.width * (points.length - 1))))); },
+          onPointerLeave: () => setActive(null), onFocus: () => setActive(i => i ?? points.length - 1), onBlur: () => setActive(null),
+          onKeyDown: event => { if (['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) { event.preventDefault(); setActive(i => event.key === 'Home' ? 0 : event.key === 'End' ? points.length - 1 : Math.max(0, Math.min(points.length - 1, (i ?? 0) + (event.key === 'ArrowRight' ? 1 : -1)))); } } },
+          h('svg', { viewBox: '0 0 600 150', preserveAspectRatio: 'none', focusable: 'false', 'aria-hidden': true },
             h('defs', null, h('linearGradient', { id: gradientId, x1: '0%', y1: '0%', x2: '0%', y2: '100%' },
-              h('stop', { stopColor: '#5265ec', stopOpacity: 0.28 }), h('stop', { offset: '100%', stopColor: '#5265ec', stopOpacity: 0.02 }))),
+              h('stop', { stopColor: 'var(--dpa-link,#6935CB)', stopOpacity: 0.28 }), h('stop', { offset: '100%', stopColor: 'var(--dpa-link,#6935CB)', stopOpacity: 0.02 }))),
             h('polygon', { points: '0,150 ' + line + ' 600,150', fill: 'url(#' + gradientId + ')' }),
-            h('polyline', { points: line, fill: 'none', stroke: '#3956db', strokeWidth: 2.5, strokeLinejoin: 'round', vectorEffect: 'non-scaling-stroke' }))),
-        h('div', { className: 'dpa-di-dates' }, labels.map(index => h('span', { key: index }, points[index].label)))),
+            h('polyline', { points: line, fill: 'none', stroke: 'var(--dpa-link,#6935CB)', strokeWidth: 2.5, strokeLinejoin: 'round', vectorEffect: 'non-scaling-stroke' }),
+            selected && h('line', { x1: position * 6, x2: position * 6, y1: 0, y2: 150, stroke: 'var(--dpa-link,#6935CB)', strokeDasharray: '4 4', opacity: .4 }),
+            selected && h('circle', { cx: position * 6, cy: 150 - selected.value * 150 / ticks[0], r: 4, fill: 'var(--dpa-link,#6935CB)', stroke: 'var(--dpa-surface,#fff)', strokeWidth: 2 })),
+          selected && h('div', { className: 'dpa-di-tooltip', role: 'status', style: { left: Math.max(12, Math.min(88, position)) + '%' } }, selected.label, h('strong', null, number.format(selected.value) + ' ' + unit))),
+        h('div', { className: 'dpa-di-dates', 'aria-hidden': true }, labels.map(index => h('span', { key: index }, points[index].label)))),
       h('details', { className: 'dpa-di-values' },
         h('summary', null, 'Voir les valeurs'),
         h('dl', null, points.map(({ label, value }) => h('div', { key: label },
