@@ -262,8 +262,10 @@ html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
 
 /* Les deux modes de fidélité, tels qu'ils sont présentés dans l'espace commerçant. */
 .dpa-l-modes { display: flex; width: fit-content; gap: 6px; margin: 2px auto 0; padding: 4px; border-radius: 999px; background: var(--dpa-subtle, #F1EFFB); }
-.dpa-l-mode { padding: 6px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--dpa-secondary, #4A4E55); }
+.dpa-l-mode { min-height: 44px; padding: 6px 16px; border: 0; border-radius: 999px; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: var(--dpa-secondary, #4A4E55); cursor: pointer; }
+.dpa-l-mode:hover { background: var(--dpa-hover, #F4F3EF); }
 .dpa-l-mode.is-on { background: var(--dpa-surface, #fff); color: var(--dpa-text, #1C1F24); font-weight: 700; box-shadow: 0 1px 4px rgba(20, 22, 28, 0.14); }
+.dpa-l-demos [data-dpa-demo-panel][hidden] { display: none; }
 
 /* Carte de fidélité : même structure que le composant LoyaltyCard du produit. */
 .dpa-l-card {
@@ -301,6 +303,11 @@ html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
 }
 .dpa-l-card-strip img { width: 100%; height: auto; display: block; }
 .dpa-l-card-strip img[data-dpa-stamp="reste"] { opacity: 0.32; }
+.dpa-l-card-points { height: 72px; display: grid; gap: 6px; padding: 10px 16px; background: #F6F3FD; border-block: 1px solid #EFEDE8; }
+.dpa-l-points-labels { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 700; }
+.dpa-l-points-track { height: 8px; overflow: hidden; border-radius: 999px; background: #E4DDF4; }
+.dpa-l-points-track i { display: block; width: var(--dpa-l-progress); height: 100%; border-radius: inherit; background: #6235C9; }
+.dpa-l-card-points-rule { font-size: 12px; color: #5E636B; }
 .dpa-l-card-foot { display: flex; justify-content: space-between; gap: 16px; padding: 12px 16px 14px; }
 .dpa-l-card-foot > div:last-child { text-align: right; }
 .dpa-l-card-key { font-weight: 700; font-size: 10px; letter-spacing: 0.08em; color: #5E636B; }
@@ -347,6 +354,7 @@ html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
 .dpa-l-scan-box { background: var(--dpa-subtle, #F6F5F1); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .dpa-l-scan-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .dpa-l-scan-big { font-weight: 800; font-size: 40px; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+.dpa-l-scan-big b { font-weight: inherit; }
 .dpa-l-scan-big span { font-size: 17px; font-weight: 600; color: var(--dpa-secondary, #4A4E55); letter-spacing: 0; }
 .dpa-l-scan-dots { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
 .dpa-l-scan-dots i { aspect-ratio: 1; border-radius: 50%; border: 1.5px solid #B9A4DE; background: #6235C9; display: block; }

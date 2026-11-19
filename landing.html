@@ -142,22 +142,22 @@
     <p class="dpa-l-eyebrow">Fonctionnalités</p>
     <h2 class="dpa-l-h2" id="fonctions-titre">La carte que vous dessinez, le passage que vous validez</h2>
 
-    <div class="dpa-l-demos">
+    <div class="dpa-l-demos" data-dpa-loyalty-demo>
       <div class="dpa-l-demo">
         <!-- Même composition que le composant LoyaltyCard du produit. -->
-        <div class="dpa-l-card" data-dpa-artwork role="img" aria-label="Carte de démonstration : Boulangerie du Marché, 6 passages sur 10, récompense une viennoiserie offerte, membre Camille D., carte DPA-DEMO-4821-7390.">
+        <div class="dpa-l-card" id="dpa-demo-carte" data-dpa-artwork role="img" aria-label="Carte de démonstration : Boulangerie du Marché, 6 passages sur 10, récompense une viennoiserie offerte, membre Camille D., carte DPA-DEMO-4821-7390.">
           <div class="dpa-l-card-top">
             <div class="dpa-l-card-biz">
               <div class="dpa-l-card-logo">BDM</div>
               <div class="dpa-l-card-name">Boulangerie du Marché</div>
             </div>
             <div class="dpa-l-card-count">
-              <div class="dpa-l-card-unit">PASSAGES</div>
-              <div class="dpa-l-card-value">6/10</div>
+              <div class="dpa-l-card-unit" data-dpa-demo-unit>PASSAGES</div>
+              <div class="dpa-l-card-value" data-dpa-demo-balance>6/10</div>
             </div>
           </div>
           <div class="dpa-l-card-program">Club Boulangerie du Marché</div>
-          <div class="dpa-l-card-strip" aria-hidden="true">
+          <div class="dpa-l-card-strip" data-dpa-demo-panel="passages" aria-hidden="true">
             <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="fait">
             <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="fait">
             <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="fait">
@@ -168,6 +168,11 @@
             <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="reste">
             <img src="/assets/stamps/croissant.png" width="64" height="64" alt="" data-dpa-stamp="reste">
             <img src="/assets/stamps/cadeau.png" width="64" height="64" alt="" data-dpa-stamp="reste">
+          </div>
+          <div class="dpa-l-card-points" data-dpa-demo-panel="points" hidden aria-hidden="true">
+            <div class="dpa-l-points-labels"><span>68 points cumulés</span><span>Objectif : 100 points</span></div>
+            <div class="dpa-l-points-track" style="--dpa-l-progress:68%"><i></i></div>
+            <div class="dpa-l-card-points-rule">1 € dépensé = 1 point</div>
           </div>
           <div class="dpa-l-card-foot">
             <div>
@@ -184,17 +189,17 @@
             <div class="dpa-l-card-no">DPA-DEMO-4821-7390</div>
           </div>
         </div>
-        <p class="dpa-l-modes" aria-hidden="true">
-          <span class="dpa-l-mode is-on">Passages</span>
-          <span class="dpa-l-mode">Points</span>
-        </p>
+        <div class="dpa-l-modes" role="group" aria-label="Mode de fidélité de la démonstration">
+          <button type="button" class="dpa-l-mode is-on" data-dpa-demo-mode="passages" aria-pressed="true" aria-controls="dpa-demo-carte dpa-demo-scan">Passages</button>
+          <button type="button" class="dpa-l-mode" data-dpa-demo-mode="points" aria-pressed="false" aria-controls="dpa-demo-carte dpa-demo-scan">Points</button>
+        </div>
         <h3 class="dpa-l-h3">Vous dessinez votre carte</h3>
         <p class="dpa-l-body">Logo, couleurs, tampons du catalogue et récompense, avec un aperçu avant publication. Au choix : des passages à collecter, ou des points attribués par passage ou par euro dépensé.</p>
       </div>
 
       <div class="dpa-l-demo">
         <!-- Même composition que le panneau « Carte reconnue » de l'écran de scan. -->
-        <div class="dpa-l-scan">
+        <div class="dpa-l-scan" id="dpa-demo-scan">
           <span class="dpa-l-badge"><span class="material-symbols-rounded" aria-hidden="true">verified</span>Carte reconnue</span>
           <div class="dpa-l-scan-who">
             <div class="dpa-l-scan-ini" aria-hidden="true">CD</div>
@@ -205,19 +210,20 @@
           </div>
           <div class="dpa-l-scan-box">
             <div class="dpa-l-scan-head">
-              <div class="dpa-l-scan-big">7 <span>passages</span></div>
+              <div class="dpa-l-scan-big"><b data-dpa-demo-scan-balance>7</b> <span data-dpa-demo-scan-unit>passages</span></div>
               <div class="dpa-l-body">Solde actuel</div>
             </div>
-            <div class="dpa-l-scan-dots" aria-hidden="true">
+            <div class="dpa-l-scan-dots" data-dpa-demo-panel="passages" aria-hidden="true">
               <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
               <i data-dpa-dot="reste"></i><i data-dpa-dot="reste"></i><i data-dpa-dot="reste"></i>
             </div>
-            <div class="dpa-l-scan-line"><span class="material-symbols-rounded" aria-hidden="true">redeem</span>Encore 3 passages avant la récompense</div>
+            <div class="dpa-l-points-track" data-dpa-demo-panel="points" style="--dpa-l-progress:75%" hidden aria-hidden="true"><i></i></div>
+            <div class="dpa-l-scan-line"><span class="material-symbols-rounded" aria-hidden="true">redeem</span><span data-dpa-demo-remaining>Encore 3 passages avant la récompense</span></div>
           </div>
-          <div class="dpa-l-scan-ok"><span class="material-symbols-rounded" aria-hidden="true">check_circle</span>Passage ajouté</div>
+          <div class="dpa-l-scan-ok"><span class="material-symbols-rounded" aria-hidden="true">check_circle</span><span data-dpa-demo-added>Passage ajouté</span></div>
         </div>
         <h3 class="dpa-l-h3">Vous comptez en caisse</h3>
-        <p class="dpa-l-body">Le scan affiche le client et son solde ; c’est vous qui validez le passage. Votre liste de clients garde l’historique, signale les récompenses disponibles et permet de corriger un passage ajouté par erreur.</p>
+        <p class="dpa-l-body" data-dpa-demo-scan-description>Le scan affiche le client et son solde ; c’est vous qui validez le passage. Votre liste de clients garde l’historique, signale les récompenses disponibles et permet de corriger un passage ajouté par erreur.</p>
       </div>
     </div>
   </section>
