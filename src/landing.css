@@ -183,20 +183,23 @@ html[data-dpa-theme="dark"] .dpa-l-eyebrow { color: var(--dpa-link, #a9baff); }
 }
 .dpa-l-hero .dpa-l-actions { justify-content: center; }
 
-/* Le texte passe devant les téléphones, et un voile radial très doux lui garde
-   une zone lisible quelle que soit la position de l'animation, dans les deux
-   thèmes. Le voile reste derrière le texte et devant les téléphones. */
+/* Le texte passe devant les téléphones. Plutôt qu'un voile posé sur une zone —
+   dont le bord finit toujours par se lire comme une tache et par mordre sur les
+   appareils — la lisibilité tient à un halo qui ne suit que les lettres : il
+   n'a pas de contour, et il s'arrête à quelques dizaines de pixels du texte. */
 .dpa-l-hero-text { position: relative; z-index: 1; width: 100%; max-width: 760px; }
-.dpa-l-hero-text::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: -4% -3% -7%;
-  pointer-events: none;
-  background: radial-gradient(54% 52% at 50% 50%, rgba(244, 241, 251, 0.92) 0%, rgba(244, 241, 251, 0.84) 56%, rgba(244, 241, 251, 0) 100%);
+.dpa-l-hero h1,
+.dpa-l-hero-lead {
+  text-shadow:
+    0 0 14px rgba(244, 241, 251, 0.95),
+    0 0 30px rgba(244, 241, 251, 0.85),
+    0 0 60px rgba(244, 241, 251, 0.6);
 }
-html[data-dpa-theme="dark"] .dpa-l-hero-text::before {
-  background: radial-gradient(54% 52% at 50% 50%, rgba(23, 19, 35, 0.9) 0%, rgba(23, 19, 35, 0.82) 56%, rgba(23, 19, 35, 0) 100%);
+html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
+  text-shadow:
+    0 0 14px rgba(23, 19, 35, 0.95),
+    0 0 30px rgba(23, 19, 35, 0.85),
+    0 0 60px rgba(23, 19, 35, 0.6);
 }
 
 /* Le calque des téléphones ne reçoit jamais le pointeur : les boutons du hero
@@ -440,18 +443,9 @@ html[data-dpa-theme="dark"] .dpa-l-hero-text::before {
   .dpa-l-footer-links { margin-left: 0; }
   /* Même composition, téléphones plus petits et plus en retrait : ils tiennent
      derrière le contenu sans jamais le concurrencer. */
-  .dpa-l-phone { opacity: 0.4; }
-  .dpa-l-phone-apple { left: -8%; height: min(54svh, 520px); }
-  .dpa-l-phone-android { right: -8%; height: min(48svh, 468px); }
-  /* Le bloc occupe presque toute la largeur : le voile doit être plus franc
-     pour que le texte garde la même lisibilité qu'en grand format. */
-  .dpa-l-hero-text::before {
-    inset: -5% -16% -8%;
-    background: radial-gradient(58% 54% at 50% 50%, rgba(244, 241, 251, 0.96) 0%, rgba(244, 241, 251, 0.92) 58%, rgba(244, 241, 251, 0) 100%);
-  }
-  html[data-dpa-theme="dark"] .dpa-l-hero-text::before {
-    background: radial-gradient(58% 54% at 50% 50%, rgba(23, 19, 35, 0.95) 0%, rgba(23, 19, 35, 0.9) 58%, rgba(23, 19, 35, 0) 100%);
-  }
+  .dpa-l-phone { opacity: 0.42; }
+  .dpa-l-phone-apple { left: -18%; height: min(54svh, 520px); }
+  .dpa-l-phone-android { right: -18%; height: min(48svh, 468px); }
 }
 @media (max-width: 560px) {
   .dpa-l-brand img { height: 34px; }
@@ -460,7 +454,9 @@ html[data-dpa-theme="dark"] .dpa-l-hero-text::before {
   .dpa-l-plan-rows { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .dpa-l-plan-rows dd { margin-bottom: 8px; }
   /* Sur un écran étroit, le bloc occupe presque toute la largeur : les deux
-     appareils se retirent vers les bords plutôt que de passer sous le titre. */
+     appareils se retirent vers les bords, et le sous-titre se plie sur des
+     lignes plus courtes, de sorte qu'aucun texte ne passe devant un écran. */
+  .dpa-l-hero-lead { max-width: 26ch; }
   .dpa-l-phone-apple { left: -40%; height: min(46svh, 380px); translate: 0 -56%; }
   .dpa-l-phone-android { right: -34%; height: min(41svh, 340px); translate: 0 -40%; }
 }
