@@ -405,6 +405,18 @@ html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
 .dpa-l-faq details > p { margin-left: 18px; }
 .dpa-l-faq p { margin: 8px 0 0; color: var(--dpa-secondary, #4A4E55); font-size: 15px; line-height: 1.6; }
 
+/* ---------- Contact ---------- */
+.dpa-l-contact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: clamp(24px, 6vw, 72px); }
+.dpa-l-contact .dpa-l-lead { margin-bottom: 0; max-width: 44ch; }
+.dpa-l-contact-details { margin: 0; font-style: normal; border-top: 1px solid var(--dpa-border, #D4D1C9); }
+.dpa-l-contact-link { display: flex; align-items: center; gap: 16px; padding-block: 20px; border-bottom: 1px solid var(--dpa-border, #D4D1C9); color: var(--dpa-text, #1C1F24); text-decoration: none; }
+.dpa-l-contact-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 14px; background: var(--dpa-subtle, #F1EFFB); color: var(--dpa-link-strong, #4A2AAE); font-size: 24px; }
+.dpa-l-contact-copy { display: grid; gap: 5px; min-width: 0; }
+.dpa-l-contact-label { color: var(--dpa-secondary, #4A4E55); font-size: 14px; font-weight: 600; }
+.dpa-l-contact-value { font-size: clamp(17px, 1.7vw, 22px); font-weight: 700; line-height: 1.35; overflow-wrap: anywhere; }
+.dpa-l-contact-link:hover .dpa-l-contact-value { text-decoration: underline; text-underline-offset: 4px; }
+.dpa-l-contact-support { margin-top: 18px; }
+
 /* ---------- Dernier accès + pied de page ---------- */
 .dpa-l-end { text-align: center; padding-top: clamp(24px, 3vw, 48px); }
 .dpa-l-end .dpa-l-h2 { margin-bottom: clamp(18px, 2.4vw, 26px); }
@@ -425,7 +437,7 @@ html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
 .dpa-l-legal { flex: 1 1 100%; margin: 0; padding-top: 14px; border-top: 1px solid var(--dpa-border-soft, #EFEDE8); color: var(--dpa-secondary, #3E424A); font-size: 13px; line-height: 1.55; }
 
 /* ---------- Adaptations ---------- */
-@media (max-width: 860px) {
+@media (max-width: 1100px) {
   .dpa-l-nav { display: none; }
   .dpa-l-menu { display: block; }
   .dpa-l-menu > summary { list-style: none; cursor: pointer; }
@@ -448,6 +460,9 @@ html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
   }
   .dpa-l-menu-panel a { min-height: 48px; justify-content: flex-start; padding-inline: 14px; width: 100%; }
   .dpa-l-login { padding-inline: 14px; }
+}
+@media (max-width: 860px) {
+  .dpa-l-contact { grid-template-columns: minmax(0, 1fr); }
   .dpa-l-footer-links { margin-left: 0; }
   /* Même composition, téléphones plus petits et plus en retrait : ils tiennent
      derrière le contenu sans jamais le concurrencer. */
@@ -467,6 +482,11 @@ html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
   .dpa-l-hero-lead { max-width: 26ch; }
   .dpa-l-phone-apple { left: -40%; height: min(46svh, 380px); translate: 0 -56%; }
   .dpa-l-phone-android { right: -34%; height: min(41svh, 340px); translate: 0 -40%; }
+}
+
+@media (max-width: 380px) {
+  .dpa-l-menu-label { display: none; }
+  .dpa-l-menu > summary { width: 44px; padding-inline: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
