@@ -63,6 +63,8 @@ html.dpa-native-ios[data-dpa-theme="dark"]::after{background:rgba(27,38,57,.85)}
 }
 .dpa-mfa-dialog::backdrop { background:#171a295e; }
 .dpa-mfa-dialog .dpa-mfa-logo { display: block; width: auto; height: 40px; margin: 0 auto 16px; }
+.dpa-mfa-dialog .dpa-mfa-brand { display:flex; justify-content:center; margin:0 auto 16px; }
+.dpa-mfa-dialog .dpa-mfa-brand .dpa-mfa-logo { margin:0; }
 .dpa-mfa-dialog input, .dpa-mfa-dialog select { margin-inline: auto; text-align: center; }
 .dpa-mfa-dialog .dpa-mfa-button { margin-inline: 4px; }
 .dpa-mfa-warning { background:var(--dpa-info-bg,#f1f3ff); padding: 12px; border-radius: 12px; font-size: 14px; }

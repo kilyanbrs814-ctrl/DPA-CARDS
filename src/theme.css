@@ -46,8 +46,6 @@ html[data-dpa-theme="dark"] .dpa-mobile-dock button[aria-current="page"] { backg
 html[data-dpa-theme="dark"] .dpa-di { --di-ink: var(--dpa-text); --di-muted: var(--dpa-muted); }
 html[data-dpa-theme="dark"] .dpa-di-icon { color: #c0ceff; color: color-mix(in srgb, var(--di-accent) 40%, white); }
 html[data-dpa-theme="dark"] .dpa-mfa-dialog::backdrop { background: #060c18a6; }
-img[src$="/assets/dpa-cards-logo-mono.svg"] { background: transparent; padding: 0; border-radius: 0; object-fit: contain; }
-html[data-dpa-theme="dark"] img[src$="/assets/dpa-cards-logo-mono.svg"] { filter: invert(1); }
 .dpa-desktop-sidebar .dpa-sidebar-brand-mark { background: transparent !important; border: 0 !important; box-shadow: none !important; }
 .dpa-desktop-sidebar .dpa-sidebar-brand-mark img { background: transparent !important; border: 0; box-shadow: none; border-radius: 0; padding: 0; }
 html[data-dpa-theme="dark"] .dpa-sidebar-brand-mark img { padding: 0; background: transparent; }
@@ -80,9 +78,14 @@ html[data-dpa-theme="dark"] ::selection { background: #4c65a2; color: #fff; }
 }
 [data-dpa-theme-qr] { background: #fff !important; color: #15171b; border-radius: 14px; padding: 12px; }
 
+/* DPA branding follows the SITE theme, including logos inserted in dialogs.
+   Asset names describe their background: light.svg has black DPA lettering;
+   dark.svg has white DPA lettering. Keep the original purple artwork. */
 .dpa-brand-pair { display:inline-flex; align-items:center; flex:none; background:transparent; }
-.dpa-brand-pair img { background:transparent; padding:0; border:0; }
-.dpa-brand-pair .dpa-brand-dark, html[data-dpa-theme="dark"] .dpa-brand-pair .dpa-brand-light { display:none !important; }
+.dpa-brand-pair img { background:transparent; padding:0; border:0; filter:none; }
+.dpa-brand-pair .dpa-brand-light { display:block !important; }
+.dpa-brand-pair .dpa-brand-dark { display:none !important; }
+html[data-dpa-theme="dark"] .dpa-brand-pair .dpa-brand-light { display:none !important; }
 html[data-dpa-theme="dark"] .dpa-brand-pair .dpa-brand-dark { display:block !important; }
 .dpa-sidebar-brand-mark img { object-fit:contain; }
 .dpa-support-dialog { box-sizing:border-box; }
