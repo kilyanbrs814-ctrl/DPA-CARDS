@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {exemptionUpdate,internalGroups} from './prepare-testflight-beta.mjs';
+import {exemptionUpdate,internalGroups,missingManualGroups} from './prepare-testflight-beta.mjs';
 
 test('Only the validated audited build can receive an absent exemption setting',()=>{
   const b={id:'target',attributes:{version:'26',processingState:'VALID',usesNonExemptEncryption:null}};
@@ -18,4 +18,9 @@ test('Existing internal groups are reused without selecting external or ambiguou
   assert.deepEqual(internalGroups([...groups,group('other',true)],['internal','external']).map(g=>g.id),['internal']);
   assert.throws(()=>internalGroups([group('external',false)]));
   assert.throws(()=>internalGroups([...groups,group('other',true)]));
+});
+
+test('Automatic groups and an already assigned build never receive a redundant add request',()=>{
+  const groups=[{id:'automatic',attributes:{hasAccessToAllBuilds:true}},{id:'existing',attributes:{}},{id:'missing',attributes:{}}];
+  assert.deepEqual(missingManualGroups(groups,['existing']).map(g=>g.id),['missing']);
 });

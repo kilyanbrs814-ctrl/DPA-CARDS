@@ -26,6 +26,12 @@ export function internalGroups(groups, previous = []) {
   throw new Error('Cannot choose an existing internal tester group unambiguously');
 }
 
+export function missingManualGroups(groups, assigned) {
+  // Apple's default/all-builds group is managed automatically. Manually adding
+  // the same build while exemption processing assigns it returns HTTP 422.
+  return groups.filter(g=>!g.attributes.hasAccessToAllBuilds&&!assigned.includes(g.id));
+}
+
 async function main() {
   for(const name of ['ASC_API_KEY_B64','ASC_API_KEY_ID','ASC_API_ISSUER_ID']) assert.ok(process.env[name],'Missing '+name);
   const pem=Buffer.from(process.env.ASC_API_KEY_B64,'base64');
@@ -55,8 +61,9 @@ async function main() {
   const groupsResponse=await api('/v1/betaGroups?'+new URLSearchParams({'filter[app]':target.app,limit:'200'}));
   const priorIds=previous.flatMap(b=>b.relationships?.betaGroups?.data?.map(g=>g.id)||[]);
   const groups=internalGroups(groupsResponse.data,priorIds);
-  const currentIds=build.relationships?.betaGroups?.data?.map(g=>g.id)||[];
-  const missing=groups.filter(g=>!currentIds.includes(g.id));
+  const refreshed=await api('/v1/builds/'+build.id+'?'+new URLSearchParams({include}));
+  const currentIds=refreshed.data.relationships?.betaGroups?.data?.map(g=>g.id)||[];
+  const missing=missingManualGroups(groups,currentIds);
   if(missing.length) {
     await api('/v1/builds/'+build.id+'/relationships/betaGroups','POST',{data:missing.map(g=>({type:'betaGroups',id:g.id}))});
     console.log('Added build to '+missing.length+' existing internal group(s).');
