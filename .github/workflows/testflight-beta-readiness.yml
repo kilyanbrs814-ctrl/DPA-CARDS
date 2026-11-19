@@ -1,0 +1,41 @@
+name: Finalize existing DPA Cards TestFlight beta
+
+# Maintenance of an existing upload. Does not build or upload another binary.
+on:
+  workflow_dispatch:
+  create:
+
+permissions:
+  contents: read
+
+jobs:
+  finalize-beta:
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/beta-'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: dpa-cards-testflight-beta-1-3-26
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate release maintenance safeguards
+        run: node --test scripts/prepare-testflight-beta.test.mjs scripts/check-testflight-processing.test.mjs
+      - name: Complete audited exemption and reuse existing internal test group
+        env:
+          ASC_API_KEY_B64: ${{ secrets.ASC_API_KEY_P8_BASE64 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+        run: node scripts/prepare-testflight-beta.mjs
+      - name: Preserve internal beta result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-ready-1.3-26
+          path: testflight-ready.json
+          if-no-files-found: warn
+          retention-days: 30
