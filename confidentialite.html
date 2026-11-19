@@ -36,6 +36,7 @@
       <thead><tr><th>Données</th><th>Utilisation</th></tr></thead>
       <tbody>
         <tr><td>Prénom, nom, adresse e-mail, téléphone (facultatif)</td><td>Création et gestion du compte, connexion, contact lié au service.</td></tr>
+        <tr><td>Formulaire de contact : nom, entreprise, e-mail, téléphone facultatif, objet, projet et message</td><td>Transmission de votre demande par e-mail à DPA Cards et réponse à votre demande, y compris avant la création d’un compte.</td></tr>
         <tr><td>Nom, activité et adresse (facultative) du commerce, lien d’inscription</td><td>Affichage du commerce sur la carte et sur la page d’inscription des clients.</td></tr>
         <tr><td>Programme de fidélité : nom, règle de récompense, couleurs, logo, image de couverture</td><td>Création des cartes de fidélité et de leur version Google Wallet.</td></tr>
         <tr><td>Demande de design sur mesure : logo, références, couleurs, description, nom, e-mail et téléphone de contact</td><td>Réalisation du design de la carte par DPA Cards, lorsque le commerçant le demande.</td></tr>
@@ -65,7 +66,7 @@
     <h2>4. Destinataires</h2>
     <ul>
       <li>Le commerce concerné, qui accède uniquement aux données de ses propres clients. Chaque commerce est isolé des autres.</li>
-      <li>L’équipe DPA Cards, pour le support, la sécurité et la réalisation des designs demandés.</li>
+      <li>L’équipe DPA Cards, pour répondre aux demandes de contact, le support, la sécurité et la réalisation des designs demandés.</li>
       <li>Les prestataires techniques ci-dessous, pour le strict besoin de leur prestation.</li>
     </ul>
     <p>Les données ne sont ni vendues ni utilisées à des fins publicitaires par DPA Cards.</p>
@@ -75,6 +76,7 @@
       <thead><tr><th>Prestataire</th><th>Rôle</th></tr></thead>
       <tbody>
         <tr><td>Supabase</td><td>Base de données, authentification et envoi des e-mails de connexion, stockage des fichiers (logos, visuels), fonctions serveur. Région de stockage : <span data-legal="DATA_REGION"></span>.</td></tr>
+        <tr><td>Resend</td><td>Transmission des demandes de contact et des e-mails liés au service. L’adresse de contact saisie permet à DPA Cards de vous répondre directement.</td></tr>
         <tr><td>Vercel</td><td>Hébergement et diffusion du site.</td></tr>
         <tr><td>Google (Google Wallet API)</td><td>Création des cartes Google Wallet, mise à jour du solde et envoi des messages.</td></tr>
         <tr><td>Google Fonts</td><td>Chargement des polices et icônes du site : l’adresse IP du navigateur est transmise à Google à cette occasion.</td></tr>
@@ -88,6 +90,7 @@
       <li><strong>Données d’un client</strong> : tant que sa carte est active dans le programme du commerce. Elles sont supprimées lorsque le commerçant supprime le client ou son compte. Nous recommandons aux commerçants de supprimer les cartes restées sans activité depuis trois ans.</li>
       <li><strong>Demandes de design</strong> : jusqu’à la suppression du compte du commerçant.</li>
       <li><strong>Données de connexion</strong> : selon la durée de conservation des journaux du service d’authentification, pour la sécurité du service.</li>
+      <li><strong>Formulaire de contact</strong> : le message est transmis à notre boîte de contact et fait partie des échanges nécessaires au traitement et au suivi de votre demande. Vous pouvez en demander la suppression à notre adresse de contact. Les empreintes techniques utilisées pour limiter les envois abusifs ne contiennent ni le message ni vos coordonnées en clair et sont purgées automatiquement chaque heure après leur expiration.</li>
     </ul>
     <p>Les sauvegardes techniques de l’hébergeur peuvent contenir des données supprimées jusqu’à leur remplacement automatique.</p>
 

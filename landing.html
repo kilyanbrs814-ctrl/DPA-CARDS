@@ -295,8 +295,6 @@
       <p class="dpa-l-eyebrow">Contact</p>
       <h2 class="dpa-l-h2" id="contact-titre">Parlons de votre commerce</h2>
       <p class="dpa-l-lead">Une question sur DPA Cards ou envie de créer votre carte de fidélité ? Échangeons sur les besoins de votre commerce.</p>
-    </div>
-    <div>
       <address class="dpa-l-contact-details">
         <a class="dpa-l-contact-link" href="mailto:contact@digitalprojectagency.fr">
           <span class="material-symbols-rounded dpa-l-contact-icon" aria-hidden="true">mail</span>
@@ -315,6 +313,47 @@
       </address>
       <p class="dpa-l-note dpa-l-contact-support">Déjà client ? Retrouvez l’assistance dans <a href="/connexion">votre espace commerçant</a>, rubrique « Aide ».</p>
     </div>
+    <form class="dpa-glass-surface dpa-l-contact-form" data-dpa-contact-form aria-labelledby="contact-form-titre">
+      <h3 class="dpa-l-h3" id="contact-form-titre">Envoyez-nous un message</h3>
+      <p class="dpa-l-form-intro">Les champs marqués d’un * sont obligatoires.</p>
+      <fieldset class="dpa-l-contact-fields">
+        <legend class="dpa-l-visually-hidden">Vos coordonnées et votre demande</legend>
+        <label for="contact-name">Nom et prénom *
+          <input id="contact-name" name="name" autocomplete="name" required minlength="2" maxlength="100" placeholder="Votre nom et prénom">
+        </label>
+        <label for="contact-company">Nom de l’entreprise *
+          <input id="contact-company" name="company" autocomplete="organization" required minlength="2" maxlength="120" placeholder="Votre commerce">
+        </label>
+        <label for="contact-email">Adresse e-mail *
+          <input id="contact-email" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="vous@entreprise.fr">
+        </label>
+        <label for="contact-phone"><span>Téléphone <small>(facultatif)</small></span>
+          <input id="contact-phone" name="phone" type="tel" autocomplete="tel" maxlength="30" placeholder="06 12 34 56 78">
+        </label>
+        <label class="dpa-l-field-full" for="contact-subject">Objet *
+          <input id="contact-subject" name="subject" required minlength="3" maxlength="130" placeholder="Le sujet de votre demande">
+        </label>
+        <label class="dpa-l-field-full" for="contact-project"><span id="contact-project-label">Votre projet *</span>
+          <select id="contact-project" name="project" required aria-labelledby="contact-project-label">
+            <option value="" selected disabled>Choisissez votre projet</option>
+            <option value="creation">Créer ma carte de fidélité</option>
+            <option value="multi-commerce">Équiper plusieurs commerces</option>
+            <option value="sur-mesure">Faire dessiner ma carte sur mesure</option>
+            <option value="autre">Une autre demande</option>
+          </select>
+        </label>
+        <label class="dpa-l-field-full" for="contact-message">Votre message *
+          <textarea id="contact-message" name="message" rows="5" required minlength="10" maxlength="4000" placeholder="Parlez-nous de votre projet et de vos besoins…"></textarea>
+        </label>
+        <label class="dpa-l-contact-honeypot" for="contact-website" aria-hidden="true">Votre site web
+          <input id="contact-website" name="website" tabindex="-1" autocomplete="off" maxlength="200">
+        </label>
+      </fieldset>
+      <p class="dpa-l-form-privacy">Vos coordonnées servent à répondre à votre demande. <a href="/confidentialite">Politique de confidentialité</a>.</p>
+      <button class="dpa-l-cta" type="submit">Envoyer mon message</button>
+      <p class="dpa-l-form-status" role="status" aria-live="polite" tabindex="-1" data-dpa-contact-status></p>
+      <noscript><p class="dpa-l-note">Écrivez-nous directement à <a href="mailto:contact@digitalprojectagency.fr">contact@digitalprojectagency.fr</a>.</p></noscript>
+    </form>
   </section>
 
   <!-- 7. Dernier accès -->
