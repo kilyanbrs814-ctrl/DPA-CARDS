@@ -94,3 +94,52 @@ if (sections.length && 'IntersectionObserver' in window) {
   }, { rootMargin: '-45% 0px -45% 0px' });
   for (const entry of sections) observer.observe(entry.section);
 }
+
+// 3. Le choix du mode met à jour les deux aperçus de la démonstration.
+//    Les soldes illustrent la même opération avant et après le scan :
+//    un passage ajouté, ou sept points pour un achat de sept euros.
+const demo = document.querySelector('[data-dpa-loyalty-demo]');
+if (demo) {
+  const card = demo.querySelector('.dpa-l-card');
+  const buttons = [...demo.querySelectorAll('[data-dpa-demo-mode]')];
+  const modes = {
+    passages: {
+      unit: 'PASSAGES', balance: '6/10', cardBalance: '6 passages sur 10',
+      scanBalance: '7', scanUnit: 'passages',
+      remaining: 'Encore 3 passages avant la récompense', added: 'Passage ajouté',
+      description: 'Le scan affiche le client et son solde ; c’est vous qui validez le passage. Votre liste de clients garde l’historique, signale les récompenses disponibles et permet de corriger un passage ajouté par erreur.'
+    },
+    points: {
+      unit: 'POINTS', balance: '68/100', cardBalance: '68 points sur 100, 1 euro dépensé donne 1 point',
+      scanBalance: '75', scanUnit: 'points',
+      remaining: 'Encore 25 points avant la récompense', added: '7 points ajoutés',
+      description: 'Le scan affiche le client et son solde ; c’est vous qui validez les points. Votre liste de clients garde l’historique, signale les récompenses disponibles et permet de corriger des points ajoutés par erreur.'
+    }
+  };
+
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      const mode = button.dataset.dpaDemoMode;
+      const preview = modes[mode];
+      if (!preview) return;
+
+      for (const option of buttons) {
+        const selected = option === button;
+        option.classList.toggle('is-on', selected);
+        option.setAttribute('aria-pressed', String(selected));
+      }
+      for (const panel of demo.querySelectorAll('[data-dpa-demo-panel]')) {
+        panel.hidden = panel.dataset.dpaDemoPanel !== mode;
+      }
+      for (const [field, value] of Object.entries(preview)) {
+        const attribute = {
+          unit: 'unit', balance: 'balance', scanBalance: 'scan-balance',
+          scanUnit: 'scan-unit', remaining: 'remaining', added: 'added',
+          description: 'scan-description'
+        }[field];
+        if (attribute) demo.querySelector(`[data-dpa-demo-${attribute}]`).textContent = value;
+      }
+      card.setAttribute('aria-label', `Carte de démonstration : Boulangerie du Marché, ${preview.cardBalance}, récompense une viennoiserie offerte, membre Camille D., carte DPA-DEMO-4821-7390.`);
+    });
+  }
+}
