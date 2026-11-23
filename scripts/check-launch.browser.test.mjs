@@ -42,7 +42,7 @@ test('installation, landing demo and start guide through the merchant home',asyn
       await guide.waitFor();
       for(const title of ['Configurez votre carte','Affichez votre QR au comptoir','Validez un passage']) {
         assert.equal(await page.locator('.dpa-guide-panel h2').innerText(),title);
-        assert.equal(await page.locator('.dpa-guide-highlight').count(),1);
+        assert.equal(await page.locator('.dpa-guide-highlight').count(),1,title+' sur '+width+'px');
         const box=await page.locator('.dpa-guide-panel').boundingBox();
         assert.ok(box.x>=0&&box.y>=0&&box.x+box.width<=width+1);
         await page.locator('.dpa-guide-panel [data-next]').click();

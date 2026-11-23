@@ -807,6 +807,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
         <div style="font-size:14px;color:var(--dpa-muted,#5E636B);font-weight:500">{{ todayLabel }} · Bonjour {{ m.first }}</div>
         <h1 style="margin:4px 0 0;font-weight:800;font-size:28px;letter-spacing:-0.03em;line-height:1.1;text-wrap:balance;overflow-wrap:anywhere">{{ m.business }}</h1>
       </div>
+      <button type="button" onClick="{{ toInvite }}" data-dpa-guide="invite" class="dpa-glass-surface" style="min-height:54px;padding:14px 16px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:10px;font:inherit;font-weight:700;color:var(--dpa-link,#6846bf)"><span class="material-symbols-rounded" aria-hidden="true">qr_code_2</span>Inviter mes clients</button>
       <section aria-labelledby="mcard-h" class="dpa-glass-surface" style="width:100%;min-width:0;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:14px">
         <h2 id="mcard-h" data-dpa-guide="card" style="margin:0;font-weight:700;font-size:18px">Ma carte</h2>
         <div style="max-width:320px;width:100%;align-self:center"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ homeCard }}" hint-size="100%,260px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdHome }}</sc-if></div>
