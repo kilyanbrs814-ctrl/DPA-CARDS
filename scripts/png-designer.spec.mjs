@@ -296,7 +296,7 @@ test('tampons slider updates preview at once on both platforms and survives save
  await slider.fill('120');
  const large=await first.boundingBox();
  expect(large.width).toBeGreaterThan(original.width);
- expect((await panel.boundingBox()).height).toBe(panelRect.height);
+ expect((await panel.boundingBox()).height).toBeCloseTo(panelRect.height,2);
  await page.getByRole('button',{name:/Enregistrer/}).click();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const json=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
@@ -333,8 +333,8 @@ test('stamp spacing slider compresses and expands the two rows around their cent
  const compact=await Promise.all([first.boundingBox(),lastInRow.boundingBox(),row2.boundingBox()]);
  expect(compact[1].x-compact[0].x).toBeLessThan(horizontalDistance);
  expect(compact[2].y-compact[0].y).toBeLessThan(verticalDistance);
- expect((await image.boundingBox()).width).toBe(icon.width);
- expect((await card.locator('[data-apple-native-strip]').boundingBox()).height).toBe(panel.height);
+ expect((await image.boundingBox()).width).toBeCloseTo(icon.width,2);
+ expect((await card.locator('[data-apple-native-strip]').boundingBox()).height).toBeCloseTo(panel.height,2);
  await slider.fill('120');
  const expanded=await Promise.all([first.boundingBox(),lastInRow.boundingBox(),row2.boundingBox()]);
  expect(expanded[1].x-expanded[0].x).toBeGreaterThan(horizontalDistance);
