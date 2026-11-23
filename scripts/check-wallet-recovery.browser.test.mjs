@@ -19,7 +19,7 @@ test('customer profiles recover their own card on desktop/mobile, copy links, ha
     await page.evaluate(async()=>{
       const a=window.__testApp;window.__walletCalls=[];window.__googleFail=false;window.__delayApple=true;
       const google=async id=>{window.__walletCalls.push(['google',id]);if(window.__googleFail){window.__googleFail=false;throw Error('wallet_unavailable')}return {url:'https://pay.google.com/gp/v/save/'+id}};
-      a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),
+      a.api={...await window.dpaReady,SupportUnread:()=>null,configured:true,access:async()=>({has_access:true}),
         appleWalletLink:async id=>{window.__walletCalls.push(['apple',id]);if(window.__delayApple)await new Promise(resolve=>window.__finishApple=resolve);return {url:'https://wallet.example/apple-pass?token='+id}},
         walletLink:google,enroll:()=>{throw Error('Recovery must not enroll')}};
       a.enterDemo();a.setState({live:true,demo:false,hasAccess:true,role:'owner',screen:'clients',

@@ -11,7 +11,7 @@ test('web profiles: profile entry, commerce selector, onboarding and explicit pa
   page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.log('Browser error',e.message);});
   await page.route(url,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
   await page.goto(url);await page.waitForFunction(()=>window.__testApp);await page.evaluate(async()=>{
-   const a=window.__testApp;await a.ready();a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),uuid:()=>crypto.randomUUID(),
+   const a=window.__testApp;await a.ready();a.api={...await window.dpaReady,SupportUnread:()=>null,configured:true,access:async()=>({has_access:true}),uuid:()=>crypto.randomUUID(),
     switchProfile:id=>window.__switched=id,billing:{profileQuote:async()=>({operation:{id:'op2',quote:{current_count:1,new_count:2,activation_cents:3000,current_monthly_cents:2490,new_monthly_cents:4000,monthly_difference_cents:1510,
      effective_at:'2026-10-18T12:00:00Z',proration_cents:850,proration_collection:'next_invoice',immediate_cents:3000}}}),profileAccept:async()=>{window.__accepted=(window.__accepted||0)+1;return {operation:{status:'complete'}}}}};
    a.enterDemo();a.setState({live:true,demo:false,role:'owner',hasAccess:true,billingMerchantId:'a',billedCount:1,primaryActivated:true,subscription:{status:'active',billing_mode:'monthly'},
@@ -81,7 +81,7 @@ test('web profiles: a secondary merchant cannot start a quote before the primary
   await page.goto(url);await page.waitForFunction(()=>window.__testApp);
   await page.evaluate(async()=>{
    const a=window.__testApp;
-   a.api={...await window.dpaReady,configured:true,switchProfile:id=>window.__switched=id,
+   a.api={...await window.dpaReady,SupportUnread:()=>null,configured:true,switchProfile:id=>window.__switched=id,
     billing:{profileQuote:async()=>{window.__quoteCalled=true;throw Error('Quote must be blocked');}}};
    a.enterDemo();
    a.setState({live:true,demo:false,role:'owner',screen:'billing',hasAccess:false,
@@ -126,7 +126,7 @@ test('native iPhone switches existing commerces without signup or payment',async
   await page.getByRole('button',{name:'Se connecter',exact:true}).waitFor();
   assert.equal(await page.getByRole('button',{name:'Créer mon compte',exact:true}).count(),0);
   await page.evaluate(async()=>{
-   const a=window.__testApp;await a.ready();a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),
+   const a=window.__testApp;await a.ready();a.api={...await window.dpaReady,SupportUnread:()=>null,configured:true,access:async()=>({has_access:true}),
     switchProfile:id=>{window.__nativeSelected=id;},
     billing:{profileQuote:async()=>{window.__stripeQuoteCalled=true;throw Error('unexpected Stripe quote');},
      profileAccept:async()=>{window.__stripePaymentCalled=true;throw Error('unexpected Stripe purchase');},
