@@ -6,8 +6,9 @@ import {mkdirSync} from 'node:fs';
 test('web profiles: profile entry, commerce selector, onboarding and explicit payment consent',async()=>{
  const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=new URL('/connexion',server.resolvedUrls.local[0]).href;
  const browser=await chromium.launch({headless:true});
+ let page;
  try{
-  const page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.log('Browser error',e.message);});
   await page.route(url,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
   await page.goto(url);await page.waitForFunction(()=>window.__testApp);await page.evaluate(async()=>{
    const a=window.__testApp;await a.ready();a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),uuid:()=>crypto.randomUUID(),
@@ -63,15 +64,19 @@ test('web profiles: profile entry, commerce selector, onboarding and explicit pa
   mkdirSync(new URL('../test-results/',import.meta.url),{recursive:true});await page.screenshot({path:new URL('../test-results/profiles-mobile.png',import.meta.url).pathname.replace(/^\/([A-Z]:)/,'$1')});
   await page.setViewportSize({width:1440,height:960});await page.screenshot({path:new URL('../test-results/profiles-desktop.png',import.meta.url).pathname.replace(/^\/([A-Z]:)/,'$1')});
   assert.deepEqual(errors,[]);
+ }catch(error){
+  if(page) console.log('Navigation diagnostics',await page.evaluate(()=>({screen:window.__testApp?.state.screen,live:window.__testApp?.state.live,hasAccess:window.__testApp?.state.hasAccess,loadingHome:window.__testApp?.state.loadingHome,width:window.__testApp?.state.w,modal:window.__testApp?.state.modal,logo:window.__testApp?.state.program?.logoUrl,body:document.body.innerText.slice(-3000)})));
+  throw error;
  }finally{await browser.close();await server.close();}
 });
 
 test('web profiles: a secondary merchant cannot start a quote before the primary is billed',async()=>{
  const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=new URL('/connexion',server.resolvedUrls.local[0]).href;
  const browser=await chromium.launch({headless:true});
+ let page;
  try{
-  const page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);
+  const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.log('Browser error',e.message);});
   await page.route(url,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
   await page.goto(url);await page.waitForFunction(()=>window.__testApp);
   await page.evaluate(async()=>{
@@ -96,6 +101,9 @@ test('web profiles: a secondary merchant cannot start a quote before the primary
   assert.equal(await page.evaluate(()=>window.__switched),'a');
   assert.equal(await page.evaluate(()=>!!window.__quoteCalled),false);
   assert.deepEqual(errors,[]);
+ }catch(error){
+  if(page) console.log('Navigation diagnostics',await page.evaluate(()=>({screen:window.__testApp?.state.screen,live:window.__testApp?.state.live,hasAccess:window.__testApp?.state.hasAccess,loadingHome:window.__testApp?.state.loadingHome,width:window.__testApp?.state.w,modal:window.__testApp?.state.modal,logo:window.__testApp?.state.program?.logoUrl,body:document.body.innerText.slice(-3000)})));
+  throw error;
  }finally{await browser.close();await server.close();}
 });
 
@@ -103,9 +111,10 @@ test('web profiles: a secondary merchant cannot start a quote before the primary
 test('native iPhone switches existing commerces without signup or payment',async()=>{
  const server=await createServer({server:{host:'127.0.0.1',port:0}});await server.listen();const url=new URL('/connexion',server.resolvedUrls.local[0]).href;
  const browser=await chromium.launch({headless:true});
+ let page;
  try{
-  const page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);
+  const errors=[];page.on('pageerror',e=>{errors.push(e.message);console.log('Browser error',e.message);});
   await page.route(url,async route=>{
    const response=await route.fetch();let body=await response.text();
    assert.ok(body.includes("const DPA_NATIVE_IOS=window.location.protocol==='capacitor:';"));
@@ -155,5 +164,8 @@ test('native iPhone switches existing commerces without signup or payment',async
   assert.equal(await page.getByRole('button',{name:'Activer ce commerce',exact:true}).count(),0);
   assert.equal(await page.evaluate(()=>!!window.__stripeQuoteCalled||!!window.__stripePaymentCalled||!!window.__designChargeCalled),false);
   assert.deepEqual(errors,[]);
+ }catch(error){
+  if(page) console.log('Navigation diagnostics',await page.evaluate(()=>({screen:window.__testApp?.state.screen,live:window.__testApp?.state.live,hasAccess:window.__testApp?.state.hasAccess,loadingHome:window.__testApp?.state.loadingHome,width:window.__testApp?.state.w,modal:window.__testApp?.state.modal,logo:window.__testApp?.state.program?.logoUrl,body:document.body.innerText.slice(-3000)})));
+  throw error;
  }finally{await browser.close();await server.close();}
 });
