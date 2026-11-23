@@ -71,10 +71,12 @@ async function main() {
       for (const group of groupsToAssign(betaGroups.data, build.relationships?.betaGroups?.data || [])) {
         await appStoreApi('/betaGroups/'+group.id+'/relationships/builds','POST',[{type:'builds',id:build.id}]);
       }
-      const linked = await appStoreApi('/builds/'+build.id+'/betaGroups?limit=100');
-      const linkedInternal = linked.data.filter(group=>group.attributes.isInternalGroup);
-      if (!linkedInternal.length) throw new Error('The build is not linked to an internal TestFlight group yet.');
-      result.internalGroupCount=linkedInternal.length;
+      const verification = await appStoreApi('/builds?'+params);
+      const linked = verification.included?.filter(item=>item.type==='betaGroups'&&item.attributes.isInternalGroup)||[];
+      const available = internalGroups.filter(group=>group.attributes.hasAccessToAllBuilds
+        || linked.some(item=>item.id===group.id));
+      if (!available.length) throw new Error('The build is not available in an internal TestFlight group yet.');
+      result.internalGroupCount=available.length;
       result.availableForInternalTesting=true;
       writeFileSync('testflight-status.json',JSON.stringify(result,null,2));
       console.log('Build '+number+' disponible dans '+result.internalGroupCount+' groupe(s) interne(s) TestFlight.');
