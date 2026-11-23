@@ -298,6 +298,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
           <dl style="margin:0;background:var(--dpa-surface,#FFFFFF);border:1px solid var(--dpa-border-soft,#E4E1DA);border-radius:16px;padding:4px 16px;display:grid;grid-template-columns:auto 1fr;column-gap:16px;font-size:15px">
             <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Propriétaire</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.owner }}</dd>
             <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">E-mail</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8);overflow-wrap:anywhere">{{ sel.email }}</dd>
+            <dt style="padding:11px 0">Suivi du démarrage</dt><dd style="margin:0;padding:11px 0"><ul style="margin:0;padding-left:20px"><sc-for list="{{ sel.startStatus }}" as="stage"><li>{{ stage.label }} · {{ stage.status }}</li></sc-for></ul></dd>
             <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Commercial</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.rep }}</dd>
             <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Créé le</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.joined }}</dd>
             <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Passages enregistrés</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.visits }}</dd>
@@ -468,7 +469,12 @@ class Component extends DCLogic {
     let sel=null;
     if(selM){ const v=this.view(selM), p=det?det.program:selM.program, c=(det&&det.counts)||{};
       const access=det?.manual_access!==undefined?det.manual_access:selM.manual_access;
-      sel={...v,passes:nf(det?c.wallet_passes:selM.wallet_passes),applePasses:nf(det?c.apple_wallet_downloads:selM.apple_wallet_downloads),visits:nf(det?c.visits:selM.visits),rewards:det?nf(c.rewards):'…',last:fmt(selM.last_activity),
+      sel={...v,startStatus:[
+        ['Compte créé',Boolean(selM.created_at)],
+        ['Programme de fidélité configuré',Boolean(p)],
+        ['Premier passage',Number(det?c.visits:selM.visits)>0],
+        ['Abonnement actif',(det?.subscription||selM.subscription)?.status==='active'],
+      ].map(([label,done])=>({label,status:done?'Fait':'À faire'})),passes:nf(det?c.wallet_passes:selM.wallet_passes),applePasses:nf(det?c.apple_wallet_downloads:selM.apple_wallet_downloads),visits:nf(det?c.visits:selM.visits),rewards:det?nf(c.rewards):'…',last:fmt(selM.last_activity),
         hasProgram:!!p,noProgram:!p,program:p?p.name:'',rule:p?`${p.goal} ${unitOf(p)} = ${p.reward}`:'',design:p?(DESIGN[p.design_status]||p.design_status):'',
         hasEmail:!!selM.owner_email,mailto:selM.owner_email?'mailto:'+selM.owner_email:'',
         rep:(()=>{ const r=(det&&det.sales_rep!==undefined)?det.sales_rep:selM.sales_rep; return r&&r.name?r.name:'Non attribué'; })(),

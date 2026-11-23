@@ -144,3 +144,18 @@ if (demo) {
     });
   }
 }
+
+const visitButton = document.querySelector('[data-dpa-try-visit]');
+const visitStatus = document.querySelector('[data-dpa-visit-status]');
+let visits = 6;
+
+visitButton?.addEventListener('click', () => {
+  if (visits === 10) {
+    visits = 6;
+    visitButton.textContent = 'Ajouter un passage test';
+  } else {
+    visits += 1;
+  }
+  visitStatus.textContent = visits + ' passages sur 10' + (visits === 10 ? ' · Une viennoiserie offerte !' : '');
+  if (visits === 10) visitButton.textContent = 'Recommencer';
+});
