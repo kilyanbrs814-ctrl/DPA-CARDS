@@ -16,6 +16,7 @@ test('upload PNG, preview both states, persist, replace, remove and reject inval
  await expect(preview.locator('img[data-native-stamp="empty"]').first()).toHaveCSS('filter','grayscale(1)');
  await expect(preview.locator('[data-field="business"]')).toHaveCount(0);
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await page.reload();
  await expect(preview.locator('img[data-native-stamp="filled"]')).toHaveCount(3);
@@ -30,6 +31,8 @@ test('upload PNG, preview both states, persist, replace, remove and reject inval
  await expect.poll(()=>preview.locator('img[data-native-stamp="filled"]').evaluateAll(images=>images.every(img=>!img.src.startsWith('data:image')))).toBe(true);
  await upload('logo').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await page.reload();
  await expect(preview.getByRole('img',{name:'Logo',exact:true})).toHaveCount(0);
  await expect.poll(()=>preview.locator('img[data-native-stamp="filled"]').evaluateAll(images=>images.every(img=>!img.src.startsWith('data:image')))).toBe(true);
@@ -77,6 +80,7 @@ test('saved Apple pass uses only original logo and native merchant text',async({
  await expect(preview.getByRole('img',{name:'Logo',exact:true})).toHaveCount(1);
  await expect(preview.locator('[data-field="apple-native-business-name"]')).toHaveText('PNG browser test');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const cfg=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(cfg.apple.showBusinessName).toBe(true);
@@ -101,6 +105,8 @@ test('legacy combined header images remain ignored in editor',async({page})=>{
  await expect(preview.locator('[data-field="apple-native-business-name"]')).toHaveText('Barber Factory');
  await expect(preview.getByRole('img',{name:'Logo et nom du commerce'})).toHaveCount(0);
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const cfg=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(cfg.apple.headerMode).toBe('classic');
  expect(cfg.assets.appleHeader?.path).toContain('appleHeader-'); // Retained only for rollback; not displayed in Classic.
@@ -132,6 +138,8 @@ test('Apple stamp background can be toggled without moving stamps, counters or Q
  }
  await expect(strip.locator('[data-native-stamp]')).toHaveCount(10);
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await page.reload();
  await expect(toggle).not.toBeChecked();
  await expect(strip.locator('[data-native-stamp]')).toHaveCount(10);
@@ -140,6 +148,8 @@ test('Apple stamp background can be toggled without moving stamps, counters or Q
  await page.getByRole('tab',{name:'Apple Wallet'}).click();
  await toggle.check();
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await page.reload();
  await expect(toggle).toBeChecked();
 });
@@ -215,6 +225,7 @@ test('Custom Apple header saves at Retina 3x, then Classic restores native name 
  await page.getByLabel('Style de l’en-tête').selectOption('custom');
  await expect(page.getByLabel('Activité / sous-titre (facultatif)')).toHaveValue('Coiffeur & Barbier');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const custom=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(custom.apple.headerMode).toBe('custom');
@@ -229,6 +240,8 @@ test('Custom Apple header saves at Retina 3x, then Classic restores native name 
  await page.getByLabel('Style de l’en-tête').selectOption('classic');
  await expect(card.locator('[data-field="apple-native-business-name"]')).toHaveText('Barber Factory');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const classic=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(classic.apple.headerMode).toBe('classic');
  expect(classic.assets.appleHeader.path).toBe(custom.assets.appleHeader.path);
@@ -236,6 +249,8 @@ test('Custom Apple header saves at Retina 3x, then Classic restores native name 
  await expect(card.locator('[data-field="apple-native-business-name"]')).toHaveText('Barber Factory');
  await page.getByLabel('Style de l’en-tête').selectOption('custom');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const again=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(again.apple.headerArtworkVersion).toBe(6);
  expect(again.assets.appleHeader.path).toBe(custom.assets.appleHeader.path);
@@ -274,6 +289,8 @@ test('every card-designer image upload shows its recommended size before choosin
  await page.locator('[data-upload="logo"]').setInputFiles({name:'logo.png',mimeType:'image/png',buffer:fixture(80,80)});
  await expect(page.locator('[data-recommended-size="logo"]')).toContainText('660 × 660 px');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await page.reload();
  for(const [kind,size] of dimensions)await expect(page.locator('[data-recommended-size="'+kind+'"]')).toContainText(size);
 });
@@ -298,6 +315,7 @@ test('tampons slider updates preview at once on both platforms and survives save
  expect(large.width).toBeGreaterThan(original.width);
  expect((await panel.boundingBox()).height).toBeCloseTo(panelRect.height,2);
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const json=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(json.apple.stampSize).toBe(120);
@@ -340,6 +358,7 @@ test('stamp spacing slider compresses and expands the two rows around their cent
  expect(expanded[1].x-expanded[0].x).toBeGreaterThan(horizontalDistance);
  expect(expanded[2].y-expanded[0].y).toBeGreaterThan(verticalDistance);
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(saved.apple.stampSpacing).toBe(120);
@@ -374,6 +393,7 @@ test('inactive opacity slider live adjusts only gray stamps on Apple and Google 
  await expect(unearned).toHaveCSS('filter','grayscale(1)');
  await expect(earned).toHaveCSS('filter','none');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(stored.stamps.inactiveOpacity).toBe(100);
@@ -397,6 +417,7 @@ test('Separate wordmark is saved in the native Apple header and Google wide logo
  await upload('logo').setInputFiles({name:'symbol.png',mimeType:'image/png',buffer:fixture(120,120,[30,120,190,255])});
  await upload('businessNameImage').setInputFiles({name:'wordmark.png',mimeType:'image/png',buffer:fixture(400,100,[190,30,100,255])});
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const apple=page.locator('[data-layout="apple"]').first();
  const header=apple.getByRole('img',{name:'En-tête Apple',exact:true});
@@ -425,6 +446,7 @@ test('Very wide transparent wordmark keeps its source while composing native art
  await page.locator('[data-upload="logo"]').setInputFiles({name:'symbol.png',mimeType:'image/png',buffer:fixture(120,120)});
  await page.locator('[data-upload="businessNameImage"]').setInputFiles({name:'wide.png',mimeType:'image/png',buffer:Buffer.from(encoded,'base64')});
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(saved.apple.headerArtworkVersion).toBe(6);
@@ -447,6 +469,7 @@ test('Google Wallet image pickers stay independent from Apple Wallet artwork',as
  await pick('logo').setInputFiles({name:'apple-symbol.png',mimeType:'image/png',buffer:fixture(120,120,[30,80,150,255])});
  await pick('businessNameImage').setInputFiles({name:'apple-wordmark.png',mimeType:'image/png',buffer:fixture(360,120,[200,20,50,255])});
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const appleSaved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(appleSaved.apple.headerMode).toBe('custom');
@@ -461,6 +484,8 @@ test('Google Wallet image pickers stay independent from Apple Wallet artwork',as
  await pick('googleBusinessNameImage').setInputFiles({name:'google-text.png',mimeType:'image/png',buffer:fixture(360,120,[0,100,180,255])});
  await expect(pick('googleBusinessNameImage').locator('..').getByRole('button',{name:'Remplacer'})).toBeVisible();
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  // The first save's toast already exists: wait for the *new* async save to persist its assets.
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config.assets.googleLogo?.path||'')).toContain('googleLogo-');
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config.assets.googleBusinessNameImage?.path||'')).toContain('googleBusinessNameImage-');
@@ -490,6 +515,8 @@ test('Google Wallet image pickers stay independent from Apple Wallet artwork',as
  await pick('googleLogo').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
  await pick('googleBusinessNameImage').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await expect.poll(()=>page.evaluate(()=>{
    const a=JSON.parse(localStorage.getItem('test-design')).config.assets;
    return a.googleLogo===null && a.googleBusinessNameImage===null;
