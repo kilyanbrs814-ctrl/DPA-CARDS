@@ -22,9 +22,10 @@ jobs:
     concurrency:
       group: dpa-cards-testflight
       cancel-in-progress: false
-    runs-on: macos-26
+    runs-on: macos-15
     timeout-minutes: 45
     env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
       APP_STORE_APP_ID: '6823642562'
       APP_BUNDLE_ID: fr.digitalprojectagency.cards
       APP_TEAM_ID: HDK7R3283T
