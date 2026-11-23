@@ -69,6 +69,10 @@ jobs:
           done
           swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
           swift scripts/configure-ios-deeplink.swift ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDevelopmentRegion fr" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :CFBundleLocalizations array" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :CFBundleLocalizations:0 string fr" ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName DPA Cards" ios/App/App/Info.plist || true
           /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string DPA Cards utilise la caméra pour scanner les QR codes des cartes de fidélité." ios/App/App/Info.plist
       - name: Compile unsigned iOS Simulator application

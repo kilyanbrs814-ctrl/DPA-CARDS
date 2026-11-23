@@ -1,3 +1,4 @@
+import QRCode from 'qrcode';
 // Vitrine publique DPA Cards : les comportements que le HTML seul ne couvre pas.
 // Le formulaire de contact reste indépendant du compte commerçant.
 import './landing-contact.js';
@@ -143,4 +144,26 @@ if (demo) {
       card.setAttribute('aria-label', `Carte de démonstration : Boulangerie du Marché, ${preview.cardBalance}, récompense une viennoiserie offerte, membre Camille D., carte DPA-DEMO-4821-7390.`);
     });
   }
+}
+
+const visitButton = document.querySelector('[data-dpa-try-visit]');
+const visitStatus = document.querySelector('[data-dpa-visit-status]');
+let visits = 6;
+
+visitButton?.addEventListener('click', () => {
+  if (visits === 10) {
+    visits = 6;
+    visitButton.textContent = 'Ajouter un passage test';
+  } else {
+    visits += 1;
+  }
+  visitStatus.textContent = visits + ' passages sur 10' + (visits === 10 ? ' · Une viennoiserie offerte !' : '');
+  if (visits === 10) visitButton.textContent = 'Recommencer';
+});
+
+const demoQr = document.querySelector('[data-dpa-demo-qr]');
+if (demoQr) {
+  QRCode.toString('https://cards.digitalprojectagency.fr/demo.html', {type:'svg',width:184,margin:2})
+    .then(svg => { demoQr.innerHTML = svg; })
+    .catch(() => { demoQr.textContent = 'Ouvrez cards.digitalprojectagency.fr/demo.html sur votre téléphone.'; });
 }

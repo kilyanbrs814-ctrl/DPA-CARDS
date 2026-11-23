@@ -49,9 +49,26 @@ async function main() {
     if (['FAILED','INVALID'].includes(result.processingState)) throw new Error('Apple rejected build processing: '+result.processingState);
     if (result.processingState==='VALID') {
       if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY,'## DPA Cards '+version+' ('+number+')\n\nMise à jour : '+release.releaseId+'\n\nApple : '+result.processingState+' — '+(result.internalBuildState || 'état bêta non renseigné')+'\n');
+      if (result.internalBuildState==='MISSING_EXPORT_COMPLIANCE') {
+        const {appStoreApi}=await import('./app-store-api.mjs');
+        await appStoreApi('/builds/'+build.id,'PATCH',{type:'builds',id:build.id,attributes:{usesNonExemptEncryption:false}});
+        await new Promise(resolve=>setTimeout(resolve,20000));
+        continue;
+      }
       if (['MISSING_EXPORT_COMPLIANCE','IN_EXPORT_COMPLIANCE_REVIEW','PROCESSING_EXCEPTION','EXPIRED'].includes(result.internalBuildState)) {
         throw new Error('Apple requires attention before testing: '+result.internalBuildState+'. The uploaded build is preserved.');
       }
+      const {appStoreApi}=await import('./app-store-api.mjs');
+      const betaGroups=await appStoreApi('/apps/'+app+'/betaGroups?limit=100');
+      const internalGroups=betaGroups.data.filter(group=>group.attributes.isInternalGroup);
+      if (!internalGroups.length) throw new Error('No existing internal TestFlight group is configured.');
+      for (const group of internalGroups) {
+        await appStoreApi('/betaGroups/'+group.id+'/relationships/builds','POST',[{type:'builds',id:build.id}]);
+      }
+      result.internalGroupCount=internalGroups.length;
+      result.availableForInternalTesting=true;
+      writeFileSync('testflight-status.json',JSON.stringify(result,null,2));
+      console.log('Build '+number+' disponible dans '+internalGroups.length+' groupe(s) interne(s) TestFlight.');
       return;
     }
     await new Promise(resolve => setTimeout(resolve,20000));

@@ -10,6 +10,8 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="stylesheet" href="/install-app.css">
 <script src="/install-app.js" defer></script>
+<link rel="stylesheet" href="/start-guide.css">
+<script src="/start-guide.js" defer></script>
 <title>DPA Cards</title>
 <!-- React 18.3.1 UMD, vendored locally (same version dc-runtime would otherwise
      pull from unpkg). Defining the globals up front makes support.js skip its
@@ -630,6 +632,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
     </sc-if>
 
     {{ dashboardExperience }}
+    <sc-if value="{{ showStartGuide }}"><div class="dpa-guide-entry"><button class="dpa-guide-button" type="button" data-dpa-guide-start>Guide de démarrage</button><a class="dpa-guide-button" href="https://cards.digitalprojectagency.fr/downloads/Guide-DPA-Cards-mobile.pdf" target="_blank" rel="noopener">Guide PDF illustré</a></div></sc-if>
     {{ homeReturnControl }}
     {{ pointsSimulatorDialog }}
     <sc-if value="{{ lockBanner }}" hint-placeholder-val="{{ false }}">
@@ -667,7 +670,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
         <h1 style="margin:6px 0 4px;font-weight:800;font-size:clamp(30px,5vw,40px);letter-spacing:-0.03em;line-height:1.05">Bonjour {{ m.first }}</h1>
         <div style="font-size:17px;color:var(--dpa-secondary,#3E424A);font-weight:500">{{ m.business }}</div>
       </div>
-      <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" style="width:100%;min-height:96px;border:0;border-radius:22px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:18px;padding:18px 22px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25)" style-hover="background:#1A36C4">
+      <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" data-dpa-guide="scan" style="width:100%;min-height:96px;border:0;border-radius:22px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:18px;padding:18px 22px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25)" style-hover="background:#1A36C4">
         <div style="width:60px;height:60px;border-radius:16px;background:rgba(255,255,255,0.16);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:34px">qr_code_scanner</span></div>
         <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:22px;letter-spacing:-0.01em">Scanner une carte</div><div style="margin-top:4px;font-size:15px;color:#DCE3FF">Créditer un passage ou valider une récompense</div></div>
         
@@ -747,7 +750,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
         </sc-if>
         </div>
         <div style="display:flex;flex-direction:column;gap:20px">
-          <section aria-label="Ma carte" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
+          <section aria-label="Ma carte" data-dpa-guide="card" class="dpa-glass-surface" style="border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:16px">
             <div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:0;font-weight:700;font-size:18px">Ma carte</h2></div>
             <div style="max-width:320px;width:100%;align-self:center"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ homeCard }}" hint-size="100%,260px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdHome }}</sc-if></div>
             <div style="font-size:14px;color:var(--dpa-secondary,#4A4E55);text-align:center">{{ ruleText }} · aperçu indicatif</div>
@@ -789,7 +792,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
           </sc-if>
         </section>
       </sc-if>
-          <button type="button" class="dpa-glass-surface" onClick="{{ toInvite }}" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:20px;text-align:left" style-hover="border-color:var(--dpa-link,#2448F0)">
+          <button type="button" class="dpa-glass-surface" onClick="{{ toInvite }}" data-dpa-guide="invite" style="display:flex;align-items:center;gap:14px;padding:18px 20px;border-radius:20px;text-align:left" style-hover="border-color:var(--dpa-link,#2448F0)">
             <div style="width:48px;height:48px;border-radius:14px;background:var(--dpa-info-bg,#E8EDFF);color:var(--dpa-link,#2448F0);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:26px">qr_code_2</span></div>
             <div style="flex:1"><div style="font-weight:700;font-size:16px">Inviter mes clients</div><div style="font-size:14px;color:var(--dpa-muted,#5E636B);margin-top:2px">QR code d’inscription et lien à partager</div></div>
             
@@ -804,8 +807,9 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
         <div style="font-size:14px;color:var(--dpa-muted,#5E636B);font-weight:500">{{ todayLabel }} · Bonjour {{ m.first }}</div>
         <h1 style="margin:4px 0 0;font-weight:800;font-size:28px;letter-spacing:-0.03em;line-height:1.1;text-wrap:balance;overflow-wrap:anywhere">{{ m.business }}</h1>
       </div>
+      <button type="button" onClick="{{ toInvite }}" data-dpa-guide="invite" class="dpa-glass-surface" style="min-height:54px;padding:14px 16px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:10px;font:inherit;font-weight:700;color:var(--dpa-link,#6846bf)"><span class="material-symbols-rounded" aria-hidden="true">qr_code_2</span>Inviter mes clients</button>
       <section aria-labelledby="mcard-h" class="dpa-glass-surface" style="width:100%;min-width:0;border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:14px">
-        <h2 id="mcard-h" style="margin:0;font-weight:700;font-size:18px">Ma carte</h2>
+        <h2 id="mcard-h" data-dpa-guide="card" style="margin:0;font-weight:700;font-size:18px">Ma carte</h2>
         <div style="max-width:320px;width:100%;align-self:center"><sc-if value="{{ noCD }}" hint-placeholder-val="{{ true }}"><dc-import name="LoyaltyCard" c="{{ homeCard }}" hint-size="100%,260px"></dc-import></sc-if><sc-if value="{{ hasCD }}" hint-placeholder-val="{{ false }}">{{ cdHome }}</sc-if></div>
         <div style="width:100%;font-size:14px;color:var(--dpa-secondary,#4A4E55);text-align:center;overflow-wrap:anywhere">{{ ruleText }} · aperçu indicatif</div>
         <sc-if value="{{ designPending }}" hint-placeholder-val="{{ false }}"><div role="status" style="display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:var(--dpa-info-bg,#E8EDFF);color:var(--dpa-link-strong,#1A36C4);font-size:14px;line-height:1.45;text-align:left"><span class="material-symbols-rounded" style="font-size:20px">brush</span><span>Création sur mesure en cours · demande du {{ dReq.date }} · statut : {{ dReq.statusLabel }} · sur devis</span></div></sc-if>
@@ -849,7 +853,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
       {{ dashboardOverview }}
 
       <div style="display:flex;flex-direction:column;gap:10px">
-        <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" style="min-height:76px;border:0;border-radius:20px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:14px;padding:12px 18px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25);transition:transform .12s ease" style-active="transform:scale(0.98);background:#1A36C4">
+        <sc-if value="{{ canScan }}" hint-placeholder-val="{{ true }}"><button type="button" onClick="{{ toScanner }}" data-dpa-guide="scan" style="min-height:76px;border:0;border-radius:20px;background:#2448F0;color:#FFFFFF;display:flex;align-items:center;gap:14px;padding:12px 18px;text-align:left;box-shadow:0 10px 24px rgba(36,72,240,0.25);transition:transform .12s ease" style-active="transform:scale(0.98);background:#1A36C4">
           <div style="width:50px;height:50px;border-radius:14px;background:rgba(255,255,255,0.16);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded" style="font-size:30px">qr_code_scanner</span></div>
           <div style="flex:1;min-width:0"><div style="font-weight:800;font-size:19px">Scanner une carte</div><div style="margin-top:2px;font-size:14px;color:#DCE3FF">Passage ou récompense</div></div>
         </button></sc-if>
@@ -1221,7 +1225,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
     <div style="max-width:960px;margin:0 auto;padding:clamp(20px,4vw,40px);display:flex;flex-direction:column;gap:18px">
       <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <div><h1 style="margin:0;font-weight:800;font-size:clamp(28px,5vw,36px);letter-spacing:-0.03em">Clients</h1><div style="margin-top:4px;color:var(--dpa-muted,#5E636B);font-size:15px">{{ clientCount }} inscrits<sc-if value="{{ isDemo }}" hint-placeholder-val="{{ true }}"> · données fictives</sc-if></div></div>
-        <button type="button" onClick="{{ toInvite }}" style="min-height:46px;padding:0 16px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:12px;background:var(--dpa-surface,#FFFFFF);font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">person_add</span>Inviter</button>
+        <button type="button" onClick="{{ toInvite }}" data-dpa-guide="invite" style="min-height:46px;padding:0 16px;border:1.5px solid var(--dpa-border,#D4D1C9);border-radius:12px;background:var(--dpa-surface,#FFFFFF);font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px"><span class="material-symbols-rounded" style="font-size:20px">person_add</span>Inviter</button>
       </div>
       <div role="search" style="position:relative">
         <label for="cq" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Rechercher un client</label>
@@ -1239,7 +1243,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
           <span class="material-symbols-rounded" style="font-size:36px;color:var(--dpa-placeholder,#9A9EA6)">person_search</span>
           <div style="margin-top:10px;font-weight:700;font-size:17px">{{ emptyTitle }}</div>
           <div style="margin:6px auto 0;max-width:340px;color:var(--dpa-muted,#5E636B);font-size:15px;line-height:1.5">{{ emptyText }}</div>
-          <sc-if value="{{ noClientsAtAll }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ toInvite }}" style="margin-top:18px;height:50px;padding:0 20px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700">Inviter mes clients</button></sc-if>
+          <sc-if value="{{ noClientsAtAll }}" hint-placeholder-val="{{ false }}"><button type="button" onClick="{{ toInvite }}" data-dpa-guide="invite" style="margin-top:18px;height:50px;padding:0 20px;border:0;border-radius:14px;background:#2448F0;color:#FFFFFF;font-weight:700">Inviter mes clients</button></sc-if>
         </div>
       </sc-if>
       <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px">
@@ -1523,7 +1527,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
             <div style="width:44px;height:44px;border-radius:12px;background:var(--dpa-subtle,#EFEDE8);color:var(--dpa-text,#1C1F24);display:grid;place-items:center;flex:none"><span class="material-symbols-rounded">badge</span></div>
             <div><div style="font-weight:700;font-size:16px">QR code personnel du client</div><div style="margin-top:4px;font-size:15px;color:var(--dpa-secondary,#4A4E55);line-height:1.5">Unique à chaque client, il figure sur sa carte dans son Wallet. Vous le scannez en caisse pour identifier la carte et créditer un passage.</div></div>
           </div>
-          <button type="button" onClick="{{ toScanner }}" style="align-self:flex-start;min-height:44px;padding:0 4px;border:0;background:none;color:var(--dpa-link,#2448F0);font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px">Scanner la carte d’un client</button>
+          <button type="button" onClick="{{ toScanner }}" data-dpa-guide="scan" style="align-self:flex-start;min-height:44px;padding:0 4px;border:0;background:none;color:var(--dpa-link,#2448F0);font-weight:700;font-size:15px;display:flex;align-items:center;gap:6px">Scanner la carte d’un client</button>
         </section>
       </div>
     </div>
@@ -2269,7 +2273,7 @@ const PLAN_UI=[
   {key:'commitment',title:'Engagement 12 mois',setup:'25 €',monthly:'20 €',lead:['1 mois gratuit inclus dans les 12 mois','Engagement 12 mois','Exactement les mêmes fonctionnalités'],
    // "Paiement en une fois": eleven paid months + setup, covering twelve months (display only).
    prepaid:{months:12,monthlyCents:2000,setupCents:2500,lead:['Payé en une fois','Engagement 12 mois','Exactement les mêmes fonctionnalités']}}];
-const PLAN_FEATURES=['Cartes de fidélité digitales','Google Wallet','Apple Wallet (dès sa disponibilité)','Scanner QR','Gestion des clients','Récompenses','Notifications','Tableau de bord','Support'];
+const PLAN_FEATURES=['Cartes de fidélité digitales','Google Wallet','Apple Wallet','Scanner QR','Gestion des clients','Récompenses','Notifications','Tableau de bord','Support'];
 const SUB_ST={trialing:'Essai gratuit',active:'Actif',past_due:'Paiement en retard',unpaid:'Impayé',canceled:'Résilié',incomplete:'Paiement non finalisé',incomplete_expired:'Expiré',paused:'Suspendu',expired:'Offre terminée'};
 const PREPAID_ST={paid:'Payé',partially_refunded:'Payé · remboursé en partie',refunded:'Remboursé',processing:'En cours de traitement',failed:'Échoué'};
 // Same calendar rule as the server: same day N months later, clamped to the month's last day.
@@ -3831,6 +3835,7 @@ class Component extends DCLogic {
         React.createElement('button',{type:'button',className:'dpa-glass-surface',onClick:()=>this.go('home')},
           React.createElement('svg',{viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:2,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},React.createElement('path',{d:'m12 19-7-7 7-7m-7 7h14'})),
           'Retour à l’accueil')):null,
+      showStartGuide:S.app&&scr==='home',
       dashboardExperience:S.app&&this.api?.DashboardExperience?React.createElement(this.api.DashboardExperience,{role:'merchant',pageKey:scr,
         commands:[...deskNav.filter(n=>n.k!=='more').map(n=>({id:n.k,label:n.label,detail:'Navigation',run:n.go})),...moreItems.map(n=>({label:n.label,detail:'Mon commerce',run:n.run})),
           ...(s.live&&m.id?[{label:'Support',detail:'Échanger avec DPA Cards',run:()=>this.setState({supportOpen:true})}]:[])]}):null,

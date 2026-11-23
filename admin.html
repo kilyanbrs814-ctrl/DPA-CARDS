@@ -125,6 +125,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
     </sc-if>
 
     {{ dashboardInsights }}
+    {{ startupOverview }}
 
     <div id="admin-merchant-list" tabindex="-1" style="display:flex;flex-direction:column;gap:12px;scroll-margin-top:76px">
       <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -298,6 +299,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
           <dl style="margin:0;background:var(--dpa-surface,#FFFFFF);border:1px solid var(--dpa-border-soft,#E4E1DA);border-radius:16px;padding:4px 16px;display:grid;grid-template-columns:auto 1fr;column-gap:16px;font-size:15px">
             <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Propriétaire</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.owner }}</dd>
             <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">E-mail</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8);overflow-wrap:anywhere">{{ sel.email }}</dd>
+            <dt style="padding:11px 0">Suivi du démarrage</dt><dd style="margin:0;padding:11px 0"><ul style="margin:0;padding-left:20px"><sc-for list="{{ sel.startStatus }}" as="stage"><li>{{ stage.label }} · {{ stage.status }}</li></sc-for></ul></dd>
             <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Commercial</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.rep }}</dd>
             <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Créé le</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.joined }}</dd>
             <dt style="padding:11px 0;color:var(--dpa-muted,#5E636B);border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">Passages enregistrés</dt><dd style="margin:0;padding:11px 0;font-weight:600;text-align:right;border-bottom:1px solid var(--dpa-border-soft,#EFEDE8)">{{ sel.visits }}</dd>
@@ -468,7 +470,12 @@ class Component extends DCLogic {
     let sel=null;
     if(selM){ const v=this.view(selM), p=det?det.program:selM.program, c=(det&&det.counts)||{};
       const access=det?.manual_access!==undefined?det.manual_access:selM.manual_access;
-      sel={...v,passes:nf(det?c.wallet_passes:selM.wallet_passes),applePasses:nf(det?c.apple_wallet_downloads:selM.apple_wallet_downloads),visits:nf(det?c.visits:selM.visits),rewards:det?nf(c.rewards):'…',last:fmt(selM.last_activity),
+      sel={...v,startStatus:[
+        ['Compte créé',Boolean(selM.created_at)],
+        ['Carte prête',p?.design_status==='validated'],
+        ['Premier passage',Number(det?c.visits:selM.visits)>0],
+        ['Abonnement actif',(det?.subscription||selM.subscription)?.status==='active'],
+      ].map(([label,done])=>({label,status:done?'Fait':'En attente'})),passes:nf(det?c.wallet_passes:selM.wallet_passes),applePasses:nf(det?c.apple_wallet_downloads:selM.apple_wallet_downloads),visits:nf(det?c.visits:selM.visits),rewards:det?nf(c.rewards):'…',last:fmt(selM.last_activity),
         hasProgram:!!p,noProgram:!p,program:p?p.name:'',rule:p?`${p.goal} ${unitOf(p)} = ${p.reward}`:'',design:p?(DESIGN[p.design_status]||p.design_status):'',
         hasEmail:!!selM.owner_email,mailto:selM.owner_email?'mailto:'+selM.owner_email:'',
         rep:(()=>{ const r=(det&&det.sales_rep!==undefined)?det.sales_rep:selM.sales_rep; return r&&r.name?r.name:'Non attribué'; })(),
@@ -531,7 +538,14 @@ class Component extends DCLogic {
     const supportEl=tab==='support'&&s.me&&this.api?.SupportWorkspace?React.createElement(this.api.SupportWorkspace,{api:this.api.support,admin:true}):null;
     const dashboardExperience=s.me&&this.api?.DashboardExperience?React.createElement(this.api.DashboardExperience,{role:'admin',pageKey:tab,
       commands:[...tabs.map(t=>({label:t.label,detail:'Administration',run:t.pick})),...D.map(m=>({id:m.id,label:m.business_name,detail:'Commerce',run:()=>{this.goTab('list');this.open(m.id);}}))]}):null;
-    return {dashboardInsights,dashboardExperience,supportEl,tabSupport:tab==='support',tabs,tabGen:tab==='gen',tabScanner:tab==='scanner',scannerEl,tabList:tab==='list',tabSales:tab==='sales',salesEl,hasSalesEl:!!selSalesEl,selSalesEl,genEl,isDesk,isMob:!isDesk,
+    const startupOverview=tab==='list'&&!s.loading&&!s.error?React.createElement('section',{'aria-label':'Démarrage des commerces',style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:20}},
+      ...[
+        ['Commerces créés',D.length],
+        ['Cartes prêtes',D.filter(m=>m.program?.design_status==='validated').length],
+        ['Premier passage effectué',D.filter(m=>Number(m.visits)>0).length],
+        ['Abonnements actifs',D.filter(m=>m.subscription?.status==='active').length],
+      ].map(([label,count])=>React.createElement('div',{key:label,className:'dpa-glass-surface',style:{borderRadius:16,padding:16}},React.createElement('div',{style:{fontSize:14}},label),React.createElement('strong',{style:{display:'block',fontSize:28,marginTop:8}},nf(count))))):null;
+    return {startupOverview,dashboardInsights,dashboardExperience,supportEl,tabSupport:tab==='support',tabs,tabGen:tab==='gen',tabScanner:tab==='scanner',scannerEl,tabList:tab==='list',tabSales:tab==='sales',salesEl,hasSalesEl:!!selSalesEl,selSalesEl,genEl,isDesk,isMob:!isDesk,
       loading:s.loading,hasError:!!s.error,error:s.error||'',reload:()=>this.load(),
       q:s.q,setQ:e=>this.setState({q:e.target.value}),sort:s.sort,setSort:e=>this.setState({sort:e.target.value}),
       statusFilters,rows:s.loading?[]:list.map(m=>this.view(m)),emptyAll:!s.loading&&!s.error&&D.length===0,emptyFiltered:!s.loading&&D.length>0&&list.length===0,

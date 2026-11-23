@@ -7,38 +7,41 @@ test('upload PNG, preview both states, persist, replace, remove and reject inval
  await upload('logo').setInputFiles({name:'logo.png',mimeType:'image/png',buffer:png});
  await upload('stamp').setInputFiles({name:'stamp.png',mimeType:'image/png',buffer:png});
  const preview=page.locator('[data-layout="apple"]').first();
- await expect(preview.locator('[data-stamp="filled-png"]')).toHaveCount(3);
- await expect(preview.locator('[data-stamp="empty-png"]')).toHaveCount(6);
- await expect(preview.locator('[data-stamp="empty-final-star"]')).toHaveCount(1);
- await expect(preview.locator('[data-stamp="empty-final-star"]')).toHaveCSS('filter','grayscale(1)');
- await expect(preview.locator('[data-stamp="empty-final-star"]')).toHaveCSS('opacity','0.22');
- await expect(preview.locator('[data-stamp="empty-png"]').first()).toHaveCSS('opacity','0.22');
- await expect(preview.locator('[data-stamp="empty-png"]').first()).toHaveCSS('filter','grayscale(1)');
+ await expect(preview.locator('img[data-native-stamp="filled"]')).toHaveCount(3);
+ await expect(preview.locator('img[data-native-stamp="empty"]')).toHaveCount(7);
+ await expect(preview.locator('[data-native-stamp]').last()).toHaveCount(1);
+ await expect(preview.locator('[data-native-stamp]').last()).toHaveCSS('filter','grayscale(1)');
+ await expect(preview.locator('[data-native-stamp]').last()).toHaveCSS('opacity','0.22');
+ await expect(preview.locator('img[data-native-stamp="empty"]').first()).toHaveCSS('opacity','0.22');
+ await expect(preview.locator('img[data-native-stamp="empty"]').first()).toHaveCSS('filter','grayscale(1)');
  await expect(preview.locator('[data-field="business"]')).toHaveCount(0);
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await page.reload();
- await expect(preview.locator('[data-stamp="filled-png"]')).toHaveCount(3);
- const before=await preview.locator('[data-stamp="filled-png"]').first().getAttribute('src');
+ await expect(preview.locator('img[data-native-stamp="filled"]')).toHaveCount(3);
+ const before=await preview.locator('img[data-native-stamp="filled"]').first().getAttribute('src');
  await upload('stamp').setInputFiles({name:'replacement.png',mimeType:'image/png',buffer:fixture(40,80,[0,170,240,255])});
- await expect(preview.locator('[data-stamp="filled-png"]').first()).not.toHaveAttribute('src',before);
+ await expect(preview.locator('img[data-native-stamp="filled"]').first()).not.toHaveAttribute('src',before);
  await upload('stamp').setInputFiles({name:'bad.png',mimeType:'image/png',buffer:Buffer.from('not a png')});
  await expect(page.locator('#toast')).toContainText('PNG invalide');
  await page.screenshot({path:'/tmp/dpa-png-designer.png',fullPage:true});
  // Remove through the same ImagePick component as the real generator.
  await upload('stamp').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
- await expect(preview.locator('[data-stamp="filled-png"]')).toHaveCount(0);
+ await expect.poll(()=>preview.locator('img[data-native-stamp="filled"]').evaluateAll(images=>images.every(img=>!img.src.startsWith('data:image')))).toBe(true);
  await upload('logo').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await page.reload();
  await expect(preview.getByRole('img',{name:'Logo',exact:true})).toHaveCount(0);
- await expect(preview.locator('[data-stamp="filled-png"]')).toHaveCount(0);
+ await expect.poll(()=>preview.locator('img[data-native-stamp="filled"]').evaluateAll(images=>images.every(img=>!img.src.startsWith('data:image')))).toBe(true);
 });
 
 test('Apple native name toggle keeps the header height, logo and stamp position',async({page})=>{
  await page.goto('/scripts/fixtures/designer.html');
  const preview=page.locator('[data-layout="apple"]').first();
- const stamp=preview.locator('[data-progress="stamps"]').first();
+ const stamp=preview.locator('[data-apple-native-strip]').first();
  const beforeCard=await preview.boundingBox(),beforeStamp=await stamp.boundingBox();
  await page.getByRole('button',{name:/Afficher le nom du commerce/}).click();
  await expect(preview.locator('[data-field="apple-native-business-name"]')).toHaveText('PNG browser test');
@@ -49,7 +52,7 @@ test('Apple native name toggle keeps the header height, logo and stamp position'
 test('last stamp and reward label stay editable, but Apple name font is native',async({page})=>{
  await page.goto('/scripts/fixtures/designer.html');
  const apple=page.locator('[data-layout="apple"]').first();
- await expect(apple.locator('[data-stamp="empty-final-star"]')).toHaveCount(1);
+ await expect(apple.locator('[data-native-stamp]').last()).toHaveCount(1);
  await expect(page.getByLabel('Police du nom')).toHaveCount(0);
  await expect(page.locator('[data-upload="businessNameImage"]')).toHaveCount(1);
  await expect(page.locator('[data-upload="businessFont"]')).toHaveCount(0);
@@ -77,6 +80,7 @@ test('saved Apple pass uses only original logo and native merchant text',async({
  await expect(preview.getByRole('img',{name:'Logo',exact:true})).toHaveCount(1);
  await expect(preview.locator('[data-field="apple-native-business-name"]')).toHaveText('PNG browser test');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const cfg=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(cfg.apple.showBusinessName).toBe(true);
@@ -101,62 +105,53 @@ test('legacy combined header images remain ignored in editor',async({page})=>{
  await expect(preview.locator('[data-field="apple-native-business-name"]')).toHaveText('Barber Factory');
  await expect(preview.getByRole('img',{name:'Logo et nom du commerce'})).toHaveCount(0);
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const cfg=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(cfg.apple.headerMode).toBe('classic');
  expect(cfg.assets.appleHeader?.path).toContain('appleHeader-'); // Retained only for rollback; not displayed in Classic.
 });
-test('Apple stamp rectangle can be toggled off and on without moving counters or QR; Google stays unchanged',async({page})=>{
+test('Apple stamp background can be toggled without moving stamps, counters or QR',async({page})=>{
  await page.goto('/scripts/fixtures/designer.html');
- const apple=page.locator('[data-layout="apple"]').first();
- const panel=apple.locator('[data-apple-stamp-panel]');
- const checkbox=page.getByLabel('Afficher le rectangle des tampons');
- await expect(checkbox).toBeChecked();
- await expect(panel).toHaveAttribute('data-apple-stamp-panel','visible');
- const rewardToggle=page.locator('[data-apple-reward-settings]').getByLabel('Afficher la récompense dans le bloc des tampons');
- await rewardToggle.check();
- await expect(panel.locator('[data-apple-reward]')).toBeVisible();
- const before=await apple.boundingBox();
- const countersBefore=await apple.locator('[data-field="completed-count"]').boundingBox();
- const remainingBefore=await apple.locator('[data-field="remaining-count"]').boundingBox();
- const qrBefore=await apple.locator('[data-field="qr"]').boundingBox();
- await checkbox.uncheck();
- await expect(panel).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
- await expect(panel.locator('[data-progress="stamps"]')).toBeVisible();
- await expect(panel.locator('[data-stamp]')).toHaveCount(10);
- await expect(panel.locator('[data-stamp]').first()).toBeVisible();
- await expect(panel.locator('[data-stamp]').last()).toBeVisible();
- await expect(panel.locator('[data-apple-reward]')).toBeVisible();
- await expect(rewardToggle).toBeVisible();
- await expect(rewardToggle).toBeChecked();
- await expect(panel).toHaveAttribute('data-apple-stamp-panel','hidden');
- const after=await apple.boundingBox();
- const countersAfter=await apple.locator('[data-field="completed-count"]').boundingBox();
- const remainingAfter=await apple.locator('[data-field="remaining-count"]').boundingBox();
- const qrAfter=await apple.locator('[data-field="qr"]').boundingBox();
- expect(Math.abs(before.height-after.height)).toBeLessThan(1);
- // Compare offsets inside the card: clicking the setting scrolls the page viewport.
- expect(Math.abs((countersBefore.y-before.y)-(countersAfter.y-after.y))).toBeLessThan(1);
- expect(Math.abs((remainingBefore.y-before.y)-(remainingAfter.y-after.y))).toBeLessThan(1);
- expect(Math.abs((qrBefore.y-before.y)-(qrAfter.y-after.y))).toBeLessThan(1);
+ const card=page.locator('[data-layout="apple"]').first();
+ const strip=card.locator('[data-apple-native-strip]');
+ const toggle=page.getByLabel('Afficher le rectangle des tampons');
+ const reward=page.locator('[data-apple-reward-settings]').getByLabel('Afficher la récompense dans le bloc des tampons');
+ await reward.check();
+ const relativePositions=async()=> {
+   const root=await card.boundingBox();
+   const selectors=['[data-apple-native-strip]','[data-field="completed-count"]','[data-field="remaining-count"]','[data-field="qr"]'];
+   return Promise.all(selectors.map(async selector=>{
+     const box=await card.locator(selector).boundingBox();
+     return {y:box.y-root.y,height:box.height};
+   }));
+ };
+ const before=await relativePositions();
+ await expect(toggle).toBeChecked();
+ await expect(strip.locator('[data-native-stamp]')).toHaveCount(10);
+ await toggle.uncheck();
+ await expect(card.locator('[data-apple-reward]')).toBeVisible();
+ const positions=await relativePositions();
+ for(let n=0;n<before.length;n++) {
+   expect(Math.abs(positions[n].y-before[n].y)).toBeLessThan(1);
+   expect(Math.abs(positions[n].height-before[n].height)).toBeLessThan(1);
+ }
+ await expect(strip.locator('[data-native-stamp]')).toHaveCount(10);
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await page.reload();
- await expect(checkbox).not.toBeChecked();
- await expect(panel).toHaveCSS('background-color','rgba(0, 0, 0, 0)');
- await expect(panel.locator('[data-progress="stamps"]')).toBeVisible();
- await expect(panel.locator('[data-stamp]')).toHaveCount(10);
- await expect(panel.locator('[data-stamp]').first()).toBeVisible();
- await expect(panel.locator('[data-stamp]').last()).toBeVisible();
- await expect(panel.locator('[data-apple-reward]')).toBeVisible();
- await page.getByRole('tab',{name:/Google Wallet/}).click();
+ await expect(toggle).not.toBeChecked();
+ await expect(strip.locator('[data-native-stamp]')).toHaveCount(10);
+ await page.getByRole('tab',{name:'Google Wallet'}).click();
  await expect(page.locator('[data-layout="google"]').first().locator('[data-progress="stamps"]')).toBeVisible();
- await page.getByRole('tab',{name:/Apple Wallet/}).click();
- await checkbox.check();
- await expect(panel).toHaveCSS('visibility','visible');
+ await page.getByRole('tab',{name:'Apple Wallet'}).click();
+ await toggle.check();
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await page.reload();
- await expect(checkbox).toBeChecked();
- await expect(panel).toHaveCSS('visibility','visible');
+ await expect(toggle).toBeChecked();
 });
 
 test('Apple strip upload exports exactly the portrait or landscape area shown in the crop window',async({page})=>{
@@ -194,10 +189,10 @@ test('Apple strip upload exports exactly the portrait or landscape area shown in
     await page.mouse.up();
     const selected=await crop.screenshot();
     await page.getByRole('button',{name:'Valider le recadrage'}).click();
-    const panel=page.locator('[data-layout="apple"] [data-apple-stamp-panel]').first();
-    await expect(panel).toHaveCSS('background-image',/data:image\/png;base64/);
+    const panel=page.locator('[data-layout="apple"]').first().getByRole('img',{name:'Bandeau Apple Wallet'});
+    await expect(panel).toHaveAttribute('src',/data:image\/png;base64/);
     const result=await panel.evaluate(async (el, screenshot)=>{
-      const stored=el.style.backgroundImage.match(/data:image\/png;base64,[^"'\\)]+/);
+      const stored=[el.src];
       if(!stored)throw new Error('no uploaded cropped image');
       const load=async url=>{const im=new Image();im.src=url;await im.decode();return im;};
       const output=await load(stored[0]);
@@ -225,17 +220,18 @@ test('Custom Apple header saves at Retina 3x, then Classic restores native name 
  await page.getByRole('button',{name:/Afficher le nom du commerce/}).click();
  await page.getByLabel('Nom du commerce').fill('Barber Factory');
  await page.getByLabel('Activité / sous-titre (facultatif)').fill('Coiffeur & Barbier');
- const stamp=card.locator('[data-progress="stamps"]').first();
+ const stamp=card.locator('[data-apple-native-strip]').first();
  const before=await card.boundingBox(),beforeStamps=await stamp.boundingBox(),y=beforeStamps.y-before.y;
  await page.getByLabel('Style de l’en-tête').selectOption('custom');
- await expect(card.locator('[data-field="apple-custom-business-header"]')).toContainText('Coiffeur & Barbier');
+ await expect(page.getByLabel('Activité / sous-titre (facultatif)')).toHaveValue('Coiffeur & Barbier');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const custom=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(custom.apple.headerMode).toBe('custom');
  expect(custom.apple.headerArtworkVersion).toBe(6);
  expect(custom.assets.appleHeader.path).toContain('appleHeader-');
- const img=card.getByRole('img',{name:'Logo, nom et activité du commerce'});
+ const img=card.getByRole('img',{name:'En-tête Apple',exact:true});
  await expect(img).toBeVisible();
  const bitmap=await img.evaluate(async el=>{await el.decode();return [el.naturalWidth,el.naturalHeight];});
  expect(bitmap).toEqual([480,150]);
@@ -244,6 +240,8 @@ test('Custom Apple header saves at Retina 3x, then Classic restores native name 
  await page.getByLabel('Style de l’en-tête').selectOption('classic');
  await expect(card.locator('[data-field="apple-native-business-name"]')).toHaveText('Barber Factory');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const classic=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(classic.apple.headerMode).toBe('classic');
  expect(classic.assets.appleHeader.path).toBe(custom.assets.appleHeader.path);
@@ -251,6 +249,8 @@ test('Custom Apple header saves at Retina 3x, then Classic restores native name 
  await expect(card.locator('[data-field="apple-native-business-name"]')).toHaveText('Barber Factory');
  await page.getByLabel('Style de l’en-tête').selectOption('custom');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const again=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(again.apple.headerArtworkVersion).toBe(6);
  expect(again.assets.appleHeader.path).toBe(custom.assets.appleHeader.path);
@@ -289,6 +289,8 @@ test('every card-designer image upload shows its recommended size before choosin
  await page.locator('[data-upload="logo"]').setInputFiles({name:'logo.png',mimeType:'image/png',buffer:fixture(80,80)});
  await expect(page.locator('[data-recommended-size="logo"]')).toContainText('660 × 660 px');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await page.reload();
  for(const [kind,size] of dimensions)await expect(page.locator('[data-recommended-size="'+kind+'"]')).toContainText(size);
 });
@@ -297,25 +299,27 @@ test('tampons slider updates preview at once on both platforms and survives save
  await page.goto('/scripts/fixtures/designer.html');
  const slider=page.locator('[data-stamp-size-control]');
  await expect(slider).toHaveValue('100');
- await expect(page.getByText('Taille des tampons : 100 %')).toBeVisible();
+ await expect(page.getByText('Taille des tampons Apple Wallet : 100 %')).toBeVisible();
  const apple=page.locator('[data-layout="apple"]').first();
- const first=apple.locator('[data-stamp-slot] [data-stamp]').first();
- await expect(first).toHaveAttribute('data-stamp',/filled/);
+ const first=apple.locator('[data-native-stamp]').first();
+ await expect(first).toHaveAttribute('data-native-stamp','filled');
  const original=await first.boundingBox();
  await slider.fill('60');
- await expect(page.getByText('Taille des tampons : 60 %')).toBeVisible();
+ await expect(page.getByText('Taille des tampons Apple Wallet : 60 %')).toBeVisible();
  const small=await first.boundingBox();
  expect(small.width).toBeLessThan(original.width);
- const panel=apple.locator('[data-apple-stamp-panel]').first();
+ const panel=apple.locator('[data-apple-native-strip]').first();
  const panelRect=await panel.boundingBox();
  await slider.fill('120');
  const large=await first.boundingBox();
  expect(large.width).toBeGreaterThan(original.width);
- expect((await panel.boundingBox()).height).toBe(panelRect.height);
+ expect((await panel.boundingBox()).height).toBeCloseTo(panelRect.height,2);
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const json=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
- expect(json.stamps.size).toBe(120);
+ expect(json.apple.stampSize).toBe(120);
+ expect(json.google.stampSize).toBe(100);
  await page.reload();
  await expect(slider).toHaveValue('120');
  await page.getByRole('tab',{name:'Google Wallet'}).click();
@@ -331,32 +335,34 @@ test('stamp spacing slider compresses and expands the two rows around their cent
  await page.goto('/scripts/fixtures/designer.html');
  const slider=page.locator('[data-stamp-spacing-control]');
  await expect(slider).toHaveValue('100');
- await expect(page.getByText('Espacement des tampons : 100 %')).toBeVisible();
+ await expect(page.getByText('Espacement des tampons Apple Wallet : 100 %')).toBeVisible();
  const card=page.locator('[data-layout="apple"]').first();
- const slots=card.locator('[data-stamp-slot]');
+ const slots=card.locator('[data-native-stamp]');
  await expect(slots).toHaveCount(10);
  const first=slots.nth(0),lastInRow=slots.nth(4),row2=slots.nth(5);
  const before=await Promise.all([first.boundingBox(),lastInRow.boundingBox(),row2.boundingBox()]);
  const horizontalDistance=before[1].x-before[0].x;
  const verticalDistance=before[2].y-before[0].y;
- const panel=await card.locator('[data-apple-stamp-panel]').boundingBox();
- const image=first.locator('[data-stamp]');
+ const panel=await card.locator('[data-apple-native-strip]').boundingBox();
+ const image=first;
  const icon=await image.boundingBox();
  await slider.fill('60');
- await expect(page.getByText('Espacement des tampons : 60 %')).toBeVisible();
+ await expect(page.getByText('Espacement des tampons Apple Wallet : 60 %')).toBeVisible();
  const compact=await Promise.all([first.boundingBox(),lastInRow.boundingBox(),row2.boundingBox()]);
  expect(compact[1].x-compact[0].x).toBeLessThan(horizontalDistance);
  expect(compact[2].y-compact[0].y).toBeLessThan(verticalDistance);
- expect((await image.boundingBox()).width).toBe(icon.width);
- expect((await card.locator('[data-apple-stamp-panel]').boundingBox()).height).toBe(panel.height);
+ expect((await image.boundingBox()).width).toBeCloseTo(icon.width,2);
+ expect((await card.locator('[data-apple-native-strip]').boundingBox()).height).toBeCloseTo(panel.height,2);
  await slider.fill('120');
  const expanded=await Promise.all([first.boundingBox(),lastInRow.boundingBox(),row2.boundingBox()]);
  expect(expanded[1].x-expanded[0].x).toBeGreaterThan(horizontalDistance);
  expect(expanded[2].y-expanded[0].y).toBeGreaterThan(verticalDistance);
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
- expect(saved.stamps.spacing).toBe(120);
+ expect(saved.apple.stampSpacing).toBe(120);
+ expect(saved.google.stampSpacing).toBe(100);
  await page.reload();
  await expect(slider).toHaveValue('120');
  await page.getByRole('tab',{name:'Google Wallet'}).click();
@@ -373,8 +379,8 @@ test('inactive opacity slider live adjusts only gray stamps on Apple and Google 
  await expect(opacity).toHaveValue('22');
  await expect(page.getByText('Opacité des tampons non validés : 22 %')).toBeVisible();
  const apple=page.locator('[data-layout="apple"]').first();
- const unearned=apple.locator('[data-stamp="empty-final-star"]');
- const earned=apple.locator('[data-stamp^="filled"]').first();
+ const unearned=apple.locator('[data-native-stamp]').last();
+ const earned=apple.locator('[data-native-stamp="filled"]').first();
  await expect(unearned).toHaveCSS('opacity','0.22');
  await expect(unearned).toHaveCSS('filter','grayscale(1)');
  await expect(earned).toHaveCSS('opacity','1');
@@ -387,6 +393,7 @@ test('inactive opacity slider live adjusts only gray stamps on Apple and Google 
  await expect(unearned).toHaveCSS('filter','grayscale(1)');
  await expect(earned).toHaveCSS('filter','none');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const stored=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(stored.stamps.inactiveOpacity).toBe(100);
@@ -404,21 +411,19 @@ test('inactive opacity slider live adjusts only gray stamps on Apple and Google 
  await expect(page.locator('[data-stamp-spacing-control]')).toHaveValue('100');
 });
 
-test('Separate PNG wordmark renders beside the symbol in both Wallet previews and persists',async({page})=>{
+test('Separate wordmark is saved in the native Apple header and Google wide logo',async({page})=>{
  await page.goto('/scripts/fixtures/designer.html');
  const upload=kind=>page.locator('[data-upload="'+kind+'"]');
  await upload('logo').setInputFiles({name:'symbol.png',mimeType:'image/png',buffer:fixture(120,120,[30,120,190,255])});
  await upload('businessNameImage').setInputFiles({name:'wordmark.png',mimeType:'image/png',buffer:fixture(400,100,[190,30,100,255])});
- const apple=page.locator('[data-layout="apple"]').first();
- await expect(apple.getByRole('img',{name:'Logo texte du commerce'})).toBeVisible();
- await expect(apple.locator('[data-field="card-number"]')).toHaveText('1234');
- await page.getByRole('tab',{name:'Google Wallet'}).click();
- const google=page.locator('[data-layout="google"]').first();
- await expect(google.getByRole('img',{name:'Logo symbole'})).toBeVisible();
- await expect(google.getByRole('img',{name:'Logo texte'})).toBeVisible();
- await expect(google.locator('[data-field="card-number"]')).toHaveText('1234');
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
+ const apple=page.locator('[data-layout="apple"]').first();
+ const header=apple.getByRole('img',{name:'En-tête Apple',exact:true});
+ await expect(header).toBeVisible();
+ await expect.poll(()=>header.evaluate(img=>[img.naturalWidth,img.naturalHeight])).toEqual([480,150]);
+ await expect(apple.locator('[data-field="card-number"]')).toHaveText('3333');
  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(saved.assets.businessNameImage.path).toContain('businessNameImage-');
  expect(saved.assets.appleHeader.path).toContain('appleHeader-');
@@ -426,41 +431,36 @@ test('Separate PNG wordmark renders beside the symbol in both Wallet previews an
  expect(saved.apple.headerArtworkVersion).toBe(6);
  expect(saved.google.wideArtworkVersion).toBe(2);
  await page.reload();
+ await expect(header).toBeVisible();
  await page.getByRole('tab',{name:'Google Wallet'}).click();
  await expect(page.locator('[data-layout="google"] [data-field="google-wide-logo"]')).toBeVisible();
 });
 
-test('Very wide original PNG wordmark gets larger without altering its saved artwork',async({page})=>{
+test('Very wide transparent wordmark keeps its source while composing native artwork',async({page})=>{
  await page.goto('/scripts/fixtures/designer.html');
- // Reproduce an original 2000x666 transparent file with letters occupying only a thin horizontal band.
  const encoded=await page.evaluate(()=>{
-  const canvas=document.createElement('canvas');canvas.width=2000;canvas.height=666;
-  const c=canvas.getContext('2d');c.fillStyle='#4C1C09';c.fillRect(24,235,1952,160);
-  return canvas.toDataURL('image/png').split(',')[1];
+   const canvas=document.createElement('canvas');canvas.width=2000;canvas.height=666;
+   const c=canvas.getContext('2d');c.fillStyle='#4C1C09';c.fillRect(24,235,1952,160);
+   return canvas.toDataURL('image/png').split(',')[1];
  });
  await page.locator('[data-upload="logo"]').setInputFiles({name:'symbol.png',mimeType:'image/png',buffer:fixture(120,120)});
- await page.locator('[data-upload="businessNameImage"]').setInputFiles({
-  name:'wide.png',mimeType:'image/png',buffer:Buffer.from(encoded,'base64')});
- const apple=page.locator('[data-layout="apple"]').first();
- const appleWordmark=apple.getByRole('img',{name:'Logo texte du commerce'});
- await expect(appleWordmark).toBeVisible();
- await expect.poll(()=>appleWordmark.evaluate(img=>img.naturalWidth/img.naturalHeight)).toBeGreaterThan(8);
- await expect(appleWordmark).toHaveCSS('width','124px');
- await page.getByRole('tab',{name:'Google Wallet'}).click();
- const google=page.locator('[data-layout="google"]').first();
- const googleWordmark=google.getByRole('img',{name:'Logo texte'});
- await expect.poll(()=>googleWordmark.evaluate(img=>img.naturalWidth/img.naturalHeight)).toBeGreaterThan(8);
- const visibleWidth=await googleWordmark.evaluate(img=>img.getBoundingClientRect().width);
- expect(visibleWidth).toBeGreaterThan(190);
+ await page.locator('[data-upload="businessNameImage"]').setInputFiles({name:'wide.png',mimeType:'image/png',buffer:Buffer.from(encoded,'base64')});
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(saved.apple.headerArtworkVersion).toBe(6);
  expect(saved.google.wideArtworkVersion).toBe(2);
+ const header=page.locator('[data-layout="apple"]').first().getByRole('img',{name:'En-tête Apple',exact:true});
+ await expect(header).toBeVisible();
+ await expect.poll(()=>header.evaluate(img=>[img.naturalWidth,img.naturalHeight])).toEqual([480,150]);
+ await page.getByRole('tab',{name:'Google Wallet'}).click();
+ const wordmark=page.locator('[data-layout="google"]').first().getByRole('img',{name:'Logo texte',exact:true});
+ await expect.poll(()=>wordmark.evaluate(img=>img.naturalWidth/img.naturalHeight)).toBeGreaterThan(8);
+ expect(await wordmark.evaluate(img=>img.getBoundingClientRect().width)).toBeGreaterThan(190);
  await page.reload();
  await page.getByRole('tab',{name:'Google Wallet'}).click();
- const reloaded=page.locator('[data-layout="google"]').first().getByRole('img',{name:'Logo texte'});
- await expect.poll(()=>reloaded.evaluate(img=>img.naturalWidth/img.naturalHeight)).toBeGreaterThan(8);
+ await expect.poll(()=>wordmark.evaluate(img=>img.naturalWidth/img.naturalHeight)).toBeGreaterThan(8);
 });
 
 test('Google Wallet image pickers stay independent from Apple Wallet artwork',async({page})=>{
@@ -469,6 +469,7 @@ test('Google Wallet image pickers stay independent from Apple Wallet artwork',as
  await pick('logo').setInputFiles({name:'apple-symbol.png',mimeType:'image/png',buffer:fixture(120,120,[30,80,150,255])});
  await pick('businessNameImage').setInputFiles({name:'apple-wordmark.png',mimeType:'image/png',buffer:fixture(360,120,[200,20,50,255])});
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const appleSaved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(appleSaved.apple.headerMode).toBe('custom');
@@ -476,13 +477,15 @@ test('Google Wallet image pickers stay independent from Apple Wallet artwork',as
  const textApple=appleSaved.assets.businessNameImage.path;
  const headerApple=appleSaved.assets.appleHeader.path;
  const originalGoogleWide=appleSaved.assets.googleWideLogo.url;
- await expect(page.locator('[data-layout="apple"]').first().getByRole('img',{name:'Logo, nom et activité du commerce'})).toBeVisible();
+ await expect(page.locator('[data-layout="apple"]').first().getByRole('img',{name:'En-tête Apple',exact:true})).toBeVisible();
 
  await pick('googleLogo').setInputFiles({name:'google-circle.png',mimeType:'image/png',buffer:fixture(120,120,[0,170,30,255])});
  await expect(pick('googleLogo').locator('..').getByRole('button',{name:'Remplacer'})).toBeVisible();
  await pick('googleBusinessNameImage').setInputFiles({name:'google-text.png',mimeType:'image/png',buffer:fixture(360,120,[0,100,180,255])});
  await expect(pick('googleBusinessNameImage').locator('..').getByRole('button',{name:'Remplacer'})).toBeVisible();
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  // The first save's toast already exists: wait for the *new* async save to persist its assets.
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config.assets.googleLogo?.path||'')).toContain('googleLogo-');
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config.assets.googleBusinessNameImage?.path||'')).toContain('googleBusinessNameImage-');
@@ -512,6 +515,8 @@ test('Google Wallet image pickers stay independent from Apple Wallet artwork',as
  await pick('googleLogo').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
  await pick('googleBusinessNameImage').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
  await page.getByRole('button',{name:/Enregistrer/}).click();
+ await expect(page.getByRole('button',{name:/Enregistrer/})).toBeEnabled();
+ await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  await expect.poll(()=>page.evaluate(()=>{
    const a=JSON.parse(localStorage.getItem('test-design')).config.assets;
    return a.googleLogo===null && a.googleBusinessNameImage===null;

@@ -18,7 +18,7 @@ test('dashboard enrollment, effective Wallet previews, onboarding fallback and p
     await page.route(entry,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
     await page.goto(entry,{waitUntil:'domcontentloaded'});await page.waitForFunction(()=>window.__testApp);
     await page.evaluate(async()=>{
-      const a=window.__testApp;a.api={...await window.dpaReady,configured:true,
+      const a=window.__testApp;a.api={...await window.dpaReady,SupportUnread:()=>null,configured:true,
         appleWalletLink:async id=>({url:'https://wallet.example/apple/'+id}),
         walletLink:async id=>({url:'https://wallet.example/google/'+id}),
         access:async()=>({has_access:true}),enroll:async(request,first,email)=>{

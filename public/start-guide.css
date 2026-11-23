@@ -1,0 +1,9 @@
+.dpa-guide-button,.dpa-guide-panel button{padding:.65rem 1rem;min-height:44px;border:1px solid #8267dc;border-radius:12px;background:var(--dpa-surface,#fff);color:var(--dpa-text,#211a36);font:inherit;cursor:pointer}
+.dpa-guide-panel{box-sizing:border-box;width:min(calc(100% - 24px),430px);max-height:40vh;overflow:auto;position:fixed;inset:auto 12px max(12px,env(safe-area-inset-bottom)) auto;margin:0;padding:1rem;border:1px solid #8267dc;border-radius:18px;background:var(--dpa-surface,#fff);color:var(--dpa-text,#211a36)}
+.dpa-guide-panel::backdrop{background:#140d2840}
+.dpa-guide-panel div{display:flex;gap:.4rem;flex-wrap:wrap;justify-content:flex-end}
+.dpa-guide-panel [data-next]{background:#5632bc;color:white}
+.dpa-guide-panel button:disabled{opacity:.5;cursor:default}
+.dpa-guide-highlight{outline:4px solid #8c65ff!important;outline-offset:4px}
+
+.dpa-guide-entry{max-width:1160px;margin:16px auto 0;padding:0 clamp(16px,4vw,40px);display:flex;gap:10px;flex-wrap:wrap}.dpa-guide-entry a{text-decoration:none;display:inline-flex;align-items:center}.dpa-guide-panel p{line-height:1.5}.dpa-guide-panel a{color:var(--dpa-link,#6846bf)}
