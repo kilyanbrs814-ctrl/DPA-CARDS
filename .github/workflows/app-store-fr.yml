@@ -39,3 +39,12 @@ jobs:
                 }
               }
             }
+      - name: Vérifier les groupes TestFlight existants
+        run: |
+          node --input-type=module <<'NODE'
+          import {appStoreApi as api} from './scripts/app-store-api.mjs';
+          const groups=await api('/apps/'+process.env.APP_STORE_APP_ID+'/betaGroups?limit=100');
+          console.log('Groupes TestFlight',JSON.stringify(groups.data.map(group=>({id:group.id,name:group.attributes.name,internal:group.attributes.isInternalGroup}))));
+          const versions=await api('/apps/'+process.env.APP_STORE_APP_ID+'/appStoreVersions?filter[platform]=IOS&limit=20');
+          console.log('Versions App Store',JSON.stringify(versions.data.map(version=>({version:version.attributes.versionString,state:version.attributes.appStoreState}))));
+          NODE
