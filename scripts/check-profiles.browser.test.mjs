@@ -10,11 +10,11 @@ test('web profiles: profile entry, commerce selector, onboarding and explicit pa
   const page=await browser.newPage({viewport:{width:393,height:852}});page.setDefaultTimeout(7000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route(url,async route=>{const response=await route.fetch();await route.fulfill({response,body:(await response.text()).replace('componentDidMount(){','componentDidMount(){window.__testApp=this;')});});
   await page.goto(url);await page.waitForFunction(()=>window.__testApp);await page.evaluate(async()=>{
-   const a=window.__testApp;a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),uuid:()=>crypto.randomUUID(),
+   const a=window.__testApp;await a.ready();a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),uuid:()=>crypto.randomUUID(),
     switchProfile:id=>window.__switched=id,billing:{profileQuote:async()=>({operation:{id:'op2',quote:{current_count:1,new_count:2,activation_cents:3000,current_monthly_cents:2490,new_monthly_cents:4000,monthly_difference_cents:1510,
      effective_at:'2026-10-18T12:00:00Z',proration_cents:850,proration_collection:'next_invoice',immediate_cents:3000}}}),profileAccept:async()=>{window.__accepted=(window.__accepted||0)+1;return {operation:{status:'complete'}}}}};
    a.enterDemo();a.setState({live:true,demo:false,role:'owner',hasAccess:true,billingMerchantId:'a',billedCount:1,primaryActivated:true,subscription:{status:'active',billing_mode:'monthly'},
-    merchant:{...a.state.merchant,id:'a',business:'Commerce A'},profiles:[{id:'a',name:'Commerce A',role:'owner',logo:'/assets/dpa-cards-logo.png'},{id:'b',name:'Commerce B',role:'owner'}]});
+    merchant:{...a.state.merchant,id:'a',business:'Commerce A'},program:{...a.state.program,logoUrl:null},profiles:[{id:'a',name:'Commerce A',role:'owner',logo:'/assets/dpa-cards-logo.png'},{id:'b',name:'Commerce B',role:'owner'}]});
   });
   assert.equal(await page.getByText('Accès DPA Cards : actif',{exact:true}).count(),0);
   await page.setViewportSize({width:1440,height:960});
@@ -38,7 +38,8 @@ test('web profiles: profile entry, commerce selector, onboarding and explicit pa
   await desktopDialog.getByRole('button',{name:'Fermer',exact:true}).click();
   assert.equal(await profile.evaluate(el=>el===document.activeElement),true);
   await page.setViewportSize({width:393,height:852});
-  await page.getByRole('button',{name:/Réglages/}).click();
+  await page.waitForFunction(()=>!window.__testApp.state.loadingHome);
+  await page.getByRole('navigation',{name:'Navigation principale'}).getByRole('button',{name:/Réglages/}).click();
   await page.getByRole('button',{name:/Gérer mes commerces/}).click();
   const dialog=page.getByRole('dialog');await dialog.getByRole('heading',{name:'Vos commerces'}).waitFor();
   assert.equal(await dialog.getByRole('button',{name:'Installer l’application'}).count(),0);
@@ -51,7 +52,8 @@ test('web profiles: profile entry, commerce selector, onboarding and explicit pa
   assert.equal(await page.evaluate(()=>window.__testApp.state.clients.length),0);
   assert.equal(await page.evaluate(()=>window.__testApp.state.merchant.id),null);
   await page.evaluate(()=>{const a=window.__testApp;a.setState({screen:'home',merchant:{...a.state.merchant,id:'b',business:'Commerce B'},program:{...a.state.program,designStatus:'validated'},hasAccess:false,addingProfile:null});});
-  await page.getByRole('button',{name:/Réglages/}).click();
+  await page.waitForFunction(()=>!window.__testApp.state.loadingHome);
+  await page.getByRole('navigation',{name:'Navigation principale'}).getByRole('button',{name:/Réglages/}).click();
   await page.getByRole('button',{name:/Gérer mes commerces/}).click();
   await dialog.getByRole('button',{name:'Activer ce commerce',exact:true}).click();await dialog.getByRole('heading',{name:'Confirmer les montants'}).waitFor();
   await dialog.getByText('24,90 €',{exact:true}).waitFor();
@@ -115,7 +117,7 @@ test('native iPhone switches existing commerces without signup or payment',async
   await page.getByRole('button',{name:'Se connecter',exact:true}).waitFor();
   assert.equal(await page.getByRole('button',{name:'Créer mon compte',exact:true}).count(),0);
   await page.evaluate(async()=>{
-   const a=window.__testApp;a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),
+   const a=window.__testApp;await a.ready();a.api={...await window.dpaReady,configured:true,access:async()=>({has_access:true}),
     switchProfile:id=>{window.__nativeSelected=id;},
     billing:{profileQuote:async()=>{window.__stripeQuoteCalled=true;throw Error('unexpected Stripe quote');},
      profileAccept:async()=>{window.__stripePaymentCalled=true;throw Error('unexpected Stripe purchase');},
@@ -124,7 +126,8 @@ test('native iPhone switches existing commerces without signup or payment',async
     merchant:{...a.state.merchant,id:'primary',business:'Premier commerce'},
     profiles:[{id:'primary',name:'Premier commerce',role:'owner'},{id:'second',name:'Deuxième commerce',role:'owner'}]});
   });
-  await page.getByRole('button',{name:/Réglages/}).click();
+  await page.waitForFunction(()=>!window.__testApp.state.loadingHome);
+  await page.getByRole('navigation',{name:'Navigation principale'}).getByRole('button',{name:/Réglages/}).click();
   await page.getByRole('button',{name:/Gérer mes commerces/}).click();
   const dialog=page.getByRole('dialog');
   assert.equal(await dialog.getByRole('button',{name:'Premier commerce Sélectionné'}).getAttribute('aria-current'),'true');
