@@ -37,7 +37,7 @@ jobs:
       - run: npm run test:png
       - run: npm run test:profiles
       - run: node --test scripts/check-merchant-mfa.test.mjs
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - run: node --test scripts/check-launch.browser.test.mjs
       - run: npm run test:png-ui
       - run: npm run test:profiles-ui
