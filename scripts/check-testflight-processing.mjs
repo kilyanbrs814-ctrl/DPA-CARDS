@@ -18,9 +18,15 @@ export function matchingBuild(response, appVersion, number) {
   });
 }
 
+export function groupsToAssign(groups, attached = []) {
+  const existing = new Set(attached.map(group => group.id));
+  return groups.filter(group => group.attributes.isInternalGroup
+    && !group.attributes.hasAccessToAllBuilds && !existing.has(group.id));
+}
+
 async function main() {
   const release = JSON.parse(readFileSync(new URL('../release.json',import.meta.url),'utf8'));
-  const version = process.env.MARKETING_VERSION || release.appVersion, number = process.env.GITHUB_RUN_NUMBER;
+  const version = process.env.MARKETING_VERSION || release.appVersion, number = process.env.DPA_IOS_BUILD_NUMBER || process.env.GITHUB_RUN_NUMBER;
   const app = process.env.APP_STORE_APP_ID;
   for (const name of ['ASC_API_KEY_B64','ASC_API_KEY_ID','ASC_API_ISSUER_ID','GITHUB_RUN_NUMBER','APP_STORE_APP_ID']) {
     if (!process.env[name]) throw new Error('Missing release configuration: '+name);
@@ -29,7 +35,7 @@ async function main() {
   const pem = Buffer.from(process.env.ASC_API_KEY_B64,'base64');
   const params = new URLSearchParams({'filter[app]':app,'filter[version]':number,'filter[preReleaseVersion.version]':version,include:'preReleaseVersion,buildBetaDetail,betaGroups',limit:'5'});
   const deadline = Date.now()+15*60*1000;
-  let result = {releaseId:release.releaseId,appVersion:version,buildNumber:number,revision:process.env.GITHUB_SHA,processingState:'NOT_VISIBLE'};
+  let result = {releaseId:release.releaseId,appVersion:version,buildNumber:number,revision:process.env.DPA_RELEASE_REVISION || process.env.GITHUB_SHA,processingState:'NOT_VISIBLE'};
   while (Date.now()<deadline) {
     const token = appleToken({keyId:process.env.ASC_API_KEY_ID,issuer:process.env.ASC_API_ISSUER_ID,pem});
     const response = await fetch('https://api.appstoreconnect.apple.com/v1/builds?'+params,{
@@ -62,13 +68,18 @@ async function main() {
       const betaGroups=await appStoreApi('/apps/'+app+'/betaGroups?limit=100');
       const internalGroups=betaGroups.data.filter(group=>group.attributes.isInternalGroup);
       if (!internalGroups.length) throw new Error('No existing internal TestFlight group is configured.');
-      for (const group of internalGroups) {
+      for (const group of groupsToAssign(betaGroups.data, build.relationships?.betaGroups?.data || [])) {
         await appStoreApi('/betaGroups/'+group.id+'/relationships/builds','POST',[{type:'builds',id:build.id}]);
       }
-      result.internalGroupCount=internalGroups.length;
+      const verification = await appStoreApi('/builds?'+params);
+      const linked = verification.included?.filter(item=>item.type==='betaGroups'&&item.attributes.isInternalGroup)||[];
+      const available = internalGroups.filter(group=>group.attributes.hasAccessToAllBuilds
+        || linked.some(item=>item.id===group.id));
+      if (!available.length) throw new Error('The build is not available in an internal TestFlight group yet.');
+      result.internalGroupCount=available.length;
       result.availableForInternalTesting=true;
       writeFileSync('testflight-status.json',JSON.stringify(result,null,2));
-      console.log('Build '+number+' disponible dans '+internalGroups.length+' groupe(s) interne(s) TestFlight.');
+      console.log('Build '+number+' disponible dans '+result.internalGroupCount+' groupe(s) interne(s) TestFlight.');
       return;
     }
     await new Promise(resolve => setTimeout(resolve,20000));
