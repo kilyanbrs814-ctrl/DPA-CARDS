@@ -21,6 +21,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:static
+      - run: node scripts/check-public-demo.mjs
       - run: node --test scripts/check-release.test.mjs scripts/check-testflight-processing.test.mjs scripts/check-support-messaging.test.mjs scripts/check-site-theme.test.mjs
       - run: node scripts/check-release-bundle.mjs
       - run: node --test scripts/check-contact-form.test.mjs

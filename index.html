@@ -632,7 +632,7 @@ a:hover{color:var(--dpa-link-strong,#1A36C4)}
     </sc-if>
 
     {{ dashboardExperience }}
-    <sc-if value="{{ showStartGuide }}"><button class="dpa-guide-button" type="button" data-dpa-guide-start>Guide de démarrage</button></sc-if>
+    <sc-if value="{{ showStartGuide }}"><div class="dpa-guide-entry"><button class="dpa-guide-button" type="button" data-dpa-guide-start>Guide de démarrage</button><a class="dpa-guide-button" href="https://cards.digitalprojectagency.fr/downloads/Guide-DPA-Cards-mobile.pdf" target="_blank" rel="noopener">Guide PDF illustré</a></div></sc-if>
     {{ homeReturnControl }}
     {{ pointsSimulatorDialog }}
     <sc-if value="{{ lockBanner }}" hint-placeholder-val="{{ false }}">

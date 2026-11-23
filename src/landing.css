@@ -517,3 +517,5 @@ html[data-dpa-theme="dark"] :is(.dpa-l-hero h1, .dpa-l-hero-lead) {
   .dpa-l-phone-float { animation: none !important; transform: none !important; }
   .dpa-l-phone { transform: none !important; }
 }
+
+.dpa-l-demo-wallet{display:flex;gap:28px;align-items:center;flex-wrap:wrap;margin:24px 0}.dpa-l-demo-wallet [data-dpa-demo-qr]{flex:none;width:184px;background:white;border-radius:16px;overflow:hidden}.dpa-l-demo-wallet [data-dpa-demo-qr] svg{display:block;width:100%;height:auto}.dpa-l-demo-wallet a{text-decoration:none;display:inline-flex}

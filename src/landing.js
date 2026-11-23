@@ -1,3 +1,4 @@
+import QRCode from 'qrcode';
 // Vitrine publique DPA Cards : les comportements que le HTML seul ne couvre pas.
 // Le formulaire de contact reste indépendant du compte commerçant.
 import './landing-contact.js';
@@ -159,3 +160,10 @@ visitButton?.addEventListener('click', () => {
   visitStatus.textContent = visits + ' passages sur 10' + (visits === 10 ? ' · Une viennoiserie offerte !' : '');
   if (visits === 10) visitButton.textContent = 'Recommencer';
 });
+
+const demoQr = document.querySelector('[data-dpa-demo-qr]');
+if (demoQr) {
+  QRCode.toString('https://cards.digitalprojectagency.fr/demo.html', {type:'svg',width:184,margin:2})
+    .then(svg => { demoQr.innerHTML = svg; })
+    .catch(() => { demoQr.textContent = 'Ouvrez cards.digitalprojectagency.fr/demo.html sur votre téléphone.'; });
+}

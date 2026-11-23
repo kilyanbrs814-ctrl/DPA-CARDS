@@ -5,3 +5,5 @@
 .dpa-guide-panel [data-next]{background:#5632bc;color:white}
 .dpa-guide-panel button:disabled{opacity:.5;cursor:default}
 .dpa-guide-highlight{outline:4px solid #8c65ff!important;outline-offset:4px}
+
+.dpa-guide-entry{max-width:1160px;margin:16px auto 0;padding:0 clamp(16px,4vw,40px);display:flex;gap:10px;flex-wrap:wrap}.dpa-guide-entry a{text-decoration:none;display:inline-flex;align-items:center}.dpa-guide-panel p{line-height:1.5}.dpa-guide-panel a{color:var(--dpa-link,#6846bf)}

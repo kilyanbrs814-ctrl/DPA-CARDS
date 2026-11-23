@@ -25,6 +25,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 45
     env:
+      APP_STORE_APP_ID: '6823642562'
       APP_BUNDLE_ID: fr.digitalprojectagency.cards
       APP_TEAM_ID: HDK7R3283T
       MARKETING_VERSION: ${{ inputs.version || '1.3' }}
@@ -84,6 +85,7 @@ jobs:
           done
           swift scripts/make-ios-icon.swift public/assets/dpa-cards-logo.png ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png
           swift scripts/configure-ios-deeplink.swift ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleDevelopmentRegion fr" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Add :CFBundleLocalizations array" ios/App/App/Info.plist
           /usr/libexec/PlistBuddy -c "Add :CFBundleLocalizations:0 string fr" ios/App/App/Info.plist
@@ -209,6 +211,8 @@ jobs:
           node-version: '22'
       - name: Confirm Apple processing and internal beta state
         run: node scripts/check-testflight-processing.mjs
+      - name: Enregistrer la fiche App Store en français
+        run: node scripts/prepare-app-store-fr.mjs
       - name: Preserve Apple processing result
         if: always()
         uses: actions/upload-artifact@v4

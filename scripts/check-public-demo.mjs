@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+const root='https://fiuffxchvjcghcvfaout.supabase.co/functions/v1/wallet/public-demo?platform=';
+const apple=await fetch(root+'apple',{redirect:'manual',signal:AbortSignal.timeout(60000)});
+assert.equal(apple.status,302,'Apple demo redirect');
+const pass=await fetch(apple.headers.get('location'),{signal:AbortSignal.timeout(60000)});
+assert.equal(pass.status,200,'Signed Apple demo download');
+assert.match(pass.headers.get('content-type'),/application\/vnd.apple.pkpass/);
+const zip=new Uint8Array(await pass.arrayBuffer());
+assert.equal(zip[0],80);assert.equal(zip[1],75);
+const google=await fetch(root+'google',{redirect:'manual',signal:AbortSignal.timeout(60000)});
+assert.equal(google.status,302,'Google demo redirect');
+const url=new URL(google.headers.get('location'));
+assert.equal(url.origin,'https://pay.google.com');
+const jwt=url.pathname.split('/').at(-1);
+const payload=JSON.parse(Buffer.from(jwt.split('.')[1],'base64url'));
+assert.ok(payload.payload.loyaltyObjects[0].id.endsWith('9e5e3448-9af4-45b3-9c06-6b96479f0ff5'));
+console.log('Cartes de démonstration Apple signée et Google vérifiées.');

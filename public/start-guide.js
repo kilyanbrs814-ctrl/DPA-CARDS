@@ -10,7 +10,7 @@
     const panel = document.createElement('dialog');
     panel.className = 'dpa-guide-panel';
     panel.setAttribute('aria-labelledby', 'dpa-guide-title');
-    panel.innerHTML = '<p data-progress></p><h2 id="dpa-guide-title" tabindex="-1"></h2><p data-description></p><div><button type="button" data-close>Fermer</button><button type="button" data-back>Précédent</button><button type="button" data-next>Suivant</button></div>';
+    panel.innerHTML = '<p data-progress></p><h2 id="dpa-guide-title" tabindex="-1"></h2><p data-description></p><p><a href="https://cards.digitalprojectagency.fr/downloads/Guide-DPA-Cards-mobile.pdf" target="_blank" rel="noopener">Ouvrir le guide PDF illustré</a></p><div><button type="button" data-close>Fermer</button><button type="button" data-back>Précédent</button><button type="button" data-next>Suivant</button></div>';
     document.body.append(panel);
     const title = panel.querySelector('h2');
     const back = panel.querySelector('[data-back]');
@@ -29,7 +29,18 @@
       back.disabled = step === 0;
       next.textContent = step === steps.length - 1 ? 'Terminer' : 'Suivant';
       title.focus({preventScroll:true});
+      requestAnimationFrame(position);
     }
+    function position() {
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const box = highlight?.getBoundingClientRect();
+      const height = panel.getBoundingClientRect().height;
+      const proposed = box && box.bottom + height + 28 < viewportHeight ? box.bottom + 14 : 12;
+      panel.style.top = Math.max(12, Math.min(proposed, viewportHeight - height - 12)) + 'px';
+      panel.style.bottom = 'auto';
+    }
+    window.addEventListener('resize', position);
+    window.addEventListener('scroll', position, true);
     back.onclick = () => { step -= 1; render(); };
     next.onclick = () => {
       if (step === steps.length - 1) panel.close();
@@ -38,6 +49,8 @@
     panel.querySelector('[data-close]').onclick = () => panel.close();
     panel.addEventListener('close', () => {
       highlight?.classList.remove('dpa-guide-highlight');
+      window.removeEventListener('resize', position);
+      window.removeEventListener('scroll', position, true);
       panel.remove();
       launch.focus();
     }, {once:true});

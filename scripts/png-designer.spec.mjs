@@ -27,7 +27,7 @@ test('upload PNG, preview both states, persist, replace, remove and reject inval
  await page.screenshot({path:'/tmp/dpa-png-designer.png',fullPage:true});
  // Remove through the same ImagePick component as the real generator.
  await upload('stamp').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
- await expect(preview.locator('img[data-native-stamp="filled"]')).toHaveCount(0);
+ await expect.poll(()=>preview.locator('img[data-native-stamp="filled"]').evaluateAll(images=>images.every(img=>!img.src.startsWith('data:image')))).toBe(true);
  await upload('logo').locator('..').getByRole('button',{name:'Retirer',exact:true}).click();
  await page.getByRole('button',{name:/Enregistrer/}).click();
  await page.reload();
@@ -282,13 +282,13 @@ test('tampons slider updates preview at once on both platforms and survives save
  await page.goto('/scripts/fixtures/designer.html');
  const slider=page.locator('[data-stamp-size-control]');
  await expect(slider).toHaveValue('100');
- await expect(page.getByText('Taille des tampons : 100 %')).toBeVisible();
+ await expect(page.getByText('Taille des tampons Apple Wallet : 100 %')).toBeVisible();
  const apple=page.locator('[data-layout="apple"]').first();
  const first=apple.locator('[data-native-stamp]').first();
  await expect(first).toHaveAttribute('data-native-stamp','filled');
  const original=await first.boundingBox();
  await slider.fill('60');
- await expect(page.getByText('Taille des tampons : 60 %')).toBeVisible();
+ await expect(page.getByText('Taille des tampons Apple Wallet : 60 %')).toBeVisible();
  const small=await first.boundingBox();
  expect(small.width).toBeLessThan(original.width);
  const panel=apple.locator('[data-apple-native-strip]').first();
@@ -300,7 +300,8 @@ test('tampons slider updates preview at once on both platforms and survives save
  await page.getByRole('button',{name:/Enregistrer/}).click();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const json=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
- expect(json.stamps.size).toBe(120);
+ expect(json.apple.stampSize).toBe(120);
+ expect(json.google.stampSize).toBe(100);
  await page.reload();
  await expect(slider).toHaveValue('120');
  await page.getByRole('tab',{name:'Google Wallet'}).click();
@@ -316,7 +317,7 @@ test('stamp spacing slider compresses and expands the two rows around their cent
  await page.goto('/scripts/fixtures/designer.html');
  const slider=page.locator('[data-stamp-spacing-control]');
  await expect(slider).toHaveValue('100');
- await expect(page.getByText('Espacement des tampons : 100 %')).toBeVisible();
+ await expect(page.getByText('Espacement des tampons Apple Wallet : 100 %')).toBeVisible();
  const card=page.locator('[data-layout="apple"]').first();
  const slots=card.locator('[data-native-stamp]');
  await expect(slots).toHaveCount(10);
@@ -328,7 +329,7 @@ test('stamp spacing slider compresses and expands the two rows around their cent
  const image=first;
  const icon=await image.boundingBox();
  await slider.fill('60');
- await expect(page.getByText('Espacement des tampons : 60 %')).toBeVisible();
+ await expect(page.getByText('Espacement des tampons Apple Wallet : 60 %')).toBeVisible();
  const compact=await Promise.all([first.boundingBox(),lastInRow.boundingBox(),row2.boundingBox()]);
  expect(compact[1].x-compact[0].x).toBeLessThan(horizontalDistance);
  expect(compact[2].y-compact[0].y).toBeLessThan(verticalDistance);
@@ -341,7 +342,8 @@ test('stamp spacing slider compresses and expands the two rows around their cent
  await page.getByRole('button',{name:/Enregistrer/}).click();
  await expect(page.locator('#toast')).toHaveText('Carte test enregistrée.');
  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
- expect(saved.stamps.spacing).toBe(120);
+ expect(saved.apple.stampSpacing).toBe(120);
+ expect(saved.google.stampSpacing).toBe(100);
  await page.reload();
  await expect(slider).toHaveValue('120');
  await page.getByRole('tab',{name:'Google Wallet'}).click();
@@ -400,7 +402,7 @@ test('Separate wordmark is saved in the native Apple header and Google wide logo
  const header=apple.getByRole('img',{name:'En-tête Apple',exact:true});
  await expect(header).toBeVisible();
  await expect.poll(()=>header.evaluate(img=>[img.naturalWidth,img.naturalHeight])).toEqual([480,150]);
- await expect(apple.locator('[data-field="card-number"]')).toHaveText('1234');
+ await expect(apple.locator('[data-field="card-number"]')).toHaveText('3333');
  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('test-design')).config);
  expect(saved.assets.businessNameImage.path).toContain('businessNameImage-');
  expect(saved.assets.appleHeader.path).toContain('appleHeader-');

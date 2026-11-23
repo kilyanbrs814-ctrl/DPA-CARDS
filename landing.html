@@ -233,7 +233,11 @@
   <!-- 4. Tarifs — propre à la vitrine web -->
   <section class="dpa-l-wrap dpa-l-section" id="demo" aria-labelledby="demo-titre">
     <h2 id="demo-titre">Testez un passage en caisse</h2>
-    <p>Simulez un passage sur la carte de la Boulangerie du Marché.</p>
+    <p>Ajoutez une carte de démonstration à votre téléphone, puis découvrez comment valider un passage en caisse.</p>
+    <div class="dpa-l-demo-wallet">
+      <div data-dpa-demo-qr aria-label="QR code pour ouvrir la carte de démonstration"></div>
+      <div><p>Scannez ce QR avec votre téléphone.</p><p><a class="dpa-l-mode" href="https://fiuffxchvjcghcvfaout.supabase.co/functions/v1/wallet/public-demo?platform=apple">Ajouter à Apple Wallet</a></p><p><a class="dpa-l-mode" href="https://fiuffxchvjcghcvfaout.supabase.co/functions/v1/wallet/public-demo?platform=google">Ajouter à Google Wallet</a></p><p>Carte de démonstration sans valeur commerciale.</p></div>
+    </div>
     <button class="dpa-l-mode" type="button" data-dpa-try-visit>Ajouter un passage test</button>
     <p role="status" data-dpa-visit-status>6 passages sur 10</p>
   </section>

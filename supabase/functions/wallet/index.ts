@@ -1970,6 +1970,10 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   const user=await requireAdmin(req);
   const body = await req.json().catch(() => ({}));
   const t = await testRow(body?.id,user);
+  return testCardWallet(req, t);
+}
+
+async function testCardWallet(req: Request, t: any): Promise<Response> {
   if (!ISSUER_ID) throw new HttpError(503, 'wallet_not_configured');
   try { sa(); } catch { throw new HttpError(503, 'wallet_not_configured'); }
   const d = t.config ?? {}, pv = d.preview ?? {}, colors = { ...(d.colors ?? {}), ...(d.google?.colors ?? {}) };
@@ -2040,6 +2044,41 @@ async function adminTestCardWallet(req: Request): Promise<Response> {
   return json(req, 200, { url: `https://pay.google.com/gp/v/save/${jwt}`, class_id: classId, object_id: objectId });
 }
 
+
+const PUBLIC_DEMO_CARD_ID = '9e5e3448-9af4-45b3-9c06-6b96479f0ff5';
+let publicDemoGoogle: { url: string; until: number } | null = null;
+
+// This route can issue only the dedicated demonstration card.
+async function publicDemoWallet(req: Request): Promise<Response> {
+  const platform = new URL(req.url).searchParams.get('platform');
+  if (platform !== 'apple' && platform !== 'google') throw new HttpError(400, 'invalid_platform');
+  const { data: t, error } = await admin.from('test_card_designs')
+    .select(TEST_SELECT).eq('id', PUBLIC_DEMO_CARD_ID).maybeSingle();
+  if (error || !t) throw new HttpError(503, 'demo_unavailable');
+
+  let target: string;
+  if (platform === 'apple') {
+    const token = 'DPA_DEMO_WALLET_' + PUBLIC_DEMO_CARD_ID.replaceAll('-', '');
+    const hash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',
+      new TextEncoder().encode(token))), b => b.toString(16).padStart(2, '0')).join('');
+    const { error: linkError } = await admin.from('apple_wallet_test_links').upsert({
+      test_card_id: PUBLIC_DEMO_CARD_ID, token_hash: hash,
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+    }, { onConflict: 'test_card_id' });
+    if (linkError) throw new HttpError(503, 'demo_unavailable');
+    target = SUPABASE_URL + '/functions/v1/apple-pass?token=' + encodeURIComponent(token);
+  } else {
+    if (!publicDemoGoogle || publicDemoGoogle.until < Date.now()) {
+      const response = await testCardWallet(req, t);
+      const result = await response.json();
+      if (!result.url?.startsWith('https://pay.google.com/gp/v/save/')) throw new HttpError(503, 'demo_unavailable');
+      publicDemoGoogle = { url: result.url, until: Date.now() + 600000 };
+    }
+    target = publicDemoGoogle.url;
+  }
+  return new Response(null, {status:302,headers:{...cors(req),location:target,'cache-control':'no-store'}});
+}
+
 async function sync(req: Request): Promise<Response> {
   const secret = req.headers.get('x-wallet-worker') ?? '';
   const { data: ok } = await admin.rpc('wallet_check_worker', { p_secret: secret });
@@ -2052,6 +2091,7 @@ Deno.serve(async (req) => {
   const path = new URL(req.url).pathname;
   try {
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors(req) });
+    if (req.method === 'GET' && path.endsWith('/public-demo')) return await publicDemoWallet(req);
     if (req.method === 'GET' && path.includes('/stamp-board/')) return await publicStampBoard(req,path);
     if (req.method === 'GET' && path.endsWith('/logo.png')) {
       return new Response(Uint8Array.from(atob(LOGO_PNG_BASE64), c => c.charCodeAt(0)), {

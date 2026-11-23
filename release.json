@@ -1,7 +1,7 @@
 {
-  "releaseId": "2026.11.19.1",
-  "label": "19.11.1",
-  "date": "19/11/2026",
+  "releaseId": "2026.11.23.1",
+  "label": "23.11.1",
+  "date": "23/11/2026",
   "appVersion": "1.3",
   "changes": [
     "Nouvelle page d’accueil avec les téléphones animés, démonstrations et FAQ.",
@@ -12,6 +12,11 @@
     "Conversations Support et réponses depuis la messagerie admin.",
     "Violet DPA fixe et mode clair/sombre.",
     "Logos DPA adaptés aux fonds clairs et sombres.",
-    "Pages légales, liens intégrés à l’iPhone et identifiant de mise à jour commun."
+    "Pages légales, liens intégrés à l’iPhone et identifiant de mise à jour commun.",
+    "Installation iPhone et téléchargement Windows adaptés à l’appareil.",
+    "Guide de démarrage interactif et PDF illustré.",
+    "Carte de démonstration Apple Wallet et Google Wallet sur la vitrine.",
+    "Suivi du démarrage des commerces dans l’administration.",
+    "Langue française déclarée dans l’application iOS."
   ]
 }
