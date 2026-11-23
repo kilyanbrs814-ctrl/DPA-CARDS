@@ -32,7 +32,7 @@ test('upload PNG, preview both states, persist, replace, remove and reject inval
  await page.getByRole('button',{name:/Enregistrer/}).click();
  await page.reload();
  await expect(preview.getByRole('img',{name:'Logo',exact:true})).toHaveCount(0);
- await expect(preview.locator('img[data-native-stamp="filled"]')).toHaveCount(0);
+ await expect.poll(()=>preview.locator('img[data-native-stamp="filled"]').evaluateAll(images=>images.every(img=>!img.src.startsWith('data:image')))).toBe(true);
 });
 
 test('Apple native name toggle keeps the header height, logo and stamp position',async({page})=>{

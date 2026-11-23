@@ -540,7 +540,7 @@ class Component extends DCLogic {
       commands:[...tabs.map(t=>({label:t.label,detail:'Administration',run:t.pick})),...D.map(m=>({id:m.id,label:m.business_name,detail:'Commerce',run:()=>{this.goTab('list');this.open(m.id);}}))]}):null;
     const startupOverview=tab==='list'&&!s.loading&&!s.error?React.createElement('section',{'aria-label':'Démarrage des commerces',style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginBottom:20}},
       ...[
-        ['Comptes créés',D.length],
+        ['Commerces créés',D.length],
         ['Cartes prêtes',D.filter(m=>m.program?.design_status==='validated').length],
         ['Premier passage effectué',D.filter(m=>Number(m.visits)>0).length],
         ['Abonnements actifs',D.filter(m=>m.subscription?.status==='active').length],
