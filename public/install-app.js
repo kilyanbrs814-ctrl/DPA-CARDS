@@ -1,6 +1,23 @@
 (() => {
   if (location.protocol === 'capacitor:') return;
 
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const windows = /Windows NT/.test(navigator.userAgent);
+  if (ios || windows) {
+    customElements.define('dpa-install-app', class extends HTMLElement {
+      connectedCallback() {
+        const link = document.createElement('a');
+        link.className = 'dpa-install-action';
+        link.href = ios ? 'https://apps.apple.com/fr/app/dpa-cards/id6823642562' : '/downloads/DPA-Cards-Windows.exe';
+        link.textContent = ios ? 'Télécharger sur l’App Store' : 'Télécharger pour Windows (.exe)';
+        if (windows) link.download = 'DPA-Cards-Windows.exe';
+        this.replaceChildren(link);
+      }
+    });
+    return;
+  }
+
   const desktop = matchMedia('(min-width: 1024px) and (any-pointer: fine)');
   const standalone = matchMedia('(display-mode: standalone)');
   const edge = /\bEdg\//.test(navigator.userAgent);
