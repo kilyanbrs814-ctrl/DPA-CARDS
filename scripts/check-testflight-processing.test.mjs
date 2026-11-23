@@ -18,3 +18,12 @@ test('Processing checks cannot confuse the same build number from another market
   assert.equal(matchingBuild(response,'1.2',25).id,'current');
   assert.equal(matchingBuild(response,'1.2',24),undefined);
 });
+
+test('automatic TestFlight groups and existing memberships need no manual assignment', async () => {
+  const {groupsToAssign}=await import('./check-testflight-processing.mjs');
+  const group=(id,internal,automatic)=>({id,attributes:{isInternalGroup:internal,hasAccessToAllBuilds:automatic}});
+  assert.deepEqual(groupsToAssign([
+    group('auto',true,true),group('existing',true,false),
+    group('external',false,false),group('manual',true,false),
+  ],[{id:'existing'}]).map(group=>group.id),['manual']);
+});
