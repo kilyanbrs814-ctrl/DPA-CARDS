@@ -4,6 +4,7 @@ on:
     branches: [ops/app-store-fr-2026-11-23]
 permissions:
   contents: read
+  actions: write
 jobs:
   french-metadata:
     runs-on: ubuntu-latest
@@ -20,3 +21,14 @@ jobs:
         with:
           node-version: '22'
       - run: node scripts/prepare-app-store-fr.mjs
+      - name: Annuler le build resté en attente de runner
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runId = 45220790189;
+            const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo,run_id:runId});
+            if (run.head_branch !== 'release/testflight-1.3-2026-11-23-complete') throw new Error('Unexpected workflow branch');
+            if (!['completed'].includes(run.status)) {
+              await github.rest.actions.cancelWorkflowRun({...context.repo,run_id:runId});
+              core.info('Build en attente annulé avant la relance sur le runner disponible.');
+            }
