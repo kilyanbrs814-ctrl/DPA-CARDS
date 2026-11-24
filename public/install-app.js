@@ -6,20 +6,11 @@
   const windows = /Windows NT/.test(navigator.userAgent);
   if (ios || windows) {
     customElements.define('dpa-install-app', class extends HTMLElement {
-      async connectedCallback() {
-        this.hidden = true;
-        if (windows) {
-          try {
-            const response = await fetch('/downloads/DPA-Cards-Windows.exe', { method: 'HEAD' });
-            if (!response.ok || /text\/html/i.test(response.headers.get('content-type') || '')) return;
-          } catch { return; }
-        }
-        this.hidden = false;
+      connectedCallback() {
         const link = document.createElement('a');
         link.className = 'dpa-install-action';
-        link.href = ios ? 'https://apps.apple.com/fr/app/dpa-cards/id6823642562' : '/downloads/DPA-Cards-Windows.exe';
-        link.textContent = ios ? 'Télécharger sur l’App Store' : 'Télécharger pour Windows (.exe)';
-        if (windows) link.download = 'DPA-Cards-Windows.exe';
+        link.href = '/telecharger.html';
+        link.textContent = 'Télécharger l’application';
         this.replaceChildren(link);
       }
     });

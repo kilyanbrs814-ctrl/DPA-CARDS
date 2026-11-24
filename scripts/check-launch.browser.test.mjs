@@ -10,8 +10,8 @@ test('installation, landing demo and start guide through the merchant home',asyn
   const browser=await chromium.launch({headless:true});
   try {
     for (const device of [
-      {platform:'Win32',ua:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/141.0.0.0 Safari/537.36',href:'/downloads/DPA-Cards-Windows.exe'},
-      {platform:'iPhone',ua:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1',href:'https://apps.apple.com/fr/app/dpa-cards/id6823642562'},
+      {platform:'Win32',ua:'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/141.0.0.0 Safari/537.36'},
+      {platform:'iPhone',ua:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1'},
     ]) {
       const context=await browser.newContext({userAgent:device.ua});
       await context.addInitScript(platform=>Object.defineProperty(navigator,'platform',{get:()=>platform}),device.platform);
@@ -19,11 +19,20 @@ test('installation, landing demo and start guide through the merchant home',asyn
       await page.goto(origin);
       const install=page.locator('dpa-install-app:visible a');
       await install.waitFor();
-      assert.equal(await install.getAttribute('href'),device.href);
+      assert.equal(await install.innerText(),'Télécharger l’application');
+      assert.equal(await install.getAttribute('href'),'/telecharger.html');
       await page.locator('[data-dpa-demo-qr] svg').waitFor();
       assert.equal(await page.locator('#demo a[href*="public-demo"]').count(),2);
       await page.getByRole('button',{name:'Ajouter un passage test'}).click();
       assert.match(await page.locator('[data-dpa-visit-status]').innerText(),/7 passages/);
+      await install.click();
+      await page.waitForURL('**/telecharger.html');
+      const apple=page.getByRole('link',{name:/Télécharger sur l’App Store/});
+      const windows=page.getByRole('link',{name:/Télécharger pour Windows/});
+      assert.equal(await apple.getAttribute('href'),'https://apps.apple.com/fr/app/dpa-cards/id6823642562');
+      assert.equal(await windows.getAttribute('href'),'/downloads/DPA-Cards-Windows.exe');
+      assert.equal(await windows.getAttribute('download'),'');
+      assert.doesNotMatch(await windows.innerText(),/\.exe/i);
       await context.close();
     }
     const page=await browser.newPage({viewport:{width:393,height:852}});
